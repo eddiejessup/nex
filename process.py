@@ -116,8 +116,8 @@ class State(object):
                         triod_ascii_code -= 64
                     else:
                         triod_ascii_code += 64
-                    start_char = chr(triod_ascii_code)
-                    start_cat = self.char_to_cat[start_char]
+                    char = chr(triod_ascii_code)
+                    cat = self.char_to_cat[char]
                     if not peek:
                         self.advance_loc(n=2)
         else:
