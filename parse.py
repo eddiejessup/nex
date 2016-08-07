@@ -148,7 +148,7 @@ def p_command(p):
 
 def p_cat_code(p):
     '''
-    cat_code : CAT_CODE number EQUALS number
+    cat_code : CAT_CODE number equals number
     '''
     char_code, cat_num = evaluate(p[2]['size']), evaluate(p[4]['size'])
     char = chr(char_code)
@@ -309,6 +309,14 @@ def p_plus_or_minus(p):
                   | MINUS_SIGN
     '''
     p[0] = p[1]['char']
+
+
+def p_equals(p):
+    '''
+    equals : optional_spaces
+           | optional_spaces EQUALS
+    '''
+    pass
 
 
 def p_optional_spaces(p):
