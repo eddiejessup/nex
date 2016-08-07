@@ -83,8 +83,6 @@ class PLYLexer(Lexer):
                 type_ = 'SPACE'
             else:
                 type_ = 'EQUALS'
-            if char == '3':
-                import pdb; pdb.set_trace()
         token = PLYToken(type_, value)
         logger.info(token)
         return token

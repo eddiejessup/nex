@@ -33,7 +33,7 @@ CatCode = Enum('CatCode', {symbol: i for i, symbol in enumerate(cat_codes)})
 weird_char_codes = {
     'null': 0,
     'line_feed': 10,
-    'carr_return': 13,
+    'carriage_return': 13,
     'delete': 127,
 }
 weird_chars = {
@@ -56,7 +56,7 @@ tokenise_cats = [
 ]
 
 
-class ReadingMode(Enum):
+class ReadingState(Enum):
     line_begin = 'N'
     line_middle = 'M'
     skipping_blanks = 'S'
@@ -65,7 +65,7 @@ class ReadingMode(Enum):
 class State(object):
 
     def __init__(self, chars):
-        self.reading_mode = ReadingMode.line_begin
+        self.reading_state = ReadingState.line_begin
         self.i = -1
         self.initialize_char_cats()
         self.tokens = []
@@ -85,7 +85,7 @@ class State(object):
         self.char_to_cat[WeirdChar.null.value] = CatCode.ignored
         # NON-STANDARD
         self.char_to_cat[WeirdChar.line_feed.value] = CatCode.end_of_line
-        self.char_to_cat[WeirdChar.carr_return.value] = CatCode.end_of_line
+        self.char_to_cat[WeirdChar.carriage_return.value] = CatCode.end_of_line
         self.char_to_cat[WeirdChar.delete.value] = CatCode.invalid
 
     def peek_ahead(self, n=1):
@@ -159,7 +159,7 @@ class State(object):
                 logger.debug('Chomped comment character {}_{}'.format(*self.cur_char))
                 pass
             logger.debug('Chomped end_of_line in comment')
-            self.reading_mode = ReadingMode.line_begin
+            self.reading_state = ReadingState.line_begin
         elif cat == CatCode.escape:
             logger.debug('Chomped escape character {}_{}'.format(char, cat))
             char, cat = self.chomp_next_char_with_trio()
@@ -167,9 +167,9 @@ class State(object):
             # If non-letter, have a control sequence of that single character.
             if cat != CatCode.letter:
                 if cat == CatCode.space:
-                    self.reading_mode = ReadingMode.skipping_blanks
+                    self.reading_state = ReadingState.skipping_blanks
                 else:
-                    self.reading_mode = ReadingMode.line_middle
+                    self.reading_state = ReadingState.line_middle
             # If letter, keep reading control sequence until have non-letter.
             else:
                 while True:
@@ -182,20 +182,20 @@ class State(object):
                         control_sequence_chars.append(next_char)
                     else:
                         break
-                self.reading_mode = ReadingMode.line_middle
+                self.reading_state = ReadingState.line_middle
             control_sequence_name = ''.join(control_sequence_chars)
             return {'type': 'control_sequence', 'name': control_sequence_name}
             logger.debug('Got control sequence {}'.format(control_sequence_name))
         elif cat in tokenise_cats:
             token = {'type': 'char_cat_pair', 'char': char, 'cat': cat}
-            self.reading_mode = ReadingMode.line_middle
+            self.reading_state = ReadingState.line_middle
             return token
         # If TeX sees a character of category 10 (space), the action
         # depends on the current state.
         elif cat == CatCode.space:
             # If TeX is in state N or S
-            if self.reading_mode in (ReadingMode.line_begin,
-                                     ReadingMode.skipping_blanks):
+            if self.reading_state in (ReadingState.line_begin,
+                                      ReadingState.skipping_blanks):
                 # The character is simply passed by, and TeX remains in the
                 # same state.
                 pass
@@ -205,8 +205,51 @@ class State(object):
                 # character code is 32, and TeX enters state S. The character
                 # code in a space token is always 32.
                 token = {'type': 'char_cat_pair', 'char': ' ', 'cat': cat}
-                self.reading_mode = ReadingMode.skipping_blanks
+                self.reading_state = ReadingState.skipping_blanks
                 return token
+        elif cat == CatCode.end_of_line:
+            # NOTE: I'm very confused about TeX's concept of lines.
+            # I am going to implement a sort of mishmash of these two
+            # explanations below.
+
+            # 1. [This bit of explanation is mixed in with the code, for
+            #    clarity]
+            # [I do not know what this bit really means]
+            # If TeX sees an end-of-line character (category 5), it throws away
+            # any other information that might remain on the current line.
+
+            # Then if TeX is in state N (new line),
+            if self.reading_state == ReadingState.line_begin:
+                # the end-of-line character is converted to the control
+                # sequence token 'par' (end of paragraph).
+                token = {'type': 'control_sequence', 'name': 'par'}
+                return token
+            # if TeX is in state M (mid-line),
+            elif self.reading_state == ReadingState.line_middle:
+                # the end-of-line character is converted to a token for
+                # character 32 (' ') of category 10 (space).
+                token = {'type': 'char_cat_pair', 'char': ' ',
+                         'cat': CatCode.space}
+                return token
+            # and if TeX is in state S (skipping blanks),
+            elif self.reading_state == ReadingState.skipping_blanks:
+                # the end-of- line character is simply dropped.
+                pass
+
+            # 2.
+            # TeX deletes any <space> characters (number 32) that occur at the
+            # right end of an input line.
+
+            # Then it inserts a <return> character
+            # (number 13) at the right end of the line, except that it places
+            # nothing additional at the end of a line that you inserted with
+            # |I|' during error recovery. Note that <return> is considered to
+            # be an actual character that is part of the line; you can obtain
+            # special effects by changing its catcode.
+            # cr_char = WeirdChar.carriage_return
+            # cr_cat = self.char_to_cat[cr_char]
+            # token = {'type': 'char_cat_pair', 'char': cr_char, 'cat': cr_cat}
+            # return token
         else:
             import pdb; pdb.set_trace()
 
