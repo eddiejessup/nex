@@ -1,0 +1,6 @@
+__pycache__/
+texbook.tex
+parser.out
+parsetab.py
+.DS_Store
+*.log
