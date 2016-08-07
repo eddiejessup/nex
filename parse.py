@@ -212,7 +212,8 @@ def process_digits(p, base):
     new_digit = p[1]['char']
     if len(p) > 2:
         constant = p[2]
-        constant['digits'] += new_digit
+        # We work right-to-left, so the new digit should be added on the left.
+        constant['digits'] = new_digit + constant['digits']
     else:
         constant = {
             'base': base,
