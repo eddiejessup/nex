@@ -69,8 +69,22 @@ class State(object):
         self.i = -1
         self.initialize_char_cats()
         self.tokens = []
+        self.initialize_control_sequences()
+        self.expanding_tokens = True
 
         self.chars = chars
+
+    def disable_expansion(self):
+        self.expanding_tokens = False
+
+    def enable_expansion(self):
+        self.expanding_tokens = True
+
+    def initialize_control_sequences(self):
+        self.control_sequences = {}
+        # TODO: should these control sequences actually return
+        # (char, cat) pairs? Rather than just a plain character?
+        self.control_sequences.update({c: [c] for c in self.char_to_cat})
 
     def initialize_char_cats(self):
         self.char_to_cat = {
@@ -96,34 +110,6 @@ class State(object):
         cat = self.char_to_cat[char]
         return char, cat
 
-    def chomp_next_char_with_trio(self, peek=False, current=False):
-        if current:
-            start_char, start_cat = self.cur_char
-            peek_offset = 0
-        else:
-            start_char, start_cat = self.chomp_next_char(peek=peek)
-            if peek:
-                peek_offset = 1
-            else:
-                peek_offset = 0
-        if start_cat == CatCode.superscript:
-            next_char, next_cat = self.peek_ahead(n=peek_offset + 1)
-            if (next_char == start_char) and (next_cat == start_cat):
-                triod_char, triod_cat = self.peek_ahead(n=peek_offset + 2)
-                if triod_cat != CatCode.end_of_line:
-                    triod_ascii_code = ord(triod_char)
-                    if triod_ascii_code >= 64:
-                        triod_ascii_code -= 64
-                    else:
-                        triod_ascii_code += 64
-                    char = chr(triod_ascii_code)
-                    cat = self.char_to_cat[char]
-                    if not peek:
-                        self.advance_loc(n=2)
-        else:
-            char, cat = start_char, start_cat
-        return char, cat
-
     @property
     def cur_char(self):
         return self.peek_ahead(n=0)
@@ -140,6 +126,43 @@ class State(object):
         if not peek:
             self.advance_loc()
         return r
+
+    def chomp_next_char_with_trio(self, peek=False, current=False):
+        if current:
+            start_char, start_cat = self.cur_char
+            peek_offset = 0
+        else:
+            start_char, start_cat = self.chomp_next_char(peek=peek)
+            if peek:
+                peek_offset = 1
+            else:
+                peek_offset = 0
+        char, cat = start_char, start_cat
+        if start_cat == CatCode.superscript:
+            # If the next character from the start is end-of-file, then
+            # no trio-ing is going on.
+            try:
+                next_char, next_cat = self.peek_ahead(n=peek_offset + 1)
+            except EndOfFile:
+                return char, cat
+            if (next_char == start_char) and (next_cat == start_cat):
+                # If the next-but-one character from the start is end-of-file,
+                # then no trio-ing is going on.
+                try:
+                    triod_char, triod_cat = self.peek_ahead(n=peek_offset + 2)
+                except EndOfFile:
+                    return char, cat
+                if triod_cat != CatCode.end_of_line:
+                    triod_ascii_code = ord(triod_char)
+                    if triod_ascii_code >= 64:
+                        triod_ascii_code -= 64
+                    else:
+                        triod_ascii_code += 64
+                    char = chr(triod_ascii_code)
+                    cat = self.char_to_cat[char]
+                    if not peek:
+                        self.advance_loc(n=2)
+        return char, cat
 
     def get_tokens(self):
         while True:
@@ -176,7 +199,12 @@ class State(object):
                     # Peek to see if next (possibly trio-d) character is a letter.
                     # If it is, chomp it and add it to the list of control sequence
                     # characters.
-                    next_char, next_cat = self.chomp_next_char_with_trio(peek=True)
+                    try:
+                        next_char, next_cat = self.chomp_next_char_with_trio(peek=True)
+                    # If the next 'character' is end-of-file, then finish
+                    # control sequence.
+                    except EndOfFile:
+                        break
                     if next_cat == CatCode.letter:
                         self.chomp_next_char_with_trio(peek=False)
                         control_sequence_chars.append(next_char)

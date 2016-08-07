@@ -1,3 +1,4 @@
+from collections import deque
 import logging
 
 import ply.yacc as yacc
@@ -9,10 +10,18 @@ from process import State, chars, CatCode
 logger = logging.getLogger(__name__)
 
 tokens = (
-    'CAT_CODE',
-    'SINGLE_CHAR_CONTROL_SEQUENCE',
     'CONTROL_SEQUENCE',
+    'SINGLE_CHAR_CONTROL_SEQUENCE',
+
+    'CAT_CODE',
+    'CHAR_DEF',
+    'DEF',
+
     'SPACE',
+    'LEFT_BRACE',
+    'RIGHT_BRACE',
+
+    'CHAR_DEF_TOKEN',
 )
 
 
@@ -60,31 +69,64 @@ class PLYLexer(Lexer):
     def input(self, chars):
         self.state = State(chars)
         self.state_tokens = self.state.get_tokens()
+        self.tokens_stack = deque()
 
-    def token(self):
-        try:
-            state_token = next(self.state_tokens)
-        except StopIteration:
-            return
-        value = state_token
+    def expand_control_sequence(self, name):
+        return self.state.control_sequences[name]
+
+    def state_token_tokens(self):
+        state_token = next(self.state_tokens)
+        tokens = []
         if state_token['type'] == 'control_sequence':
             name = state_token['name']
             if name == 'catcode':
-                type_ = 'CAT_CODE'
+                tokens.append(PLYToken(type_='CAT_CODE', value=state_token))
             elif len(name) == 1:
-                type_ = 'SINGLE_CHAR_CONTROL_SEQUENCE'
+                tokens.append(PLYToken(type_='SINGLE_CHAR_CONTROL_SEQUENCE',
+                                       value=state_token))
+            elif name == 'chardef':
+                tokens.append(PLYToken(type_='CHAR_DEF',
+                                       value=state_token))
+                self.state.disable_expansion()
+            elif name == 'def':
+                type_ = 'DEF'
+                tokens.append(PLYToken(type_='DEF', value=state_token))
+                self.state.disable_expansion()
             else:
-                type_ = 'CONTROL_SEQUENCE'
+                if self.state.expanding_tokens:
+                    tokens.extend(self.expand_control_sequence(name))
+                else:
+                    tokens.append(PLYToken(type_='CONTROL_SEQUENCE',
+                                           value=state_token))
         elif state_token['type'] == 'char_cat_pair':
             char, cat = state_token['char'], state_token['cat']
             if char in literals_map and cat == CatCode.other:
                 type_ = literals_map[char]
+                # TODO: this will probably break when using backticks for
+                # open-quotes.
+                if type_ == 'BACKTICK':
+                    self.state.disable_expansion()
             elif cat == CatCode.space:
                 type_ = 'SPACE'
+            elif cat == CatCode.begin_group:
+                type_ = 'LEFT_BRACE'
+            elif cat == CatCode.end_group:
+                type_ = 'RIGHT_BRACE'
             else:
-                type_ = 'EQUALS'
-        token = PLYToken(type_, value)
-        logger.info(token)
+                import pdb; pdb.set_trace()
+            token = PLYToken(type_, value=state_token)
+            tokens.append(token)
+            logger.info(token)
+        return tokens
+
+    def token(self):
+        if not self.tokens_stack:
+            try:
+                tokens = self.state_token_tokens()
+            except StopIteration:
+                return
+            self.tokens_stack.extend(tokens)
+        token = self.tokens_stack.popleft()
         return token
 
 
@@ -110,31 +152,35 @@ def is_control_sequence(value):
     return isinstance(value, dict) and value['type'] == 'control_sequence'
 
 
-def evaluate_control_sequence(name):
-    if len(name) == 1:
-        return ord(name)
-    else:
-        raise NotImplementedError
+def is_backtick(value):
+    return isinstance(value, dict) and value['type'] == 'backtick'
 
 
 def evaluate(value):
+    if is_backtick(value):
+        target_token = evaluate(value['token'])
+        # Check the target token expands to just one token.
+        assert len(target_token) == 1
+        # Check the single token is one character.
+        assert len(target_token[0]) == 1
+        return ord(target_token[0])
     if is_control_sequence(value):
         name = value['name']
-        value = evaluate_control_sequence(name)
+        value = lexer.state.control_sequences[name]
     return value
 
 
-def p_document_extend(p):
+def p_commands_extend(p):
     '''
-    document : document command
+    commands : commands command
     '''
     p[0] = p[1]
     p[0].append(p[2])
 
 
-def p_document(p):
+def p_commands(p):
     '''
-    document : command
+    commands : command
     '''
     p[0] = [p[1]]
 
@@ -142,8 +188,45 @@ def p_document(p):
 def p_command(p):
     '''
     command : cat_code
+            | char_def
+            | definition
     '''
     p[0] = p[1]
+
+
+def p_definition(p):
+    '''
+    definition : DEF CONTROL_SEQUENCE definition_text
+    '''
+    import pdb; pdb.set_trace()
+    pass
+
+
+def p_definition_text(p):
+    '''
+    definition_text : LEFT_BRACE RIGHT_BRACE
+    '''
+    import pdb; pdb.set_trace()
+    pass
+
+
+def p_chardef(p):
+    '''
+    char_def : CHAR_DEF CONTROL_SEQUENCE seen_CONTROL_SEQUENCE equals number
+    '''
+    char_code = evaluate(p[5]['size'])
+    token = PLYToken(type_='CHAR_DEF_TOKEN', value=char_code)
+    control_sequence_name = p[2]['name']
+    lexer.state.control_sequences[control_sequence_name] = [token]
+    p[0] = {'type': 'char_def', 'name': control_sequence_name,
+            'char_code': char_code}
+
+
+def p_seen_CONTROL_SEQUENCE(p):
+    '''
+    seen_CONTROL_SEQUENCE :
+    '''
+    lexer.state.enable_expansion()
 
 
 def p_cat_code(p):
@@ -176,6 +259,21 @@ def get_constant(constant):
     return int(constant['digits'], base=constant['base'])
 
 
+def p_normal_integer_internal_integer(p):
+    '''
+    normal_integer : internal_integer
+    '''
+    p[0] = p[1]
+
+
+def p_internal_integer(p):
+    '''
+    internal_integer : CHAR_DEF_TOKEN
+    '''
+    # TODO: add other kinds of internal integer.
+    p[0] = p[1]
+
+
 def p_normal_integer_integer(p):
     '''
     normal_integer : integer_constant one_optional_space
@@ -195,13 +293,15 @@ def p_normal_integer_character(p):
     '''
     normal_integer : BACKTICK character_token one_optional_space
     '''
-    p[0] = p[2]
+    p[0] = {'type': 'backtick', 'token': p[2]}
+    lexer.state.enable_expansion()
 
 
 def p_character_token(p):
     '''
     character_token : SINGLE_CHAR_CONTROL_SEQUENCE
     '''
+    # TODO: make this possible.
     '''
                     | char_cat_pair
     '''
@@ -337,6 +437,7 @@ def p_empty(p):
 
 # Error rule for syntax errors
 def p_error(p):
+    import pdb; pdb.set_trace()
     print("Syntax error in input!")
 
 
