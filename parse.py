@@ -268,7 +268,7 @@ def p_normal_integer_internal_integer(p):
 
 def p_internal_integer(p):
     '''
-    internal_integer : CHAR_DEF_TOKEN
+    internal_integer : CHAR_DEF_TOKEN one_optional_space
     '''
     # TODO: add other kinds of internal integer.
     p[0] = p[1]
