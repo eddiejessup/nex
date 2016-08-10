@@ -79,25 +79,26 @@ class PLYLexer(Lexer):
         tokens = []
         if state_token['type'] == 'control_sequence':
             name = state_token['name']
-            if name == 'catcode':
-                tokens.append(PLYToken(type_='CAT_CODE', value=state_token))
-            elif len(name) == 1:
-                tokens.append(PLYToken(type_='SINGLE_CHAR_CONTROL_SEQUENCE',
-                                       value=state_token))
-            elif name == 'chardef':
-                tokens.append(PLYToken(type_='CHAR_DEF',
-                                       value=state_token))
-                self.state.disable_expansion()
-            elif name == 'def':
-                type_ = 'DEF'
-                tokens.append(PLYToken(type_='DEF', value=state_token))
-                self.state.disable_expansion()
-            else:
-                if self.state.expanding_tokens:
-                    tokens.extend(self.expand_control_sequence(name))
+            if not self.state.expanding_tokens:
+                if len(name) == 1:
+                    tokens.append(PLYToken(type_='SINGLE_CHAR_CONTROL_SEQUENCE',
+                                           value=state_token))
                 else:
                     tokens.append(PLYToken(type_='CONTROL_SEQUENCE',
                                            value=state_token))
+            elif name in self.state.control_sequences:
+                tokens.extend(self.expand_control_sequence(name))
+            elif name == 'catcode':
+                tokens.append(PLYToken(type_='CAT_CODE', value=state_token))
+
+            elif name == 'chardef':
+                tokens.append(PLYToken(type_='CHAR_DEF', value=state_token))
+                self.state.disable_expansion()
+            elif name == 'def':
+                tokens.append(PLYToken(type_='DEF', value=state_token))
+                self.state.disable_expansion()
+            else:
+                import pdb; pdb.set_trace()
         elif state_token['type'] == 'char_cat_pair':
             char, cat = state_token['char'], state_token['cat']
             if char in literals_map and cat == CatCode.other:
