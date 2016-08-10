@@ -118,6 +118,8 @@ class PLYLexer(Lexer):
             token = PLYToken(type_, value=state_token)
             tokens.append(token)
             logger.info(token)
+        else:
+            import pdb; pdb.set_trace()
         return tokens
 
     def token(self):
