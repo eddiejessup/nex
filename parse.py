@@ -16,6 +16,7 @@ tokens = (
     'CAT_CODE',
     'CHAR_DEF',
     'DEF',
+    'PAR',
 
     'SPACE',
     'LEFT_BRACE',
@@ -94,6 +95,8 @@ class PLYLexer(Lexer):
             elif name == 'chardef':
                 tokens.append(PLYToken(type_='CHAR_DEF', value=state_token))
                 self.state.disable_expansion()
+            elif name == 'par':
+                tokens.append(PLYToken(type_='PAR', value=state_token))
             elif name == 'def':
                 tokens.append(PLYToken(type_='DEF', value=state_token))
                 self.state.disable_expansion()
@@ -193,6 +196,7 @@ def p_command(p):
     command : cat_code
             | char_def
             | definition
+            | PAR
     '''
     p[0] = p[1]
 
