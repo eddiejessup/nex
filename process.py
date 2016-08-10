@@ -62,6 +62,22 @@ class ReadingState(Enum):
     skipping_blanks = 'S'
 
 
+class Mode(Enum):
+    # Building the main vertical list.
+    vertical_mode = 'V'
+    # Building a vertical list for a vbox.
+    internal_vertical_mode = 'IV'
+    # Building a horizontal list for a paragraph.
+    horizontal_mode = 'H'
+    # Building a horizontal list for an hbox.
+    restricted_horizontal_mode = 'RH'
+    # Building a formula to be placed in a horizontal list.
+    math_mode = 'M'
+    # Building a formula to be placed on a line by itself,
+    # interrupting the current paragraph.
+    display_math_mode = 'DM'
+
+
 class State(object):
 
     def __init__(self, chars):
@@ -69,6 +85,8 @@ class State(object):
         self.chars = chars
 
         self.reading_state = ReadingState.line_begin
+        # At the beginning, TeX is in vertical mode, ready to construct pages.
+        self.mode = Mode.vertical_mode
         self.initialize_char_cats()
         self.initialize_control_sequences()
         self.expanding_tokens = True
