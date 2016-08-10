@@ -65,14 +65,13 @@ class ReadingState(Enum):
 class State(object):
 
     def __init__(self, chars):
-        self.reading_state = ReadingState.line_begin
         self.i = -1
+        self.chars = chars
+
+        self.reading_state = ReadingState.line_begin
         self.initialize_char_cats()
-        self.tokens = []
         self.initialize_control_sequences()
         self.expanding_tokens = True
-
-        self.chars = chars
 
     def disable_expansion(self):
         self.expanding_tokens = False
