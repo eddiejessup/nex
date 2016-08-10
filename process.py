@@ -278,7 +278,7 @@ class State(object):
                 return token
             # and if TeX is in state S (skipping blanks),
             elif self.reading_state == ReadingState.skipping_blanks:
-                # the end-of- line character is simply dropped.
+                # the end-of-line character is simply dropped.
                 pass
 
             # 2.

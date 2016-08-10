@@ -18,9 +18,12 @@ tokens = (
     'DEF',
     'PAR',
 
+    'PREFIX',
+
     'SPACE',
     'LEFT_BRACE',
     'RIGHT_BRACE',
+    'ACTIVE_CHARACTER',
 
     'CHAR_DEF_TOKEN',
 )
@@ -91,7 +94,6 @@ class PLYLexer(Lexer):
                 tokens.extend(self.expand_control_sequence(name))
             elif name == 'catcode':
                 tokens.append(PLYToken(type_='CAT_CODE', value=state_token))
-
             elif name == 'chardef':
                 tokens.append(PLYToken(type_='CHAR_DEF', value=state_token))
                 self.state.disable_expansion()
@@ -100,6 +102,8 @@ class PLYLexer(Lexer):
             elif name == 'def':
                 tokens.append(PLYToken(type_='DEF', value=state_token))
                 self.state.disable_expansion()
+            elif name in ('global', 'long', 'outer'):
+                tokens.append(PLYToken(type_='PREFIX', value=state_token))
             else:
                 import pdb; pdb.set_trace()
         elif state_token['type'] == 'char_cat_pair':
@@ -116,6 +120,8 @@ class PLYLexer(Lexer):
                 type_ = 'LEFT_BRACE'
             elif cat == CatCode.end_group:
                 type_ = 'RIGHT_BRACE'
+            elif cat == CatCode.active:
+                type_ = 'ACTIVE_CHARACTER'
             else:
                 import pdb; pdb.set_trace()
             token = PLYToken(type_, value=state_token)
@@ -195,26 +201,67 @@ def p_command(p):
     '''
     command : cat_code
             | char_def
-            | definition
+            | macro_assignment
             | PAR
+    '''
+    p[0] = p[1]
+
+
+def p_macro_assignment_prefix(p):
+    '''
+    macro_assignment : PREFIX macro_assignment
+    '''
+    p[0] = p[2]
+    p[0]['prefix'] = p[1]['name']
+
+
+def p_macro_assignment(p):
+    '''
+    macro_assignment : definition
     '''
     p[0] = p[1]
 
 
 def p_definition(p):
     '''
-    definition : DEF CONTROL_SEQUENCE definition_text
+    definition : DEF control_sequence definition_text
     '''
-    import pdb; pdb.set_trace()
-    pass
+    p[0] = {'type': 'definition', 'name': p[2]['name'], 'content': p[3]}
 
 
 def p_definition_text(p):
     '''
-    definition_text : LEFT_BRACE RIGHT_BRACE
+    definition_text : LEFT_BRACE balanced_text RIGHT_BRACE
     '''
-    import pdb; pdb.set_trace()
-    pass
+    p[0] = p[2]
+
+
+def p_balanced_text(p):
+    '''
+    balanced_text : control_sequence
+                  | balanced_text control_sequence
+    '''
+    if len(p) < 3:
+        p[0] = [p[1]]
+    else:
+        p[0] = p[1]
+        p[0].append(p[2])
+
+
+def p_control_sequence(p):
+    '''
+    control_sequence : CONTROL_SEQUENCE
+    '''
+    p[0] = p[1]
+
+
+def p_control_sequence_active(p):
+    '''
+    control_sequence : ACTIVE_CHARACTER
+    '''
+    # We will prefix active characters with @.
+    # This really needs changing, but will do for now.
+    p[0] = {'name': '@' + p[1]['char'], 'type': 'control_sequence'}
 
 
 def p_chardef(p):
