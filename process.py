@@ -1,7 +1,11 @@
 from collections import namedtuple
 import string
+from string import ascii_letters, ascii_lowercase, ascii_uppercase
 from enum import Enum
 import logging
+
+
+ascii_characters = ''.join(chr(i) for i in range(128))
 
 
 class EndOfFile(Exception):
@@ -126,10 +130,10 @@ class State(object):
 
     def initialize_char_cats(self):
         self.char_to_cat = {
-            chr(i): CatCode.other for i in range(128)
+            c: CatCode.other for c in ascii_characters
         }
         self.char_to_cat.update({let: CatCode.letter
-                                 for let in string.ascii_letters})
+                                 for let in ascii_letters})
 
         self.char_to_cat['\\'] = CatCode.escape
         self.char_to_cat[' '] = CatCode.space
@@ -142,12 +146,12 @@ class State(object):
 
     def initialize_char_math_codes(self):
         self.char_to_math_code = {}
-        for i in range(256):
-            if chr(i) in string.ascii_letters:
+        for i, c in enumerate(ascii_characters):
+            if c in ascii_letters:
                 family = 1
             else:
                 family = 0
-            if chr(i) in (string.ascii_letters + string.digits):
+            if c in (ascii_letters + string.digits):
                 math_class = MathClass.variable_family
             else:
                 math_class = MathClass.ordinary
@@ -157,10 +161,11 @@ class State(object):
             # TODO: handle special "8000 value, page 155 of The TeXbook.
 
     def initialize_case_codes(self):
-        self.lower_case_code, self.upper_case_code = [{chr(i): chr(0)
-                                                       for i in range(128)}
-                                                      for _ in range(2)]
-        for lower, upper in zip(string.ascii_lowercase, string.ascii_uppercase):
+        self.lower_case_code, self.upper_case_code = [
+            {c: chr(0) for c in ascii_characters}
+            for _ in range(2)
+        ]
+        for lower, upper in zip(ascii_lowercase, ascii_uppercase):
             self.lower_case_code[lower] = lower
             self.upper_case_code[upper] = upper
             self.lower_case_code[upper] = lower
