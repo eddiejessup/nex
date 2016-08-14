@@ -217,11 +217,18 @@ def p_variable_assignment(p):
     p[0] = {'type': 'variable_assignment', 'variable': p[1], 'value': p[3]}
 
 
-def p_integer_variable(p):
+def p_integer_variable_count(p):
     '''
     integer_variable : COUNT number
     '''
     p[0] = {'type': 'count', 'register': p[2]}
+
+
+def p_integer_variable_count_def(p):
+    '''
+    integer_variable : COUNT_DEF_TOKEN
+    '''
+    p[0] = {'type': 'count', 'register': p[1]}
 
 
 def p_short_hand_definition(p):
