@@ -1,8 +1,12 @@
+import logging
 import ply.yacc as yacc
 
 from process import (chars, CatCode, MathClass, MathCode, GlyphCode,
                      DelimiterCode)
 from lexer import PLYLexer, PLYToken, tokens
+
+logger = logging.getLogger(__name__)
+logger.setLevel('DEBUG')
 
 
 class DigitCollection(object):
@@ -529,14 +533,14 @@ def p_error(p):
     print("Syntax error in input!")
 
 
-# Build the parser
-parser = yacc.yacc(debug=True)
+if __name__ == '__main__':
+    # Build the parser
+    parser = yacc.yacc(debug=True)
 
-lexer = PLYLexer()
-result = parser.parse(chars, lexer=lexer)
-# result = parser.parse(s)
-print()
-print('Parsed:')
-for s in result:
-    print(s)
-import pdb; pdb.set_trace()
+    lexer = PLYLexer()
+    result = parser.parse(chars, lexer=lexer, debug=logger)
+    print()
+    print('Parsed:')
+    for s in result:
+        print(s)
+    import pdb; pdb.set_trace()
