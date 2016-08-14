@@ -589,4 +589,7 @@ parser = yacc.yacc(debug=True)
 
 result = parser.parse(chars, lexer=lexer)
 # result = parser.parse(s)
-print(result)
+print()
+print('Parsed:')
+for s in result:
+    print(s)
