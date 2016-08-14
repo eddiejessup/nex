@@ -220,6 +220,7 @@ def p_macro_assignment(p):
     macro_assignment : definition
     '''
     p[0] = p[1]
+    lexer.state.enable_expansion()
 
 
 def p_definition(p):
