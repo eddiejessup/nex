@@ -203,8 +203,17 @@ def p_command(p):
             | char_def
             | macro_assignment
             | PAR
+            | space
     '''
     p[0] = p[1]
+
+
+def p_merged_space(p):
+    '''
+    space : SPACE
+          | space SPACE
+    '''
+    p[0] = {'type': 'space'}
 
 
 def p_macro_assignment_prefix(p):
