@@ -36,6 +36,14 @@ primitive_control_sequences_map = {
 }
 
 
+category_map = {
+    CatCode.space: 'SPACE',
+    CatCode.begin_group: 'LEFT_BRACE',
+    CatCode.end_group: 'RIGHT_BRACE',
+    CatCode.active: 'ACTIVE_CHARACTER',
+}
+
+
 literals_map = {
     '=': 'EQUALS',
     '+': 'PLUS_SIGN',
@@ -125,14 +133,8 @@ class PLYLexer(Lexer):
                         self.state.disable_expansion()
                 else:
                     type_ = 'CHARACTER'
-            elif cat == CatCode.space:
-                type_ = 'SPACE'
-            elif cat == CatCode.begin_group:
-                type_ = 'LEFT_BRACE'
-            elif cat == CatCode.end_group:
-                type_ = 'RIGHT_BRACE'
-            elif cat == CatCode.active:
-                type_ = 'ACTIVE_CHARACTER'
+            elif cat in category_map:
+                type_ = category_map[cat]
             else:
                 import pdb; pdb.set_trace()
             token = PLYToken(type_, value=state_token)
