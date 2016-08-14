@@ -66,14 +66,6 @@ def p_command(p):
     p[0] = p[1]
 
 
-def p_merged_space(p):
-    '''
-    space : SPACE
-          | space SPACE
-    '''
-    p[0] = {'type': 'space'}
-
-
 def p_message(p):
     '''
     message : MESSAGE general_text
@@ -151,7 +143,7 @@ def p_action(p):
            | character
            | simple_assignment
            | PAR
-           | space
+           | SPACE
            | message
     '''
     p[0] = p[1]
