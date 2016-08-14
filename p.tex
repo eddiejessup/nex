@@ -17,4 +17,22 @@
 \catcode`\_=8 \catcode`\^^A=8 % underline and downarrow are for subscripts
 \catcode`\^^I=10 % ascii tab is a blank space
 \chardef\active=13 \catcode`\~=\active % tilde is active
-\catcode`\^^L=\active \outer\def^^L{\par}% ascii form-feed is "\outer\par"
+\catcode`\^^L=\active \outer\def^^L{\par} % ascii form-feed is "\outer\par"
+
+\message{Preloading the plain format: codes,}
+
+% We had to define the \catcodes right away, before the message line,
+% since \message uses the { and } characters.
+% When INITEX (the TeX initializer) starts up,
+% it has defined the following \catcode values:
+% \catcode`\^^@=9 % ascii null is ignored
+% \catcode`\^^M=5 % ascii return is end-line
+% \catcode`\\=0 % backslash is TeX escape character
+% \catcode`\%=14 % percent sign is comment character
+% \catcode`\ =10 % ascii space is blank space
+% \catcode`\^^?=15 % ascii delete is invalid
+% \catcode`\A=11 ... \catcode`\Z=11 % uppercase letters
+% \catcode`\a=11 ... \catcode`\z=11 % lowercase letters
+% all others are type 12 (other)
+
+% Here is a list of the characters that have been specially catcoded:
