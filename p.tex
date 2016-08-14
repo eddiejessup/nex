@@ -51,6 +51,7 @@
 % \mathcode x=x+"7000, for x = `0 to `9.
 % The following changes define internal codes as recommended
 % in Appendix C of The TeXbook:
+\mathcode`\^^@="2201 % \cdot
 \mathcode`\^^A="3223 % \downarrow
 \mathcode`\^^B="010B % \alpha
 \mathcode`\^^C="010C % \beta
@@ -108,4 +109,10 @@
 \mathcode`\}="5267
 \mathcode`\^^?="1273 % \smallint
 
-\lccode40=41
+% INITEX sets \uccode`x=`X and \uccode `X=`X for all letters x,
+% and \lccode`x=`x, \lccode`X=`x; all other values are zero.
+% No changes to those tables are needed in plain TeX format.
+
+% INITEX sets \sfcode x=1000 for all x, except that \sfcode`X=999
+% for uppercase letters. The following changes are needed:
+\sfcode`\)=0 \sfcode`\'=0 \sfcode`\]=0

@@ -230,6 +230,7 @@ def p_code_assignment(p):
         'mathcode': lexer.state.char_to_math_code,
         'uccode': lexer.state.upper_case_code,
         'lccode': lexer.state.lower_case_code,
+        'sfcode': lexer.state.space_factor_code,
     }
     if code_type == 'catcode':
         code = CatCode(code_num)
@@ -244,6 +245,8 @@ def p_code_assignment(p):
         code = MathCode(math_class, family, position)
     elif code_type in ('uccode', 'lccode'):
         code = chr(code_num)
+    elif code_type == 'sfcode':
+        code = code_num
     char_map = code_type_to_char_map[code_type]
     char_map[char] = code
     p[0] = {'type': 'code_assignment', 'code_type': code_type,
@@ -256,6 +259,7 @@ def p_code_name(p):
               | MATH_CODE
               | UPPER_CASE_CODE
               | LOWER_CASE_CODE
+              | SPACE_FACTOR_CODE
     '''
     p[0] = {'type': 'code_name', 'code_type': p[1]['name']}
 

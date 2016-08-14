@@ -113,6 +113,7 @@ class State(object):
         self.initialize_char_cats()
         self.initialize_char_math_codes()
         self.initialize_case_codes()
+        self.initialize_space_factor_codes()
         self.initialize_control_sequences()
         self.expanding_tokens = True
 
@@ -170,6 +171,10 @@ class State(object):
             self.upper_case_code[upper] = upper
             self.lower_case_code[upper] = lower
             self.upper_case_code[lower] = upper
+
+    def initialize_space_factor_codes(self):
+        self.space_factor_code = {c: (999 if c in ascii_uppercase else 1000)
+                                  for c in ascii_characters}
 
     def peek_ahead(self, n=1):
         try:
