@@ -1,3 +1,4 @@
+from collections import namedtuple
 import string
 from enum import Enum
 import logging
@@ -30,6 +31,7 @@ cat_codes = [
 
 CatCode = Enum('CatCode', {symbol: i for i, symbol in enumerate(cat_codes)})
 
+
 weird_char_codes = {
     'null': 0,
     'line_feed': 10,
@@ -54,6 +56,22 @@ tokenise_cats = [
     CatCode.other,
     CatCode.active,
 ]
+
+
+math_classes = [
+    'ordinary',  # 0
+    'large_operator',  # 1
+    'binary_relation',  # 2
+    'relation',  # 3
+    'opening',  # 4
+    'closing',  # 5
+    'punctuation',  # 6
+    'variable_family',  # 7
+]
+
+MathClass = Enum('MathClass', {symbol: i for i, symbol in enumerate(math_classes)})
+
+MathCode = namedtuple('MathCode', ('math_class', 'family', 'position'))
 
 
 class ReadingState(Enum):
@@ -88,6 +106,7 @@ class State(object):
         # At the beginning, TeX is in vertical mode, ready to construct pages.
         self.mode = Mode.vertical_mode
         self.initialize_char_cats()
+        self.initialize_char_math_codes()
         self.initialize_control_sequences()
         self.expanding_tokens = True
 
@@ -118,6 +137,22 @@ class State(object):
         self.char_to_cat[WeirdChar.line_feed.value] = CatCode.end_of_line
         self.char_to_cat[WeirdChar.carriage_return.value] = CatCode.end_of_line
         self.char_to_cat[WeirdChar.delete.value] = CatCode.invalid
+
+    def initialize_char_math_codes(self):
+        self.char_to_math_code = {}
+        for i in range(256):
+            if chr(i) in string.ascii_letters:
+                family = 1
+            else:
+                family = 0
+            if chr(i) in (string.ascii_letters + string.digits):
+                math_class = MathClass.variable_family
+            else:
+                math_class = MathClass.ordinary
+            self.char_to_math_code[i] = MathCode(math_class=math_class,
+                                                 family=family,
+                                                 position=i)
+            # TODO: handle special "8000 value, page 155 of The TeXbook.
 
     def peek_ahead(self, n=1):
         try:
