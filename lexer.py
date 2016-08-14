@@ -50,30 +50,36 @@ category_map = {
 
 
 literals_map = {
-    '=': 'EQUALS',
-    '+': 'PLUS_SIGN',
-    '-': 'MINUS_SIGN',
+    ('=', CatCode.other): 'EQUALS',
+    ('+', CatCode.other): 'PLUS_SIGN',
+    ('-', CatCode.other): 'MINUS_SIGN',
 
-    '0': 'ZERO',
-    '1': 'ONE',
-    '2': 'TWO',
-    '3': 'THREE',
-    '4': 'FOUR',
-    '5': 'FIVE',
-    '6': 'SIX',
-    '7': 'SEVEN',
-    '8': 'EIGHT',
-    '9': 'NINE',
-    'A': 'A',
-    'B': 'B',
-    'C': 'C',
-    'D': 'D',
-    'E': 'E',
-    'F': 'F',
+    ('0', CatCode.other): 'ZERO',
+    ('1', CatCode.other): 'ONE',
+    ('2', CatCode.other): 'TWO',
+    ('3', CatCode.other): 'THREE',
+    ('4', CatCode.other): 'FOUR',
+    ('5', CatCode.other): 'FIVE',
+    ('6', CatCode.other): 'SIX',
+    ('7', CatCode.other): 'SEVEN',
+    ('8', CatCode.other): 'EIGHT',
+    ('9', CatCode.other): 'NINE',
+    ('A', CatCode.other): 'A',
+    ('B', CatCode.other): 'B',
+    ('C', CatCode.other): 'C',
+    ('D', CatCode.other): 'D',
+    ('E', CatCode.other): 'E',
+    ('F', CatCode.other): 'F',
+    ('A', CatCode.letter): 'A',
+    ('B', CatCode.letter): 'B',
+    ('C', CatCode.letter): 'C',
+    ('D', CatCode.letter): 'D',
+    ('E', CatCode.letter): 'E',
+    ('F', CatCode.letter): 'F',
 
-    '\'': 'SINGLE_QUOTE',
-    '"': 'DOUBLE_QUOTE',
-    '`': 'BACKTICK',
+    ('\'', CatCode.other): 'SINGLE_QUOTE',
+    ('"', CatCode.other): 'DOUBLE_QUOTE',
+    ('`', CatCode.other): 'BACKTICK',
 }
 
 
@@ -122,8 +128,8 @@ class PLYLexer(Lexer):
         elif state_token['type'] == 'char_cat_pair':
             char, cat = state_token['char'], state_token['cat']
             if cat in (CatCode.letter, CatCode.other):
-                if char in literals_map and cat == CatCode.other:
-                    type_ = literals_map[char]
+                if (char, cat) in literals_map:
+                    type_ = literals_map[(char, cat)]
                     # TODO: this will probably break when using backticks for
                     # open-quotes.
                     # Maybe move this to parse rule, at seen_BACKTICK?
