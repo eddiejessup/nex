@@ -28,6 +28,7 @@ tokens = (
 
 primitive_control_sequences_map = {
     'catcode': 'CAT_CODE',
+    'mathcode': 'MATH_CODE',
     'chardef': 'CHAR_DEF',
     'par': 'PAR',
     'def': 'DEF',

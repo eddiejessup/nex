@@ -1,6 +1,6 @@
 import ply.yacc as yacc
 
-from process import chars, CatCode
+from process import chars, CatCode, MathClass, MathCode
 from lexer import PLYLexer, PLYToken, tokens
 
 
@@ -145,7 +145,7 @@ def p_action(p):
     '''
     action : control_sequence
            | character
-           | cat_code
+           | code_assignment
            | PAR
            | space
            | message
@@ -218,15 +218,41 @@ def p_seen_CONTROL_SEQUENCE(p):
     lexer.state.enable_expansion()
 
 
-def p_cat_code(p):
+def p_code_assignment(p):
     '''
-    cat_code : CAT_CODE number equals number
+    code_assignment : code_name number equals number
     '''
-    char_code, cat_num = evaluate(p[2]['size']), evaluate(p[4]['size'])
-    char = chr(char_code)
-    cat_code = CatCode(cat_num)
-    lexer.state.char_to_cat[char] = cat_code
-    p[0] = {'type': 'cat_code', 'char': char, 'cat': cat_code}
+    code_type, char_num, code = p[1]['code_type'], p[2], p[4]
+    char_num, code_num = evaluate(char_num['size']), evaluate(code['size'])
+    char = chr(char_num)
+    code_type_to_char_map = {
+        'catcode': lexer.state.char_to_cat,
+        'mathcode': lexer.state.char_to_math_code,
+    }
+    if code_type == 'catcode':
+        code = CatCode(code_num)
+    elif code_type == 'mathcode':
+        code_hex = format(code_num, '04x')
+        assert len(code_hex) == 4
+        parts_hex = code_hex[0], code_hex[1], code_hex[2:]
+        # Convert each part from hex to decimal.
+        parts = [int(part, base=16) for part in parts_hex]
+        math_class_i, family, position = parts
+        math_class = MathClass(math_class_i)
+        code = MathCode(math_class, family, position)
+
+    char_map = code_type_to_char_map[code_type]
+    char_map[char] = code
+    p[0] = {'type': 'code_assignment', 'code_type': code_type,
+            'char': char, 'code': code}
+
+
+def p_code_name(p):
+    '''
+    code_name : CAT_CODE
+              | MATH_CODE
+    '''
+    p[0] = {'type': 'code_name', 'code_type': p[1]['name']}
 
 
 def p_number(p):

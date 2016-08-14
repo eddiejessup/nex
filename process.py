@@ -67,6 +67,7 @@ math_classes = [
     'closing',  # 5
     'punctuation',  # 6
     'variable_family',  # 7
+    'special_active',  # 8 (weird special case)
 ]
 
 MathClass = Enum('MathClass', {symbol: i for i, symbol in enumerate(math_classes)})
