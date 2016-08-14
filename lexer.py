@@ -25,6 +25,7 @@ tokens = (
     # Internal tokens.
     'CHAR_DEF_TOKEN',
     'MATH_CHAR_DEF_TOKEN',
+    'COUNT_DEF_TOKEN',
 )
 
 
@@ -38,6 +39,7 @@ primitive_control_sequences_map = {
 
     'chardef': 'CHAR_DEF',
     'mathchardef': 'MATH_CHAR_DEF',
+    'countdef': 'COUNT_DEF',
 
     'par': 'PAR',
     'count': 'COUNT',
@@ -95,6 +97,7 @@ tokens += tuple(set(primitive_control_sequences_map.values()))
 suppress_expansion_tokens = (
     'chardef',
     'mathchardef',
+    'countdef',
     'def',
 )
 

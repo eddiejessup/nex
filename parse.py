@@ -231,6 +231,7 @@ def p_short_hand_definition(p):
     def_type_to_token_type = {
         'chardef': 'CHAR_DEF_TOKEN',
         'mathchardef': 'MATH_CHAR_DEF_TOKEN',
+        'countdef': 'COUNT_DEF_TOKEN',
     }
     def_type = p[1]['def_type']
     token_type = def_type_to_token_type[def_type]
@@ -251,6 +252,7 @@ def p_short_hand_def(p):
     '''
     short_hand_def : CHAR_DEF
                    | MATH_CHAR_DEF
+                   | COUNT_DEF
     '''
     p[0] = {'type': 'short_hand_def', 'def_type': p[1]['name']}
 
@@ -354,6 +356,7 @@ def p_internal_integer(p):
     '''
     internal_integer : CHAR_DEF_TOKEN
                      | MATH_CHAR_DEF_TOKEN
+                     | COUNT_DEF_TOKEN
     '''
     # TODO: add other kinds of internal integer.
     p[0] = p[1]
