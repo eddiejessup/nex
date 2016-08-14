@@ -20,6 +20,8 @@ tokens = (
     'RIGHT_BRACE',
     'ACTIVE_CHARACTER',
 
+    'CHARACTER',
+
     'CHAR_DEF_TOKEN',
 )
 
@@ -111,12 +113,16 @@ class PLYLexer(Lexer):
                 import pdb; pdb.set_trace()
         elif state_token['type'] == 'char_cat_pair':
             char, cat = state_token['char'], state_token['cat']
-            if char in literals_map and cat == CatCode.other:
-                type_ = literals_map[char]
-                # TODO: this will probably break when using backticks for
-                # open-quotes.
-                if type_ == 'BACKTICK':
-                    self.state.disable_expansion()
+            if cat in (CatCode.letter, CatCode.other):
+                if char in literals_map and cat == CatCode.other:
+                    type_ = literals_map[char]
+                    # TODO: this will probably break when using backticks for
+                    # open-quotes.
+                    # Maybe move this to parse rule, at seen_BACKTICK?
+                    if type_ == 'BACKTICK':
+                        self.state.disable_expansion()
+                else:
+                    type_ = 'CHARACTER'
             elif cat == CatCode.space:
                 type_ = 'SPACE'
             elif cat == CatCode.begin_group:
@@ -273,7 +279,8 @@ def p_action(p):
 
 def p_character(p):
     '''
-    character : EQUALS
+    character : CHARACTER
+              | EQUALS
               | PLUS_SIGN
               | MINUS_SIGN
               | ZERO
@@ -296,7 +303,7 @@ def p_character(p):
               | DOUBLE_QUOTE
               | BACKTICK
     '''
-    import pdb; pdb.set_trace()
+    p[0] = {'type': 'character', 'char': p[1]['char'], 'cat': p[1]['cat']}
 
 
 def p_control_sequence(p):
