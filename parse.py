@@ -13,11 +13,6 @@ tokens = (
     'CONTROL_SEQUENCE',
     'SINGLE_CHAR_CONTROL_SEQUENCE',
 
-    'CAT_CODE',
-    'CHAR_DEF',
-    'DEF',
-    'PAR',
-
     'PREFIX',
 
     'SPACE',
@@ -27,6 +22,14 @@ tokens = (
 
     'CHAR_DEF_TOKEN',
 )
+
+
+primitive_control_sequences_map = {
+    'catcode': 'CAT_CODE',
+    'chardef': 'CHAR_DEF',
+    'par': 'PAR',
+    'def': 'DEF',
+}
 
 
 literals_map = {
@@ -59,6 +62,12 @@ literals_map = {
 
 
 tokens += tuple(literals_map.values())
+tokens += tuple(primitive_control_sequences_map.values())
+
+suppress_expansion_tokens = (
+    'chardef',
+    'def',
+)
 
 
 class DigitCollection(object):
@@ -92,16 +101,11 @@ class PLYLexer(Lexer):
                                            value=state_token))
             elif name in self.state.control_sequences:
                 tokens.extend(self.expand_control_sequence(name))
-            elif name == 'catcode':
-                tokens.append(PLYToken(type_='CAT_CODE', value=state_token))
-            elif name == 'chardef':
-                tokens.append(PLYToken(type_='CHAR_DEF', value=state_token))
-                self.state.disable_expansion()
-            elif name == 'par':
-                tokens.append(PLYToken(type_='PAR', value=state_token))
-            elif name == 'def':
-                tokens.append(PLYToken(type_='DEF', value=state_token))
-                self.state.disable_expansion()
+            elif name in primitive_control_sequences_map:
+                token_type = primitive_control_sequences_map[name]
+                tokens.append(PLYToken(type_=token_type, value=state_token))
+                if name in suppress_expansion_tokens:
+                    self.state.disable_expansion()
             elif name in ('global', 'long', 'outer'):
                 tokens.append(PLYToken(type_='PREFIX', value=state_token))
             else:
