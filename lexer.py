@@ -86,8 +86,8 @@ literals_map = {
 }
 
 
-tokens += tuple(literals_map.values())
-tokens += tuple(primitive_control_sequences_map.values())
+tokens += tuple(set(literals_map.values()))
+tokens += tuple(set(primitive_control_sequences_map.values()))
 
 suppress_expansion_tokens = (
     'chardef',
