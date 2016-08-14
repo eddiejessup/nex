@@ -56,8 +56,7 @@ def p_commands(p):
 
 def p_command(p):
     '''
-    command : short_hand_definition
-            | macro_assignment
+    command : macro_assignment
             | action
     '''
     p[0] = p[1]
