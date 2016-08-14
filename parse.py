@@ -375,7 +375,7 @@ def p_octal_digit(p):
 def p_one_optional_space(p):
     '''
     one_optional_space : SPACE
-                       |  empty
+                       | empty
     '''
     pass
 
