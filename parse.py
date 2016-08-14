@@ -43,6 +43,12 @@ def evaluate(value):
     return value
 
 
+precedence = (
+    ('left', 'SPACE'),
+    ('left', 'CONTROL_SEQUENCE'),
+)
+
+
 def p_commands_extend(p):
     '''
     commands : commands command
