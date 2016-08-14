@@ -22,7 +22,9 @@ tokens = (
 
     'CHARACTER',
 
+    # Internal tokens.
     'CHAR_DEF_TOKEN',
+    'MATH_CHAR_DEF_TOKEN',
 )
 
 
