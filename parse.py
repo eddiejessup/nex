@@ -340,6 +340,7 @@ def p_character(p):
 def p_control_sequence(p):
     '''
     control_sequence : CONTROL_SEQUENCE
+                     | SINGLE_CHAR_CONTROL_SEQUENCE
     '''
     p[0] = p[1]
 
