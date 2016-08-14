@@ -129,3 +129,16 @@
 \delcode`\|="26A30C
 \delcode`\\="26E30F
 % N.B. { and } should NOT get delcodes; otherwise parameter grouping fails!
+
+% To make the plain macros more efficient in time and space,
+% several constant values are declared here as control sequences.
+% If they were changed, anything could happen; so they are private symbols.
+\chardef\@ne=1
+\chardef\tw@=2
+\chardef\thr@@=3
+\chardef\sixt@@n=16
+\chardef\@cclv=255
+\mathchardef\@cclvi=256
+\mathchardef\@m=1000
+\mathchardef\@M=10000
+\mathchardef\@MM=20000

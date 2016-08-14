@@ -56,7 +56,7 @@ def p_commands(p):
 
 def p_command(p):
     '''
-    command : char_def
+    command : short_hand_definition
             | macro_assignment
             | action
     '''
@@ -200,23 +200,36 @@ def p_control_sequence_active(p):
     p[0] = {'name': '@' + p[1]['char'], 'type': 'control_sequence'}
 
 
-def p_chardef(p):
+def p_short_hand_definition(p):
     '''
-    char_def : CHAR_DEF CONTROL_SEQUENCE seen_CONTROL_SEQUENCE equals number
+    short_hand_definition : short_hand_def control_sequence seen_control_sequence equals number
     '''
-    char_code = evaluate(p[5]['size'])
-    token = PLYToken(type_='CHAR_DEF_TOKEN', value=char_code)
+    code = evaluate(p[5]['size'])
+    def_type_to_token_type = {
+        'chardef': 'CHAR_DEF_TOKEN',
+        'mathchardef': 'MATH_CHAR_DEF_TOKEN',
+    }
+    def_type = p[1]['def_type']
+    token_type = def_type_to_token_type[def_type]
+    token = PLYToken(type_=token_type, value=code)
     control_sequence_name = p[2]['name']
     lexer.state.control_sequences[control_sequence_name] = [token]
-    p[0] = {'type': 'char_def', 'name': control_sequence_name,
-            'char_code': char_code}
+    p[0] = {'type': def_type, 'name': control_sequence_name, 'code': code}
 
 
-def p_seen_CONTROL_SEQUENCE(p):
+def p_seen_control_sequence(p):
     '''
-    seen_CONTROL_SEQUENCE :
+    seen_control_sequence :
     '''
     lexer.state.enable_expansion()
+
+
+def p_short_hand_def(p):
+    '''
+    short_hand_def : CHAR_DEF
+                   | MATH_CHAR_DEF
+    '''
+    p[0] = {'type': 'short_hand_def', 'def_type': p[1]['name']}
 
 
 def split_at(s, inds):

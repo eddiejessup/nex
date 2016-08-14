@@ -35,6 +35,8 @@ primitive_control_sequences_map = {
     'delcode': 'DELIMITER_CODE',
 
     'chardef': 'CHAR_DEF',
+    'mathchardef': 'MATH_CHAR_DEF',
+
     'par': 'PAR',
     'def': 'DEF',
     'message': 'MESSAGE',
@@ -89,6 +91,7 @@ tokens += tuple(primitive_control_sequences_map.values())
 
 suppress_expansion_tokens = (
     'chardef',
+    'mathchardef',
     'def',
 )
 
