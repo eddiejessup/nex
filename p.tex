@@ -116,3 +116,16 @@
 % INITEX sets \sfcode x=1000 for all x, except that \sfcode`X=999
 % for uppercase letters. The following changes are needed:
 \sfcode`\)=0 \sfcode`\'=0 \sfcode`\]=0
+% The \nonfrenchspacing macro will make further changes to \sfcode values.
+
+% Finally, INITEX sets all \delcode values to -1, except \delcode`.=0
+\delcode`\(="028300
+\delcode`\)="029301
+\delcode`\[="05B302
+\delcode`\]="05D303
+\delcode`\<="26830A
+\delcode`\>="26930B
+\delcode`\/="02F30E
+\delcode`\|="26A30C
+\delcode`\\="26E30F
+% N.B. { and } should NOT get delcodes; otherwise parameter grouping fails!

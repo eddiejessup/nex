@@ -76,7 +76,21 @@ math_classes = [
 
 MathClass = Enum('MathClass', {symbol: i for i, symbol in enumerate(math_classes)})
 
-MathCode = namedtuple('MathCode', ('math_class', 'family', 'position'))
+GlyphCode = namedtuple('GlyphCode', ('family', 'position'))
+ignored_glyph_code = GlyphCode(family=0, position=0)
+
+MathCode = namedtuple('MathCode', ('math_class', 'glyph_code'))
+active_math_code = MathCode(math_class=MathClass.special_active,
+                            glyph_code=ignored_glyph_code)
+
+DelimiterCode = namedtuple('DelimiterCode',
+                           ('small_glyph_code', 'large_glyph_code'))
+not_a_delimiter_code = DelimiterCode(small_glyph_code=None,
+                                     large_glyph_code=None)
+ignored_delimiter_code = DelimiterCode(
+    small_glyph_code=ignored_glyph_code,
+    large_glyph_code=ignored_glyph_code
+)
 
 
 class ReadingState(Enum):
@@ -114,6 +128,7 @@ class State(object):
         self.initialize_char_math_codes()
         self.initialize_case_codes()
         self.initialize_space_factor_codes()
+        self.initialize_delimiter_codes()
         self.initialize_control_sequences()
         self.expanding_tokens = True
 
@@ -156,10 +171,10 @@ class State(object):
                 math_class = MathClass.variable_family
             else:
                 math_class = MathClass.ordinary
-            self.char_to_math_code[i] = MathCode(math_class=math_class,
-                                                 family=family,
-                                                 position=i)
-            # TODO: handle special "8000 value, page 155 of The TeXbook.
+            glyph_code = GlyphCode(family=family, position=i)
+            self.char_to_math_code[i] = MathCode(math_class, glyph_code)
+            # TODO: handle special active_math_code value,
+            # page 155 of The TeXbook.
 
     def initialize_case_codes(self):
         self.lower_case_code, self.upper_case_code = [
@@ -175,6 +190,11 @@ class State(object):
     def initialize_space_factor_codes(self):
         self.space_factor_code = {c: (999 if c in ascii_uppercase else 1000)
                                   for c in ascii_characters}
+
+    def initialize_delimiter_codes(self):
+        self.delimiter_code = {c: not_a_delimiter_code
+                               for c in ascii_characters}
+        self.delimiter_code['.'] = ignored_delimiter_code
 
     def peek_ahead(self, n=1):
         try:

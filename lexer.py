@@ -32,6 +32,7 @@ primitive_control_sequences_map = {
     'uccode': 'UPPER_CASE_CODE',
     'lccode': 'LOWER_CASE_CODE',
     'sfcode': 'SPACE_FACTOR_CODE',
+    'delcode': 'DELIMITER_CODE',
 
     'chardef': 'CHAR_DEF',
     'par': 'PAR',

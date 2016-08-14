@@ -1,6 +1,7 @@
 import ply.yacc as yacc
 
-from process import chars, CatCode, MathClass, MathCode
+from process import (chars, CatCode, MathClass, MathCode, GlyphCode,
+                     DelimiterCode)
 from lexer import PLYLexer, PLYToken, tokens
 
 
@@ -218,6 +219,23 @@ def p_seen_CONTROL_SEQUENCE(p):
     lexer.state.enable_expansion()
 
 
+def split_at(s, inds):
+    inds = [0] + list(inds) + [len(s)]
+    return [s[inds[i]:inds[i + 1]] for i in range(0, len(inds) - 1)]
+
+
+def split_hex_code(n, hex_length, inds):
+    # Get the zero-padded string representation of the number in base 16.
+    n_hex = format(n, '0{}x'.format(hex_length))
+    # Check the number is of the correct magnitude.
+    assert len(n_hex) == hex_length
+    # Split the hex string into pieces, at the given indices.
+    parts_hex = split_at(n_hex, inds)
+    # Convert each part from hex to decimal.
+    parts = [int(part, base=16) for part in parts_hex]
+    return parts
+
+
 def p_code_assignment(p):
     '''
     code_assignment : code_name number equals number
@@ -231,22 +249,27 @@ def p_code_assignment(p):
         'uccode': lexer.state.upper_case_code,
         'lccode': lexer.state.lower_case_code,
         'sfcode': lexer.state.space_factor_code,
+        'delcode': lexer.state.delimiter_code,
     }
     if code_type == 'catcode':
         code = CatCode(code_num)
     elif code_type == 'mathcode':
-        code_hex = format(code_num, '04x')
-        assert len(code_hex) == 4
-        parts_hex = code_hex[0], code_hex[1], code_hex[2:]
-        # Convert each part from hex to decimal.
-        parts = [int(part, base=16) for part in parts_hex]
+        parts = split_hex_code(code_num, hex_length=4, inds=(1, 2))
         math_class_i, family, position = parts
         math_class = MathClass(math_class_i)
-        code = MathCode(math_class, family, position)
+        glyph_code = GlyphCode(family, position)
+        code = MathCode(math_class, glyph_code)
     elif code_type in ('uccode', 'lccode'):
         code = chr(code_num)
     elif code_type == 'sfcode':
         code = code_num
+    elif code_type == 'delcode':
+        parts = split_hex_code(code_num, hex_length=6, inds=(1, 3, 4))
+        small_family, small_position, large_family, large_position = parts
+        small_glyph_code = GlyphCode(small_family, small_position)
+        large_glyph_code = GlyphCode(large_family, large_position)
+        code = DelimiterCode(small_glyph_code, large_glyph_code)
+        # import pdb; pdb.set_trace()
     char_map = code_type_to_char_map[code_type]
     char_map[char] = code
     p[0] = {'type': 'code_assignment', 'code_type': code_type,
@@ -260,6 +283,7 @@ def p_code_name(p):
               | UPPER_CASE_CODE
               | LOWER_CASE_CODE
               | SPACE_FACTOR_CODE
+              | DELIMITER_CODE
     '''
     p[0] = {'type': 'code_name', 'code_type': p[1]['name']}
 
