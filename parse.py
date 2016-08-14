@@ -202,11 +202,9 @@ def p_commands(p):
 
 def p_command(p):
     '''
-    command : cat_code
-            | char_def
+    command : char_def
             | macro_assignment
-            | PAR
-            | space
+            | action
     '''
     p[0] = p[1]
 
@@ -251,14 +249,54 @@ def p_definition_text(p):
 
 def p_balanced_text(p):
     '''
-    balanced_text : control_sequence
-                  | balanced_text control_sequence
+    balanced_text : action
+                  | balanced_text action
     '''
     if len(p) < 3:
         p[0] = [p[1]]
     else:
         p[0] = p[1]
         p[0].append(p[2])
+
+
+def p_action(p):
+    '''
+    action : control_sequence
+           | character
+           | cat_code
+           | PAR
+           | space
+           | message
+    '''
+    p[0] = p[1]
+
+
+def p_character(p):
+    '''
+    character : EQUALS
+              | PLUS_SIGN
+              | MINUS_SIGN
+              | ZERO
+              | ONE
+              | TWO
+              | THREE
+              | FOUR
+              | FIVE
+              | SIX
+              | SEVEN
+              | EIGHT
+              | NINE
+              | A
+              | B
+              | C
+              | D
+              | E
+              | F
+              | SINGLE_QUOTE
+              | DOUBLE_QUOTE
+              | BACKTICK
+    '''
+    import pdb; pdb.set_trace()
 
 
 def p_control_sequence(p):
