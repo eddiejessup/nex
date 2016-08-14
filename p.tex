@@ -142,3 +142,62 @@
 \mathchardef\@m=1000
 \mathchardef\@M=10000
 \mathchardef\@MM=20000
+
+% Allocation of registers
+
+% Here are macros for the automatic allocation of \count, \box, \dimen,
+% \skip, \muskip, and \toks registers, as well as \read and \write
+% stream numbers, \fam codes, \language codes, and \insert numbers.
+
+\message{registers,}
+
+% When a register is used only temporarily, it need not be allocated;
+% grouping can be used, making the value previously in the register return
+% after the close of the group.  The main use of these macros is for
+% registers that are defined by one macro and used by others, possibly at
+% different nesting levels.  All such registers should be defined through
+% these macros; otherwise conflicts may occur, especially when two or more
+% macro packages are being used at once.
+
+% The following counters are reserved:
+%   0 to 9  page numbering
+%       10  count allocation
+%       11  dimen allocation
+%       12  skip allocation
+%       13  muskip allocation
+%       14  box allocation
+%       15  toks allocation
+%       16  read file allocation
+%       17  write file allocation
+%       18  math family allocation
+%       19  language allocation
+%       20  insert allocation
+%       21  the most recently allocated number
+%       22  constant -1
+% New counters are allocated starting with 23, 24, etc.  Other registers are
+% allocated starting with 10.  This leaves 0 through 9 for the user to play
+% with safely, except that counts 0 to 9 are considered to be the page and
+% subpage numbers (since they are displayed during output). In this scheme,
+% \count 10 always contains the number of the highest-numbered counter that
+% has been allocated, \count 14 the highest-numbered box, etc.
+% Inserts are given numbers 254, 253, etc., since they require a \count,
+% \dimen, \skip, and \box all with the same number; \count 20 contains the
+% lowest-numbered insert that has been allocated. Of course, \box255 is
+% reserved for \output; \count255, \dimen255, and \skip255 can be used freely.
+
+% It is recommended that macro designers always use
+% \global assignments with respect to registers numbered 1, 3, 5, 7, 9, and
+% always non-\global assignments with respect to registers 0, 2, 4, 6, 8, 255.
+% This will prevent ``save stack buildup'' that might otherwise occur.
+
+\count10=22 % allocates \count registers 23, 24, ...
+\count11=9 % allocates \dimen registers 10, 11, ...
+\count12=9 % allocates \skip registers 10, 11, ...
+\count13=9 % allocates \muskip registers 10, 11, ...
+\count14=9 % allocates \box registers 10, 11, ...
+\count15=9 % allocates \toks registers 10, 11, ...
+\count16=-1 % allocates input streams 0, 1, ...
+\count17=-1 % allocates output streams 0, 1, ...
+\count18=3 % allocates math families 4, 5, ...
+\count19=0 % allocates \language codes 1, 2, ...
+\count20=255 % allocates insertions 254, 253, ...

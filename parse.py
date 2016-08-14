@@ -146,7 +146,7 @@ def p_action(p):
     '''
     action : control_sequence
            | character
-           | code_assignment
+           | simple_assignment
            | PAR
            | space
            | message
@@ -198,6 +198,29 @@ def p_control_sequence_active(p):
     # We will prefix active characters with @.
     # This really needs changing, but will do for now.
     p[0] = {'name': '@' + p[1]['char'], 'type': 'control_sequence'}
+
+
+def p_simple_assignment(p):
+    '''
+    simple_assignment : short_hand_definition
+                      | code_assignment
+                      | variable_assignment
+    '''
+    p[0] = p[1]
+
+
+def p_variable_assignment(p):
+    '''
+    variable_assignment : integer_variable equals number
+    '''
+    p[0] = {'type': 'variable_assignment', 'variable': p[1], 'value': p[3]}
+
+
+def p_integer_variable(p):
+    '''
+    integer_variable : COUNT number
+    '''
+    p[0] = {'type': 'count', 'register': p[2]}
 
 
 def p_short_hand_definition(p):
