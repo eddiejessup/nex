@@ -31,6 +31,8 @@ primitive_control_sequences_map = {
     'chardef': 'CHAR_DEF',
     'par': 'PAR',
     'def': 'DEF',
+    'message': 'MESSAGE',
+    'relax': 'RELAX',
 }
 
 
@@ -221,6 +223,35 @@ def p_merged_space(p):
           | space SPACE
     '''
     p[0] = {'type': 'space'}
+
+
+def p_message(p):
+    '''
+    message : MESSAGE general_text
+    '''
+    p[0] = {'type': 'message', 'content': p[2]}
+
+
+def p_general_text(p):
+    '''
+    general_text : filler implicit_left_brace balanced_text RIGHT_BRACE
+    '''
+    p[0] = p[3]
+
+
+def p_filler(p):
+    '''
+    filler : optional_spaces
+           | filler RELAX optional_spaces
+    '''
+    pass
+
+
+def p_implicit_left_brace(p):
+    '''
+    implicit_left_brace : LEFT_BRACE
+    '''
+    p[0] = p[1]
 
 
 def p_macro_assignment_prefix(p):
