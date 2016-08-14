@@ -181,12 +181,17 @@ def is_backtick(value):
 
 def evaluate(value):
     if is_backtick(value):
-        target_token = evaluate(value['token'])
-        # Check the target token expands to just one token.
-        assert len(target_token) == 1
-        # Check the single token is one character.
-        assert len(target_token[0]) == 1
-        return ord(target_token[0])
+        unexpanded_token = value['token']
+        if unexpanded_token['type'] == 'control_sequence':
+            expanded_tokens = evaluate(value['token'])
+            # Check the target token expands to just one token.
+            assert len(expanded_tokens) == 1
+            expanded_token = expanded_tokens[0]
+            # Check the single token is one character.
+            assert len(expanded_token) == 1
+        elif unexpanded_token['type'] == 'character':
+            expanded_token = unexpanded_token['char']
+        return ord(expanded_token)
     if is_control_sequence(value):
         name = value['name']
         value = lexer.state.control_sequences[name]
@@ -444,10 +449,11 @@ def p_normal_integer_character(p):
 def p_character_token(p):
     '''
     character_token : SINGLE_CHAR_CONTROL_SEQUENCE
+                    | character
     '''
     # TODO: make this possible.
     '''
-                    | char_cat_pair
+                    | active character
     '''
     p[0] = p[1]
 

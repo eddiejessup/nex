@@ -38,3 +38,16 @@
 % Here is a list of the characters that have been specially catcoded:
 \def\dospecials{\do\ \do\\\do\{\do\}\do\$\do\&%
   \do\#\do\^\do\^^K\do\_\do\^^A\do\%\do\~}
+% (not counting ascii null, tab, linefeed, formfeed, return, delete)
+% Each symbol in the list is preceded by \do, which can be defined
+% if you want to do something to every item in the list.
+
+% We make @ signs act like letters, temporarily, to avoid conflict
+% between user names and internal control sequences of plain format.
+\catcode`@=11
+
+% INITEX sets up \mathcode x=x, for x=0..255, except that
+% \mathcode x=x+"7100, for x = `A to `Z and `a to `z;
+% \mathcode x=x+"7000, for x = `0 to `9.
+% The following changes define internal codes as recommended
+% in Appendix C of The TeXbook:
