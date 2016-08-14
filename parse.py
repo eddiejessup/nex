@@ -228,6 +228,8 @@ def p_code_assignment(p):
     code_type_to_char_map = {
         'catcode': lexer.state.char_to_cat,
         'mathcode': lexer.state.char_to_math_code,
+        'uccode': lexer.state.upper_case_code,
+        'lccode': lexer.state.lower_case_code,
     }
     if code_type == 'catcode':
         code = CatCode(code_num)
@@ -240,7 +242,8 @@ def p_code_assignment(p):
         math_class_i, family, position = parts
         math_class = MathClass(math_class_i)
         code = MathCode(math_class, family, position)
-
+    elif code_type in ('uccode', 'lccode'):
+        code = chr(code_num)
     char_map = code_type_to_char_map[code_type]
     char_map[char] = code
     p[0] = {'type': 'code_assignment', 'code_type': code_type,
@@ -251,6 +254,8 @@ def p_code_name(p):
     '''
     code_name : CAT_CODE
               | MATH_CODE
+              | UPPER_CASE_CODE
+              | LOWER_CASE_CODE
     '''
     p[0] = {'type': 'code_name', 'code_type': p[1]['name']}
 
@@ -467,3 +472,4 @@ print()
 print('Parsed:')
 for s in result:
     print(s)
+import pdb; pdb.set_trace()

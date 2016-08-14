@@ -157,16 +157,14 @@ class State(object):
             # TODO: handle special "8000 value, page 155 of The TeXbook.
 
     def initialize_case_codes(self):
-        self.lower_case_code, self.upper_case_code = [{i: 0
+        self.lower_case_code, self.upper_case_code = [{chr(i): chr(0)
                                                        for i in range(128)}
                                                       for _ in range(2)]
         for lower, upper in zip(string.ascii_lowercase, string.ascii_uppercase):
-            lower_i, upper_i = ord(lower), ord(upper)
-            self.lower_case_code[lower_i] = lower_i
-            self.upper_case_code[upper_i] = upper_i
-            self.lower_case_code[upper_i] = lower_i
-            self.upper_case_code[lower_i] = upper_i
-        import pdb; pdb.set_trace()
+            self.lower_case_code[lower] = lower
+            self.upper_case_code[upper] = upper
+            self.lower_case_code[upper] = lower
+            self.upper_case_code[lower] = upper
 
     def peek_ahead(self, n=1):
         try:
