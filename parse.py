@@ -1,9 +1,8 @@
 import logging
 import ply.yacc as yacc
 
-from process import (chars, CatCode, MathClass, MathCode, GlyphCode,
-                     DelimiterCode)
-from lexer import PLYLexer, PLYToken, tokens
+from process import CatCode, MathClass, MathCode, GlyphCode, DelimiterCode
+from lexer import PLYToken, PLYLexer, tokens
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
@@ -530,15 +529,6 @@ def p_error(p):
     import pdb; pdb.set_trace()
     print("Syntax error in input!")
 
-
-if __name__ == '__main__':
-    # Build the parser
-    parser = yacc.yacc(debug=True)
-
-    lexer = PLYLexer()
-    result = parser.parse(chars, lexer=lexer, debug=logger)
-    print()
-    print('Parsed:')
-    for s in result:
-        print(s)
-    import pdb; pdb.set_trace()
+# Build the parser
+parser = yacc.yacc(debug=True)
+lexer = PLYLexer()

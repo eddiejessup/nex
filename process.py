@@ -374,15 +374,3 @@ class State(object):
             # return token
         else:
             import pdb; pdb.set_trace()
-
-
-with open('p.tex', 'rb') as f:
-    chars = [chr(b) for b in f.read()]
-
-if __name__ == '__main__':
-    state = State(chars)
-    try:
-        state.get_token()
-    except EndOfFile:
-        pass
-    print(state.tokens)
