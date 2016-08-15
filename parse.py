@@ -67,7 +67,12 @@ def p_commands(p):
 def p_command(p):
     '''
     command : macro_assignment
-            | action
+            | control_sequence
+            | character
+            | simple_assignment
+            | PAR
+            | SPACE
+            | message
     '''
     p[0] = p[1]
 
@@ -133,26 +138,14 @@ def p_definition_text(p):
 
 def p_balanced_text(p):
     '''
-    balanced_text : action
-                  | balanced_text action
+    balanced_text : command
+                  | balanced_text command
     '''
     if len(p) < 3:
         p[0] = [p[1]]
     else:
         p[0] = p[1]
         p[0].append(p[2])
-
-
-def p_action(p):
-    '''
-    action : control_sequence
-           | character
-           | simple_assignment
-           | PAR
-           | SPACE
-           | message
-    '''
-    p[0] = p[1]
 
 
 def p_character(p):
