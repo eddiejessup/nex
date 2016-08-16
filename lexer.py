@@ -121,8 +121,11 @@ class PLYLexer(Lexer):
     def expand_control_sequence(self, name):
         return self.state.control_sequences[name]
 
-    def state_token_tokens(self):
+    def fetch_state_token_tokens(self):
         state_token = next(self.state_tokens)
+        return self.state_token_tokens(state_token)
+
+    def state_token_tokens(self, state_token):
         tokens = []
         if state_token['type'] == 'control_sequence':
             name = state_token['name']
@@ -168,7 +171,7 @@ class PLYLexer(Lexer):
     def token(self):
         if not self.tokens_stack:
             try:
-                tokens = self.state_token_tokens()
+                tokens = self.fetch_state_token_tokens()
             except StopIteration:
                 return
             self.tokens_stack.extend(tokens)
