@@ -118,6 +118,7 @@ def p_macro_assignment(p):
     macro_assignment : definition
     '''
     p[0] = p[1]
+    lexer.state.control_sequences[p[1]['name']] = p[1]['content']
     lexer.lex_mode = LexMode.expand
 
 
