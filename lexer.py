@@ -95,7 +95,7 @@ literals_map = {
 tokens += tuple(set(literals_map.values()))
 tokens += tuple(set(primitive_control_sequences_map.values()))
 
-suppress_expansion_tokens = (
+read_control_sequence_name_tokens = (
     'chardef',
     'mathchardef',
     'countdef',
@@ -125,6 +125,13 @@ class PLYLexer(Lexer):
         state_token = next(self.state_tokens)
         return self.state_token_tokens(state_token)
 
+    def fetch_state_token_tokens_no_expand(self):
+        old_lex_mode = self.lex_mode
+        self.lex_mode = LexMode.no_expand
+        tokens = self.fetch_state_token_tokens()
+        self.lex_mode = old_lex_mode
+        return tokens
+
     def state_token_tokens(self, state_token):
         tokens = []
         if state_token['type'] == 'control_sequence':
@@ -140,6 +147,10 @@ class PLYLexer(Lexer):
             elif name in primitive_control_sequences_map:
                 token_type = primitive_control_sequences_map[name]
                 tokens.append(PLYToken(type_=token_type, value=state_token))
+                if name in read_control_sequence_name_tokens:
+                    next_tokens = self.fetch_state_token_tokens_no_expand()
+                    assert len(next_tokens) == 1
+                    tokens.extend(next_tokens)
             elif name in ('global', 'long', 'outer'):
                 tokens.append(PLYToken(type_='PREFIX', value=state_token))
             else:
@@ -161,7 +172,9 @@ class PLYLexer(Lexer):
             # open-quotes.
             # Maybe move this to parse rule, at seen_BACKTICK?
             if type_ == 'BACKTICK':
-                self.lex_mode = LexMode.no_expand
+                next_tokens = self.fetch_state_token_tokens_no_expand()
+                assert len(next_tokens) == 1
+                tokens.extend(next_tokens)
             logger.info(token)
         else:
             import pdb; pdb.set_trace()
@@ -175,12 +188,6 @@ class PLYLexer(Lexer):
                 return
             self.tokens_stack.extend(tokens)
         token = self.tokens_stack.popleft()
-
-        def token_suppresses_expansion(token):
-            return (token.type in primitive_control_sequences_map.values() and
-                    token.value['name'] in suppress_expansion_tokens)
-        if token_suppresses_expansion(token):
-            self.lex_mode = LexMode.no_expand
         return token
 
 

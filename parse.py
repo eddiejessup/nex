@@ -123,9 +123,16 @@ def p_macro_assignment(p):
 
 def p_definition(p):
     '''
-    definition : DEF control_sequence definition_text
+    definition : DEF control_sequence seen_def_cs_name definition_text
     '''
-    p[0] = {'type': 'definition', 'name': p[2]['name'], 'content': p[3]}
+    p[0] = {'type': 'definition', 'name': p[2]['name'], 'content': p[4]}
+
+
+def p_seen_def_cs_name(p):
+    '''
+    seen_def_cs_name : empty
+    '''
+    lexer.lex_mode = LexMode.no_expand
 
 
 def p_definition_text(p):
@@ -225,9 +232,9 @@ def p_integer_variable_count_def(p):
 
 def p_short_hand_definition(p):
     '''
-    short_hand_definition : short_hand_def control_sequence seen_control_sequence equals number
+    short_hand_definition : short_hand_def control_sequence equals number
     '''
-    code = evaluate(p[5]['size'])
+    code = evaluate(p[4]['size'])
     def_type_to_token_type = {
         'chardef': 'CHAR_DEF_TOKEN',
         'mathchardef': 'MATH_CHAR_DEF_TOKEN',
@@ -239,13 +246,6 @@ def p_short_hand_definition(p):
     control_sequence_name = p[2]['name']
     lexer.state.control_sequences[control_sequence_name] = [token]
     p[0] = {'type': def_type, 'name': control_sequence_name, 'code': code}
-
-
-def p_seen_control_sequence(p):
-    '''
-    seen_control_sequence :
-    '''
-    lexer.lex_mode = LexMode.expand
 
 
 def p_short_hand_def(p):
@@ -382,7 +382,6 @@ def p_normal_integer_character(p):
     normal_integer : BACKTICK character_token one_optional_space
     '''
     p[0] = {'type': 'backtick', 'token': p[2]}
-    lexer.lex_mode = LexMode.expand
 
 
 def p_character_token(p):
