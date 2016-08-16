@@ -1,8 +1,10 @@
 import logging
 import ply.yacc as yacc
 
+from common import Token
 from process import CatCode, MathClass, MathCode, GlyphCode, DelimiterCode
-from lexer import PLYLexer, tokens, LexMode
+from lexer import PLYLexer, tokens, LexMode, short_hand_def_token_map
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
@@ -15,31 +17,32 @@ class DigitCollection(object):
         self.digits = []
 
 
-def is_control_sequence(value):
-    return isinstance(value, dict) and value['type'] == 'control_sequence'
-
-
-def is_backtick(value):
-    return isinstance(value, dict) and value['type'] == 'backtick'
-
-
-def evaluate(value):
-    if is_backtick(value):
-        unexpanded_token = value['token']
-        if unexpanded_token['type'] == 'control_sequence':
-            expanded_tokens = evaluate(value['token'])
-            # Check the target token expands to just one token.
-            assert len(expanded_tokens) == 1
-            expanded_token = expanded_tokens[0]
-            # Check the single token is one character.
-            assert len(expanded_token) == 1
-        elif unexpanded_token['type'] == 'character':
-            expanded_token = unexpanded_token['char']
-        return ord(expanded_token)
-    if is_control_sequence(value):
-        name = value['name']
-        value = lexer.state.control_sequences[name]
-    return value
+def evaluate_size(size_token):
+    if isinstance(size_token, Token):
+        if size_token.type == 'backtick_integer':
+            unexpanded_token = size_token.value['token']
+            if not isinstance(unexpanded_token, Token):
+                import pdb; pdb.set_trace()
+            if unexpanded_token.type == 'control_sequence':
+                expanded_tokens = evaluate_size(size_token.value['token'])
+                # Check the target token expands to just one token.
+                assert len(expanded_tokens) == 1
+                expanded_token = expanded_tokens[0]
+                # Check the single token is one character.
+                assert len(expanded_token) == 1
+            elif unexpanded_token.type == 'character':
+                expanded_token = unexpanded_token.value['char']
+            else:
+                import pdb; pdb.set_trace()
+            return ord(expanded_token)
+        elif size_token.type == 'control_sequence':
+            name = size_token.value['name']
+            size_token = lexer.state.control_sequences[name]
+            return size_token
+        else:
+            import pdb; pdb.set_trace()
+    else:
+        return size_token
 
 
 precedence = (
@@ -82,21 +85,23 @@ def p_immediate_write(p):
     write : IMMEDIATE write
     '''
     p[0] = p[2]
-    p[0]['prefix'] = 'immediate'
+    p[0].value['prefix'] = 'immediate'
 
 
 def p_write(p):
     '''
     write : WRITE number general_text
     '''
-    p[0] = {'type': 'write', 'stream_number': p[2], 'content': p[3]}
+    p[0] = Token(type_='write',
+                 value={'stream_number': p[2], 'content': p[3]})
 
 
 def p_message(p):
     '''
     message : MESSAGE general_text
     '''
-    p[0] = {'type': 'message', 'content': p[2]}
+    p[0] = Token(type_='message',
+                 value ={'content': p[2]})
 
 
 def p_general_text(p):
@@ -126,7 +131,7 @@ def p_macro_assignment_prefix(p):
     macro_assignment : PREFIX macro_assignment
     '''
     p[0] = p[2]
-    p[0]['prefix'] = p[1]['name']
+    p[0].value['prefix'] = p[1].value['name']
 
 
 def p_macro_assignment(p):
@@ -134,7 +139,7 @@ def p_macro_assignment(p):
     macro_assignment : definition
     '''
     p[0] = p[1]
-    lexer.state.control_sequences[p[1]['name']] = p[1]['content']
+    lexer.state.control_sequences[p[1].value['name']] = p[1].value['content']
     lexer.lex_mode = LexMode.expand
 
 
@@ -142,7 +147,8 @@ def p_definition(p):
     '''
     definition : DEF control_sequence seen_def_cs_name definition_text
     '''
-    p[0] = {'type': 'definition', 'name': p[2]['name'], 'content': p[4]}
+    p[0] = Token(type_='definition',
+                 value={'name': p[2].value['name'], 'content': p[4]})
 
 
 def p_seen_def_cs_name(p):
@@ -185,7 +191,8 @@ def p_character(p):
               | DOUBLE_QUOTE
               | BACKTICK
     '''
-    p[0] = {'type': 'character', 'char': p[1]['char'], 'cat': p[1]['cat']}
+    p[0] = Token(type_='character',
+                 value={'char': p[1].value['char'], 'cat': p[1].value['cat']})
 
 
 def p_control_sequence(p):
@@ -193,7 +200,8 @@ def p_control_sequence(p):
     control_sequence : CONTROL_SEQUENCE
                      | SINGLE_CHAR_CONTROL_SEQUENCE
     '''
-    p[0] = p[1]
+    p[0] = Token(type_='control_sequence',
+                 value={'name': p[1].value['name']})
 
 
 def p_control_sequence_active(p):
@@ -202,7 +210,8 @@ def p_control_sequence_active(p):
     '''
     # We will prefix active characters with @.
     # This really needs changing, but will do for now.
-    p[0] = {'name': '@' + p[1]['char'], 'type': 'control_sequence'}
+    p[0] = Token(type_='control_sequence',
+                 value={'name': '@' + p[1].value['char']})
 
 
 def p_simple_assignment(p):
@@ -218,36 +227,39 @@ def p_variable_assignment(p):
     '''
     variable_assignment : integer_variable equals number
     '''
-    p[0] = {'type': 'variable_assignment', 'variable': p[1], 'value': p[3]}
+    p[0] = Token(type_='variable_assignment',
+                 value={'variable': p[1], 'value': p[3]})
 
 
 def p_integer_variable_count(p):
     '''
     integer_variable : COUNT number
     '''
-    p[0] = {'type': 'count', 'register': p[2]}
+    p[0] = Token(type_='count',
+                 value=p[2])
 
 
 def p_integer_variable_count_def(p):
     '''
     integer_variable : COUNT_DEF_TOKEN
     '''
-    p[0] = {'type': 'count', 'register': p[1]}
+    p[0] = Token(type_='count',
+                 value=p[1])
 
 
 def p_short_hand_definition(p):
     '''
     short_hand_definition : short_hand_def control_sequence equals number
     '''
-    code = evaluate(p[4]['size'])
-    def_type = p[1]['def_type']
+    code = evaluate_size(p[4]['size'])
+    def_type = p[1].value
 
-    state_token_type = '{}_token'.format(def_type)
-    state_token = {'type': state_token_type, 'value': code}
-    control_sequence_name = p[2]['name']
+    state_token_type = short_hand_def_token_map[def_type]
+    state_token = Token(type_=state_token_type, value=code)
+    control_sequence_name = p[2].value['name']
     lexer.state.control_sequences[control_sequence_name] = [state_token]
-
-    p[0] = {'type': def_type, 'name': control_sequence_name, 'code': code}
+    p[0] = Token(type_=def_type,
+                 value={'name': control_sequence_name, 'code': code})
 
 
 def p_short_hand_def(p):
@@ -260,7 +272,7 @@ def p_short_hand_def(p):
                    | MU_SKIP_DEF
                    | TOKS_DEF
     '''
-    p[0] = {'type': 'short_hand_def', 'def_type': p[1]['name']}
+    p[0] = Token(type_='short_hand_def', value=p[1].value['name'])
 
 
 def split_at(s, inds):
@@ -285,7 +297,7 @@ def p_code_assignment(p):
     code_assignment : code_name number equals number
     '''
     code_type, char_num, code = p[1]['code_type'], p[2], p[4]
-    char_num, code_num = evaluate(char_num['size']), evaluate(code['size'])
+    char_num, code_num = evaluate_size(char_num['size']), evaluate_size(code['size'])
     char = chr(char_num)
     code_type_to_char_map = {
         'catcode': lexer.state.char_to_cat,
@@ -328,7 +340,7 @@ def p_code_name(p):
               | SPACE_FACTOR_CODE
               | DELIMITER_CODE
     '''
-    p[0] = {'type': 'code_name', 'code_type': p[1]['name']}
+    p[0] = {'type': 'code_name', 'code_type': p[1].value['name']}
 
 
 def p_number(p):
@@ -386,13 +398,23 @@ def p_normal_integer_character(p):
     '''
     normal_integer : BACKTICK character_token one_optional_space
     '''
-    p[0] = {'type': 'backtick', 'token': p[2]}
+    p[0] = Token(type_='backtick_integer', value={'token': p[2]})
 
 
-def p_character_token(p):
+def p_character_token_control_sequence(p):
     '''
     character_token : SINGLE_CHAR_CONTROL_SEQUENCE
-                    | character
+    '''
+    # TODO: make this possible.
+    '''
+                    | active character
+    '''
+    p[0] = Token(type_='control_sequence', value=p[1].value)
+
+
+def p_character_token_character(p):
+    '''
+    character_token : character
     '''
     # TODO: make this possible.
     '''
@@ -402,7 +424,7 @@ def p_character_token(p):
 
 
 def process_digits(p, base):
-    new_digit = p[1]['char']
+    new_digit = p[1].value['char']
     if len(p) > 2:
         constant = p[2]
         # We work right-to-left, so the new digit should be added on the left.
@@ -502,7 +524,7 @@ def p_plus_or_minus(p):
     plus_or_minus : PLUS_SIGN
                   | MINUS_SIGN
     '''
-    p[0] = p[1]['char']
+    p[0] = p[1].value['char']
 
 
 def p_equals(p):

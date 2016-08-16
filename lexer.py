@@ -2,8 +2,9 @@ from enum import Enum
 import logging
 from collections import deque
 
-from ply.lex import Lexer, LexToken
+from ply.lex import Lexer
 
+from common import Token
 from process import State, CatCode
 
 
@@ -59,7 +60,7 @@ short_hand_def_map = {
 primitive_control_sequences_map.update(short_hand_def_map)
 
 short_hand_def_token_map = {
-    '{}_token'.format(k): '{}_TOKEN'.format(v)
+    k: '{}_TOKEN'.format(v)
     for k, v in short_hand_def_map.items()
 }
 
@@ -139,8 +140,8 @@ class PLYLexer(Lexer):
         state_tokens = []
         while True:
             state_token = next(self.state_tokens)
-            if state_token['type'] == 'char_cat_pair':
-                char, cat = state_token['char'], state_token['cat']
+            if state_token.type == 'CHAR_CAT_PAIR':
+                char, cat = state_token.value['char'], state_token.value['cat']
                 if cat == CatCode.begin_group:
                     brace_counter += 1
                 elif cat == CatCode.end_group:
@@ -173,7 +174,7 @@ class PLYLexer(Lexer):
 
     def state_token_tokens_control_sequence(self, state_token):
         tokens = []
-        name = state_token['name']
+        name = state_token.value['name']
         if self.lex_mode == LexMode.no_expand:
             if len(name) == 1:
                 type_ = 'SINGLE_CHAR_CONTROL_SEQUENCE'
@@ -200,7 +201,7 @@ class PLYLexer(Lexer):
 
     def state_token_tokens_char(self, state_token):
         tokens = []
-        char, cat = state_token['char'], state_token['cat']
+        char, cat = state_token.value['char'], state_token.value['cat']
         if cat in (CatCode.letter, CatCode.other):
             if (char, cat) in literals_map:
                 type_ = literals_map[(char, cat)]
@@ -229,14 +230,12 @@ class PLYLexer(Lexer):
         stored state tokens.
         '''
         tokens = []
-        if state_token['type'] == 'control_sequence':
+        if state_token.type == 'CONTROL_SEQUENCE':
             tokens = self.state_token_tokens_control_sequence(state_token)
-        elif state_token['type'] == 'char_cat_pair':
+        elif state_token.type == 'CHAR_CAT_PAIR':
             tokens = self.state_token_tokens_char(state_token)
-        elif state_token['type'] in short_hand_def_token_map:
-            type_ = short_hand_def_token_map[state_token['type']]
-            token = Token(type_=type_, value=state_token['value'])
-            tokens.append(token)
+        elif state_token.type in short_hand_def_token_map.values():
+            tokens.append(state_token)
         else:
             import pdb; pdb.set_trace()
         logger.info(tokens)
@@ -251,18 +250,3 @@ class PLYLexer(Lexer):
             self.tokens_stack.extend(tokens)
         token = self.tokens_stack.popleft()
         return token
-
-
-class Token(LexToken):
-
-    def __init__(self, type_, value):
-        self.type = type_
-        self.value = value
-        self.lineno = None
-        self.lexpos = None
-
-    def __repr__(self):
-        return "<Token: %r %r>" % (self.type, self.value)
-
-    def __str__(self):
-        return self.__repr__()

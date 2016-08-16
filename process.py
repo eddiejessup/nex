@@ -4,6 +4,7 @@ from string import ascii_letters, ascii_lowercase, ascii_uppercase
 from enum import Enum
 import logging
 
+from common import Token
 
 ascii_characters = ''.join(chr(i) for i in range(128))
 
@@ -299,10 +300,12 @@ class State(object):
                         break
                 self.reading_state = ReadingState.line_middle
             control_sequence_name = ''.join(control_sequence_chars)
-            return {'type': 'control_sequence', 'name': control_sequence_name}
+            return Token(type_='CONTROL_SEQUENCE',
+                         value={'name': control_sequence_name})
             logger.debug('Got control sequence {}'.format(control_sequence_name))
         elif cat in tokenise_cats:
-            token = {'type': 'char_cat_pair', 'char': char, 'cat': cat}
+            token = Token(type_='CHAR_CAT_PAIR',
+                          value={'char': char, 'cat': cat})
             self.reading_state = ReadingState.line_middle
             return token
         # If TeX sees a character of category 10 (space), the action
@@ -319,7 +322,8 @@ class State(object):
                 # the character is converted to a token of category 10 whose
                 # character code is 32, and TeX enters state S. The character
                 # code in a space token is always 32.
-                token = {'type': 'char_cat_pair', 'char': ' ', 'cat': cat}
+                token = Token(type_='CHAR_CAT_PAIR',
+                              value={'char': ' ', 'cat': cat})
                 self.reading_state = ReadingState.skipping_blanks
                 return token
         elif cat == CatCode.end_of_line:
@@ -337,14 +341,15 @@ class State(object):
             if self.reading_state == ReadingState.line_begin:
                 # the end-of-line character is converted to the control
                 # sequence token 'par' (end of paragraph).
-                token = {'type': 'control_sequence', 'name': 'par'}
+                token = Token(type_='CONTROL_SEQUENCE',
+                              value={'name': 'par'})
                 return token
             # if TeX is in state M (mid-line),
             elif self.reading_state == ReadingState.line_middle:
                 # the end-of-line character is converted to a token for
                 # character 32 (' ') of category 10 (space).
-                token = {'type': 'char_cat_pair', 'char': ' ',
-                         'cat': CatCode.space}
+                token = Token(type_='CHAR_CAT_PAIR',
+                              value={'char': ' ', 'cat': CatCode.space})
                 return token
             # and if TeX is in state S (skipping blanks),
             elif self.reading_state == ReadingState.skipping_blanks:
