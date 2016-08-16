@@ -87,7 +87,7 @@ def p_general_text(p):
     '''
     general_text : filler implicit_left_brace seen_def_cs_name BALANCED_TEXT
     '''
-    p[0] = p[3]
+    p[0] = p[4]
 
 
 def p_filler(p):
