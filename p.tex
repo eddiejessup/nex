@@ -215,3 +215,15 @@
 \dimendef\dimen@ii=2
 \skipdef\skip@=0
 \toksdef\toks@=0
+
+% Now, we define \newcount, \newbox, etc. so that you can say \newcount\foo
+% and \foo will be defined (with \countdef) to be the next counter.
+% To find out which counter \foo is, you can look at \allocationnumber.
+% Since there's no \boxdef command, \chardef is used to define a \newbox,
+% \newinsert, \newfam, and so on.
+
+\outer\def\newcount{\alloc@0\count\countdef\insc@unt}
+\outer\def\newdimen{\alloc@1\dimen\dimendef\insc@unt}
+\outer\def\newskip{\alloc@2\skip\skipdef\insc@unt}
+\outer\def\newmuskip{\alloc@3\muskip\muskipdef\@cclvi}
+\outer\def\newbox{\alloc@4\box\chardef\insc@unt}
