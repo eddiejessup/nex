@@ -131,11 +131,10 @@ class PLYLexer(Lexer):
             name = state_token['name']
             if self.lex_mode == LexMode.no_expand:
                 if len(name) == 1:
-                    tokens.append(PLYToken(type_='SINGLE_CHAR_CONTROL_SEQUENCE',
-                                           value=state_token))
+                    type_ = 'SINGLE_CHAR_CONTROL_SEQUENCE'
                 else:
-                    tokens.append(PLYToken(type_='CONTROL_SEQUENCE',
-                                           value=state_token))
+                    type_ = 'CONTROL_SEQUENCE'
+                tokens.append(PLYToken(type_=type_, value=state_token))
             elif name in self.state.control_sequences:
                 tokens.extend(self.expand_control_sequence(name))
             elif name in primitive_control_sequences_map:
