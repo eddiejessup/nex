@@ -126,6 +126,10 @@ class PLYLexer(Lexer):
         return self.state_token_tokens(state_token)
 
     def fetch_state_token_tokens_no_expand(self):
+        '''
+        Fetch a single state token, in no-expand lex mode, and convert it into
+        its terminal tokens.
+        '''
         old_lex_mode = self.lex_mode
         self.lex_mode = LexMode.no_expand
         tokens = self.fetch_state_token_tokens()
@@ -133,6 +137,12 @@ class PLYLexer(Lexer):
         return tokens
 
     def state_token_tokens(self, state_token):
+        '''
+        Converts a single state token into one or more terminal tokens.
+        One important case where one state token produces many terminal tokens,
+        is when the state token is a macro call, which is expanded into the
+        stored state tokens.
+        '''
         tokens = []
         if state_token['type'] == 'control_sequence':
             name = state_token['name']
