@@ -21,6 +21,8 @@ tokens = (
     'RIGHT_BRACE',
     'ACTIVE_CHARACTER',
 
+    'BALANCED_TEXT',
+
     'CHARACTER',
 
     # Internal tokens.
@@ -112,6 +114,7 @@ read_control_sequence_name_tokens = (
 
 class LexMode(Enum):
     expand = 1
+    read_balanced_text = 2
     no_expand = 3
 
 
@@ -128,9 +131,31 @@ class PLYLexer(Lexer):
     def expand_control_sequence(self, name):
         return self.state.control_sequences[name]
 
+    def fetch_state_tokens_in_balanced_text(self):
+        brace_counter = 1
+        state_tokens = []
+        while True:
+            state_token = next(self.state_tokens)
+            if state_token['type'] == 'char_cat_pair':
+                char, cat = state_token['char'], state_token['cat']
+                if cat == CatCode.begin_group:
+                    brace_counter += 1
+                elif cat == CatCode.end_group:
+                    brace_counter -= 1
+                if brace_counter == 0:
+                    break
+            state_tokens.append(state_token)
+        return state_tokens
+
     def fetch_state_token_tokens(self):
-        state_token = next(self.state_tokens)
-        return self.state_token_tokens(state_token)
+        if self.lex_mode == LexMode.read_balanced_text:
+            state_tokens = self.fetch_state_tokens_in_balanced_text()
+            token = PLYToken(type_='BALANCED_TEXT', value=state_tokens)
+            self.lex_mode = LexMode.expand
+            return [token]
+        else:
+            state_token = next(self.state_tokens)
+            return self.state_token_tokens(state_token)
 
     def fetch_state_token_tokens_no_expand(self):
         '''
@@ -160,7 +185,10 @@ class PLYLexer(Lexer):
                     type_ = 'CONTROL_SEQUENCE'
                 tokens.append(PLYToken(type_=type_, value=state_token))
             elif name in self.state.control_sequences:
-                tokens.extend(self.expand_control_sequence(name))
+                control_sequence_state_tokens = self.expand_control_sequence(name)
+                for cs_state_token in control_sequence_state_tokens:
+                    cs_terminal_tokens = self.state_token_tokens(cs_state_token)
+                    tokens.extend(cs_terminal_tokens)
             elif name in primitive_control_sequences_map:
                 token_type = primitive_control_sequences_map[name]
                 tokens.append(PLYToken(type_=token_type, value=state_token))

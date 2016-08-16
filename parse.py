@@ -85,7 +85,7 @@ def p_message(p):
 
 def p_general_text(p):
     '''
-    general_text : filler implicit_left_brace balanced_text RIGHT_BRACE
+    general_text : filler implicit_left_brace seen_def_cs_name BALANCED_TEXT
     '''
     p[0] = p[3]
 
@@ -133,26 +133,14 @@ def p_seen_def_cs_name(p):
     '''
     seen_def_cs_name :
     '''
-    lexer.lex_mode = LexMode.no_expand
+    lexer.lex_mode = LexMode.read_balanced_text
 
 
 def p_definition_text(p):
     '''
-    definition_text : LEFT_BRACE balanced_text RIGHT_BRACE
+    definition_text : LEFT_BRACE BALANCED_TEXT
     '''
     p[0] = p[2]
-
-
-def p_balanced_text(p):
-    '''
-    balanced_text : command
-                  | balanced_text command
-    '''
-    if len(p) < 3:
-        p[0] = [p[1]]
-    else:
-        p[0] = p[1]
-        p[0].append(p[2])
 
 
 def p_character(p):
