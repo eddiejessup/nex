@@ -129,8 +129,6 @@ class PLYLexer(Lexer):
             elif name in primitive_control_sequences_map:
                 token_type = primitive_control_sequences_map[name]
                 tokens.append(PLYToken(type_=token_type, value=state_token))
-                if name in suppress_expansion_tokens:
-                    self.state.disable_expansion()
             elif name in ('global', 'long', 'outer'):
                 tokens.append(PLYToken(type_='PREFIX', value=state_token))
             else:
@@ -166,6 +164,12 @@ class PLYLexer(Lexer):
                 return
             self.tokens_stack.extend(tokens)
         token = self.tokens_stack.popleft()
+
+        def token_suppresses_expansion(token):
+            return (token.type in primitive_control_sequences_map.values() and
+                    token.value['name'] in suppress_expansion_tokens)
+        if token_suppresses_expansion(token):
+            self.state.disable_expansion()
         return token
 
 
