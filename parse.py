@@ -131,7 +131,7 @@ def p_definition(p):
 
 def p_seen_def_cs_name(p):
     '''
-    seen_def_cs_name : empty
+    seen_def_cs_name :
     '''
     lexer.lex_mode = LexMode.no_expand
 
