@@ -293,7 +293,6 @@ def p_code_assignment(p):
         small_glyph_code = GlyphCode(small_family, small_position)
         large_glyph_code = GlyphCode(large_family, large_position)
         code = DelimiterCode(small_glyph_code, large_glyph_code)
-        # import pdb; pdb.set_trace()
     char_map = code_type_to_char_map[code_type]
     char_map[char] = code
     p[0] = {'type': 'code_assignment', 'code_type': code_type,
