@@ -2,7 +2,7 @@ import logging
 import ply.yacc as yacc
 
 from process import CatCode, MathClass, MathCode, GlyphCode, DelimiterCode
-from lexer import PLYToken, PLYLexer, tokens
+from lexer import PLYToken, PLYLexer, tokens, LexMode
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
@@ -118,7 +118,7 @@ def p_macro_assignment(p):
     macro_assignment : definition
     '''
     p[0] = p[1]
-    lexer.state.enable_expansion()
+    lexer.lex_mode = LexMode.expand
 
 
 def p_definition(p):
@@ -245,7 +245,7 @@ def p_seen_control_sequence(p):
     '''
     seen_control_sequence :
     '''
-    lexer.state.enable_expansion()
+    lexer.lex_mode = LexMode.expand
 
 
 def p_short_hand_def(p):
@@ -382,7 +382,7 @@ def p_normal_integer_character(p):
     normal_integer : BACKTICK character_token one_optional_space
     '''
     p[0] = {'type': 'backtick', 'token': p[2]}
-    lexer.state.enable_expansion()
+    lexer.lex_mode = LexMode.expand
 
 
 def p_character_token(p):

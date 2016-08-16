@@ -130,13 +130,6 @@ class State(object):
         self.initialize_space_factor_codes()
         self.initialize_delimiter_codes()
         self.initialize_control_sequences()
-        self.expanding_tokens = True
-
-    def disable_expansion(self):
-        self.expanding_tokens = False
-
-    def enable_expansion(self):
-        self.expanding_tokens = True
 
     def initialize_control_sequences(self):
         self.control_sequences = {}

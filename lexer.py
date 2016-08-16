@@ -1,3 +1,4 @@
+from enum import Enum
 import logging
 from collections import deque
 
@@ -102,7 +103,15 @@ suppress_expansion_tokens = (
 )
 
 
+class LexMode(Enum):
+    expand = 1
+    no_expand = 3
+
+
 class PLYLexer(Lexer):
+
+    def __init__(self):
+        self.lex_mode = LexMode.expand
 
     def input(self, chars):
         self.state = State(chars)
@@ -117,7 +126,7 @@ class PLYLexer(Lexer):
         tokens = []
         if state_token['type'] == 'control_sequence':
             name = state_token['name']
-            if not self.state.expanding_tokens:
+            if self.lex_mode == LexMode.no_expand:
                 if len(name) == 1:
                     tokens.append(PLYToken(type_='SINGLE_CHAR_CONTROL_SEQUENCE',
                                            value=state_token))
@@ -142,7 +151,7 @@ class PLYLexer(Lexer):
                     # open-quotes.
                     # Maybe move this to parse rule, at seen_BACKTICK?
                     if type_ == 'BACKTICK':
-                        self.state.disable_expansion()
+                        self.lex_mode = LexMode.no_expand
                 else:
                     type_ = 'CHARACTER'
             elif cat in category_map:
@@ -169,7 +178,7 @@ class PLYLexer(Lexer):
             return (token.type in primitive_control_sequences_map.values() and
                     token.value['name'] in suppress_expansion_tokens)
         if token_suppresses_expansion(token):
-            self.state.disable_expansion()
+            self.lex_mode = LexMode.no_expand
         return token
 
 
