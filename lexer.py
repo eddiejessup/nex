@@ -153,7 +153,7 @@ class PLYLexer(Lexer):
     def fetch_state_token_tokens(self):
         if self.lex_mode == LexMode.read_balanced_text:
             state_tokens = self.fetch_state_tokens_in_balanced_text()
-            token = PLYToken(type_='BALANCED_TEXT', value=state_tokens)
+            token = Token(type_='BALANCED_TEXT', value=state_tokens)
             self.lex_mode = LexMode.expand
             return [token]
         else:
@@ -179,7 +179,7 @@ class PLYLexer(Lexer):
                 type_ = 'SINGLE_CHAR_CONTROL_SEQUENCE'
             else:
                 type_ = 'CONTROL_SEQUENCE'
-            tokens.append(PLYToken(type_=type_, value=state_token))
+            tokens.append(Token(type_=type_, value=state_token))
         elif name in self.state.control_sequences:
             control_sequence_state_tokens = self.expand_control_sequence(name)
             for cs_state_token in control_sequence_state_tokens:
@@ -187,13 +187,13 @@ class PLYLexer(Lexer):
                 tokens.extend(cs_terminal_tokens)
         elif name in primitive_control_sequences_map:
             token_type = primitive_control_sequences_map[name]
-            tokens.append(PLYToken(type_=token_type, value=state_token))
+            tokens.append(Token(type_=token_type, value=state_token))
             if name in read_control_sequence_name_tokens:
                 next_tokens = self.fetch_state_token_tokens_no_expand()
                 assert len(next_tokens) == 1
                 tokens.extend(next_tokens)
         elif name in ('global', 'long', 'outer'):
-            tokens.append(PLYToken(type_='PREFIX', value=state_token))
+            tokens.append(Token(type_='PREFIX', value=state_token))
         else:
             import pdb; pdb.set_trace()
         return tokens
@@ -210,7 +210,7 @@ class PLYLexer(Lexer):
             type_ = category_map[cat]
         else:
             import pdb; pdb.set_trace()
-        token = PLYToken(type_, value=state_token)
+        token = Token(type_, value=state_token)
         tokens.append(token)
         # TODO: this will probably break when using backticks for
         # open-quotes.
@@ -235,7 +235,7 @@ class PLYLexer(Lexer):
             tokens = self.state_token_tokens_char(state_token)
         elif state_token['type'] in short_hand_def_token_map:
             type_ = short_hand_def_token_map[state_token['type']]
-            token = PLYToken(type_=type_, value=state_token['value'])
+            token = Token(type_=type_, value=state_token['value'])
             tokens.append(token)
         else:
             import pdb; pdb.set_trace()
@@ -253,7 +253,7 @@ class PLYLexer(Lexer):
         return token
 
 
-class PLYToken(LexToken):
+class Token(LexToken):
 
     def __init__(self, type_, value):
         self.type = type_
