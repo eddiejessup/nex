@@ -255,6 +255,10 @@ def p_short_hand_def(p):
     short_hand_def : CHAR_DEF
                    | MATH_CHAR_DEF
                    | COUNT_DEF
+                   | DIMEN_DEF
+                   | SKIP_DEF
+                   | MU_SKIP_DEF
+                   | TOKS_DEF
     '''
     p[0] = {'type': 'short_hand_def', 'def_type': p[1]['name']}
 

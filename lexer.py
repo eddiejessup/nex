@@ -24,11 +24,6 @@ tokens = (
     'BALANCED_TEXT',
 
     'CHARACTER',
-
-    # Internal tokens.
-    'CHAR_DEF_TOKEN',
-    'MATH_CHAR_DEF_TOKEN',
-    'COUNT_DEF_TOKEN',
 )
 
 
@@ -39,10 +34,6 @@ primitive_control_sequences_map = {
     'lccode': 'LOWER_CASE_CODE',
     'sfcode': 'SPACE_FACTOR_CODE',
     'delcode': 'DELIMITER_CODE',
-
-    'chardef': 'CHAR_DEF',
-    'mathchardef': 'MATH_CHAR_DEF',
-    'countdef': 'COUNT_DEF',
 
     'def': 'DEF',
 
@@ -56,6 +47,21 @@ primitive_control_sequences_map = {
     'write': 'WRITE',
 }
 
+short_hand_def_map = {
+    'chardef': 'CHAR_DEF',
+    'mathchardef': 'MATH_CHAR_DEF',
+    'countdef': 'COUNT_DEF',
+    'dimendef': 'DIMEN_DEF',
+    'skipdef': 'SKIP_DEF',
+    'muskipdef': 'MU_SKIP_DEF',
+    'toksdef': 'TOKS_DEF',
+}
+primitive_control_sequences_map.update(short_hand_def_map)
+
+short_hand_def_token_map = {
+    '{}_token'.format(k): '{}_TOKEN'.format(v)
+    for k, v in short_hand_def_map.items()
+}
 
 category_map = {
     CatCode.space: 'SPACE',
@@ -99,22 +105,14 @@ literals_map = {
 }
 
 
-short_hand_def_token_map = {
-    'chardef_token': 'CHAR_DEF_TOKEN',
-    'mathchardef_token': 'MATH_CHAR_DEF_TOKEN',
-    'countdef_token': 'COUNT_DEF_TOKEN',
-}
-
-
 tokens += tuple(set(literals_map.values()))
 tokens += tuple(set(primitive_control_sequences_map.values()))
+tokens += tuple(set(short_hand_def_token_map.values()))
 
 read_control_sequence_name_tokens = (
-    'chardef',
-    'mathchardef',
-    'countdef',
     'def',
 )
+read_control_sequence_name_tokens += tuple(set(short_hand_def_map.keys()))
 
 
 class LexMode(Enum):

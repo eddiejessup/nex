@@ -205,4 +205,13 @@
 \countdef\allocationnumber=21 % the most recent allocation
 \countdef\m@ne=22 \m@ne=-1 % a handy constant
 \def\wlog{\immediate\write\m@ne} % write on log file (only)
-\wlog{Hello}
+
+% Here are abbreviations for the names of scratch registers
+% that don't need to be allocated.
+
+\countdef\count@=255
+\dimendef\dimen@=0
+\dimendef\dimen@i=1 % global only
+\dimendef\dimen@ii=2
+\skipdef\skip@=0
+\toksdef\toks@=0
