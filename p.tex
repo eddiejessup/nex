@@ -203,4 +203,6 @@
 \count20=255 % allocates insertions 254, 253, ...
 \countdef\insc@unt=20 % the insertion counter
 \countdef\allocationnumber=21 % the most recent allocation
-\countdef\m@ne=22
+\countdef\m@ne=22 \m@ne=-1 % a handy constant
+\def\wlog{\immediate\write\m@ne} % write on log file (only)
+\wlog{Hello}

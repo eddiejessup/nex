@@ -72,8 +72,24 @@ def p_command(p):
             | PAR
             | SPACE
             | message
+            | write
     '''
     p[0] = p[1]
+
+
+def p_immediate_write(p):
+    '''
+    write : IMMEDIATE write
+    '''
+    p[0] = p[2]
+    p[0]['prefix'] = 'immediate'
+
+
+def p_write(p):
+    '''
+    write : WRITE number general_text
+    '''
+    p[0] = {'type': 'write', 'stream_number': p[2], 'content': p[3]}
 
 
 def p_message(p):

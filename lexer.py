@@ -44,11 +44,16 @@ primitive_control_sequences_map = {
     'mathchardef': 'MATH_CHAR_DEF',
     'countdef': 'COUNT_DEF',
 
-    'par': 'PAR',
-    'count': 'COUNT',
     'def': 'DEF',
-    'message': 'MESSAGE',
+
+    'count': 'COUNT',
+
+    'par': 'PAR',
     'relax': 'RELAX',
+    'immediate': 'IMMEDIATE',
+
+    'message': 'MESSAGE',
+    'write': 'WRITE',
 }
 
 
