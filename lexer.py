@@ -168,6 +168,56 @@ class PLYLexer(Lexer):
         self.lex_mode = old_lex_mode
         return tokens
 
+    def state_token_tokens_control_sequence(self, state_token):
+        tokens = []
+        name = state_token['name']
+        if self.lex_mode == LexMode.no_expand:
+            if len(name) == 1:
+                type_ = 'SINGLE_CHAR_CONTROL_SEQUENCE'
+            else:
+                type_ = 'CONTROL_SEQUENCE'
+            tokens.append(PLYToken(type_=type_, value=state_token))
+        elif name in self.state.control_sequences:
+            control_sequence_state_tokens = self.expand_control_sequence(name)
+            for cs_state_token in control_sequence_state_tokens:
+                cs_terminal_tokens = self.state_token_tokens(cs_state_token)
+                tokens.extend(cs_terminal_tokens)
+        elif name in primitive_control_sequences_map:
+            token_type = primitive_control_sequences_map[name]
+            tokens.append(PLYToken(type_=token_type, value=state_token))
+            if name in read_control_sequence_name_tokens:
+                next_tokens = self.fetch_state_token_tokens_no_expand()
+                assert len(next_tokens) == 1
+                tokens.extend(next_tokens)
+        elif name in ('global', 'long', 'outer'):
+            tokens.append(PLYToken(type_='PREFIX', value=state_token))
+        else:
+            import pdb; pdb.set_trace()
+        return tokens
+
+    def state_token_tokens_char(self, state_token):
+        tokens = []
+        char, cat = state_token['char'], state_token['cat']
+        if cat in (CatCode.letter, CatCode.other):
+            if (char, cat) in literals_map:
+                type_ = literals_map[(char, cat)]
+            else:
+                type_ = 'CHARACTER'
+        elif cat in category_map:
+            type_ = category_map[cat]
+        else:
+            import pdb; pdb.set_trace()
+        token = PLYToken(type_, value=state_token)
+        tokens.append(token)
+        # TODO: this will probably break when using backticks for
+        # open-quotes.
+        # Maybe move this to parse rule, at seen_BACKTICK?
+        if type_ == 'BACKTICK':
+            next_tokens = self.fetch_state_token_tokens_no_expand()
+            assert len(next_tokens) == 1
+            tokens.extend(next_tokens)
+        return tokens
+
     def state_token_tokens(self, state_token):
         '''
         Converts a single state token into one or more terminal tokens.
@@ -177,56 +227,16 @@ class PLYLexer(Lexer):
         '''
         tokens = []
         if state_token['type'] == 'control_sequence':
-            name = state_token['name']
-            if self.lex_mode == LexMode.no_expand:
-                if len(name) == 1:
-                    type_ = 'SINGLE_CHAR_CONTROL_SEQUENCE'
-                else:
-                    type_ = 'CONTROL_SEQUENCE'
-                tokens.append(PLYToken(type_=type_, value=state_token))
-            elif name in self.state.control_sequences:
-                control_sequence_state_tokens = self.expand_control_sequence(name)
-                for cs_state_token in control_sequence_state_tokens:
-                    cs_terminal_tokens = self.state_token_tokens(cs_state_token)
-                    tokens.extend(cs_terminal_tokens)
-            elif name in primitive_control_sequences_map:
-                token_type = primitive_control_sequences_map[name]
-                tokens.append(PLYToken(type_=token_type, value=state_token))
-                if name in read_control_sequence_name_tokens:
-                    next_tokens = self.fetch_state_token_tokens_no_expand()
-                    assert len(next_tokens) == 1
-                    tokens.extend(next_tokens)
-            elif name in ('global', 'long', 'outer'):
-                tokens.append(PLYToken(type_='PREFIX', value=state_token))
-            else:
-                import pdb; pdb.set_trace()
+            tokens = self.state_token_tokens_control_sequence(state_token)
         elif state_token['type'] == 'char_cat_pair':
-            char, cat = state_token['char'], state_token['cat']
-            if cat in (CatCode.letter, CatCode.other):
-                if (char, cat) in literals_map:
-                    type_ = literals_map[(char, cat)]
-                else:
-                    type_ = 'CHARACTER'
-            elif cat in category_map:
-                type_ = category_map[cat]
-            else:
-                import pdb; pdb.set_trace()
-            token = PLYToken(type_, value=state_token)
-            tokens.append(token)
-            # TODO: this will probably break when using backticks for
-            # open-quotes.
-            # Maybe move this to parse rule, at seen_BACKTICK?
-            if type_ == 'BACKTICK':
-                next_tokens = self.fetch_state_token_tokens_no_expand()
-                assert len(next_tokens) == 1
-                tokens.extend(next_tokens)
-            logger.info(token)
+            tokens = self.state_token_tokens_char(state_token)
         elif state_token['type'] in short_hand_def_token_map:
             type_ = short_hand_def_token_map[state_token['type']]
-            terminal_token = PLYToken(type_=type_, value=state_token['value'])
-            tokens.append(terminal_token)
+            token = PLYToken(type_=type_, value=state_token['value'])
+            tokens.append(token)
         else:
             import pdb; pdb.set_trace()
+        logger.info(tokens)
         return tokens
 
     def token(self):
