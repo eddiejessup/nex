@@ -92,6 +92,13 @@ literals_map = {
 }
 
 
+short_hand_def_token_map = {
+    'chardef_token': 'CHAR_DEF_TOKEN',
+    'mathchardef_token': 'MATH_CHAR_DEF_TOKEN',
+    'countdef_token': 'COUNT_DEF_TOKEN',
+}
+
+
 tokens += tuple(set(literals_map.values()))
 tokens += tuple(set(primitive_control_sequences_map.values()))
 
@@ -186,6 +193,10 @@ class PLYLexer(Lexer):
                 assert len(next_tokens) == 1
                 tokens.extend(next_tokens)
             logger.info(token)
+        elif state_token['type'] in short_hand_def_token_map:
+            type_ = short_hand_def_token_map[state_token['type']]
+            terminal_token = PLYToken(type_=type_, value=state_token['value'])
+            tokens.append(terminal_token)
         else:
             import pdb; pdb.set_trace()
         return tokens

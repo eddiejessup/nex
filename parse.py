@@ -2,7 +2,7 @@ import logging
 import ply.yacc as yacc
 
 from process import CatCode, MathClass, MathCode, GlyphCode, DelimiterCode
-from lexer import PLYToken, PLYLexer, tokens, LexMode
+from lexer import PLYLexer, tokens, LexMode
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
@@ -236,16 +236,13 @@ def p_short_hand_definition(p):
     short_hand_definition : short_hand_def control_sequence equals number
     '''
     code = evaluate(p[4]['size'])
-    def_type_to_token_type = {
-        'chardef': 'CHAR_DEF_TOKEN',
-        'mathchardef': 'MATH_CHAR_DEF_TOKEN',
-        'countdef': 'COUNT_DEF_TOKEN',
-    }
     def_type = p[1]['def_type']
-    token_type = def_type_to_token_type[def_type]
-    token = PLYToken(type_=token_type, value=code)
+
+    state_token_type = '{}_token'.format(def_type)
+    state_token = {'type': state_token_type, 'value': code}
     control_sequence_name = p[2]['name']
-    lexer.state.control_sequences[control_sequence_name] = [token]
+    lexer.state.control_sequences[control_sequence_name] = [state_token]
+
     p[0] = {'type': def_type, 'name': control_sequence_name, 'code': code}
 
 
