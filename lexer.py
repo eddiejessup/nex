@@ -149,11 +149,6 @@ class PLYLexer(Lexer):
             if cat in (CatCode.letter, CatCode.other):
                 if (char, cat) in literals_map:
                     type_ = literals_map[(char, cat)]
-                    # TODO: this will probably break when using backticks for
-                    # open-quotes.
-                    # Maybe move this to parse rule, at seen_BACKTICK?
-                    if type_ == 'BACKTICK':
-                        self.lex_mode = LexMode.no_expand
                 else:
                     type_ = 'CHARACTER'
             elif cat in category_map:
@@ -162,6 +157,11 @@ class PLYLexer(Lexer):
                 import pdb; pdb.set_trace()
             token = PLYToken(type_, value=state_token)
             tokens.append(token)
+            # TODO: this will probably break when using backticks for
+            # open-quotes.
+            # Maybe move this to parse rule, at seen_BACKTICK?
+            if type_ == 'BACKTICK':
+                self.lex_mode = LexMode.no_expand
             logger.info(token)
         else:
             import pdb; pdb.set_trace()
