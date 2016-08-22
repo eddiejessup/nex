@@ -1,3 +1,4 @@
+from common import TerminalToken
 from lexer import CatCode
 
 
@@ -34,6 +35,8 @@ literals_map = {
     ('`', CatCode.other): 'BACKTICK',
 }
 
+other_literal_type = 'MISC_CHAR_CAT_PAIR'
+literal_types = tuple(literals_map.values()) + (other_literal_type,)
 
 category_map = {
     CatCode.space: 'SPACE',
@@ -43,9 +46,6 @@ category_map = {
 }
 
 
-# tokens += tuple(set(literals_map.values()))
-
-
 def get_char_cat_pair_terminal_type(char_cat_pair_token):
     v = char_cat_pair_token.value
     char, cat = v['char'], v['cat']
@@ -53,7 +53,14 @@ def get_char_cat_pair_terminal_type(char_cat_pair_token):
         if (char, cat) in literals_map:
             terminal_token_type = literals_map[(char, cat)]
         else:
-            terminal_token_type = 'MISC_CHAR_CAT_PAIR'
+            terminal_token_type = other_literal_type
     elif cat in category_map:
         terminal_token_type = category_map[cat]
     return terminal_token_type
+
+
+def char_cat_pair_to_terminal_token(char_cat_pair_token):
+    terminal_token_type = get_char_cat_pair_terminal_type(char_cat_pair_token)
+    terminal_token = TerminalToken(type_=terminal_token_type,
+                                   value=char_cat_pair_token)
+    return terminal_token

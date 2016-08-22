@@ -140,7 +140,7 @@ class Lexer(object):
                     char = chr(triod_ascii_code)
                     cat = self.char_to_cat[char]
                     if not peek:
-                        self.advance_loc(n=2)
+                        self.reader.advance_loc(n=2)
         return char, cat
 
     @property

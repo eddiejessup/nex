@@ -1,4 +1,4 @@
-from common import TerminalToken, ascii_characters
+from common import Token, TerminalToken, ascii_characters
 
 
 primitive_control_sequences = (
@@ -26,6 +26,8 @@ primitive_control_sequences_map = {
     'write': 'WRITE',
 }
 
+prefix_control_sequences = {prefix: 'PREFIX'
+                            for prefix in ('global', 'long', 'outer',)}
 
 short_hand_def_map = {
     'chardef': 'CHAR_DEF',
@@ -37,14 +39,7 @@ short_hand_def_map = {
     'toksdef': 'TOKS_DEF',
 }
 primitive_control_sequences_map.update(short_hand_def_map)
-
-# tokens += tuple(set(primitive_control_sequences_map.values()))
-# tokens += tuple(set(short_hand_def_token_map.values()))
-
-# short_hand_def_token_map = {
-#     k: '{}_TOKEN'.format(v)
-#     for k, v in short_hand_def_map.items()
-# }
+primitive_control_sequences_map.update(prefix_control_sequences)
 
 
 class Expander(object):
@@ -55,14 +50,10 @@ class Expander(object):
     def initialize_control_sequences(self):
         self.control_sequences = {}
         for name, primitive_type in primitive_control_sequences_map.items():
-            primitive_token = TerminalToken(type_=primitive_type, value=None)
+            value_token = Token(type_=primitive_type, value=name)
+            primitive_token = TerminalToken(type_=primitive_type,
+                                            value=value_token)
             self.control_sequences[name] = [primitive_token]
-        for c in ascii_characters:
-            primitive_token = TerminalToken(type_='SINGLE_CHAR_CONTROL_SEQUENCE', value=None)
-            self.control_sequences[name] = [primitive_token]
-        # TODO: should these control sequences actually return
-        # (char, cat) pairs? Rather than just a plain character?
-        # self.control_sequences.update({c: [c] for c in self.char_to_cat})
 
     def expand_to_token_list(self, name):
         if name in self.control_sequences:

@@ -2,6 +2,7 @@ from reader import Reader, EndOfFile
 from lexer import Lexer
 from banisher import Banisher
 from expander import Expander
+from parser import parser, lex_wrapper
 
 
 # def test_reader():
@@ -15,16 +16,16 @@ from expander import Expander
 #         print(c)
 
 
-def test_lexer():
-    file_name = 'p.tex'
-    r = Reader(file_name)
-    lex = Lexer(r)
-    while True:
-        try:
-            lt = lex.next_token
-        except EndOfFile:
-            break
-        print(lt)
+# def test_lexer():
+#     file_name = 'p.tex'
+#     r = Reader(file_name)
+#     lex = Lexer(r)
+#     while True:
+#         try:
+#             lt = lex.next_token
+#         except EndOfFile:
+#             break
+#         print(lt)
 
 
 # def test_typer():
@@ -52,6 +53,16 @@ def test_lexer():
 #             break
 #         print(tt)
 
+
+def test_parser():
+    file_name = 'p.tex'
+    result = parser.parse(file_name, lexer=lex_wrapper)
+    for term_tok in result:
+        print(term_tok)
+
+
+if __name__ == '__main__':
+    test_parser()
 # # result = parser.parse(chars, lexer=lexer, debug=logger)
 # result = parser.parse(chars, lexer=lexer)
 # print()
