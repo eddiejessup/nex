@@ -1,9 +1,14 @@
+import logging
 from collections import deque
+from enum import Enum
 
 from common import Token, TerminalToken
 from lexer import CatCode
 from typer import char_cat_pair_to_terminal_token
 from expander import short_hand_def_map
+
+logger = logging.getLogger(__name__)
+logger.setLevel('DEBUG')
 
 special_control_sequence_types = (
     'BALANCED_TEXT',
@@ -17,52 +22,22 @@ special_control_sequence_types += (
 
 read_control_sequence_name_types = (
     'DEF',
+    'LET',
     'BACKTICK',
 )
 read_control_sequence_name_types += tuple(set(short_hand_def_map.values()))
 
 
-# def fetch_state_token_tokens(self):
-#     if self.lex_mode == LexMode.read_balanced_text:
-#         state_tokens = self.fetch_state_tokens_in_balanced_text()
-#         token = Token(type_='BALANCED_TEXT', value=state_tokens)
-#         self.lex_mode = LexMode.expand
-#         return [token]
-#     else:
-#         state_token = next(self.state_tokens)
-#         return self.state_token_tokens(state_token)
+class ContextMode(Enum):
+    normal = 1
+    awaiting_balanced_text_start = 2
+    awaiting_unexpanded_cs = 3
 
 
-# def fetch_state_token_tokens_no_expand(self):
-#     '''
-#     Fetch a single state token, in no-expand lex mode, and convert it into
-#     its terminal tokens.
-#     '''
-#     old_lex_mode = self.lex_mode
-#     self.lex_mode = LexMode.no_expand
-#     tokens = self.fetch_state_token_tokens()
-#     self.lex_mode = old_lex_mode
-#     return tokens
-
-#     def state_token_tokens_control_sequence(self, state_token):
-#         tokens = []
-#         name = state_token.value['name']
-#         if len(name) == 1:
-#             type_ = 'SINGLE_CHAR_CONTROL_SEQUENCE'
-#         else:
-#             type_ = 'CONTROL_SEQUENCE'
-#             tokens.append(Token(type_=type_, value=state_token))
-#         elif name in primitive_control_sequences_map:
-#             token_type = primitive_control_sequences_map[name]
-#             tokens.append(Token(type_=token_type, value=state_token))
-
-
-# class LexMode(Enum):
-#     expand = 1
-#     read_balanced_text = 2
-#     no_expand = 3
-
-
+expanding_modes = (
+    ContextMode.normal,
+    ContextMode.awaiting_balanced_text_start
+)
 
 
 class Banisher(object):
@@ -74,29 +49,35 @@ class Banisher(object):
         self.input_tokens_stack = deque()
         # Output buffer.
         self.output_terminal_tokens_stack = deque()
-        self.expanding_control_sequences = True
+        self.context_mode = ContextMode.normal
 
     @property
     def _next_lex_token(self):
         return self.lexer.next_token
 
     @property
+    def expanding_control_sequences(self):
+        return self.context_mode in expanding_modes
+
+    @property
     def next_token(self):
-        if not self.output_terminal_tokens_stack:
+        while not self.output_terminal_tokens_stack:
             self.populate_output_stack()
-        return self.output_terminal_tokens_stack.popleft()
+        logger.debug(self.output_terminal_tokens_stack)
+        next_token = self.output_terminal_tokens_stack.popleft()
+        return next_token
 
     def populate_input_stack(self):
         fresh_lex_token = self._next_lex_token
         self.input_tokens_stack.append(fresh_lex_token)
 
-    def pop_next_token(self):
+    def pop_next_input_token(self):
         if not self.input_tokens_stack:
             self.populate_input_stack()
         return self.input_tokens_stack.popleft()
 
     def get_unexpanded_cs_terminal_token(self):
-        token = self.pop_next_token()
+        token = self.pop_next_input_token()
         if token.type == 'CONTROL_SEQUENCE':
             next_token_name = token.value
             type_ = (unexpanded_one_char_cs_type if len(next_token_name) == 1
@@ -109,11 +90,11 @@ class Banisher(object):
             import pdb; pdb.set_trace()
         return terminal_token
 
-    def get_def_text_tokens(self):
+    def get_balanced_text_token(self):
         lex_tokens = []
-        brace_level = 0
+        brace_level = 1
         while True:
-            lex_token = self.pop_next_token()
+            lex_token = self.pop_next_input_token()
             lex_tokens.append(lex_token)
             if lex_token.type == 'CHAR_CAT_PAIR':
                 cat = lex_token.value['cat']
@@ -123,11 +104,11 @@ class Banisher(object):
                     brace_level -= 1
                 if brace_level == 0:
                     break
-        left_brace = lex_tokens[0]
-        right_brace = lex_tokens[-1]
+        # Put the ending right brace token back on the input stack.
+        self.input_tokens_stack.appendleft(lex_tokens[-1])
         balanced_text = TerminalToken(type_='BALANCED_TEXT',
-                                      value=lex_tokens[1:-1])
-        return left_brace, balanced_text, right_brace
+                                      value=lex_tokens[:-1])
+        return balanced_text
 
     def populate_output_stack(self):
         # To reduce my own confusion:
@@ -141,7 +122,7 @@ class Banisher(object):
         # A terminal token is simply a token that is accepted by the parser.
 
         # Might be a lex token, a primitive token or a terminal token.
-        first_token = self.pop_next_token()
+        first_token = self.pop_next_input_token()
         type_ = first_token.type
 
         # If we get a lex token, we need to make it a terminal token, and run again.
@@ -160,31 +141,48 @@ class Banisher(object):
                     self.input_tokens_stack.extendleft(expanded_first_token[::-1])
                 else:
                     # Convert to a primitive unexpanded control sequence.
-                    terminal_token = TerminalToken(type_=unexpanded_cs_type, value=first_token)
+                    terminal_token = TerminalToken(type_=unexpanded_cs_type,
+                                                   value=first_token)
                     self.input_tokens_stack.appendleft(terminal_token)
             else:
                 import pdb; pdb.set_trace()
-            # Run again, hopefully now seeing a primitive token.
+            # Now run again, hopefully now seeing a primitive token.
             # (Might not, if the expansion needs more expansion, but the
             # ultimate escape route is to see a primitive token.)
-            self.populate_output_stack()
-        # We might be able to make some terminal output, hooray.
+        # We might be able to make some terminal token output, hooray.
         else:
             # Complicated syntactic token that might affect lexing.
-            if type_ in read_control_sequence_name_types:
+            if (self.context_mode == ContextMode.awaiting_balanced_text_start and
+                    type_ == 'LEFT_BRACE'):
+                # First put the LEFT_BRACE on the output stack.
+                self.output_terminal_tokens_stack.append(first_token)
+                # Now merge all lex tokens until right brace lex token seen,
+                # into a 'BALANCED_TEXT' terminal token, which we put on the
+                # input stack to read later. We also put the right brace
+                # back on the stack to read later.
+                balanced_text_token = self.get_balanced_text_token()
+                # Put it on the input stack to be read again.
+                self.input_tokens_stack.appendleft(balanced_text_token)
+                self.context_mode = ContextMode.normal
+            elif (self.context_mode == ContextMode.awaiting_unexpanded_cs and
+                  type_ == unexpanded_cs_type):
+                # Put the unexpanded control sequence on the output stack.
+                self.output_terminal_tokens_stack.append(first_token)
+                # Now go back to ordinary mode.
+                self.context_mode = ContextMode.normal
+            elif type_ in read_control_sequence_name_types:
                 # Get an unexpanded control sequence token and add it to the
                 # output stack, along with the first token.
                 next_token = self.get_unexpanded_cs_terminal_token()
                 self.output_terminal_tokens_stack.append(first_token)
                 self.output_terminal_tokens_stack.append(next_token)
                 if type_ == 'DEF':
-                    # Get left brace and right brace lex tokens, and
-                    # in between merge all lex tokens into a 'BALANCED_TEXT'
-                    # terminal token.
-                    def_text_tokens = self.get_def_text_tokens()
-                    # Put them all back on the input stack and read again
-                    self.input_tokens_stack.extendleft(def_text_tokens[::-1])
-                    self.populate_output_stack()
+                    self.context_mode = ContextMode.awaiting_balanced_text_start
+                elif type_ == 'LET':
+                    self.context_mode = ContextMode.awaiting_unexpanded_cs
+            elif type_ == 'MESSAGE':
+                self.output_terminal_tokens_stack.append(first_token)
+                self.context_mode = ContextMode.awaiting_balanced_text_start
             # Just some semantic bullshit, stick it on the output stack
             # for the interpreter to deal with.
             else:

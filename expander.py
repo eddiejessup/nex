@@ -15,6 +15,7 @@ primitive_control_sequences_map = {
     'delcode': 'DELIMITER_CODE',
 
     'def': 'DEF',
+    'let': 'LET',
 
     'count': 'COUNT',
 
