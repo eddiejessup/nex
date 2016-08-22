@@ -228,4 +228,4 @@
 \outer\def\newmuskip{\alloc@3\muskip\muskipdef\@cclvi}
 \outer\def\newbox{\alloc@4\box\chardef\insc@unt}
 \let\newtoks=\relax % we do this to allow plain.tex to be read in twice
-\newtoks
+\outer\def\newhelp#1#2{\newtoks#1#1\expandafter{\csname#2\endcsname}}

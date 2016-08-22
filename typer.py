@@ -43,6 +43,7 @@ category_map = {
     CatCode.begin_group: 'LEFT_BRACE',
     CatCode.end_group: 'RIGHT_BRACE',
     CatCode.active: 'ACTIVE_CHARACTER',
+    CatCode.parameter: 'PARAMETER',
 }
 
 
@@ -56,6 +57,8 @@ def get_char_cat_pair_terminal_type(char_cat_pair_token):
             terminal_token_type = other_literal_type
     elif cat in category_map:
         terminal_token_type = category_map[cat]
+    else:
+        import pdb; pdb.set_trace()
     return terminal_token_type
 
 

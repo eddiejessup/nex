@@ -12,6 +12,7 @@ logger.setLevel('DEBUG')
 
 special_control_sequence_types = (
     'BALANCED_TEXT',
+    'PARAMETER_TEXT',
 )
 unexpanded_cs_type = 'UNEXPANDED_CONTROL_SEQUENCE'
 unexpanded_one_char_cs_type = 'UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE'
@@ -32,6 +33,7 @@ class ContextMode(Enum):
     normal = 1
     awaiting_balanced_text_start = 2
     awaiting_unexpanded_cs = 3
+    absorbing_parameter_text = 4
 
 
 expanding_modes = (
@@ -154,7 +156,7 @@ class Banisher(object):
             # Complicated syntactic token that might affect lexing.
             if (self.context_mode == ContextMode.awaiting_balanced_text_start and
                     type_ == 'LEFT_BRACE'):
-                # First put the LEFT_BRACE on the output stack.
+                # Put the LEFT_BRACE on the output stack.
                 self.output_terminal_tokens_stack.append(first_token)
                 # Now merge all lex tokens until right brace lex token seen,
                 # into a 'BALANCED_TEXT' terminal token, which we put on the
@@ -164,6 +166,16 @@ class Banisher(object):
                 # Put it on the input stack to be read again.
                 self.input_tokens_stack.appendleft(balanced_text_token)
                 self.context_mode = ContextMode.normal
+            elif self.context_mode == ContextMode.absorbing_parameter_text:
+                if type_ == 'LEFT_BRACE':
+                    parameter_text_token = TerminalToken(type_='PARAMETER_TEXT',
+                                                         value=self.parameter_text_tokens)
+                    self.output_terminal_tokens_stack.append(parameter_text_token)
+                    # Put the LEFT_BRACE back on the input stack.
+                    self.input_tokens_stack.appendleft(first_token)
+                    self.context_mode = ContextMode.awaiting_balanced_text_start
+                else:
+                    self.parameter_text_tokens.append(first_token)
             elif (self.context_mode == ContextMode.awaiting_unexpanded_cs and
                   type_ == unexpanded_cs_type):
                 # Put the unexpanded control sequence on the output stack.
@@ -177,7 +189,8 @@ class Banisher(object):
                 self.output_terminal_tokens_stack.append(first_token)
                 self.output_terminal_tokens_stack.append(next_token)
                 if type_ == 'DEF':
-                    self.context_mode = ContextMode.awaiting_balanced_text_start
+                    self.context_mode = ContextMode.absorbing_parameter_text
+                    self.parameter_text_tokens = []
                 elif type_ == 'LET':
                     self.context_mode = ContextMode.awaiting_unexpanded_cs
             elif type_ == 'MESSAGE':
