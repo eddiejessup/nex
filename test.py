@@ -1,8 +1,14 @@
+import logging
+
 from reader import Reader, EndOfFile
 from lexer import Lexer
 from banisher import Banisher
 from expander import Expander
 from parser import parser, lex_wrapper
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel('DEBUG')
 
 
 # def test_reader():
@@ -56,14 +62,14 @@ from parser import parser, lex_wrapper
 
 def test_parser():
     file_name = 'p.tex'
-    result = parser.parse(file_name, lexer=lex_wrapper)
+    # result = parser.parse(file_name, lexer=lex_wrapper)
+    result = parser.parse(file_name, lexer=lex_wrapper, debug=logger)
     for term_tok in result:
         print(term_tok)
 
 
 if __name__ == '__main__':
     test_parser()
-# # result = parser.parse(chars, lexer=lexer, debug=logger)
 # result = parser.parse(chars, lexer=lexer)
 # print()
 # print('Parsed:')

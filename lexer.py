@@ -8,8 +8,8 @@ from reader import EndOfFile
 from common import Token, ascii_characters
 
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+logger.setLevel('DEBUG')
 
 cat_codes = [
     'escape',  # 0

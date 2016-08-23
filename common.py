@@ -13,7 +13,7 @@ class Token(LexToken):
         self.lexpos = None
 
     def __repr__(self):
-        return "<Token: %r %r>" % (self.type, self.value)
+        return "<%s: %r %r>" % (self.__class__.__name__, self.type, self.value)
 
     def __str__(self):
         return self.__repr__()

@@ -35,8 +35,14 @@ literals_map = {
     ('`', CatCode.other): 'BACKTICK',
 }
 
+non_active_literals_map = {
+    'b': 'NON_ACTIVE_b',
+    'B': 'NON_ACTIVE_B',
+    'y': 'NON_ACTIVE_y',
+    'Y': 'NON_ACTIVE_Y',
+}
+
 other_literal_type = 'MISC_CHAR_CAT_PAIR'
-literal_types = tuple(literals_map.values()) + (other_literal_type,)
 
 category_map = {
     CatCode.space: 'SPACE',
@@ -47,14 +53,22 @@ category_map = {
 }
 
 
+literal_types = tuple(literals_map.values())
+literal_types += tuple(non_active_literals_map.values())
+literal_types += (other_literal_type,)
+literal_types += tuple(category_map.values())
+literal_types = tuple(set(literal_types))
+
+
 def get_char_cat_pair_terminal_type(char_cat_pair_token):
     v = char_cat_pair_token.value
     char, cat = v['char'], v['cat']
-    if cat in (CatCode.letter, CatCode.other):
-        if (char, cat) in literals_map:
-            terminal_token_type = literals_map[(char, cat)]
-        else:
-            terminal_token_type = other_literal_type
+    if cat in (CatCode.letter, CatCode.other) and (char, cat) in literals_map:
+        terminal_token_type = literals_map[(char, cat)]
+    elif cat != CatCode.active and char in non_active_literals_map:
+        terminal_token_type = non_active_literals_map[char]
+    elif cat in (CatCode.letter, CatCode.other):
+        terminal_token_type = other_literal_type
     elif cat in category_map:
         terminal_token_type = category_map[cat]
     else:
