@@ -1,4 +1,4 @@
-from common import TerminalToken
+from common import TerminalToken, InternalToken
 from lexer import CatCode
 
 
@@ -56,6 +56,11 @@ category_map = {
 }
 
 
+unexpanded_cs_type = 'UNEXPANDED_CONTROL_SEQUENCE'
+unexpanded_one_char_cs_type = 'UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE'
+unexpanded_cs_types = (unexpanded_cs_type, unexpanded_one_char_cs_type)
+
+
 literal_types = tuple(literals_map.values())
 literal_types += tuple(non_active_literals_map.values())
 literal_types += (other_literal_type,)
@@ -83,4 +88,19 @@ def char_cat_pair_to_terminal_token(char_cat_pair_token):
     terminal_token_type = get_char_cat_pair_terminal_type(char_cat_pair_token)
     terminal_token = TerminalToken(type_=terminal_token_type,
                                    value=char_cat_pair_token)
+    return terminal_token
+
+
+def lex_token_to_unexpanded_terminal_token(lex_token):
+    # If we have a char-cat pair, we must type it to its terminal version,
+    if lex_token.type == 'CHAR_CAT_PAIR':
+        terminal_token = char_cat_pair_to_terminal_token(lex_token)
+    elif lex_token.type == 'CONTROL_SEQUENCE':
+        name = lex_token.value
+        type_ = (unexpanded_one_char_cs_type if len(name) == 1
+                 else unexpanded_cs_type)
+        # Convert to a primitive unexpanded control sequence.
+        terminal_token = TerminalToken(type_=type_, value=lex_token)
+    elif isinstance(lex_token, InternalToken):
+        terminal_token = lex_token
     return terminal_token

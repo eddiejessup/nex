@@ -1,5 +1,6 @@
 import logging
 
+from utils import post_mortem
 from reader import Reader, EndOfFile
 from lexer import Lexer
 from banisher import Banisher
@@ -12,10 +13,6 @@ ch.setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(ch)
-
-logger.warning('hihi')
-logger.info('hihi')
-logger.debug('hihi')
 
 # def test_reader():
 #     file_name = 'p.tex'
@@ -72,7 +69,7 @@ def test_parser():
     # result = parser.parse(file_name, lexer=lex_wrapper, debug=logger)
     for term_tok in result:
         print(term_tok)
-
+    post_mortem(lex_wrapper)
 
 if __name__ == '__main__':
     test_parser()

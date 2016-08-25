@@ -1,7 +1,7 @@
 import logging
 import yacc
-import operator
 
+from utils import post_mortem
 from common import Token, TerminalToken
 from lexer import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from reader import Reader, EndOfFile
@@ -701,9 +701,8 @@ def p_empty(p):
 
 # Error rule for syntax errors
 def p_error(p):
-    import pdb; pdb.set_trace()
     print("Syntax error in input!")
-
+    post_mortem(lex_wrapper)
 
 # Build the parser
 parser = yacc.yacc(debug=True)

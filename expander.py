@@ -1,4 +1,5 @@
-from common import Token, TerminalToken
+from common import Token, TerminalToken, InternalToken
+from tex_parameters import integer_parameters
 
 terminal_primitive_control_sequences_map = {
     'catcode': 'CAT_CODE',
@@ -27,8 +28,6 @@ terminal_primitive_control_sequences_map = {
     'outer': 'OUTER',
 
     'ifnum': 'IF_NUM',
-    'else': 'ELSE',
-    'fi': 'END_IF',
 }
 
 
@@ -45,6 +44,9 @@ short_hand_def_map = {
 terminal_primitive_control_sequences_map.update(short_hand_def_map)
 
 non_terminal_primitive_control_sequences_map = {
+    'else': 'ELSE',
+    'fi': 'END_IF',
+    'string': 'STRING',
 }
 
 primitive_control_sequences_map = dict(**terminal_primitive_control_sequences_map,
@@ -81,7 +83,7 @@ def parse_parameter_text(tokens):
                 # one or more non-parameter tokens [...]
                 else:
                     type_ = delim_param_type
-            t = Token(type_=type_, value=p_nr)
+            t = InternalToken(type_=type_, value=p_nr)
             p_nr += 1
         tokens_processed.append(t)
         i += 1
@@ -103,7 +105,7 @@ def parse_replacement_text(tokens):
                 raise NotImplementedError
             else:
                 p_nr = int(t_next.value.value['char'])
-                t = Token(type_='PARAM_NUMBER', value=p_nr)
+                t = InternalToken(type_='PARAM_NUMBER', value=p_nr)
         tokens_processed.append(t)
         i += 1
     return tokens_processed
@@ -129,6 +131,23 @@ def substitute_params_with_args(replace_text, arguments):
     return finished_text
 
 
+def make_primitive_macro_token(name, primitive_type, is_terminal):
+    value_token = Token(type_=primitive_type, value=name)
+    TokenCls = TerminalToken if is_terminal else InternalToken
+    primitive_token = TokenCls(type_=primitive_type,
+                               value=value_token)
+    def_text_token = Token(type_='definition_text',
+                           value={'parameter_text': [],
+                                  'replacement_text': [primitive_token]})
+    def_token = Token(type_='definition',
+                      value={'name': name,
+                             'text': def_text_token})
+    macro_token = Token(type_='macro',
+                        value={'prefixes': set(),
+                               'definition': def_token})
+    return macro_token
+
+
 class Expander(object):
 
     def __init__(self):
@@ -136,21 +155,18 @@ class Expander(object):
 
     def initialize_control_sequences(self):
         self.control_sequences = {}
-        for name, primitive_type in primitive_control_sequences_map.items():
-            value_token = Token(type_=primitive_type, value=name)
-            primitive_token = TerminalToken(type_=primitive_type,
-                                            value=value_token)
-            def_text_token = Token(type_='definition_text',
-                                   value={'parameter_text': [],
-                                          'replacement_text': [primitive_token]})
-            def_token = Token(type_='definition',
-                              value={'name': name,
-                                     'text': def_text_token})
-            macro_token = Token(type_='macro',
-                                value={'prefixes': set(),
-                                       'definition': def_token})
-            self.control_sequences[name] = macro_token
+        for name, primitive_type in terminal_primitive_control_sequences_map.items():
+            self.control_sequences[name] = make_primitive_macro_token(
+                name, primitive_type, is_terminal=True)
+        for name, primitive_type in non_terminal_primitive_control_sequences_map.items():
+            self.control_sequences[name] = make_primitive_macro_token(
+                name, primitive_type, is_terminal=False)
+        for parameter_name, value in integer_parameters.items():
+            parameter_token = Token(type_='parameter', value=value)
+            self.control_sequences[parameter_name] = parameter_token
 
+    # TODO: Since we handle internal parameters through this interface,
+    # this should probably be renamed.
     def expand_to_token_list(self, name, argument_text):
         if name in self.control_sequences:
             token = self.control_sequences[name]
@@ -162,6 +178,8 @@ class Expander(object):
                 replace_text = def_text_token.value['replacement_text']
                 finished_text = substitute_params_with_args(replace_text, arguments)
                 return finished_text
+            elif token.type == 'parameter':
+                return token
         else:
             import pdb; pdb.set_trace()
 

@@ -2,11 +2,14 @@ import logging
 from collections import deque
 from enum import Enum
 
-from common import Token, TerminalToken
+from common import Token, TerminalToken, InternalToken
 from utils import increasing_window
-from lexer import CatCode
-from typer import char_cat_pair_to_terminal_token
+from lexer import make_char_cat_token, make_control_sequence_token, CatCode
+from typer import (lex_token_to_unexpanded_terminal_token,
+                   unexpanded_cs_types, unexpanded_cs_type,
+                   unexpanded_one_char_cs_type)
 from expander import short_hand_def_map, get_nr_params, parse_parameter_text
+from condition_parser import condition_parser, dummy_lexer
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
@@ -15,9 +18,6 @@ composite_terminal_control_sequence_types = (
     'BALANCED_TEXT',
     'PARAMETER_TEXT',
 )
-unexpanded_cs_type = 'UNEXPANDED_CONTROL_SEQUENCE'
-unexpanded_one_char_cs_type = 'UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE'
-unexpanded_cs_types = (unexpanded_cs_type, unexpanded_one_char_cs_type)
 
 special_terminal_control_sequence_types = (
     composite_terminal_control_sequence_types + unexpanded_cs_types)
@@ -30,8 +30,7 @@ read_unexpanded_control_sequence_types = (
 read_unexpanded_control_sequence_types += tuple(set(short_hand_def_map.values()))
 
 if_types = ('IF_NUM',)
-
-message_types = ('MESSAGE', 'ERROR_MESSAGE')
+message_types = ('MESSAGE', 'ERROR_MESSAGE', 'WRITE')
 
 
 class ContextMode(Enum):
@@ -48,6 +47,12 @@ expanding_modes = (
 )
 
 
+def make_char_cat_term_token(char, cat):
+    char_lex_token = make_char_cat_token(char, cat)
+    char_term_token = lex_token_to_unexpanded_terminal_token(char_lex_token)
+    return char_term_token
+
+
 class Banisher(object):
 
     def __init__(self, lexer, expander):
@@ -57,7 +62,7 @@ class Banisher(object):
         self.input_tokens_stack = deque()
         # Output buffer.
         self.output_terminal_tokens_stack = deque()
-        self.context_mode = ContextMode.normal
+        self.context_mode_stack = []
 
         self._secret_terminal_list = []
 
@@ -79,18 +84,8 @@ class Banisher(object):
         return next_token
 
     def populate_input_stack(self):
-        fresh_lex_token = self._next_lex_token
-        # If we have a char-cat pair, we must type it to its terminal version,
-        if fresh_lex_token.type == 'CHAR_CAT_PAIR':
-            terminal_token = char_cat_pair_to_terminal_token(fresh_lex_token)
-        elif fresh_lex_token.type == 'CONTROL_SEQUENCE':
-            name = fresh_lex_token.value
-            type_ = (unexpanded_one_char_cs_type if len(name) == 1
-                     else unexpanded_cs_type)
-            # Convert to a primitive unexpanded control sequence.
-            terminal_token = TerminalToken(type_=type_, value=fresh_lex_token)
-        else:
-            import pdb; pdb.set_trace()
+        new_lex_token = self._next_lex_token
+        terminal_token = lex_token_to_unexpanded_terminal_token(new_lex_token)
         self.input_tokens_stack.append(terminal_token)
 
     def pop_next_input_token(self):
@@ -122,7 +117,23 @@ class Banisher(object):
             # ultimate escape route is to see a primitive token.)
             expanded_first_token = self.expander.expand_to_token_list(self.macro_name, self.argument_text)
             self.input_tokens_stack.extendleft(expanded_first_token[::-1])
-            self.context_mode = ContextMode.normal
+            self.pop_context()
+
+    def push_context(self, mode):
+        self.context_mode_stack.append(mode)
+
+    def pop_context(self):
+        if self.context_mode_stack:
+            return self.context_mode_stack.pop()
+        else:
+            return self.context_mode_stack
+
+    @property
+    def context_mode(self):
+        if self.context_mode_stack:
+            return self.context_mode_stack[-1]
+        else:
+            return ContextMode.normal
 
     def populate_output_stack(self):
         # To reduce my own confusion:
@@ -134,12 +145,11 @@ class Banisher(object):
         # But I might blur the line between these two sometimes.
 
         # A terminal token is simply a token that is accepted by the parser.
-
         # Might be a lex token, a primitive token or a terminal token.
         first_token = self.pop_next_input_token()
         type_ = first_token.type
         # print(first_token)
-        # print(self.context_mode)
+        # print(self.context_mode_stack)
         # print()
         if self.context_mode == ContextMode.reading_macro_arguments:
             self.argument_text.append(first_token)
@@ -148,7 +158,7 @@ class Banisher(object):
         # it, or add it as an un-expanded token, depending on the context.
         elif self.expanding_control_sequences and type_ in unexpanded_cs_types:
             name = first_token.value.value
-            self.context_mode = ContextMode.reading_macro_arguments
+            self.push_context(ContextMode.reading_macro_arguments)
             self.macro_name = name
             self.param_text = self.expander.expand_to_parameter_text(name)
             self.argument_text = []
@@ -164,7 +174,8 @@ class Banisher(object):
             balanced_text_token = self.get_balanced_text_token()
             # Put it on the input stack to be read again.
             self.input_tokens_stack.appendleft(balanced_text_token)
-            self.context_mode = ContextMode.normal
+            # Done with getting balanced text.
+            self.pop_context()
         elif self.context_mode == ContextMode.absorbing_parameter_text:
             if type_ == 'LEFT_BRACE':
                 parameter_text_template = parse_parameter_text(self.parameter_text_tokens)
@@ -173,15 +184,18 @@ class Banisher(object):
                 self.output_terminal_tokens_stack.append(parameter_text_token)
                 # Put the LEFT_BRACE back on the input stack.
                 self.input_tokens_stack.appendleft(first_token)
-                self.context_mode = ContextMode.awaiting_balanced_text_start
+                # Done absorbing parameter text.
+                self.pop_context()
+                # Now get the replacement text.
+                self.push_context(ContextMode.awaiting_balanced_text_start)
             else:
                 self.parameter_text_tokens.append(first_token)
         elif (self.context_mode == ContextMode.awaiting_unexpanded_cs and
               type_ in unexpanded_cs_types):
             # Put the unexpanded control sequence on the output stack.
             self.output_terminal_tokens_stack.append(first_token)
-            # Now go back to ordinary mode.
-            self.context_mode = ContextMode.normal
+            # Done with getting an un-expanded control sequence.
+            self.pop_context()
         elif type_ in read_unexpanded_control_sequence_types:
             # Get an unexpanded control sequence token and add it to the
             # output stack, along with the first token.
@@ -189,15 +203,14 @@ class Banisher(object):
             self.output_terminal_tokens_stack.append(first_token)
             self.output_terminal_tokens_stack.append(next_token)
             if type_ == 'DEF':
-                self.context_mode = ContextMode.absorbing_parameter_text
+                self.push_context(ContextMode.absorbing_parameter_text)
                 self.parameter_text_tokens = []
             elif type_ == 'LET':
-                self.context_mode = ContextMode.awaiting_unexpanded_cs
+                self.push_context(ContextMode.awaiting_unexpanded_cs)
         elif type_ in message_types:
             self.output_terminal_tokens_stack.append(first_token)
-            self.context_mode = ContextMode.awaiting_balanced_text_start
+            self.push_context(ContextMode.awaiting_balanced_text_start)
         elif type_ in if_types:
-            from condition_parser import condition_parser, dummy_lexer
             # We will be messing with the output stack lots, so just
             # save anything current, empty the stack, and restore it at the
             # end.
@@ -310,8 +323,32 @@ class Banisher(object):
                 del self.output_terminal_tokens_stack[i_to_del]
 
             # Restore the old things on the output stack.
+            # TODO: check, this might be backwards.
             self.output_terminal_tokens_stack.extendleft(saved_output_stack)
-
+        elif type_ == 'STRING':
+            next_token = self.pop_next_input_token()
+            tokens = []
+            if next_token.type in unexpanded_cs_types:
+                chars = list(next_token.value.value)
+                # Internal instruction to produce an escape character token.
+                escape_char_token = InternalToken(type_='ESCAPE_CHAR',
+                                                  value=None)
+                tokens += [escape_char_token]
+            else:
+                char = next_token.value.value['char']
+                chars = [char]
+            char_term_tokens = [make_char_cat_term_token(c, CatCode.other)
+                                for c in chars]
+            tokens += char_term_tokens
+            self.input_tokens_stack.extendleft(tokens[::-1])
+        elif type_ == 'ESCAPE_CHAR':
+            escape_char_param_token = self.expander.expand_to_token_list('escapechar',
+                                                                         argument_text=[])
+            escape_char_code = escape_char_param_token.value
+            escape_char = chr(escape_char_code)
+            escape_char_token = make_char_cat_term_token(escape_char,
+                                                         CatCode.other)
+            self.output_terminal_tokens_stack.append(escape_char_token)
         # Just some semantic bullshit, stick it on the output stack
         # for the interpreter to deal with.
         else:

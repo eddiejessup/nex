@@ -6,8 +6,7 @@ from common import Token
 from registers import registers
 
 from expander import terminal_primitive_control_sequences_map, short_hand_def_map
-from typer import literal_types
-from banisher import special_terminal_control_sequence_types
+from typer import literal_types, unexpanded_cs_types
 
 
 short_hand_def_to_token_map = {
@@ -20,7 +19,7 @@ tokens = ()
 tokens += tuple(terminal_primitive_control_sequences_map.values())
 tokens += tuple(short_hand_def_to_token_map.values())
 tokens += tuple(literal_types)
-tokens += tuple(special_terminal_control_sequence_types)
+tokens += tuple(unexpanded_cs_types)
 tokens = tuple(set(tokens))
 
 logger = logging.getLogger(__name__)
