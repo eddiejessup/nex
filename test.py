@@ -67,9 +67,9 @@ def test_parser():
     file_name = 'p.tex'
     result = parser.parse(file_name, lexer=lex_wrapper)
     # result = parser.parse(file_name, lexer=lex_wrapper, debug=logger)
+    post_mortem(lex_wrapper)
     for term_tok in result:
         print(term_tok)
-    post_mortem(lex_wrapper)
 
 if __name__ == '__main__':
     test_parser()

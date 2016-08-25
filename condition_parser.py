@@ -130,43 +130,11 @@ def p_character(p):
     p[0] = Token(type_='character', value=p[1].value)
 
 
-def p_control_sequence(p):
-    '''
-    control_sequence : UNEXPANDED_CONTROL_SEQUENCE
-                     | UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE
-    '''
-    p[0] = Token(type_=p[1].type, value={'name': p[1].value})
-
-
-def p_control_sequence_active(p):
-    '''
-    control_sequence : ACTIVE_CHARACTER
-    '''
-    # We will prefix active characters with @.
-    # This really needs changing, but will do for now.
-    p[0] = p[1]
-    p[0].value['name'] = p[0].value['char']
-
-
-def p_integer_variable_count(p):
-    '''
-    integer_variable : count_register
-    '''
-    p[0] = p[1]
-
-
 def p_count_register(p):
     '''
     count_register : COUNT number
     '''
     p[0] = Token(type_='count', value=p[2]['size'])
-
-
-def p_integer_variable_count_def(p):
-    '''
-    integer_variable : COUNT_DEF_TOKEN
-    '''
-    p[0] = Token(type_='count', value=p[1])
 
 
 def split_at(s, inds):

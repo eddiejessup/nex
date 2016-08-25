@@ -11,7 +11,7 @@ from expander import Expander, parse_replacement_text
 from registers import registers
 
 from expander import terminal_primitive_control_sequences_map, short_hand_def_map
-from typer import literal_types
+from typer import literal_types, PhysicalUnit, units_in_scaled_points
 from banisher import special_terminal_control_sequence_types
 
 
@@ -58,6 +58,8 @@ def evaluate_size(size_token):
             raise NotImplementedError
         elif size_token.type == 'count':
             return registers.count[size_token.value]
+        elif size_token.type == 'dimen':
+            return registers.dimen[size_token.value]
         else:
             import pdb; pdb.set_trace()
     else:
@@ -71,6 +73,22 @@ def evaluate_number(number_token):
     if sign == '-':
         number *= -1
     return number
+
+
+def evaluate_dimen(dimen_token):
+    size_token, sign = dimen_token['size'], dimen_token['sign']
+    number_of_units_token = size_token.value['factor']
+    unit_token = size_token.value['unit']
+    number_of_units = evaluate_size(number_of_units_token)
+    unit, is_true_unit = unit_token['unit'], unit_token['true']
+    number_of_scaled_points = units_in_scaled_points[unit] * number_of_units
+    # TODO: deal with 'true' and 'not-true' scales properly
+    mag_parameter = 1000.0
+    if is_true_unit:
+        number_of_scaled_points *= 1000.0 / mag_parameter
+    if sign == '-':
+        number_of_scaled_points *= -1
+    return number_of_scaled_points
 
 
 precedence = (
@@ -289,7 +307,7 @@ def p_simple_assignment(p):
     p[0] = p[1]
 
 
-def p_variable_assignment(p):
+def p_variable_assignment_integer(p):
     '''
     variable_assignment : integer_variable equals number
     '''
@@ -297,6 +315,17 @@ def p_variable_assignment(p):
     value = evaluate_number(p[3])
     if p[1].type == 'count':
         registers.count[p[1].value] = value
+    p[0] = Token(type_='variable_assignment',
+                 value={'variable': p[1], 'value': p[3]})
+
+
+def p_variable_assignment_dimen(p):
+    '''
+    variable_assignment : dimen_variable equals dimen
+    '''
+    value = evaluate_dimen(p[3])
+    if p[1].type == 'dimen':
+        registers.dimen[p[1].value] = value
     p[0] = Token(type_='variable_assignment',
                  value={'variable': p[1], 'value': p[3]})
 
@@ -344,6 +373,47 @@ def p_non_active_uncased_y(p):
     pass
 
 
+def p_non_active_uncased_t(p):
+    '''
+    non_active_uncased_t : NON_ACTIVE_t
+                         | NON_ACTIVE_T
+    '''
+    pass
+
+
+def p_non_active_uncased_r(p):
+    '''
+    non_active_uncased_r : NON_ACTIVE_r
+                         | NON_ACTIVE_R
+    '''
+    pass
+
+
+def p_non_active_uncased_u(p):
+    '''
+    non_active_uncased_u : NON_ACTIVE_u
+                         | NON_ACTIVE_U
+    '''
+    pass
+
+
+def p_non_active_uncased_e(p):
+    '''
+    non_active_uncased_e : NON_ACTIVE_e
+                         | NON_ACTIVE_E
+                         | E
+    '''
+    pass
+
+
+def p_non_active_uncased_p(p):
+    '''
+    non_active_uncased_p : NON_ACTIVE_p
+                         | NON_ACTIVE_P
+    '''
+    pass
+
+
 def p_integer_variable_count(p):
     '''
     integer_variable : count_register
@@ -363,6 +433,13 @@ def p_integer_variable_count_def(p):
     integer_variable : COUNT_DEF_TOKEN
     '''
     p[0] = Token(type_='count', value=p[1])
+
+
+def p_dimen_variable_dimen_def(p):
+    '''
+    dimen_variable : DIMEN_DEF_TOKEN
+    '''
+    p[0] = Token(type_='dimen', value=p[1])
 
 
 def p_short_hand_definition(p):
@@ -492,6 +569,13 @@ def p_number(p):
     p[0] = {'sign': p[1], 'size': p[2]}
 
 
+def p_dimen(p):
+    '''
+    dimen : optional_signs unsigned_dimen
+    '''
+    p[0] = {'sign': p[1], 'size': p[2]}
+
+
 def p_unsigned_number(p):
     '''
     unsigned_number : normal_integer
@@ -500,8 +584,26 @@ def p_unsigned_number(p):
     p[0] = p[1]
 
 
-def get_constant(constant):
-    return int(constant['digits'], base=constant['base'])
+def p_unsigned_dimen(p):
+    '''
+    unsigned_dimen : normal_dimen
+    '''
+    # | coerced_dimen
+    p[0] = p[1]
+
+
+def get_integer_constant(collection):
+    chars = [t.value['char'] for t in collection.digits]
+    s = ''.join(chars)
+    return int(s, base=collection.base)
+
+
+def get_real_decimal_constant(collection):
+    # Our function assumes the digits are in base 10.
+    assert collection.base == 10
+    chars = [t.value['char'] for t in collection.digits]
+    s = ''.join(chars)
+    return float(s)
 
 
 def p_normal_integer_internal_integer(p):
@@ -511,11 +613,25 @@ def p_normal_integer_internal_integer(p):
     p[0] = p[1]
 
 
+def p_normal_dimen_internal_dimen(p):
+    '''
+    normal_dimen : internal_dimen
+    '''
+    p[0] = p[1]
+
+
 def p_internal_integer_short_hand_token(p):
     '''
     internal_integer : CHAR_DEF_TOKEN
                      | MATH_CHAR_DEF_TOKEN
                      | COUNT_DEF_TOKEN
+    '''
+    p[0] = p[1]
+
+
+def p_internal_dimen_short_hand_token(p):
+    '''
+    internal_dimen : DIMEN_DEF_TOKEN
     '''
     p[0] = p[1]
 
@@ -532,7 +648,91 @@ def p_normal_integer_integer(p):
     '''
     normal_integer : integer_constant one_optional_space
     '''
-    p[0] = get_constant(p[1])
+    p[0] = get_integer_constant(p[1])
+
+
+def p_normal_dimen_explicit(p):
+    '''
+    normal_dimen : factor unit_of_measure
+    '''
+    p[0] = Token(type_='normal_dimen',
+                 value={'factor': p[1], 'unit': p[2]})
+
+
+def p_factor_integer(p):
+    '''
+    factor : normal_integer
+    '''
+    p[0] = p[1]
+
+
+def p_factor_decimal_constant(p):
+    '''
+    factor : decimal_constant
+    '''
+    p[0] = get_real_decimal_constant(p[1])
+
+
+def p_decimal_constant_comma(p):
+    '''
+    decimal_constant : COMMA
+    '''
+    p[0] = DigitCollection(base=10)
+
+
+def p_decimal_constant_point(p):
+    '''
+    decimal_constant : POINT
+    '''
+    p[0] = DigitCollection(base=10)
+    p[0].digits = [p[1]]
+
+
+def p_decimal_constant_prepend(p):
+    '''
+    decimal_constant : digit decimal_constant
+    '''
+    p[0] = p[2]
+    p[0].digits = [p[1]] + p[0].digits
+
+
+def p_decimal_constant_append(p):
+    '''
+    decimal_constant : decimal_constant digit
+    '''
+    p[0] = p[1]
+    p[0].digits = p[0].digits + [p[2]]
+
+
+def p_unit_of_measure(p):
+    '''
+    unit_of_measure : optional_true physical_unit one_optional_space
+    '''
+    p[0] = {'unit': p[2], 'true': bool(p[1])}
+
+
+def p_optional_true(p):
+    '''
+    optional_true : true
+                  | empty
+    '''
+    # import pdb; pdb.set_trace()
+    # TODO
+    p[0] = p[1]
+
+
+def p_true(p):
+    '''
+    true : non_active_uncased_t non_active_uncased_r non_active_uncased_u non_active_uncased_e
+    '''
+    p[0] = True
+
+
+def p_physical_unit(p):
+    '''
+    physical_unit : non_active_uncased_p non_active_uncased_t
+    '''
+    p[0] = PhysicalUnit.point
 
 
 def p_normal_integer_weird_base(p):
@@ -540,7 +740,7 @@ def p_normal_integer_weird_base(p):
     normal_integer : SINGLE_QUOTE octal_constant one_optional_space
                    | DOUBLE_QUOTE hexadecimal_constant one_optional_space
     '''
-    p[0] = get_constant(p[2])
+    p[0] = get_integer_constant(p[2])
 
 
 def p_normal_integer_character(p):
@@ -572,18 +772,14 @@ def p_character_token_character(p):
     p[0] = p[1]
 
 
-def process_digits(p, base):
-    new_digit = p[1].value['char']
+def process_integer_digits(p, base):
     if len(p) > 2:
-        constant = p[2]
-        # We work right-to-left, so the new digit should be added on the left.
-        constant['digits'] = new_digit + constant['digits']
+        collection = p[2]
     else:
-        constant = {
-            'base': base,
-            'digits': new_digit
-        }
-    return constant
+        collection = DigitCollection(base=base)
+    # We work right-to-left, so the new digit should be added on the left.
+    collection.digits = [p[1]] + collection.digits
+    return collection
 
 
 def p_hexadecimal_constant(p):
@@ -591,7 +787,7 @@ def p_hexadecimal_constant(p):
     hexadecimal_constant : hexadecimal_digit
                          | hexadecimal_digit hexadecimal_constant
     '''
-    p[0] = process_digits(p, base=16)
+    p[0] = process_integer_digits(p, base=16)
 
 
 def p_integer_constant(p):
@@ -599,7 +795,7 @@ def p_integer_constant(p):
     integer_constant : digit
                      | digit integer_constant
     '''
-    p[0] = process_digits(p, base=10)
+    p[0] = process_integer_digits(p, base=10)
 
 
 def p_octal_constant(p):
@@ -607,7 +803,7 @@ def p_octal_constant(p):
     octal_constant : octal_digit
                    | octal_digit octal_constant
     '''
-    p[0] = process_digits(p, base=8)
+    p[0] = process_integer_digits(p, base=8)
 
 
 def p_hexadecimal_digit(p):

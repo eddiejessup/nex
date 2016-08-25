@@ -1,6 +1,30 @@
+from enum import Enum
 from common import TerminalToken, InternalToken
 from lexer import CatCode
 
+
+class PhysicalUnit(Enum):
+    point = 'pt'
+    pica = 'pc'
+    inch = 'in'
+    big_point = 'bp'
+    centimetre = 'cm'
+    millimetre = 'mm'
+    didot_point = 'dd'
+    cicero = 'cc'
+    scaled_point = 'sp'
+
+
+units_in_scaled_points = {}
+units_in_scaled_points[PhysicalUnit.scaled_point] = 1
+units_in_scaled_points[PhysicalUnit.point] = 65536 * units_in_scaled_points[PhysicalUnit.scaled_point]
+units_in_scaled_points[PhysicalUnit.pica] = 12 * units_in_scaled_points[PhysicalUnit.point]
+units_in_scaled_points[PhysicalUnit.inch] = 72.27 * units_in_scaled_points[PhysicalUnit.point]
+units_in_scaled_points[PhysicalUnit.big_point] = (1.0 / 72.0) * units_in_scaled_points[PhysicalUnit.inch]
+units_in_scaled_points[PhysicalUnit.centimetre] = (1.0 / 2.54) * units_in_scaled_points[PhysicalUnit.inch]
+units_in_scaled_points[PhysicalUnit.millimetre] = 0.1 * units_in_scaled_points[PhysicalUnit.centimetre]
+units_in_scaled_points[PhysicalUnit.didot_point] = (1238.0 / 1157.0) * units_in_scaled_points[PhysicalUnit.point]
+units_in_scaled_points[PhysicalUnit.cicero] = 12 * units_in_scaled_points[PhysicalUnit.didot_point]
 
 literals_map = {
     ('<', CatCode.other): 'LESS_THAN',
@@ -36,13 +60,31 @@ literals_map = {
     ('\'', CatCode.other): 'SINGLE_QUOTE',
     ('"', CatCode.other): 'DOUBLE_QUOTE',
     ('`', CatCode.other): 'BACKTICK',
+
+    ('.', CatCode.other): 'POINT',
+    (',', CatCode.other): 'COMMA',
 }
 
 non_active_literals_map = {
+    # by
     'b': 'NON_ACTIVE_b',
     'B': 'NON_ACTIVE_B',
     'y': 'NON_ACTIVE_y',
     'Y': 'NON_ACTIVE_Y',
+
+    # true
+    't': 'NON_ACTIVE_t',
+    'T': 'NON_ACTIVE_T',
+    'r': 'NON_ACTIVE_r',
+    'R': 'NON_ACTIVE_R',
+    'u': 'NON_ACTIVE_u',
+    'U': 'NON_ACTIVE_U',
+    'e': 'NON_ACTIVE_e',
+    'E': 'NON_ACTIVE_E',
+
+    # pt
+    'p': 'NON_ACTIVE_p',
+    'P': 'NON_ACTIVE_P',
 }
 
 other_literal_type = 'MISC_CHAR_CAT_PAIR'
