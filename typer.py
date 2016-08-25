@@ -3,6 +3,9 @@ from lexer import CatCode
 
 
 literals_map = {
+    ('<', CatCode.other): 'LESS_THAN',
+    ('>', CatCode.other): 'GREATER_THAN',
+
     ('=', CatCode.other): 'EQUALS',
     ('+', CatCode.other): 'PLUS_SIGN',
     ('-', CatCode.other): 'MINUS_SIGN',

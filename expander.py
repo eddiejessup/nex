@@ -1,12 +1,6 @@
 from common import Token, TerminalToken
 
-
-primitive_control_sequences = (
-    'relax',
-)
-
-
-primitive_control_sequences_map = {
+terminal_primitive_control_sequences_map = {
     'catcode': 'CAT_CODE',
     'mathcode': 'MATH_CODE',
     'uccode': 'UPPER_CASE_CODE',
@@ -25,12 +19,18 @@ primitive_control_sequences_map = {
     'immediate': 'IMMEDIATE',
 
     'message': 'MESSAGE',
+    'errmessage': 'ERROR_MESSAGE',
     'write': 'WRITE',
 
     'global': 'GLOBAL',
     'long': 'LONG',
     'outer': 'OUTER',
+
+    'ifnum': 'IF_NUM',
+    'else': 'ELSE',
+    'fi': 'END_IF',
 }
+
 
 short_hand_def_map = {
     'chardef': 'CHAR_DEF',
@@ -41,7 +41,76 @@ short_hand_def_map = {
     'muskipdef': 'MU_SKIP_DEF',
     'toksdef': 'TOKS_DEF',
 }
-primitive_control_sequences_map.update(short_hand_def_map)
+
+terminal_primitive_control_sequences_map.update(short_hand_def_map)
+
+non_terminal_primitive_control_sequences_map = {
+}
+
+primitive_control_sequences_map = dict(**terminal_primitive_control_sequences_map,
+                                       **non_terminal_primitive_control_sequences_map)
+
+undelim_param_type = 'UNDELIMITED_PARAM'
+delim_param_type = 'DELIMITED_PARAM'
+param_types = (undelim_param_type, delim_param_type)
+
+
+def parse_parameter_text(tokens):
+    p_nr = 1
+    i = 0
+    tokens_processed = []
+    while i < len(tokens) - 1:
+        t = tokens[i]
+        if t.type == 'PARAMETER':
+            i += 1
+            t_next = tokens[i]
+            if int(t_next.value.value['char']) != p_nr:
+                raise ValueError
+            # How does TeX determine where an argument stops, you ask. Answer:
+            # There are two cases.
+            # An undelimited parameter is followed immediately in the parameter
+            # text by a parameter token, or it occurs at the very end of the
+            # parameter text; [...]
+            if i == len(tokens) - 1:
+                type_ = undelim_param_type
+            else:
+                t_after = tokens[i + 1]
+                if t_after.type == 'PARAMETER':
+                    type_ = undelim_param_type
+                # A delimited parameter is followed in the parameter text by
+                # one or more non-parameter tokens [...]
+                else:
+                    type_ = delim_param_type
+            t = Token(type_=type_, value=p_nr)
+            p_nr += 1
+        tokens_processed.append(t)
+        i += 1
+    return tokens_processed
+
+
+def parse_replacement_text(tokens):
+    i = 0
+    tokens_processed = []
+    while i < len(tokens):
+        t = tokens[i]
+        if t.type == 'PARAMETER':
+            i += 1
+            t_next = tokens[i]
+            # [...] each # must be followed by a digit that appeared after # in
+            # the parameter text, or else the # should be followed by another
+            # #.
+            if t_next.type == 'PARAMETER':
+                raise NotImplementedError
+            else:
+                p_nr = int(t_next.value.value['char'])
+                t = Token(type_='PARAM_NUMBER', value=p_nr)
+        tokens_processed.append(t)
+        i += 1
+    return tokens_processed
+
+
+def get_nr_params(param_text):
+    return sum(t.type in param_types for t in param_text)
 
 
 def parse_argument_text(argument_text, parameter_text):
@@ -83,7 +152,6 @@ class Expander(object):
             self.control_sequences[name] = macro_token
 
     def expand_to_token_list(self, name, argument_text):
-        # if argument_text: import pdb; pdb.set_trace()
         if name in self.control_sequences:
             token = self.control_sequences[name]
             if token.type == 'macro':

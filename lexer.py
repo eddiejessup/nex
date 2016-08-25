@@ -2,14 +2,14 @@ from collections import namedtuple
 import string
 from string import ascii_letters, ascii_lowercase, ascii_uppercase
 from enum import Enum
-import logging
+# import logging
 
 from reader import EndOfFile
 from common import Token, ascii_characters
 
 
-logger = logging.getLogger(__name__)
-logger.setLevel('DEBUG')
+# logger = logging.getLogger(__name__)
+# logger.setLevel('DEBUG')
 
 cat_codes = [
     'escape',  # 0
@@ -225,16 +225,16 @@ class Lexer(object):
 
     def process_next_character(self):
         char, cat = self.chomp_next_char_with_trio()
-        logger.debug('Chomped {}_{}'.format(char, cat))
+        # logger.debug('Chomped {}_{}'.format(char, cat))
         if cat == CatCode.comment:
-            logger.info('Comment')
+            # logger.info('Comment')
             while self.chomp_next_char()[1] != CatCode.end_of_line:
-                logger.debug('Chomped comment character {}_{}'.format(*self.cur_char))
+                # logger.debug('Chomped comment character {}_{}'.format(*self.cur_char))
                 pass
-            logger.debug('Chomped end_of_line in comment')
+            # logger.debug('Chomped end_of_line in comment')
             self.reading_state = ReadingState.line_begin
         elif cat == CatCode.escape:
-            logger.debug('Chomped escape character {}_{}'.format(char, cat))
+            # logger.debug('Chomped escape character {}_{}'.format(char, cat))
             char, cat = self.chomp_next_char_with_trio()
             control_sequence_chars = [char]
             # If non-letter, have a control sequence of that single character.
@@ -263,7 +263,7 @@ class Lexer(object):
                 self.reading_state = ReadingState.line_middle
             control_sequence_name = ''.join(control_sequence_chars)
             return Token(type_='CONTROL_SEQUENCE', value=control_sequence_name)
-            logger.debug('Got control sequence {}'.format(control_sequence_name))
+            # logger.debug('Got control sequence {}'.format(control_sequence_name))
         elif cat in tokenise_cats:
             token = Token(type_='CHAR_CAT_PAIR',
                           value={'char': char, 'cat': cat})

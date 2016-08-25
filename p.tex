@@ -216,11 +216,11 @@
 \skipdef\skip@=0
 \toksdef\toks@=0
 
-% Now, we define \newcount, \newbox, etc. so that you can say \newcount\foo
-% and \foo will be defined (with \countdef) to be the next counter.
-% To find out which counter \foo is, you can look at \allocationnumber.
-% Since there's no \boxdef command, \chardef is used to define a \newbox,
-% \newinsert, \newfam, and so on.
+% % Now, we define \newcount, \newbox, etc. so that you can say \newcount\foo
+% % and \foo will be defined (with \countdef) to be the next counter.
+% % To find out which counter \foo is, you can look at \allocationnumber.
+% % Since there's no \boxdef command, \chardef is used to define a \newbox,
+% % \newinsert, \newfam, and so on.
 
 \outer\def\newcount{\alloc@0\count\countdef\insc@unt}
 \outer\def\newdimen{\alloc@1\dimen\dimendef\insc@unt}
@@ -238,7 +238,9 @@
   \ch@ck#1#4#2% make sure there's still room
   \allocationnumber=\count1#1%
   \global#3#5=\allocationnumber
-  \wlog{\string#5=\string#2\the\allocationnumber}}
+  % \wlog{\string#5=\string#2\the\allocationnumber}
+  % \immediate\write\m@ne{\string#5=\string#2\the\allocationnumber}
+}
 \outer\def\newinsert#1{\global\advance\insc@unt by\m@ne
   \ch@ck0\insc@unt\count
   \ch@ck1\insc@unt\dimen
@@ -250,11 +252,22 @@
 \def\ch@ck#1#2#3{\ifnum\count1#1<#2%
   \else\errmessage{No room for a new #3}\fi}
 
-% Here are some examples of allocation.
-\newdimen\maxdimen \maxdimen=16383.99999pt % the largest legal <dimen>
-% \newskip\hideskip \hideskip=-1000pt plus 1fill % negative but can grow
-% \newskip\centering \centering=0pt plus 1000pt minus 1000pt
-% \newdimen\p@ \p@=1pt % this saves macro space and time
-% \newdimen\z@ \z@=0pt % can be used both for 0pt and 0
-% \newskip\z@skip \z@skip=0pt plus0pt minus0pt
-% \newbox\voidb@x % permanently void box register
+% % Here are some examples of allocation.
+
+% \newdimen\maxdimen
+
+% % % \newskip\hideskip \hideskip=-1000pt plus 1fill % negative but can grow
+% % % \newskip\centering \centering=0pt plus 1000pt minus 1000pt
+% % % \newdimen\p@ \p@=1pt % this saves macro space and time
+% % % \newdimen\z@ \z@=0pt % can be used both for 0pt and 0
+% % % \newskip\z@skip \z@skip=0pt plus0pt minus0pt
+% % % \newbox\voidb@x % permanently void box register
+% \let\elsy=\else
+% \def\elsi{\insc@unt\else}
+% \ifnum\count11<\insc@unt\else\errmessage{No room for a new dimen}\fi
+% \ifnum\count11<\elsi\errmessage{No room for a new dimen}\fi
+
+\alloc@1\dimen\dimendef\insc@unt\maxdimen
+
+% % % \advance\count11by1
+% % % \dimendef\maxdimen=\allocationnumber

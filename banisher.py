@@ -3,14 +3,15 @@ from collections import deque
 from enum import Enum
 
 from common import Token, TerminalToken
+from utils import increasing_window
 from lexer import CatCode
 from typer import char_cat_pair_to_terminal_token
-from expander import short_hand_def_map
+from expander import short_hand_def_map, get_nr_params, parse_parameter_text
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
 
-special_control_sequence_types = (
+composite_terminal_control_sequence_types = (
     'BALANCED_TEXT',
     'PARAMETER_TEXT',
 )
@@ -18,18 +19,19 @@ unexpanded_cs_type = 'UNEXPANDED_CONTROL_SEQUENCE'
 unexpanded_one_char_cs_type = 'UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE'
 unexpanded_cs_types = (unexpanded_cs_type, unexpanded_one_char_cs_type)
 
-undelim_param_type = 'UNDELIMITED_PARAM'
-delim_param_type = 'DELIMITED_PARAM'
-param_types = (undelim_param_type, delim_param_type)
+special_terminal_control_sequence_types = (
+    composite_terminal_control_sequence_types + unexpanded_cs_types)
 
-special_control_sequence_types += unexpanded_cs_types
-
-read_control_sequence_name_types = (
+read_unexpanded_control_sequence_types = (
     'DEF',
     'LET',
     'BACKTICK',
 )
-read_control_sequence_name_types += tuple(set(short_hand_def_map.values()))
+read_unexpanded_control_sequence_types += tuple(set(short_hand_def_map.values()))
+
+if_types = ('IF_NUM',)
+
+message_types = ('MESSAGE', 'ERROR_MESSAGE')
 
 
 class ContextMode(Enum):
@@ -57,6 +59,8 @@ class Banisher(object):
         self.output_terminal_tokens_stack = deque()
         self.context_mode = ContextMode.normal
 
+        self._secret_terminal_list = []
+
     @property
     def _next_lex_token(self):
         return self.lexer.next_token
@@ -71,6 +75,7 @@ class Banisher(object):
             self.populate_output_stack()
         logger.debug(self.output_terminal_tokens_stack)
         next_token = self.output_terminal_tokens_stack.popleft()
+        self._secret_terminal_list.append(next_token)
         return next_token
 
     def populate_input_stack(self):
@@ -133,6 +138,9 @@ class Banisher(object):
         # Might be a lex token, a primitive token or a terminal token.
         first_token = self.pop_next_input_token()
         type_ = first_token.type
+        # print(first_token)
+        # print(self.context_mode)
+        # print()
         if self.context_mode == ContextMode.reading_macro_arguments:
             self.argument_text.append(first_token)
             self.check_macro_argument_text()
@@ -174,7 +182,7 @@ class Banisher(object):
             self.output_terminal_tokens_stack.append(first_token)
             # Now go back to ordinary mode.
             self.context_mode = ContextMode.normal
-        elif type_ in read_control_sequence_name_types:
+        elif type_ in read_unexpanded_control_sequence_types:
             # Get an unexpanded control sequence token and add it to the
             # output stack, along with the first token.
             next_token = self.pop_next_input_token()
@@ -185,68 +193,126 @@ class Banisher(object):
                 self.parameter_text_tokens = []
             elif type_ == 'LET':
                 self.context_mode = ContextMode.awaiting_unexpanded_cs
-        elif type_ == 'MESSAGE':
+        elif type_ in message_types:
             self.output_terminal_tokens_stack.append(first_token)
             self.context_mode = ContextMode.awaiting_balanced_text_start
+        elif type_ in if_types:
+            from condition_parser import condition_parser, dummy_lexer
+            # We will be messing with the output stack lots, so just
+            # save anything current, empty the stack, and restore it at the
+            # end.
+            saved_output_stack = self.output_terminal_tokens_stack.copy()
+            self.output_terminal_tokens_stack = deque([first_token])
+            # Get enough tokens to evaluate condition. Populating might add
+            # more tokens than are needed to evaluate the condition, so we need
+            # to add output tokens, then find the longest input sequence that
+            # will parse, and drop that input sequence from the stack, as we
+            # only need it for the condition.
+            # We know to stop adding tokens when we see a switch from not
+            # parsing, to parsing, to not parsing again.
+            while True:
+                # TODO: isn't this thing actually a queue, not a stack?
+                # (Entails lots of renaming.)
+                self.populate_output_stack()
+                have_parsed = False
+                input_string = list(self.output_terminal_tokens_stack)
+                inputs_partial = increasing_window(input_string)
+                for i_max, input_partial in enumerate(inputs_partial):
+                    try:
+                        is_true = condition_parser.parse(input_partial,
+                                                         lexer=dummy_lexer)
+                    except (ValueError, StopIteration):
+                        if have_parsed:
+                            break
+                    else:
+                        have_parsed = True
+                # If we try all parse strings, and either never can parse, or
+                # do not switch back to an invalid parse, then run again with
+                # more tokens.
+                else:
+                    continue
+                # If we have broken from the loop, we have got the no-parse to
+                # parse to no-parse behaviour we want, and we can use 'i'
+                # to get the longest-parsing string.
+                break
+            # Get rid of the condition tokens, as we are done with them,
+            # and the (main) parser will be confused by them.
+            # Minus 1 because we find the first string *not* to parse, meaning
+            # we have some extra fluff.
+            for i in range(i_max - 1):
+                self.output_terminal_tokens_stack.popleft()
+
+            # Now get the body of the condition text.
+            # TeXbook:
+            # "Expansion is suppressed at the following times:
+            # [...]
+            # When tokens are being skipped because conditional text is
+            # being ignored."
+            # From testing, the above does not seem to hold, so I am going
+            # to carry on expansion.
+            while True:
+                nr_conditions = 1
+                # This is very wasteful, because we check the same tokens
+                # over and over, but it saves us worrying about stuff that
+                # is already on the input stack from before.
+                i_else = None
+                # for i, t in enumerate(self.input_tokens_stack):
+                for i, t in enumerate(self.output_terminal_tokens_stack):
+                    print(t)
+                    # Because we are not expanding, I guess we must do this?
+                    # Seems messy.
+                    if t.type in if_types:
+                        nr_conditions += 1
+                    elif t.type == 'END_IF':
+                        nr_conditions -= 1
+                    # If we are at the pertinent if-nesting level, then
+                    # a condition block delimiter should be kept track of.
+                    # We only keep one delimiter here; fuck ifcase, we will
+                    # handle that later.
+                    if nr_conditions == 1 and t.type in ('ELSE', 'OR'):
+                        i_else = i
+                    if nr_conditions == 0:
+                        break
+                # If we do not get to the end of the if,
+                # add a token and go again.
+                else:
+                    self.populate_output_stack()
+                    continue
+                break
+            i_end_if = i
+
+            # Now we need to strip the skipped block.
+            # In all cases we will drop the END_IF; its work is done.
+            # We never read past this, so it will not mess up indexing.
+            del self.output_terminal_tokens_stack[i_end_if]
+            # Similar to removing the condition tokens, drop the input tokens
+            # in the truth-ey or false-ey (else) block.
+            if is_true:
+                # If we have an ELSE, then we drop from that, inclusive, until
+                # the END_IF, exclusive.
+                i_to_del = i_else
+                if i_else is not None:
+                    range_to_del = range(i_else, i_end_if)
+                # Otherwise, we do nothing.
+                else:
+                    range_to_del = range(0)
+            else:
+                # If we have an ELSE, then we drop until that, inclusive.
+                i_to_del = 0
+                if i_else is not None:
+                    range_to_del = range(i_else + 1)
+                # Otherwise, we drop until the END_IF, exclusive.
+                else:
+                    range_to_del = range(i_end_if)
+            # Note that we always del at the same index, because the indices will
+            # shift when we do a del.
+            for i in range_to_del:
+                del self.output_terminal_tokens_stack[i_to_del]
+
+            # Restore the old things on the output stack.
+            self.output_terminal_tokens_stack.extendleft(saved_output_stack)
+
         # Just some semantic bullshit, stick it on the output stack
         # for the interpreter to deal with.
         else:
             self.output_terminal_tokens_stack.append(first_token)
-
-
-def parse_parameter_text(tokens):
-    p_nr = 1
-    i = 0
-    tokens_processed = []
-    while i < len(tokens) - 1:
-        t = tokens[i]
-        if t.type == 'PARAMETER':
-            i += 1
-            t_next = tokens[i]
-            if int(t_next.value.value['char']) != p_nr:
-                raise ValueError
-            # How does TeX determine where an argument stops, you ask. Answer:
-            # There are two cases.
-            # An undelimited parameter is followed immediately in the parameter
-            # text by a parameter token, or it occurs at the very end of the
-            # parameter text; [...]
-            if i == len(tokens) - 1:
-                type_ = undelim_param_type
-            else:
-                t_after = tokens[i + 1]
-                if t_after.type == 'PARAMETER':
-                    type_ = undelim_param_type
-                # A delimited parameter is followed in the parameter text by
-                # one or more non-parameter tokens [...]
-                else:
-                    type_ = delim_param_type
-            t = Token(type_=type_, value=p_nr)
-            p_nr += 1
-        tokens_processed.append(t)
-        i += 1
-    return tokens_processed
-
-
-def parse_replacement_text(tokens):
-    i = 0
-    tokens_processed = []
-    while i < len(tokens) - 1:
-        t = tokens[i]
-        if t.type == 'PARAMETER':
-            i += 1
-            t_next = tokens[i]
-            # [...] each # must be followed by a digit that appeared after # in
-            # the parameter text, or else the # should be followed by another
-            # #.
-            if t_next.type == 'PARAMETER':
-                raise NotImplementedError
-            else:
-                p_nr = int(t_next.value.value['char'])
-                t = Token(type_='PARAM_NUMBER', value=p_nr)
-        tokens_processed.append(t)
-        i += 1
-    return tokens_processed
-
-
-def get_nr_params(param_text):
-    return sum(t.type in param_types for t in param_text)

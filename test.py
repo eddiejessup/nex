@@ -6,10 +6,16 @@ from banisher import Banisher
 from expander import Expander
 from parser import parser, lex_wrapper
 
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
 
 logger = logging.getLogger(__name__)
-logger.setLevel('DEBUG')
+logger.setLevel(logging.DEBUG)
+logger.addHandler(ch)
 
+logger.warning('hihi')
+logger.info('hihi')
+logger.debug('hihi')
 
 # def test_reader():
 #     file_name = 'p.tex'
@@ -62,17 +68,11 @@ logger.setLevel('DEBUG')
 
 def test_parser():
     file_name = 'p.tex'
-    # result = parser.parse(file_name, lexer=lex_wrapper)
-    result = parser.parse(file_name, lexer=lex_wrapper, debug=logger)
+    result = parser.parse(file_name, lexer=lex_wrapper)
+    # result = parser.parse(file_name, lexer=lex_wrapper, debug=logger)
     for term_tok in result:
         print(term_tok)
 
 
 if __name__ == '__main__':
     test_parser()
-# result = parser.parse(chars, lexer=lexer)
-# print()
-# print('Parsed:')
-# for s in result:
-#     print(s)
-# import pdb; pdb.set_trace()
