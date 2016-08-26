@@ -96,35 +96,6 @@ def evaluate_dimen(dimen_token):
     return number_of_scaled_points
 
 
-@pg.production('character : MISC_CHAR_CAT_PAIR')
-@pg.production('character : EQUALS')
-@pg.production('character : GREATER_THAN')
-@pg.production('character : LESS_THAN')
-@pg.production('character : PLUS_SIGN')
-@pg.production('character : MINUS_SIGN')
-@pg.production('character : ZERO')
-@pg.production('character : ONE')
-@pg.production('character : TWO')
-@pg.production('character : THREE')
-@pg.production('character : FOUR')
-@pg.production('character : FIVE')
-@pg.production('character : SIX')
-@pg.production('character : SEVEN')
-@pg.production('character : EIGHT')
-@pg.production('character : NINE')
-@pg.production('character : A')
-@pg.production('character : B')
-@pg.production('character : C')
-@pg.production('character : D')
-@pg.production('character : E')
-@pg.production('character : F')
-@pg.production('character : SINGLE_QUOTE')
-@pg.production('character : DOUBLE_QUOTE')
-@pg.production('character : BACKTICK')
-def character(parser_state, p):
-    return Token(type_='character', value=p[0].value)
-
-
 @pg.production('control_sequence : UNEXPANDED_CONTROL_SEQUENCE')
 @pg.production('control_sequence : UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE')
 def control_sequence(parser_state, p):

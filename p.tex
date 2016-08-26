@@ -259,6 +259,7 @@
 \newskip\z@skip \z@skip=0pt plus0pt minus0pt
 \newbox\voidb@x % permanently void box register
 
+\def\if
 \outer\def\newif#1{
   \count@=\escapechar
   \escapechar=\m@ne
@@ -266,16 +267,32 @@
   % \expandafter
   % \expandafter
   % \expandafter
-  % \def\@if#1{true}
-  % {\let#1=\iftrue}%
+  \def\@if#1{true}{\let#1=\iftrue}
 
   % \expandafter
   % \expandafter
   % \expandafter
-  % \def\@if#1{false}
-  % {\let#1=\iffalse}%
+  % \def\@if#1{false}{\let#1=\iffalse}
 
-  % \@if#1{false}\escapechar\count@
+  % \@if#1{false}
+
+  \escapechar=\count@
 } % the condition starts out false
 
 \newif1
+
+\@if
+
+\expandafter1r
+% \expandafter
+% \expandafter
+% \expandafter
+% \def\@if#1{true}
+% {\let#1=\iftrue}%
+
+% \expandafter
+% \expandafter
+% \def\@if#1{true}
+% {\let#1=\iftrue}%
+
+hihi
