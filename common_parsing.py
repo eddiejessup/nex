@@ -4,7 +4,8 @@ from common import Token
 
 from expander import (terminal_primitive_control_sequences_map,
                       short_hand_def_to_token_map,
-                      composite_terminal_control_sequence_types)
+                      composite_terminal_control_sequence_types,
+                      parameter_types)
 from registers import registers
 from typer import literal_types, PhysicalUnit, units_in_scaled_points, unexpanded_cs_types
 
@@ -14,6 +15,7 @@ from character_parsing import add_character_productions
 tokens = ()
 tokens += tuple(terminal_primitive_control_sequences_map.values())
 tokens += tuple(short_hand_def_to_token_map.values())
+tokens += tuple(parameter_types.values())
 tokens += tuple(literal_types)
 tokens += tuple(unexpanded_cs_types)
 tokens += tuple(composite_terminal_control_sequence_types)
@@ -156,6 +158,11 @@ def integer_variable_count(parser_state, p):
     return p[0]
 
 
+@pg.production('integer_variable : INTEGER_PARAMETER')
+def integer_variable_parameter(parser_state, p):
+    import pdb; pdb.set_trace()
+
+
 @pg.production('count_register : COUNT number')
 def count_register_explicit(parser_state, p):
     return Token(type_='count', value=p[1]['size'])
@@ -278,6 +285,11 @@ def internal_integer_short_hand_token(parser_state, p):
 
 @pg.production('internal_dimen : DIMEN_DEF_TOKEN')
 def internal_dimen_short_hand_token(parser_state, p):
+    return p[0].value
+
+
+@pg.production('internal_integer : INTEGER_PARAMETER')
+def internal_integer_parameter(parser_state, p):
     return p[0].value
 
 

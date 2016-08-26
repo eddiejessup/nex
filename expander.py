@@ -26,6 +26,12 @@ terminal_primitive_control_sequences_map = {
     'global': 'GLOBAL',
     'long': 'LONG',
     'outer': 'OUTER',
+
+}
+
+
+parameter_types = {
+    'integer': 'INTEGER_PARAMETER',
 }
 
 
@@ -60,9 +66,9 @@ non_terminal_primitive_control_sequences_map.update(if_map)
 primitive_control_sequences_map = dict(**terminal_primitive_control_sequences_map,
                                        **non_terminal_primitive_control_sequences_map)
 
-undelim_param_type = 'UNDELIMITED_PARAM'
-delim_param_type = 'DELIMITED_PARAM'
-param_types = (undelim_param_type, delim_param_type)
+undelim_macro_param_type = 'UNDELIMITED_PARAM'
+delim_macro_param_type = 'DELIMITED_PARAM'
+macro_param_types = (undelim_macro_param_type, delim_macro_param_type)
 
 composite_terminal_control_sequence_types = (
     'BALANCED_TEXT',
@@ -87,15 +93,15 @@ def parse_parameter_text(tokens):
             # text by a parameter token, or it occurs at the very end of the
             # parameter text; [...]
             if i == len(tokens) - 1:
-                type_ = undelim_param_type
+                type_ = undelim_macro_param_type
             else:
                 t_after = tokens[i + 1]
                 if t_after.type == 'PARAMETER':
-                    type_ = undelim_param_type
+                    type_ = undelim_macro_param_type
                 # A delimited parameter is followed in the parameter text by
                 # one or more non-parameter tokens [...]
                 else:
-                    type_ = delim_param_type
+                    type_ = delim_macro_param_type
             t = InternalToken(type_=type_, value=p_nr)
             p_nr += 1
         tokens_processed.append(t)
@@ -125,7 +131,7 @@ def parse_replacement_text(tokens):
 
 
 def get_nr_params(param_text):
-    return sum(t.type in param_types for t in param_text)
+    return sum(t.type in macro_param_types for t in param_text)
 
 
 def parse_argument_text(argument_text, parameter_text):
@@ -174,9 +180,10 @@ class Expander(object):
         for name, primitive_type in non_terminal_primitive_control_sequences_map.items():
             self.control_sequences[name] = make_primitive_macro_token(
                 name, primitive_type, is_terminal=False)
-        for parameter_name, value in integer_parameters.items():
-            parameter_token = Token(type_='parameter', value=value)
-            self.control_sequences[parameter_name] = parameter_token
+        for int_parameter_name, value in integer_parameters.items():
+            parameter_token = TerminalToken(type_=parameter_types['integer'],
+                                            value=value)
+            self.control_sequences[int_parameter_name] = parameter_token
 
     # TODO: Since we handle internal parameters through this interface,
     # this should probably be renamed.
@@ -191,8 +198,10 @@ class Expander(object):
                 replace_text = def_text_token.value['replacement_text']
                 finished_text = substitute_params_with_args(replace_text, arguments)
                 return finished_text
-            elif token.type == 'parameter':
-                return token
+            elif token.type in parameter_types.values():
+                return [token]
+            else:
+                import pdb; pdb.set_trace()
         else:
             import pdb; pdb.set_trace()
 
@@ -204,5 +213,7 @@ class Expander(object):
                 def_text_token = def_token.value['text']
                 param_text = def_text_token.value['parameter_text']
                 return param_text
+            elif token.type in parameter_types.values():
+                return []
         else:
             import pdb; pdb.set_trace()
