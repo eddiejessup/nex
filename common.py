@@ -22,3 +22,8 @@ class Token(LexToken):
 class TerminalToken(Token):
 
     pass
+
+
+class InternalToken(Token):
+
+    pass

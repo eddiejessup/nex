@@ -227,3 +227,29 @@
 \outer\def\newskip{\alloc@2\skip\skipdef\insc@unt}
 \outer\def\newmuskip{\alloc@3\muskip\muskipdef\@cclvi}
 \outer\def\newbox{\alloc@4\box\chardef\insc@unt}
+\let\newtoks=\relax % we do this to allow plain.tex to be read in twice
+\outer\def\newhelp#1#2{\newtoks#1#1\expandafter{\csname#2\endcsname}}
+\outer\def\newtoks{\alloc@5\toks\toksdef\@cclvi}
+\outer\def\newread{\alloc@6\read\chardef\sixt@@n}
+\outer\def\newwrite{\alloc@7\write\chardef\sixt@@n}
+\outer\def\newfam{\alloc@8\fam\chardef\sixt@@n}
+\outer\def\newlanguage{\alloc@9\language\chardef\@cclvi}
+\def\alloc@#1#2#3#4#5{\global\advance\count1#1by\@ne
+  \ch@ck#1#4#2% make sure there's still room
+  \allocationnumber=\count1#1%
+  \global#3#5=\allocationnumber
+  \wlog{\string#5=\string#2\the\allocationnumber}}
+\outer\def\newinsert#1{\global\advance\insc@unt by\m@ne
+  \ch@ck0\insc@unt\count
+  \ch@ck1\insc@unt\dimen
+  \ch@ck2\insc@unt\skip
+  \ch@ck4\insc@unt\box
+  \allocationnumber=\insc@unt
+  \global\chardef#1=\allocationnumber
+  \wlog{\string#1=\string\insert\the\allocationnumber}}
+\def\ch@ck#1#2#3{\ifnum\count1#1<#2%
+  \else\errmessage{No room for a new #3}\fi}
+
+% Here are some examples of allocation.
+\newdimen\maxdimen \maxdimen=16383.99999pt % the largest legal <dimen>
+\newskip\hideskip
