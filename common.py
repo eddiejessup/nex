@@ -1,10 +1,10 @@
-from ply.lex import LexToken
+from rply.token import Token as RToken
 
 
 ascii_characters = ''.join(chr(i) for i in range(128))
 
 
-class Token(LexToken):
+class Token(RToken):
 
     def __init__(self, type_, value):
         self.type = type_
@@ -14,6 +14,9 @@ class Token(LexToken):
 
     def gettokentype(self):
         return self.type
+
+    def getsourcepos(self):
+        return None
 
     def __repr__(self):
         return "<%s: %r %r>" % (self.__class__.__name__, self.type, self.value)

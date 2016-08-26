@@ -41,6 +41,11 @@ short_hand_def_map = {
     'toksdef': 'TOKS_DEF',
 }
 
+short_hand_def_to_token_map = {
+    k: '{}_TOKEN'.format(k)
+    for k in short_hand_def_map.values()
+}
+
 terminal_primitive_control_sequences_map.update(short_hand_def_map)
 
 non_terminal_primitive_control_sequences_map = {
@@ -55,6 +60,11 @@ primitive_control_sequences_map = dict(**terminal_primitive_control_sequences_ma
 undelim_param_type = 'UNDELIMITED_PARAM'
 delim_param_type = 'DELIMITED_PARAM'
 param_types = (undelim_param_type, delim_param_type)
+
+composite_terminal_control_sequence_types = (
+    'BALANCED_TEXT',
+    'PARAMETER_TEXT',
+)
 
 
 def parse_parameter_text(tokens):

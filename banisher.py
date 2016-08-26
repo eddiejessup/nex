@@ -2,6 +2,8 @@ import logging
 from collections import deque
 from enum import Enum
 
+from rply.errors import ParsingError
+
 from common import Token, TerminalToken, InternalToken
 from utils import increasing_window
 from lexer import make_char_cat_token, make_control_sequence_token, CatCode
@@ -9,18 +11,10 @@ from typer import (lex_token_to_unexpanded_terminal_token,
                    unexpanded_cs_types, unexpanded_cs_type,
                    unexpanded_one_char_cs_type)
 from expander import short_hand_def_map, get_nr_params, parse_parameter_text
-# from condition_parser import condition_parser, dummy_lexer
+from condition_parser import condition_parser
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
-
-composite_terminal_control_sequence_types = (
-    'BALANCED_TEXT',
-    'PARAMETER_TEXT',
-)
-
-special_terminal_control_sequence_types = (
-    composite_terminal_control_sequence_types + unexpanded_cs_types)
 
 read_unexpanded_control_sequence_types = (
     'DEF',
@@ -237,9 +231,8 @@ class Banisher(object):
                 inputs_partial = increasing_window(input_string)
                 for i_max, input_partial in enumerate(inputs_partial):
                     try:
-                        is_true = condition_parser.parse(input_partial,
-                                                         lexer=dummy_lexer)
-                    except (ValueError, StopIteration):
+                        is_true = condition_parser.parse(iter(input_partial), state='hihi')
+                    except (ParsingError, StopIteration):
                         if have_parsed:
                             break
                     else:
