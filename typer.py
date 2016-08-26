@@ -13,6 +13,7 @@ class PhysicalUnit(Enum):
     didot_point = 'dd'
     cicero = 'cc'
     scaled_point = 'sp'
+    fil = 'fil'
 
 
 units_in_scaled_points = {}
@@ -92,6 +93,9 @@ non_active_literals = [
 
     # plus
     'l',
+
+    # fil
+    'f',
 ]
 
 non_active_literals_map = {}

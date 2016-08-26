@@ -169,10 +169,18 @@ def simple_assignment(parser_state, p):
 
 @pg.production('variable_assignment : glue_variable equals glue')
 def variable_assignment_glue(parser_state, p):
-    value = evaluate_glue(p[2])
-    # Could also be a glue parameter.
+    glue = p[2]
+    evaluated_glue = {}
+    for k in ('dimen', 'stretch', 'shrink'):
+        dimen = glue[k]
+        if dimen is None:
+            evaluated_dimen = None
+        else:
+            evaluated_dimen = evaluate_dimen(dimen)
+        evaluated_glue[k] = evaluated_dimen
+    # TODO: Could also be a glue parameter.
     if p[0].type == 'glue':
-        registers.dimen[p[0].value] = value
+        registers.skip[p[0].value] = evaluated_glue
     return Token(type_='variable_assignment',
                  value={'variable': p[0], 'value': p[2]})
 
@@ -180,7 +188,7 @@ def variable_assignment_glue(parser_state, p):
 @pg.production('variable_assignment : dimen_variable equals dimen')
 def variable_assignment_dimen(parser_state, p):
     value = evaluate_dimen(p[2])
-    # Could also be a dimen parameter.
+    # TODO: Could also be a dimen parameter.
     if p[0].type == 'dimen':
         registers.dimen[p[0].value] = value
     return Token(type_='variable_assignment',
@@ -190,7 +198,7 @@ def variable_assignment_dimen(parser_state, p):
 @pg.production('variable_assignment : integer_variable equals number')
 def variable_assignment_integer(parser_state, p):
     value = evaluate_number(p[2])
-    # Could also be a count parameter.
+    # TODO: Could also be a count parameter.
     if p[0].type == 'count':
         try:
             registers.count[p[0].value] = value

@@ -25,6 +25,13 @@ def word_to_pr(word, target=None):
 
 def add_character_productions(pg):
 
+    @pg.production(word_to_pr('fil'))
+    def fil(parser_state, p):
+        # Represents the number of infinities.
+        # Obviously that's a sentence that should appear in a program
+        # about type-setting...
+        return 1
+
     @pg.production(word_to_pr('by'))
     def by(parser_state, p):
         return None
@@ -35,11 +42,11 @@ def add_character_productions(pg):
 
     @pg.production(word_to_pr('minus'))
     def minus(parser_state, p):
-        return True
+        return None
 
     @pg.production(word_to_pr('plus'))
     def plus(parser_state, p):
-        return True
+        return None
 
     @pg.production(word_to_pr('pt', target='physical_unit'))
     def physical_unit(parser_state, p):
@@ -53,4 +60,9 @@ def add_character_productions(pg):
     @pg.production('non_active_uncased_e : NON_ACTIVE_UNCASED_e')
     @pg.production('non_active_uncased_e : E')
     def non_active_uncased_e(parser_state, p):
+        return None
+
+    @pg.production('non_active_uncased_f : NON_ACTIVE_UNCASED_f')
+    @pg.production('non_active_uncased_f : F')
+    def non_active_uncased_f(parser_state, p):
         return None

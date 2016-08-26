@@ -78,7 +78,12 @@ def evaluate_dimen(dimen_token):
     number_of_units_token = size_token.value['factor']
     unit_token = size_token.value['unit']
     number_of_units = evaluate_size(number_of_units_token)
-    unit, is_true_unit = unit_token['unit'], unit_token['true']
+    unit = unit_token['unit']
+    if unit == PhysicalUnit.fil:
+        return Token(type_='fil_dimension',
+                     value={'factor': number_of_units,
+                            'number_of_fils': unit_token['number_of_fils']})
+    is_true_unit = unit_token['true']
     number_of_scaled_points = units_in_scaled_points[unit] * number_of_units
     # TODO: deal with 'true' and 'not-true' scales properly
     mag_parameter = 1000.0
@@ -173,21 +178,46 @@ def count_register_token(parser_state, p):
 
 @pg.production('glue : dimen stretch shrink')
 def glue(parser_state, p):
-    import pdb; pdb.set_trace()
-
-
-@pg.production('stretch : plus dimen')
-@pg.production('stretch : optional_spaces')
-# TODO: plus fil dimen
-def stretch(parser_state, p):
-    import pdb; pdb.set_trace()
+    # Wrap up arguments in a dict.
+    return dict(zip(['dimen', 'stretch', 'shrink'], tuple(p)))
 
 
 @pg.production('shrink : minus dimen')
+@pg.production('shrink : minus fil_dimen')
+@pg.production('stretch : plus dimen')
+@pg.production('stretch : plus fil_dimen')
+def stretch_or_shrink_non_stated(parser_state, p):
+    return p[1]
+
+
+@pg.production('stretch : optional_spaces')
 @pg.production('shrink : optional_spaces')
-# TODO: plus fil dimen
-def shrink(parser_state, p):
-    import pdb; pdb.set_trace()
+def stretch_or_shrink_omitted(parser_state, p):
+    return None
+
+
+@pg.production('fil_dimen : optional_signs factor fil_unit optional_spaces')
+def fil_dimen(parser_state, p):
+    size_token = Token(type_='fil_size',
+                       value={'factor': p[1], 'unit': p[2]})
+    return {'sign': p[0], 'size': size_token}
+
+
+@pg.production('fil_unit : fil_unit NON_ACTIVE_UNCASED_l')
+def fil_unit_append(parser_state, p):
+    # Add one infinity for every letter 'l'.
+    unit = p[0]
+    unit['number_of_fils'] += 1
+    return unit
+
+
+@pg.production('fil_unit : fil')
+def fil_unit(parser_state, p):
+    # I don't think true matters, but we add it for compatibility
+    # with non-weird units.
+    unit = {'unit': PhysicalUnit.fil, 'true': True,
+            'number_of_fils': 1}
+    return unit
 
 
 @pg.production('dimen : optional_signs unsigned_dimen')
@@ -200,15 +230,15 @@ def number(parser_state, p):
     return {'sign': p[0], 'size': p[1]}
 
 
-@pg.production('unsigned_number : normal_integer')
-# @pg.production('unsigned_number : coerced_integer')
-def unsigned_number(parser_state, p):
-    return p[0]
-
-
 @pg.production('unsigned_dimen : normal_dimen')
 # @pg.production('unsigned_dimen : coerced_dimen')
 def unsigned_dimen(parser_state, p):
+    return p[0]
+
+
+@pg.production('unsigned_number : normal_integer')
+# @pg.production('unsigned_number : coerced_integer')
+def unsigned_number(parser_state, p):
     return p[0]
 
 
