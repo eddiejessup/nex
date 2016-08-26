@@ -6,7 +6,7 @@ from lexer import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from reader import Reader, EndOfFile
 from lexer import Lexer
 from banisher import Banisher
-from expander import Expander, parse_replacement_text
+from expander import Expander, parse_replacement_text, parameter_types
 from registers import registers
 from common_parsing import pg as common_pg, evaluate_number, evaluate_dimen
 
@@ -124,7 +124,7 @@ def macro_assignment(parser_state, p):
                         value={'prefixes': set(),
                                'definition': p[0]})
     name = p[0].value['name']
-    parser_state.e.control_sequences[name] = macro_token
+    parser_state.e.set_control_sequence(name, macro_token)
     return macro_token
 
 
@@ -198,14 +198,16 @@ def variable_assignment_dimen(parser_state, p):
 @pg.production('variable_assignment : integer_variable equals number')
 def variable_assignment_integer(parser_state, p):
     value = evaluate_number(p[2])
+    var = p[0]
     # TODO: Could also be a count parameter.
-    if p[0].type == 'count':
-        try:
-            registers.count[p[0].value] = value
-        except TypeError:
-            import pdb; pdb.set_trace()
+    if var.type == 'count':
+        # TODO: make a safe wrapper round this.
+        registers.count[var.value] = value
+    elif var.type == parameter_types['integer']:
+        param_name = var.value
+        parser_state.e.set_parameter(name=param_name, value=value)
     return Token(type_='variable_assignment',
-                 value={'variable': p[0], 'value': p[2]})
+                 value={'variable': var, 'value': p[2]})
 
 
 @pg.production('arithmetic : ADVANCE integer_variable optional_by number')
@@ -226,19 +228,10 @@ def optional_by(parser_state, p):
 def short_hand_definition(parser_state, p):
     code = evaluate_number(p[3])
     def_type = p[0].type
-    def_token_type = short_hand_def_to_token_map[def_type]
-    primitive_token = TerminalToken(type_=def_token_type, value=code)
     control_sequence_name = p[1].value['name']
-    def_text_token = Token(type_='definition_text',
-                           value={'parameter_text': [],
-                                  'replacement_text': [primitive_token]})
-    def_token = Token(type_='definition',
-                      value={'name': control_sequence_name,
-                             'text': def_text_token})
-    macro_token = Token(type_='macro',
-                        value={'prefixes': set(),
-                               'definition': def_token})
-    parser_state.e.control_sequences[control_sequence_name] = macro_token
+    macro_token = parser_state.e.do_short_hand_assignment(control_sequence_name,
+                                                          def_type,
+                                                          code)
     # Just for the sake of output.
     return macro_token
 
@@ -247,13 +240,11 @@ def short_hand_definition(parser_state, p):
 def let_assignment_control_sequence(parser_state, p):
     # TODO allow char_cat_pair.
     target_name = p[4].value['name']
-    target_contents = parser_state.e.control_sequences[target_name]
     new_name = p[1].value['name']
-    parser_state.e.control_sequences[new_name] = target_contents
+    parser_state.e.do_let_assignment(new_name, target_name)
     return Token(type_='let_assignment',
                  value={'name': new_name,
-                        'target_name': target_name,
-                        'target_contents': target_contents})
+                        'target_name': target_name})
 
 
 @pg.production('short_hand_def : CHAR_DEF')

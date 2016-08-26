@@ -150,20 +150,25 @@ def substitute_params_with_args(replace_text, arguments):
     return finished_text
 
 
-def make_primitive_macro_token(name, primitive_type, is_terminal):
-    value_token = Token(type_=primitive_type, value=name)
-    TokenCls = TerminalToken if is_terminal else InternalToken
-    primitive_token = TokenCls(type_=primitive_type,
-                               value=value_token)
+def make_simple_macro_token(name, tokens):
     def_text_token = Token(type_='definition_text',
                            value={'parameter_text': [],
-                                  'replacement_text': [primitive_token]})
+                                  'replacement_text': tokens})
     def_token = Token(type_='definition',
                       value={'name': name,
                              'text': def_text_token})
     macro_token = Token(type_='macro',
                         value={'prefixes': set(),
                                'definition': def_token})
+    return macro_token
+
+
+def make_primitive_macro_token(name, primitive_type, is_terminal):
+    value_token = Token(type_=primitive_type, value=name)
+    TokenCls = TerminalToken if is_terminal else InternalToken
+    primitive_token = TokenCls(type_=primitive_type,
+                               value=value_token)
+    macro_token = make_simple_macro_token(name, [primitive_token])
     return macro_token
 
 
@@ -174,16 +179,19 @@ class Expander(object):
 
     def initialize_control_sequences(self):
         self.control_sequences = {}
+        self.integer_parameters = {}
         for name, primitive_type in terminal_primitive_control_sequences_map.items():
             self.control_sequences[name] = make_primitive_macro_token(
                 name, primitive_type, is_terminal=True)
         for name, primitive_type in non_terminal_primitive_control_sequences_map.items():
             self.control_sequences[name] = make_primitive_macro_token(
                 name, primitive_type, is_terminal=False)
+        # control_sequences is really a router.
         for int_parameter_name, value in integer_parameters.items():
             parameter_token = TerminalToken(type_=parameter_types['integer'],
-                                            value=value)
+                                            value=int_parameter_name)
             self.control_sequences[int_parameter_name] = parameter_token
+            self.integer_parameters[int_parameter_name] = value
 
     # TODO: Since we handle internal parameters through this interface,
     # this should probably be renamed.
@@ -217,3 +225,27 @@ class Expander(object):
                 return []
         else:
             import pdb; pdb.set_trace()
+
+    def get_control_sequence(self, name):
+        return self.control_sequences[name]
+
+    def set_control_sequence(self, name, value):
+        self.control_sequences[name] = value
+
+    def do_let_assignment(self, new_name, target_name):
+        target_contents = self.get_control_sequence(target_name)
+        self.set_control_sequence(new_name, target_contents)
+
+    def do_short_hand_assignment(self, name, def_type, code):
+        def_token_type = short_hand_def_to_token_map[def_type]
+        primitive_token = TerminalToken(type_=def_token_type, value=code)
+        macro_token = make_simple_macro_token(name, [primitive_token])
+        self.set_control_sequence(name, macro_token)
+        return macro_token
+
+    def get_parameter(self, name):
+        return self.integer_parameters[name]
+
+    def set_parameter(self, name, value):
+        assert name in integer_parameters.keys()
+        self.integer_parameters[name] = value

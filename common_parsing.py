@@ -160,7 +160,7 @@ def integer_variable_count(parser_state, p):
 
 @pg.production('integer_variable : INTEGER_PARAMETER')
 def integer_variable_parameter(parser_state, p):
-    import pdb; pdb.set_trace()
+    return p[0]
 
 
 @pg.production('count_register : COUNT number')
@@ -290,7 +290,7 @@ def internal_dimen_short_hand_token(parser_state, p):
 
 @pg.production('internal_integer : INTEGER_PARAMETER')
 def internal_integer_parameter(parser_state, p):
-    return p[0].value
+    return parser_state.e.get_parameter(p[0].value)
 
 
 @pg.production('internal_integer : count_register')
