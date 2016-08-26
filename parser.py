@@ -167,14 +167,12 @@ def simple_assignment(parser_state, p):
     return p[0]
 
 
-@pg.production('variable_assignment : integer_variable equals number')
-def variable_assignment_integer(parser_state, p):
-    value = evaluate_number(p[2])
-    if p[0].type == 'count':
-        try:
-            registers.count[p[0].value] = value
-        except TypeError:
-            import pdb; pdb.set_trace()
+@pg.production('variable_assignment : glue_variable equals glue')
+def variable_assignment_glue(parser_state, p):
+    value = evaluate_glue(p[2])
+    # Could also be a glue parameter.
+    if p[0].type == 'glue':
+        registers.dimen[p[0].value] = value
     return Token(type_='variable_assignment',
                  value={'variable': p[0], 'value': p[2]})
 
@@ -182,8 +180,22 @@ def variable_assignment_integer(parser_state, p):
 @pg.production('variable_assignment : dimen_variable equals dimen')
 def variable_assignment_dimen(parser_state, p):
     value = evaluate_dimen(p[2])
+    # Could also be a dimen parameter.
     if p[0].type == 'dimen':
         registers.dimen[p[0].value] = value
+    return Token(type_='variable_assignment',
+                 value={'variable': p[0], 'value': p[2]})
+
+
+@pg.production('variable_assignment : integer_variable equals number')
+def variable_assignment_integer(parser_state, p):
+    value = evaluate_number(p[2])
+    # Could also be a count parameter.
+    if p[0].type == 'count':
+        try:
+            registers.count[p[0].value] = value
+        except TypeError:
+            import pdb; pdb.set_trace()
     return Token(type_='variable_assignment',
                  value={'variable': p[0], 'value': p[2]})
 
@@ -199,11 +211,6 @@ def arithmetic_integer_variable(parser_state, p):
 @pg.production('optional_by : by')
 @pg.production('optional_by : optional_spaces')
 def optional_by(parser_state, p):
-    return None
-
-
-@pg.production('by : non_active_uncased_b non_active_uncased_y')
-def by(parser_state, p):
     return None
 
 

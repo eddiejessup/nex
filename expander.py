@@ -26,8 +26,6 @@ terminal_primitive_control_sequences_map = {
     'global': 'GLOBAL',
     'long': 'LONG',
     'outer': 'OUTER',
-
-    'ifnum': 'IF_NUM',
 }
 
 
@@ -48,11 +46,16 @@ short_hand_def_to_token_map = {
 
 terminal_primitive_control_sequences_map.update(short_hand_def_map)
 
+if_map = {
+    'ifnum': 'IF_NUM',
+}
+
 non_terminal_primitive_control_sequences_map = {
     'else': 'ELSE',
     'fi': 'END_IF',
     'string': 'STRING',
 }
+non_terminal_primitive_control_sequences_map.update(if_map)
 
 primitive_control_sequences_map = dict(**terminal_primitive_control_sequences_map,
                                        **non_terminal_primitive_control_sequences_map)

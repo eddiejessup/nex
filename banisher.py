@@ -10,7 +10,7 @@ from lexer import make_char_cat_token, make_control_sequence_token, CatCode
 from typer import (lex_token_to_unexpanded_terminal_token,
                    unexpanded_cs_types, unexpanded_cs_type,
                    unexpanded_one_char_cs_type)
-from expander import short_hand_def_map, get_nr_params, parse_parameter_text
+from expander import short_hand_def_map, get_nr_params, parse_parameter_text, if_map
 from condition_parser import condition_parser
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ read_unexpanded_control_sequence_types = (
 )
 read_unexpanded_control_sequence_types += tuple(set(short_hand_def_map.values()))
 
-if_types = ('IF_NUM',)
+if_types = if_map.values()
 message_types = ('MESSAGE', 'ERROR_MESSAGE', 'WRITE')
 
 
@@ -75,8 +75,8 @@ class Banisher(object):
         logger.debug(self.output_terminal_tokens_stack)
         next_token = self.output_terminal_tokens_stack.popleft()
         self._secret_terminal_list.append(next_token)
-        for t in self._secret_terminal_list[-20:]:
-            print(t)
+        # for t in self._secret_terminal_list[-20:]:
+        #     print(t)
         return next_token
 
     def populate_input_stack(self):

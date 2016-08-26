@@ -44,6 +44,16 @@ literals_map = {
     ('7', CatCode.other): 'SEVEN',
     ('8', CatCode.other): 'EIGHT',
     ('9', CatCode.other): 'NINE',
+
+    ('\'', CatCode.other): 'SINGLE_QUOTE',
+    ('"', CatCode.other): 'DOUBLE_QUOTE',
+    ('`', CatCode.other): 'BACKTICK',
+
+    ('.', CatCode.other): 'POINT',
+    (',', CatCode.other): 'COMMA',
+}
+
+hex_letters_map = {
     ('A', CatCode.other): 'A',
     ('B', CatCode.other): 'B',
     ('C', CatCode.other): 'C',
@@ -56,36 +66,40 @@ literals_map = {
     ('D', CatCode.letter): 'D',
     ('E', CatCode.letter): 'E',
     ('F', CatCode.letter): 'F',
-
-    ('\'', CatCode.other): 'SINGLE_QUOTE',
-    ('"', CatCode.other): 'DOUBLE_QUOTE',
-    ('`', CatCode.other): 'BACKTICK',
-
-    ('.', CatCode.other): 'POINT',
-    (',', CatCode.other): 'COMMA',
 }
+literals_map.update(hex_letters_map)
 
-non_active_literals_map = {
+non_active_literals = [
     # by
-    'b': 'NON_ACTIVE_b',
-    'B': 'NON_ACTIVE_B',
-    'y': 'NON_ACTIVE_y',
-    'Y': 'NON_ACTIVE_Y',
+    'b',
+    'y',
 
     # true
-    't': 'NON_ACTIVE_t',
-    'T': 'NON_ACTIVE_T',
-    'r': 'NON_ACTIVE_r',
-    'R': 'NON_ACTIVE_R',
-    'u': 'NON_ACTIVE_u',
-    'U': 'NON_ACTIVE_U',
-    'e': 'NON_ACTIVE_e',
-    'E': 'NON_ACTIVE_E',
+    't',
+    'r',
+    'u',
+    'e',
 
     # pt
-    'p': 'NON_ACTIVE_p',
-    'P': 'NON_ACTIVE_P',
-}
+    'p',
+
+    # minus
+    'm',
+    'i',
+    'n',
+    'u',
+    's',
+
+    # plus
+    'l',
+]
+
+non_active_literals_map = {}
+for c in non_active_literals:
+    terminal_type = 'NON_ACTIVE_UNCASED_{}'.format(c.lower())
+    non_active_literals_map[c.lower()] = terminal_type
+    non_active_literals_map[c.upper()] = terminal_type
+
 
 other_literal_type = 'MISC_CHAR_CAT_PAIR'
 

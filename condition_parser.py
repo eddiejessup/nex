@@ -1,10 +1,12 @@
 import operator
 
-
+from expander import if_map
 from common_parsing import pg as common_pg, evaluate_number
 
 
 pg = common_pg.copy_to_extend()
+
+pg.tokens += tuple(if_map.values())
 
 
 @pg.production('condition : IF_NUM number relation number')
