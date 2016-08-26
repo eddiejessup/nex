@@ -66,7 +66,7 @@ def parse_parameter_text(tokens):
         if t.type == 'PARAMETER':
             i += 1
             t_next = tokens[i]
-            if int(t_next.value.value['char']) != p_nr:
+            if int(t_next.value['char']) != p_nr:
                 raise ValueError
             # How does TeX determine where an argument stops, you ask. Answer:
             # There are two cases.
@@ -104,7 +104,7 @@ def parse_replacement_text(tokens):
             if t_next.type == 'PARAMETER':
                 raise NotImplementedError
             else:
-                p_nr = int(t_next.value.value['char'])
+                p_nr = int(t_next.value['char'])
                 t = InternalToken(type_='PARAM_NUMBER', value=p_nr)
         tokens_processed.append(t)
         i += 1

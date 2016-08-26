@@ -9,7 +9,7 @@ from typer import (lex_token_to_unexpanded_terminal_token,
                    unexpanded_cs_types, unexpanded_cs_type,
                    unexpanded_one_char_cs_type)
 from expander import short_hand_def_map, get_nr_params, parse_parameter_text
-from condition_parser import condition_parser, dummy_lexer
+# from condition_parser import condition_parser, dummy_lexer
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
@@ -81,6 +81,8 @@ class Banisher(object):
         logger.debug(self.output_terminal_tokens_stack)
         next_token = self.output_terminal_tokens_stack.popleft()
         self._secret_terminal_list.append(next_token)
+        for t in self._secret_terminal_list[-20:]:
+            print(t)
         return next_token
 
     def populate_input_stack(self):
@@ -157,7 +159,7 @@ class Banisher(object):
         # If we get a control sequence token, we need to either start expanding
         # it, or add it as an un-expanded token, depending on the context.
         elif self.expanding_control_sequences and type_ in unexpanded_cs_types:
-            name = first_token.value.value
+            name = first_token.value
             self.push_context(ContextMode.reading_macro_arguments)
             self.macro_name = name
             self.param_text = self.expander.expand_to_parameter_text(name)
@@ -226,6 +228,9 @@ class Banisher(object):
             while True:
                 # TODO: isn't this thing actually a queue, not a stack?
                 # (Entails lots of renaming.)
+                # While populating this, maybe we will see an if_type in the
+                # condition. Haven't tested, but it seems like this should
+                # recurse correctly.
                 self.populate_output_stack()
                 have_parsed = False
                 input_string = list(self.output_terminal_tokens_stack)
@@ -329,13 +334,13 @@ class Banisher(object):
             next_token = self.pop_next_input_token()
             tokens = []
             if next_token.type in unexpanded_cs_types:
-                chars = list(next_token.value.value)
+                chars = list(next_token.value)
                 # Internal instruction to produce an escape character token.
                 escape_char_token = InternalToken(type_='ESCAPE_CHAR',
                                                   value=None)
                 tokens += [escape_char_token]
             else:
-                char = next_token.value.value['char']
+                char = next_token.value['char']
                 chars = [char]
             char_term_tokens = [make_char_cat_term_token(c, CatCode.other)
                                 for c in chars]

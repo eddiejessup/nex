@@ -12,6 +12,9 @@ class Token(LexToken):
         self.lineno = None
         self.lexpos = None
 
+    def gettokentype(self):
+        return self.type
+
     def __repr__(self):
         return "<%s: %r %r>" % (self.__class__.__name__, self.type, self.value)
 

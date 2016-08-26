@@ -5,7 +5,7 @@ from reader import Reader, EndOfFile
 from lexer import Lexer
 from banisher import Banisher
 from expander import Expander
-from parser import parser, lex_wrapper
+from parser import parser, LexWrapper
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
@@ -58,16 +58,18 @@ logger.addHandler(ch)
 #     while True:
 #         try:
 #             tt = b.next_token
-#         except EndOfFile:
+#         except EndOfFile:m
 #             break
 #         print(tt)
 
 
 def test_parser():
     file_name = 'p.tex'
-    result = parser.parse(file_name, lexer=lex_wrapper)
+    lex_wrapper = LexWrapper(file_name)
+
+    result = parser.parse(lex_wrapper, state=lex_wrapper)
     # result = parser.parse(file_name, lexer=lex_wrapper, debug=logger)
-    post_mortem(lex_wrapper)
+    # post_mortem(lex_wrapper, parser)
     for term_tok in result:
         print(term_tok)
 

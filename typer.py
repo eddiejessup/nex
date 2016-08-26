@@ -129,7 +129,7 @@ def get_char_cat_pair_terminal_type(char_cat_pair_token):
 def char_cat_pair_to_terminal_token(char_cat_pair_token):
     terminal_token_type = get_char_cat_pair_terminal_type(char_cat_pair_token)
     terminal_token = TerminalToken(type_=terminal_token_type,
-                                   value=char_cat_pair_token)
+                                   value=char_cat_pair_token.value)
     return terminal_token
 
 
@@ -142,7 +142,7 @@ def lex_token_to_unexpanded_terminal_token(lex_token):
         type_ = (unexpanded_one_char_cs_type if len(name) == 1
                  else unexpanded_cs_type)
         # Convert to a primitive unexpanded control sequence.
-        terminal_token = TerminalToken(type_=type_, value=lex_token)
+        terminal_token = TerminalToken(type_=type_, value=name)
     elif isinstance(lex_token, InternalToken):
         terminal_token = lex_token
     return terminal_token

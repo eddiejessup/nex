@@ -1,5 +1,6 @@
 import logging
-import yacc
+
+from rply import ParserGenerator
 
 from utils import post_mortem
 from common import Token, TerminalToken
@@ -32,6 +33,17 @@ logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
 
 
+prec = (
+    ('left', 'SPACE'),
+    # ('left', 'UNEXPANDED_CONTROL_SEQUENCE'),
+)
+
+
+pg = ParserGenerator(tokens,
+                     precedence=prec,
+                     cache_id="main_parser")
+
+
 class DigitCollection(object):
 
     def __init__(self, base):
@@ -43,7 +55,7 @@ def evaluate_size(size_token):
     if isinstance(size_token, Token):
         if size_token.type == 'backtick_integer':
             unexpanded_token = size_token.value
-            if unexpanded_token.type == 'CONTROL_SEQUENCE':
+            if unexpanded_token.type == 'UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE':
                 # If we have a single character control sequence in this context,
                 # it is just a way of specifying a character in a way that
                 # won't invoke its special effects.
@@ -91,367 +103,286 @@ def evaluate_dimen(dimen_token):
     return number_of_scaled_points
 
 
-precedence = (
-    ('left', 'SPACE'),
-    ('left', 'UNEXPANDED_CONTROL_SEQUENCE'),
-)
+@pg.production('commands : commands command')
+def commands_extend(parser_state, p):
+    v = p[0]
+    v.append(p[1])
+    return v
 
 
-def p_commands_extend(p):
-    '''
-    commands : commands command
-    '''
-    p[0] = p[1]
-    p[0].append(p[2])
+@pg.production('commands : command')
+def commands(parser_state, p):
+    return [p[0]]
 
 
-def p_commands(p):
-    '''
-    commands : command
-    '''
-    p[0] = [p[1]]
+@pg.production('command : assignment')
+@pg.production('command : character')
+@pg.production('command : PAR')
+@pg.production('command : SPACE')
+@pg.production('command : message')
+@pg.production('command : write')
+@pg.production('command : RELAX')
+def command(parser_state, p):
+    return p[0]
 
 
-def p_command(p):
-    '''
-    command : assignment
-            | character
-            | PAR
-            | SPACE
-            | message
-            | write
-            | RELAX
-    '''
-    p[0] = p[1]
+@pg.production('assignment : macro_assignment')
+@pg.production('assignment : non_macro_assignment')
+def assignment(parser_state, p):
+    return p[0]
 
 
-def p_assignment(p):
-    '''
-    assignment : macro_assignment
-               | non_macro_assignment
-    '''
-    p[0] = p[1]
-
-
-def p_immediate_write(p):
-    '''
-    write : IMMEDIATE write
-    '''
-    p[0] = p[2]
+@pg.production('write : IMMEDIATE write')
+def immediate_write(parser_state, p):
+    return p[1]
     p[0].value['prefix'] = 'immediate'
 
 
-def p_write(p):
-    '''
-    write : WRITE number general_text
-    '''
-    p[0] = Token(type_='write',
-                 value={'stream_number': p[2], 'content': p[3]})
+@pg.production('write : WRITE number general_text')
+def write(parser_state, p):
+    return Token(type_='write',
+                 value={'stream_number': p[1], 'content': p[2]})
 
 
-def p_message(p):
-    '''
-    message : MESSAGE general_text
-            | ERROR_MESSAGE general_text
-    '''
-    p[0] = Token(type_='message',
-                 value={'content': p[2]})
+@pg.production('message : ERROR_MESSAGE general_text')
+@pg.production('message : MESSAGE general_text')
+def message(parser_state, p):
+    return Token(type_='message',
+                 value={'content': p[1]})
 
 
-def p_general_text(p):
-    '''
-    general_text : filler implicit_left_brace BALANCED_TEXT RIGHT_BRACE
-    '''
-    p[0] = p[3]
+@pg.production('general_text : filler implicit_left_brace BALANCED_TEXT RIGHT_BRACE')
+def general_text(parser_state, p):
+    return p[2]
 
 
-def p_filler(p):
-    '''
-    filler : optional_spaces
-           | filler RELAX optional_spaces
-    '''
-    pass
+@pg.production('filler : optional_spaces')
+@pg.production('filler : filler RELAX optional_spaces')
+def filler(parser_state, p):
+    return None
 
 
-def p_implicit_left_brace(p):
-    '''
-    implicit_left_brace : LEFT_BRACE
-    '''
-    p[0] = p[1]
+@pg.production('implicit_left_brace : LEFT_BRACE')
+def implicit_left_brace(parser_state, p):
+    return p[0]
 
 
-def p_macro_assignment_prefix(p):
-    '''
-    macro_assignment : prefix macro_assignment
-    '''
-    p[0] = p[2]
+@pg.production('macro_assignment : prefix macro_assignment')
+def macro_assignment_prefix(parser_state, p):
+    v = p[1]
     # TODO: actually do something about this in expander.
-    p[0].value['prefixes'].add(p[1])
+    v.value['prefixes'].add(p[0])
+    return v
 
 
-def p_prefix(p):
-    '''
-    prefix : GLOBAL
-           | LONG
-           | OUTER
-    '''
-    p[0] = p[1].type
+@pg.production('prefix : GLOBAL')
+@pg.production('prefix : LONG')
+@pg.production('prefix : OUTER')
+def prefix(parser_state, p):
+    return p[0].type
 
 
-def p_macro_assignment(p):
-    '''
-    macro_assignment : definition
-    '''
+@pg.production('macro_assignment : definition')
+def macro_assignment(parser_state, p):
     macro_token = Token(type_='macro',
                         value={'prefixes': set(),
-                               'definition': p[1]})
-    name = p[1].value['name']
-    lex_wrapper.e.control_sequences[name] = macro_token
-    p[0] = macro_token
+                               'definition': p[0]})
+    name = p[0].value['name']
+    parser_state.e.control_sequences[name] = macro_token
+    return macro_token
 
 
-def p_definition(p):
-    '''
-    definition : DEF control_sequence definition_text
-    '''
+@pg.production('definition : DEF control_sequence definition_text')
+def definition(parser_state, p):
     def_token = Token(type_='definition',
-                      value={'name': p[2].value['name'],
-                             'text': p[3]})
-    p[0] = def_token
+                      value={'name': p[1].value['name'],
+                             'text': p[2]})
+    return def_token
 
 
-def p_definition_text(p):
-    '''
-    definition_text : PARAMETER_TEXT LEFT_BRACE BALANCED_TEXT RIGHT_BRACE
-    '''
+@pg.production('definition_text : PARAMETER_TEXT LEFT_BRACE BALANCED_TEXT RIGHT_BRACE')
+def definition_text(parser_state, p):
     # TODO: maybe move this parsing logic to inside the Expander.
-    replacement_text = parse_replacement_text(p[3])
+    replacement_text = parse_replacement_text(p[2].value)
     def_text_token = Token(type_='definition_text',
-                           value={'parameter_text': p[1],
+                           value={'parameter_text': p[0].value,
                                   'replacement_text': replacement_text})
-    p[0] = def_text_token
+    return def_text_token
 
 
-def p_character(p):
-    '''
-    character : MISC_CHAR_CAT_PAIR
-              | EQUALS
-              | GREATER_THAN
-              | LESS_THAN
-              | PLUS_SIGN
-              | MINUS_SIGN
-              | ZERO
-              | ONE
-              | TWO
-              | THREE
-              | FOUR
-              | FIVE
-              | SIX
-              | SEVEN
-              | EIGHT
-              | NINE
-              | A
-              | B
-              | C
-              | D
-              | E
-              | F
-              | SINGLE_QUOTE
-              | DOUBLE_QUOTE
-              | BACKTICK
-    '''
-    p[0] = Token(type_='character', value=p[1].value)
+@pg.production('character : MISC_CHAR_CAT_PAIR')
+@pg.production('character : EQUALS')
+@pg.production('character : GREATER_THAN')
+@pg.production('character : LESS_THAN')
+@pg.production('character : PLUS_SIGN')
+@pg.production('character : MINUS_SIGN')
+@pg.production('character : ZERO')
+@pg.production('character : ONE')
+@pg.production('character : TWO')
+@pg.production('character : THREE')
+@pg.production('character : FOUR')
+@pg.production('character : FIVE')
+@pg.production('character : SIX')
+@pg.production('character : SEVEN')
+@pg.production('character : EIGHT')
+@pg.production('character : NINE')
+@pg.production('character : A')
+@pg.production('character : B')
+@pg.production('character : C')
+@pg.production('character : D')
+@pg.production('character : E')
+@pg.production('character : F')
+@pg.production('character : SINGLE_QUOTE')
+@pg.production('character : DOUBLE_QUOTE')
+@pg.production('character : BACKTICK')
+def character(parser_state, p):
+    return Token(type_='character', value=p[0].value)
 
 
-def p_control_sequence(p):
-    '''
-    control_sequence : UNEXPANDED_CONTROL_SEQUENCE
-                     | UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE
-    '''
-    p[0] = Token(type_=p[1].type, value={'name': p[1].value})
+@pg.production('control_sequence : UNEXPANDED_CONTROL_SEQUENCE')
+@pg.production('control_sequence : UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE')
+def control_sequence(parser_state, p):
+    return Token(type_=p[0].type, value={'name': p[0].value})
 
 
-def p_control_sequence_active(p):
-    '''
-    control_sequence : ACTIVE_CHARACTER
-    '''
+@pg.production('control_sequence : ACTIVE_CHARACTER')
+def control_sequence_active(parser_state, p):
     # We will prefix active characters with @.
     # This really needs changing, but will do for now.
-    p[0] = p[1]
-    p[0].value['name'] = p[0].value['char']
+    v = p[0]
+    v.value['name'] = v.value['char']
+    return v
 
 
-def p_non_macro_assignment_global(p):
-    '''
-    non_macro_assignment : GLOBAL non_macro_assignment
-    '''
-    p[0] = p[2]
-    p[0].value['global'] = True
+@pg.production('non_macro_assignment : GLOBAL non_macro_assignment')
+def non_macro_assignment_global(parser_state, p):
+    v = p[1]
+    v.value['global'] = True
+    return v
 
 
-def p_non_macro_assignment(p):
-    '''
-    non_macro_assignment : simple_assignment
-    '''
-    p[0] = p[1]
+@pg.production('non_macro_assignment : simple_assignment')
+def non_macro_assignment(parser_state, p):
+    return p[0]
 
 
-def p_simple_assignment(p):
-    '''
-    simple_assignment : variable_assignment
-                      | arithmetic
-                      | code_assignment
-                      | let_assignment
-                      | short_hand_definition
-    '''
-    p[0] = p[1]
+@pg.production('simple_assignment : variable_assignment')
+@pg.production('simple_assignment : arithmetic')
+@pg.production('simple_assignment : code_assignment')
+@pg.production('simple_assignment : let_assignment')
+@pg.production('simple_assignment : short_hand_definition')
+def simple_assignment(parser_state, p):
+    return p[0]
 
 
-def p_variable_assignment_integer(p):
-    '''
-    variable_assignment : integer_variable equals number
-    '''
-    # import pdb; pdb.set_trace()
+@pg.production('variable_assignment : integer_variable equals number')
+def variable_assignment_integer(parser_state, p):
+    value = evaluate_number(p[2])
+    if p[0].type == 'count':
+        registers.count[p[0].value] = value
+    return Token(type_='variable_assignment',
+                 value={'variable': p[0], 'value': p[2]})
+
+
+@pg.production('variable_assignment : dimen_variable equals dimen')
+def variable_assignment_dimen(parser_state, p):
+    value = evaluate_dimen(p[2])
+    if p[0].type == 'dimen':
+        registers.dimen[p[0].value] = value
+    return Token(type_='variable_assignment',
+                 value={'variable': p[0], 'value': p[2]})
+
+
+@pg.production('arithmetic : ADVANCE integer_variable optional_by number')
+def arithmetic_integer_variable(parser_state, p):
     value = evaluate_number(p[3])
     if p[1].type == 'count':
-        registers.count[p[1].value] = value
-    p[0] = Token(type_='variable_assignment',
-                 value={'variable': p[1], 'value': p[3]})
+        registers.count[p[1].value] += value
+    return Token(type_='advance', value={'target': p[1], 'value': p[3]})
 
 
-def p_variable_assignment_dimen(p):
-    '''
-    variable_assignment : dimen_variable equals dimen
-    '''
-    value = evaluate_dimen(p[3])
-    if p[1].type == 'dimen':
-        registers.dimen[p[1].value] = value
-    p[0] = Token(type_='variable_assignment',
-                 value={'variable': p[1], 'value': p[3]})
+@pg.production('optional_by : by')
+@pg.production('optional_by : optional_spaces')
+def optional_by(parser_state, p):
+    return None
 
 
-def p_arithmetic_integer_variable(p):
-    '''
-    arithmetic : ADVANCE integer_variable optional_by number
-    '''
-    # import pdb; pdb.set_trace()
-    value = evaluate_number(p[4])
-    if p[2].type == 'count':
-        registers.count[p[2].value] += value
-    p[0] = Token(type_='advance', value={'target': p[2], 'value': p[4]})
+@pg.production('by : non_active_uncased_b non_active_uncased_y')
+def by(parser_state, p):
+    return None
 
 
-def p_optional_by(p):
-    '''
-    optional_by : by
-                | optional_spaces
-    '''
-    pass
+@pg.production('non_active_uncased_b : B')
+@pg.production('non_active_uncased_b : NON_ACTIVE_b')
+@pg.production('non_active_uncased_b : NON_ACTIVE_B')
+def non_active_uncased_b(parser_state, p):
+    return None
 
 
-def p_by(p):
-    '''
-    by : non_active_uncased_b non_active_uncased_y
-    '''
-    pass
+@pg.production('non_active_uncased_y : NON_ACTIVE_y')
+@pg.production('non_active_uncased_y : NON_ACTIVE_Y')
+def non_active_uncased_y(parser_state, p):
+    return None
 
 
-def p_non_active_uncased_b(p):
-    '''
-    non_active_uncased_b : B
-                         | NON_ACTIVE_b
-                         | NON_ACTIVE_B
-    '''
-    pass
+@pg.production('non_active_uncased_t : NON_ACTIVE_t')
+@pg.production('non_active_uncased_t : NON_ACTIVE_T')
+def non_active_uncased_t(parser_state, p):
+    return None
 
 
-def p_non_active_uncased_y(p):
-    '''
-    non_active_uncased_y : NON_ACTIVE_y
-                         | NON_ACTIVE_Y
-    '''
-    pass
+@pg.production('non_active_uncased_r : NON_ACTIVE_r')
+@pg.production('non_active_uncased_r : NON_ACTIVE_R')
+def non_active_uncased_r(parser_state, p):
+    return None
 
 
-def p_non_active_uncased_t(p):
-    '''
-    non_active_uncased_t : NON_ACTIVE_t
-                         | NON_ACTIVE_T
-    '''
-    pass
+@pg.production('non_active_uncased_u : NON_ACTIVE_u')
+@pg.production('non_active_uncased_u : NON_ACTIVE_U')
+def non_active_uncased_u(parser_state, p):
+    return None
 
 
-def p_non_active_uncased_r(p):
-    '''
-    non_active_uncased_r : NON_ACTIVE_r
-                         | NON_ACTIVE_R
-    '''
-    pass
+@pg.production('non_active_uncased_e : NON_ACTIVE_e')
+@pg.production('non_active_uncased_e : NON_ACTIVE_E')
+@pg.production('non_active_uncased_e : E')
+def non_active_uncased_e(parser_state, p):
+    return None
 
 
-def p_non_active_uncased_u(p):
-    '''
-    non_active_uncased_u : NON_ACTIVE_u
-                         | NON_ACTIVE_U
-    '''
-    pass
+@pg.production('non_active_uncased_p : NON_ACTIVE_p')
+@pg.production('non_active_uncased_e : NON_ACTIVE_P')
+def non_active_uncased_p(parser_state, p):
+    return None
 
 
-def p_non_active_uncased_e(p):
-    '''
-    non_active_uncased_e : NON_ACTIVE_e
-                         | NON_ACTIVE_E
-                         | E
-    '''
-    pass
+@pg.production('integer_variable : count_register')
+def integer_variable_count(parser_state, p):
+    return p[0]
 
 
-def p_non_active_uncased_p(p):
-    '''
-    non_active_uncased_p : NON_ACTIVE_p
-                         | NON_ACTIVE_P
-    '''
-    pass
+@pg.production('count_register : COUNT number')
+def count_register(parser_state, p):
+    return Token(type_='count', value=p[1]['size'])
 
 
-def p_integer_variable_count(p):
-    '''
-    integer_variable : count_register
-    '''
-    p[0] = p[1]
+@pg.production('integer_variable : COUNT_DEF_TOKEN')
+def integer_variable_count_def(parser_state, p):
+    return Token(type_='count', value=p[0])
 
 
-def p_count_register(p):
-    '''
-    count_register : COUNT number
-    '''
-    p[0] = Token(type_='count', value=p[2]['size'])
+@pg.production('dimen_variable : DIMEN_DEF_TOKEN')
+def dimen_variable_dimen_def(parser_state, p):
+    return Token(type_='dimen', value=p[0])
 
 
-def p_integer_variable_count_def(p):
-    '''
-    integer_variable : COUNT_DEF_TOKEN
-    '''
-    p[0] = Token(type_='count', value=p[1])
-
-
-def p_dimen_variable_dimen_def(p):
-    '''
-    dimen_variable : DIMEN_DEF_TOKEN
-    '''
-    p[0] = Token(type_='dimen', value=p[1])
-
-
-def p_short_hand_definition(p):
-    '''
-    short_hand_definition : short_hand_def control_sequence equals number
-    '''
-    # TODO: does this remove signs from assignment? Isn't that bad?
-    code = evaluate_number(p[4])
-    def_type = p[1].type
+@pg.production('short_hand_definition : short_hand_def control_sequence equals number')
+def short_hand_definition(parser_state, p):
+    code = evaluate_number(p[3])
+    def_type = p[0].type
     def_token_type = short_hand_def_to_token_map[def_type]
     primitive_token = TerminalToken(type_=def_token_type, value=code)
-    control_sequence_name = p[2].value['name']
+    control_sequence_name = p[1].value['name']
     def_text_token = Token(type_='definition_text',
                            value={'parameter_text': [],
                                   'replacement_text': [primitive_token]})
@@ -461,37 +392,33 @@ def p_short_hand_definition(p):
     macro_token = Token(type_='macro',
                         value={'prefixes': set(),
                                'definition': def_token})
-    lex_wrapper.e.control_sequences[control_sequence_name] = macro_token
+    parser_state.e.control_sequences[control_sequence_name] = macro_token
     # Just for the sake of output.
-    p[0] = macro_token
+    return macro_token
 
 
-def p_let_assignment_control_sequence(p):
-    '''
-    let_assignment : LET control_sequence equals one_optional_space control_sequence
-    '''
+@pg.production('let_assignment : LET control_sequence equals one_optional_space control_sequence')
+def let_assignment_control_sequence(parser_state, p):
     # TODO allow char_cat_pair.
-    target_name = p[5].value['name']
-    target_contents = lex_wrapper.e.control_sequences[target_name]
-    new_name = p[2].value['name']
-    lex_wrapper.e.control_sequences[new_name] = target_contents
-    p[0] = Token(type_='let_assignment',
+    target_name = p[4].value['name']
+    target_contents = parser_state.e.control_sequences[target_name]
+    new_name = p[1].value['name']
+    parser_state.e.control_sequences[new_name] = target_contents
+    return Token(type_='let_assignment',
                  value={'name': new_name,
                         'target_name': target_name,
                         'target_contents': target_contents})
 
 
-def p_short_hand_def(p):
-    '''
-    short_hand_def : CHAR_DEF
-                   | MATH_CHAR_DEF
-                   | COUNT_DEF
-                   | DIMEN_DEF
-                   | SKIP_DEF
-                   | MU_SKIP_DEF
-                   | TOKS_DEF
-    '''
-    p[0] = p[1]
+@pg.production('short_hand_def : CHAR_DEF')
+@pg.production('short_hand_def : MATH_CHAR_DEF')
+@pg.production('short_hand_def : COUNT_DEF')
+@pg.production('short_hand_def : DIMEN_DEF')
+@pg.production('short_hand_def : SKIP_DEF')
+@pg.production('short_hand_def : MU_SKIP_DEF')
+@pg.production('short_hand_def : TOKS_DEF')
+def short_hand_def(parser_state, p):
+    return p[0]
 
 
 def split_at(s, inds):
@@ -511,20 +438,18 @@ def split_hex_code(n, hex_length, inds):
     return parts
 
 
-def p_code_assignment(p):
-    '''
-    code_assignment : code_name number equals number
-    '''
-    code_type, char_number, code_number = p[1], p[2], p[4]
+@pg.production('code_assignment : code_name number equals number')
+def code_assignment(parser_state, p):
+    code_type, char_number, code_number = p[0], p[1], p[3]
     char_size, code_size = evaluate_number(char_number), evaluate_number(code_number)
     char = chr(char_size)
     code_type_to_char_map = {
-        'CAT_CODE': lex_wrapper.lex.char_to_cat,
-        'MATH_CODE': lex_wrapper.lex.char_to_math_code,
-        'UPPER_CASE_CODE': lex_wrapper.lex.upper_case_code,
-        'LOWER_CASE_CODE': lex_wrapper.lex.lower_case_code,
-        'SPACE_FACTOR_CODE': lex_wrapper.lex.space_factor_code,
-        'DELIMITER_CODE': lex_wrapper.lex.delimiter_code,
+        'CAT_CODE': parser_state.lex.char_to_cat,
+        'MATH_CODE': parser_state.lex.char_to_math_code,
+        'UPPER_CASE_CODE': parser_state.lex.upper_case_code,
+        'LOWER_CASE_CODE': parser_state.lex.lower_case_code,
+        'SPACE_FACTOR_CODE': parser_state.lex.space_factor_code,
+        'DELIMITER_CODE': parser_state.lex.delimiter_code,
     }
     if code_type == 'CAT_CODE':
         code = CatCode(code_size)
@@ -546,54 +471,48 @@ def p_code_assignment(p):
         code = DelimiterCode(small_glyph_code, large_glyph_code)
     char_map = code_type_to_char_map[code_type]
     char_map[char] = code
-    p[0] = {'type': 'code_assignment', 'code_type': code_type,
+    return {'type': 'code_assignment', 'code_type': code_type,
             'char': char, 'code': code}
 
 
-def p_code_name_cat(p):
-    '''
-    code_name : CAT_CODE
-              | MATH_CODE
-              | UPPER_CASE_CODE
-              | LOWER_CASE_CODE
-              | SPACE_FACTOR_CODE
-              | DELIMITER_CODE
-    '''
-    p[0] = p[1].type
+@pg.production('code_name : CAT_CODE')
+@pg.production('code_name : MATH_CODE')
+@pg.production('code_name : UPPER_CASE_CODE')
+@pg.production('code_name : LOWER_CASE_CODE')
+@pg.production('code_name : SPACE_FACTOR_CODE')
+@pg.production('code_name : DELIMITER_CODE')
+def code_name_cat(parser_state, p):
+    return p[0].type
 
 
-def p_number(p):
-    '''
-    number : optional_signs unsigned_number
-    '''
-    p[0] = {'sign': p[1], 'size': p[2]}
+@pg.production('number : optional_signs unsigned_number')
+def number(parser_state, p):
+    return {'sign': p[0], 'size': p[1]}
 
 
-def p_dimen(p):
-    '''
-    dimen : optional_signs unsigned_dimen
-    '''
-    p[0] = {'sign': p[1], 'size': p[2]}
+@pg.production('dimen : optional_signs unsigned_dimen')
+def dimen(parser_state, p):
+    return {'sign': p[0], 'size': p[1]}
 
 
-def p_unsigned_number(p):
-    '''
-    unsigned_number : normal_integer
-    '''
-    # | coerced_integer
-    p[0] = p[1]
+@pg.production('unsigned_number : normal_integer')
+# @pg.production('unsigned_number : coerced_integer')
+def unsigned_number(parser_state, p):
+    return p[0]
 
 
-def p_unsigned_dimen(p):
-    '''
-    unsigned_dimen : normal_dimen
-    '''
-    # | coerced_dimen
-    p[0] = p[1]
+@pg.production('unsigned_dimen : normal_dimen')
+# @pg.production('unsigned_dimen : coerced_dimen')
+def unsigned_dimen(parser_state, p):
+    return p[0]
 
 
 def get_integer_constant(collection):
-    chars = [t.value['char'] for t in collection.digits]
+    try:
+        chars = [t.value['char'] for t in collection.digits]
+    except TypeError:
+        import pdb; pdb.set_trace()
+
     s = ''.join(chars)
     return int(s, base=collection.base)
 
@@ -606,319 +525,243 @@ def get_real_decimal_constant(collection):
     return float(s)
 
 
-def p_normal_integer_internal_integer(p):
-    '''
-    normal_integer : internal_integer
-    '''
-    p[0] = p[1]
+@pg.production('normal_integer : internal_integer')
+def normal_integer_internal_integer(parser_state, p):
+    return p[0]
 
 
-def p_normal_dimen_internal_dimen(p):
-    '''
-    normal_dimen : internal_dimen
-    '''
-    p[0] = p[1]
+@pg.production('normal_dimen : internal_dimen')
+def normal_dimen_internal_dimen(parser_state, p):
+    return p[0]
 
 
-def p_internal_integer_short_hand_token(p):
-    '''
-    internal_integer : CHAR_DEF_TOKEN
-                     | MATH_CHAR_DEF_TOKEN
-                     | COUNT_DEF_TOKEN
-    '''
-    p[0] = p[1]
+@pg.production('internal_integer : CHAR_DEF_TOKEN')
+@pg.production('internal_integer : MATH_CHAR_DEF_TOKEN')
+@pg.production('internal_integer : COUNT_DEF_TOKEN')
+def internal_integer_short_hand_token(parser_state, p):
+    return p[0].value
 
 
-def p_internal_dimen_short_hand_token(p):
-    '''
-    internal_dimen : DIMEN_DEF_TOKEN
-    '''
-    p[0] = p[1]
+@pg.production('internal_dimen : DIMEN_DEF_TOKEN')
+def internal_dimen_short_hand_token(parser_state, p):
+    return p[0].value
 
 
-def p_internal_integer_count_register(p):
-    '''
-    internal_integer : count_register
-    '''
+@pg.production('internal_integer : count_register')
+def internal_integer_count_register(parser_state, p):
     # TODO: add other kinds of internal integer.
-    p[0] = p[1]
+    return p[0]
 
 
-def p_normal_integer_integer(p):
-    '''
-    normal_integer : integer_constant one_optional_space
-    '''
-    p[0] = get_integer_constant(p[1])
+@pg.production('normal_integer : integer_constant one_optional_space')
+def normal_integer_integer(parser_state, p):
+    return get_integer_constant(p[0])
 
 
-def p_normal_dimen_explicit(p):
-    '''
-    normal_dimen : factor unit_of_measure
-    '''
-    p[0] = Token(type_='normal_dimen',
-                 value={'factor': p[1], 'unit': p[2]})
+@pg.production('normal_dimen : factor unit_of_measure')
+def normal_dimen_explicit(parser_state, p):
+    return Token(type_='normal_dimen',
+                 value={'factor': p[0], 'unit': p[1]})
 
 
-def p_factor_integer(p):
-    '''
-    factor : normal_integer
-    '''
-    p[0] = p[1]
+@pg.production('factor : normal_integer')
+def factor_integer(parser_state, p):
+    return p[0]
 
 
-def p_factor_decimal_constant(p):
-    '''
-    factor : decimal_constant
-    '''
-    p[0] = get_real_decimal_constant(p[1])
+@pg.production('factor : decimal_constant')
+def factor_decimal_constant(parser_state, p):
+    return get_real_decimal_constant(p[0])
 
 
-def p_decimal_constant_comma(p):
-    '''
-    decimal_constant : COMMA
-    '''
-    p[0] = DigitCollection(base=10)
+@pg.production('decimal_constant : COMMA')
+def decimal_constant_comma(parser_state, p):
+    return DigitCollection(base=10)
 
 
-def p_decimal_constant_point(p):
-    '''
-    decimal_constant : POINT
-    '''
-    p[0] = DigitCollection(base=10)
-    p[0].digits = [p[1]]
+@pg.production('decimal_constant : POINT')
+def decimal_constant_point(parser_state, p):
+    v = DigitCollection(base=10)
+    v.digits = [p[0]]
+    return v
 
 
-def p_decimal_constant_prepend(p):
-    '''
-    decimal_constant : digit decimal_constant
-    '''
-    p[0] = p[2]
-    p[0].digits = [p[1]] + p[0].digits
+@pg.production('decimal_constant : digit decimal_constant')
+def decimal_constant_prepend(parser_state, p):
+    v = p[1]
+    v.digits = [p[0]] + p[0].digits
+    return v
 
 
-def p_decimal_constant_append(p):
-    '''
-    decimal_constant : decimal_constant digit
-    '''
-    p[0] = p[1]
-    p[0].digits = p[0].digits + [p[2]]
+@pg.production('decimal_constant : decimal_constant digit')
+def decimal_constant_append(parser_state, p):
+    v = p[0]
+    v.digits = p[0].digits + [p[1]]
+    return v
 
 
-def p_unit_of_measure(p):
-    '''
-    unit_of_measure : optional_true physical_unit one_optional_space
-    '''
-    p[0] = {'unit': p[2], 'true': bool(p[1])}
+@pg.production('unit_of_measure : optional_true physical_unit one_optional_space')
+def unit_of_measure(parser_state, p):
+    return {'unit': p[1], 'true': bool(p[0])}
 
 
-def p_optional_true(p):
-    '''
-    optional_true : true
-                  | empty
-    '''
-    # import pdb; pdb.set_trace()
-    # TODO
-    p[0] = p[1]
+@pg.production('optional_true : true')
+@pg.production('optional_true : empty')
+def optional_true(parser_state, p):
+    return p[0]
 
 
-def p_true(p):
-    '''
-    true : non_active_uncased_t non_active_uncased_r non_active_uncased_u non_active_uncased_e
-    '''
-    p[0] = True
+@pg.production('true : non_active_uncased_t non_active_uncased_r non_active_uncased_u non_active_uncased_e')
+def true(parser_state, p):
+    return True
 
 
-def p_physical_unit(p):
-    '''
-    physical_unit : non_active_uncased_p non_active_uncased_t
-    '''
-    p[0] = PhysicalUnit.point
+@pg.production('physical_unit : non_active_uncased_p non_active_uncased_t')
+def physical_unit(parser_state, p):
+    return PhysicalUnit.point
 
 
-def p_normal_integer_weird_base(p):
-    '''
-    normal_integer : SINGLE_QUOTE octal_constant one_optional_space
-                   | DOUBLE_QUOTE hexadecimal_constant one_optional_space
-    '''
-    p[0] = get_integer_constant(p[2])
+@pg.production('normal_integer : SINGLE_QUOTE octal_constant one_optional_space')
+@pg.production('normal_integer : DOUBLE_QUOTE hexadecimal_constant one_optional_space')
+def normal_integer_weird_base(parser_state, p):
+    return get_integer_constant(p[1])
 
 
-def p_normal_integer_character(p):
-    '''
-    normal_integer : BACKTICK character_token one_optional_space
-    '''
-    p[0] = Token(type_='backtick_integer', value=p[2])
+@pg.production('normal_integer : BACKTICK character_token one_optional_space')
+def normal_integer_character(parser_state, p):
+    return Token(type_='backtick_integer', value=p[1])
 
 
-def p_character_token_control_sequence(p):
-    '''
-    character_token : UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE
-    '''
-    # TODO: make this possible.
-    '''
-                    | active character
-    '''
-    p[0] = p[1]
-
-
-def p_character_token_character(p):
-    '''
-    character_token : character
-    '''
-    # TODO: make this possible.
-    '''
-                    | active character
-    '''
-    p[0] = p[1]
+@pg.production('character_token : UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE')
+@pg.production('character_token : character')
+# TODO: make this possible.
+# @pg.production('character_token : ACTIVE_CHARACTER')
+def character_token_character(parser_state, p):
+    return p[0]
 
 
 def process_integer_digits(p, base):
-    if len(p) > 2:
-        collection = p[2]
+    if len(p) > 1:
+        collection = p[1]
     else:
         collection = DigitCollection(base=base)
     # We work right-to-left, so the new digit should be added on the left.
-    collection.digits = [p[1]] + collection.digits
+    collection.digits = [p[0]] + collection.digits
     return collection
 
 
-def p_hexadecimal_constant(p):
-    '''
-    hexadecimal_constant : hexadecimal_digit
-                         | hexadecimal_digit hexadecimal_constant
-    '''
-    p[0] = process_integer_digits(p, base=16)
+@pg.production('hexadecimal_constant : hexadecimal_digit')
+@pg.production('hexadecimal_constant : hexadecimal_digit hexadecimal_constant')
+def hexadecimal_constant(parser_state, p):
+    return process_integer_digits(p, base=16)
 
 
-def p_integer_constant(p):
-    '''
-    integer_constant : digit
-                     | digit integer_constant
-    '''
-    p[0] = process_integer_digits(p, base=10)
+@pg.production('integer_constant : digit')
+@pg.production('integer_constant : digit integer_constant')
+def integer_constant(parser_state, p):
+    return process_integer_digits(p, base=10)
 
 
-def p_octal_constant(p):
-    '''
-    octal_constant : octal_digit
-                   | octal_digit octal_constant
-    '''
-    p[0] = process_integer_digits(p, base=8)
+@pg.production('octal_constant : octal_digit')
+@pg.production('octal_constant : octal_digit octal_constant')
+def octal_constant(parser_state, p):
+    return process_integer_digits(p, base=8)
 
 
-def p_hexadecimal_digit(p):
-    '''
-    hexadecimal_digit : digit
-                      | A
-                      | B
-                      | C
-                      | D
-                      | E
-                      | F
-    '''
-    p[0] = p[1]
+@pg.production('hexadecimal_digit : digit')
+@pg.production('hexadecimal_digit : A')
+@pg.production('hexadecimal_digit : B')
+@pg.production('hexadecimal_digit : C')
+@pg.production('hexadecimal_digit : D')
+@pg.production('hexadecimal_digit : E')
+@pg.production('hexadecimal_digit : F')
+def hexadecimal_digit(parser_state, p):
+    return p[0]
 
 
-def p_digit(p):
-    '''
-    digit : octal_digit
-          | EIGHT
-          | NINE
-    '''
-    p[0] = p[1]
+@pg.production('digit : octal_digit')
+@pg.production('digit : EIGHT')
+@pg.production('digit : NINE')
+def digit(parser_state, p):
+    return p[0]
 
 
-def p_octal_digit(p):
-    '''
-    octal_digit : ZERO
-                | ONE
-                | TWO
-                | THREE
-                | FOUR
-                | FIVE
-                | SIX
-                | SEVEN
-    '''
-    p[0] = p[1]
+@pg.production('octal_digit : ZERO')
+@pg.production('octal_digit : ONE')
+@pg.production('octal_digit : TWO')
+@pg.production('octal_digit : THREE')
+@pg.production('octal_digit : FOUR')
+@pg.production('octal_digit : FIVE')
+@pg.production('octal_digit : SIX')
+@pg.production('octal_digit : SEVEN')
+def octal_digit(parser_state, p):
+    return p[0]
 
 
-def p_one_optional_space(p):
-    '''
-    one_optional_space : SPACE
-                       | empty
-    '''
-    pass
+@pg.production('one_optional_space : SPACE')
+@pg.production('one_optional_space : empty')
+def one_optional_space(parser_state, p):
+    return None
 
 
-def p_optional_signs(p):
-    '''
-    optional_signs : optional_spaces
-                   | optional_signs plus_or_minus optional_spaces
-    '''
+@pg.production('optional_signs : optional_spaces')
+@pg.production('optional_signs : optional_signs plus_or_minus optional_spaces')
+def optional_signs(parser_state, p):
     flip_sign = lambda s: '+' if s == '-' else '-'
-    if len(p) > 2:
-        p[0] = p[2]
-        if p[1] == '-':
-            p[0] = flip_sign(p[0])
+    if len(p) > 1:
+        v = p[1]
+        if v == '-':
+            return flip_sign(v)
     else:
-        p[0] = '+'
+        return '+'
 
 
-def p_plus_or_minus(p):
-    '''
-    plus_or_minus : PLUS_SIGN
-                  | MINUS_SIGN
-    '''
-    p[0] = p[1].value['char']
+@pg.production('plus_or_minus : PLUS_SIGN')
+@pg.production('plus_or_minus : MINUS_SIGN')
+def plus_or_minus(parser_state, p):
+    return p[0].value['char']
 
 
-def p_equals(p):
-    '''
-    equals : optional_spaces
-           | optional_spaces EQUALS
-    '''
-    pass
+# @pg.production('equals : optional_spaces')
+# @pg.production('equals : optional_spaces')
+# @pg.production('equals : optional_spaces EQUALS')
+@pg.production('equals : EQUALS')
+def eq(parser_state, p):
+    return None
 
 
-def p_optional_spaces(p):
-    '''
-    optional_spaces : empty
-                    | SPACE optional_spaces
-    '''
-    pass
+@pg.production('optional_spaces : SPACE optional_spaces')
+@pg.production('optional_spaces : empty')
+def optional_spaces(parser_state, p):
+    return None
 
 
-def p_empty(p):
-    '''
-    empty :
-    '''
-    pass
+@pg.production('empty :')
+def empty(parser_state, p):
+    return None
 
 
-# Error rule for syntax errors
-def p_error(p):
+@pg.error
+def error(parser_state, p):
     print("Syntax error in input!")
-    post_mortem(lex_wrapper)
+    post_mortem(parser_state, parser)
+    raise ValueError
 
 # Build the parser
-parser = yacc.yacc(debug=True)
+parser = pg.build()
 
 
 class LexWrapper(object):
 
-    def __init__(self):
-        pass
-
-    def input(self, file_name):
+    def __init__(self, file_name):
+        self.file_name = file_name
         self.r = Reader(file_name)
         self.lex = Lexer(self.r)
         self.e = Expander()
         self.b = Banisher(self.lex, self.e)
 
-    def token(self):
+    def __next__(self):
         try:
             return self.b.next_token
         except EndOfFile:
             return None
-
-lex_wrapper = LexWrapper()
