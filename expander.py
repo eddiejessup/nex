@@ -27,6 +27,7 @@ terminal_primitive_control_sequences_map = {
     'long': 'LONG',
     'outer': 'OUTER',
 
+    'expandafter': 'EXPAND_AFTER',
 }
 
 

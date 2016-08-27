@@ -131,7 +131,9 @@ class Banisher(object):
         else:
             return ContextMode.normal
 
-    def populate_output_stack(self):
+    def process_next_input_token(self):
+        output_tokens = deque()
+
         # To reduce my own confusion:
         # a primitive token is one that is not a lex token. But it might not be
         # a terminal token either, if it needs combining with other tokens
@@ -162,7 +164,7 @@ class Banisher(object):
         elif (self.context_mode == ContextMode.awaiting_balanced_text_start and
                 type_ == 'LEFT_BRACE'):
             # Put the LEFT_BRACE on the output stack.
-            self.output_terminal_tokens_stack.append(first_token)
+            output_tokens.append(first_token)
             # Now merge all lex tokens until right brace lex token seen,
             # into a 'BALANCED_TEXT' terminal token, which we put on the
             # input stack to read later. We also put the right brace
@@ -177,7 +179,7 @@ class Banisher(object):
                 parameter_text_template = parse_parameter_text(self.parameter_text_tokens)
                 parameter_text_token = TerminalToken(type_='PARAMETER_TEXT',
                                                      value=parameter_text_template)
-                self.output_terminal_tokens_stack.append(parameter_text_token)
+                output_tokens.append(parameter_text_token)
                 # Put the LEFT_BRACE back on the input stack.
                 self.input_tokens_stack.appendleft(first_token)
                 # Done absorbing parameter text.
@@ -189,29 +191,34 @@ class Banisher(object):
         elif (self.context_mode == ContextMode.awaiting_unexpanded_cs and
               type_ in unexpanded_cs_types):
             # Put the unexpanded control sequence on the output stack.
-            self.output_terminal_tokens_stack.append(first_token)
+            output_tokens.append(first_token)
             # Done with getting an un-expanded control sequence.
             self.pop_context()
         elif type_ in read_unexpanded_control_sequence_types:
             # Get an unexpanded control sequence token and add it to the
             # output stack, along with the first token.
             next_token = self.pop_next_input_token()
-            self.output_terminal_tokens_stack.append(first_token)
-            self.output_terminal_tokens_stack.append(next_token)
+            output_tokens.append(first_token)
+            output_tokens.append(next_token)
             if type_ == 'DEF':
                 self.push_context(ContextMode.absorbing_parameter_text)
                 self.parameter_text_tokens = []
             elif type_ == 'LET':
                 self.push_context(ContextMode.awaiting_unexpanded_cs)
+        # elif type_ == 'EXPAND_AFTER':
+        #     saved_output_stack = self.output_terminal_tokens_stack
+        #     self.output_terminal_tokens_stack = deque()
+        #     unexpanded_token = self.pop_next_input_token()
+        #     self.populate_output_stack()
+        #     # TODO: check if this puts them on in the wrong order.
+        #     self.input_tokens_stack.extendleft(self.output_terminal_tokens_stack)
+        #     self.input_tokens_stack.appendleft(unexpanded_token)
+        #     self.output_terminal_tokens_stack = saved_output_stack
         elif type_ in message_types:
-            self.output_terminal_tokens_stack.append(first_token)
+            output_tokens.append(first_token)
             self.push_context(ContextMode.awaiting_balanced_text_start)
         elif type_ in if_types:
-            # We will be messing with the output stack lots, so just
-            # save anything current, empty the stack, and restore it at the
-            # end.
-            saved_output_stack = self.output_terminal_tokens_stack.copy()
-            self.output_terminal_tokens_stack = deque([first_token])
+            condition_stack = deque([first_token])
             # Get enough tokens to evaluate condition. Populating might add
             # more tokens than are needed to evaluate the condition, so we need
             # to add output tokens, then find the longest input sequence that
@@ -225,9 +232,9 @@ class Banisher(object):
                 # While populating this, maybe we will see an if_type in the
                 # condition. Haven't tested, but it seems like this should
                 # recurse correctly.
-                self.populate_output_stack()
+                condition_stack.extend(self.process_next_input_token())
                 have_parsed = False
-                input_string = list(self.output_terminal_tokens_stack)
+                input_string = list(condition_stack)
                 inputs_partial = increasing_window(input_string)
                 for i_max, input_partial in enumerate(inputs_partial):
                     try:
@@ -251,7 +258,8 @@ class Banisher(object):
             # Minus 1 because we find the first string *not* to parse, meaning
             # we have some extra fluff.
             for i in range(i_max - 1):
-                self.output_terminal_tokens_stack.popleft()
+                condition_stack.popleft()
+            if_stack = condition_stack
 
             # Now get the body of the condition text.
             # TeXbook:
@@ -268,10 +276,8 @@ class Banisher(object):
                 # is already on the input stack from before.
                 i_else = None
                 # for i, t in enumerate(self.input_tokens_stack):
-                for i, t in enumerate(self.output_terminal_tokens_stack):
+                for i, t in enumerate(if_stack):
                     print(t)
-                    # Because we are not expanding, I guess we must do this?
-                    # Seems messy.
                     if t.type in if_types:
                         nr_conditions += 1
                     elif t.type == 'END_IF':
@@ -287,7 +293,7 @@ class Banisher(object):
                 # If we do not get to the end of the if,
                 # add a token and go again.
                 else:
-                    self.populate_output_stack()
+                    if_stack.extend(self.process_next_input_token())
                     continue
                 break
             i_end_if = i
@@ -295,7 +301,7 @@ class Banisher(object):
             # Now we need to strip the skipped block.
             # In all cases we will drop the END_IF; its work is done.
             # We never read past this, so it will not mess up indexing.
-            del self.output_terminal_tokens_stack[i_end_if]
+            del if_stack[i_end_if]
             # Similar to removing the condition tokens, drop the input tokens
             # in the truth-ey or false-ey (else) block.
             if is_true:
@@ -318,11 +324,10 @@ class Banisher(object):
             # Note that we always del at the same index, because the indices will
             # shift when we do a del.
             for i in range_to_del:
-                del self.output_terminal_tokens_stack[i_to_del]
+                del if_stack[i_to_del]
 
-            # Restore the old things on the output stack.
-            # TODO: check, this might be backwards.
-            self.output_terminal_tokens_stack.extendleft(saved_output_stack)
+            output_tokens.extendleft(reversed(if_stack))
+
         elif type_ == 'STRING':
             next_token = self.pop_next_input_token()
             tokens = []
@@ -339,6 +344,13 @@ class Banisher(object):
                                 for c in chars]
             tokens += char_term_tokens
             self.input_tokens_stack.extendleft(tokens[::-1])
+        # elif type_ == 'CS_NAME':
+        #     saved_output_stack = self.output_terminal_tokens_stack.copy()
+        #     chars = []
+        #     while True:
+        #         self.populate_output_stack()
+        #         if self.
+        #     self.output_terminal_tokens_stack.extendleft(saved_output_stack)
         elif type_ == 'ESCAPE_CHAR':
             escape_char_param_token = self.expander.expand_to_token_list('escapechar',
                                                                          argument_text=[])
@@ -346,8 +358,13 @@ class Banisher(object):
             escape_char = chr(escape_char_code)
             escape_char_token = make_char_cat_term_token(escape_char,
                                                          CatCode.other)
-            self.output_terminal_tokens_stack.append(escape_char_token)
+            output_tokens.append(escape_char_token)
         # Just some semantic bullshit, stick it on the output stack
         # for the interpreter to deal with.
         else:
-            self.output_terminal_tokens_stack.append(first_token)
+            output_tokens.append(first_token)
+        return output_tokens
+
+    def populate_output_stack(self):
+        next_output_tokens = self.process_next_input_token()
+        self.output_terminal_tokens_stack.extend(next_output_tokens)
