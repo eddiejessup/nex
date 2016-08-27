@@ -151,16 +151,21 @@ def char_cat_pair_to_terminal_token(char_cat_pair_token):
     return terminal_token
 
 
+def make_unexpanded_control_sequence_terminal_token(name):
+    type_ = (unexpanded_one_char_cs_type if len(name) == 1
+             else unexpanded_cs_type)
+    # Convert to a primitive unexpanded control sequence.
+    terminal_token = TerminalToken(type_=type_, value=name)
+    return terminal_token
+
+
 def lex_token_to_unexpanded_terminal_token(lex_token):
     # If we have a char-cat pair, we must type it to its terminal version,
     if lex_token.type == 'CHAR_CAT_PAIR':
         terminal_token = char_cat_pair_to_terminal_token(lex_token)
     elif lex_token.type == 'CONTROL_SEQUENCE':
         name = lex_token.value
-        type_ = (unexpanded_one_char_cs_type if len(name) == 1
-                 else unexpanded_cs_type)
-        # Convert to a primitive unexpanded control sequence.
-        terminal_token = TerminalToken(type_=type_, value=name)
+        terminal_token = make_unexpanded_control_sequence_terminal_token(name)
     elif isinstance(lex_token, InternalToken):
         terminal_token = lex_token
     return terminal_token

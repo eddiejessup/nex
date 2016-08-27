@@ -8,6 +8,7 @@ from common import Token, TerminalToken, InternalToken
 from utils import increasing_window
 from lexer import make_char_cat_token, make_control_sequence_token, CatCode
 from typer import (lex_token_to_unexpanded_terminal_token,
+                   make_unexpanded_control_sequence_terminal_token,
                    unexpanded_cs_types, unexpanded_cs_type,
                    unexpanded_one_char_cs_type)
 from expander import short_hand_def_map, get_nr_params, parse_parameter_text, if_map
@@ -290,25 +291,37 @@ class Banisher(object):
 
         elif type_ == 'STRING':
             next_token = self.pop_next_input_token()
-            tokens = []
+            string_tokens = []
             if next_token.type in unexpanded_cs_types:
                 chars = list(next_token.value)
                 # Internal instruction to produce an escape character token.
                 escape_char_token = InternalToken(type_='ESCAPE_CHAR',
                                                   value=None)
-                tokens += [escape_char_token]
+                string_tokens += [escape_char_token]
             else:
                 char = next_token.value['char']
                 chars = [char]
             char_term_tokens = [make_char_cat_term_token(c, CatCode.other)
                                 for c in chars]
-            tokens += char_term_tokens
-            self.input_tokens_stack.extendleft(reversed(tokens))
-        # elif type_ == 'CS_NAME':
-        #     chars = []
-        #     while True:
-        #         self.populate_output_stack()
-        #         if self.
+            string_tokens += char_term_tokens
+            self.input_tokens_stack.extendleft(reversed(string_tokens))
+        elif type_ == 'CS_NAME':
+            cs_name_tokens = []
+            cs_name_stack = deque()
+
+            while True:
+                t = self.pop_or_fill_and_pop(cs_name_stack)
+                if t.type == 'END_CS_NAME':
+                    break
+                cs_name_tokens.append(t)
+            chars = [tok.value['char'] for tok in cs_name_tokens]
+            cs_name = ''.join(chars)
+            cs_token = make_unexpanded_control_sequence_terminal_token(cs_name)
+            # If we expanded such that we got tokens past 'endcsname',
+            # put them back on the input stack.
+            self.input_tokens_stack.extendleft(reversed(cs_name_stack))
+            # But first comes our shiny new control sequence token.
+            self.input_tokens_stack.appendleft(cs_token)
         elif type_ == 'ESCAPE_CHAR':
             escape_char_param_token = self.expander.expand_to_token_list('escapechar',
                                                                          argument_text=[])

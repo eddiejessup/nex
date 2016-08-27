@@ -61,6 +61,8 @@ non_terminal_primitive_control_sequences_map = {
     'else': 'ELSE',
     'fi': 'END_IF',
     'string': 'STRING',
+    'csname': 'CS_NAME',
+    'endcsname': 'END_CS_NAME',
 }
 non_terminal_primitive_control_sequences_map.update(if_map)
 
