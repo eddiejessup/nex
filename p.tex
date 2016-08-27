@@ -250,14 +250,14 @@
 \def\ch@ck#1#2#3{\ifnum\count1#1<#2%
   \else\errmessage{No room for a new #3}\fi}
 
-% Here are some examples of allocation.
-\newdimen\maxdimen \maxdimen=16383.99999pt % the largest legal <dimen>
-\newskip\hideskip \hideskip=-1000pt plus 1fill % negative but can grow
-\newskip\centering \centering=0pt plus 1000pt minus 1000pt
-\newdimen\p@ \p@=1pt % this saves macro space and time
-\newdimen\z@ \z@=0pt % can be used both for 0pt and 0
-\newskip\z@skip \z@skip=0pt plus0pt minus0pt
-\newbox\voidb@x % permanently void box register
+% % Here are some examples of allocation.
+% \newdimen\maxdimen \maxdimen=16383.99999pt % the largest legal <dimen>
+% \newskip\hideskip \hideskip=-1000pt plus 1fill % negative but can grow
+% \newskip\centering \centering=0pt plus 1000pt minus 1000pt
+% \newdimen\p@ \p@=1pt % this saves macro space and time
+% \newdimen\z@ \z@=0pt % can be used both for 0pt and 0
+% \newskip\z@skip \z@skip=0pt plus0pt minus0pt
+% \newbox\voidb@x % permanently void box register
 
 \outer\def\newif#1{
   \count@=\escapechar
@@ -299,4 +299,5 @@
 
 % hihi
 
-\ifnum\count22<2\message{h}\else\message{y}\fi
+\ifnum\count22<2 \ifnum1<2 b\else c\fi \else y\fi
+% \ifnum\count22<2\ifnum2>1\message{h}\fi\else\message{y}\fi

@@ -70,13 +70,17 @@ class Banisher(object):
 
     @property
     def next_token(self):
-        while not self.output_terminal_tokens_stack:
-            self.populate_output_stack()
+        next_token = self.pop_or_fill_and_pop(self.output_terminal_tokens_stack)
         logger.debug(self.output_terminal_tokens_stack)
-        next_token = self.output_terminal_tokens_stack.popleft()
         self._secret_terminal_list.append(next_token)
         # for t in self._secret_terminal_list[-20:]:
         #     print(t)
+        return next_token
+
+    def pop_or_fill_and_pop(self, stack):
+        while not stack:
+            self.process_input_to_stack(stack)
+        next_token = stack.popleft()
         return next_token
 
     def populate_input_stack(self):
@@ -218,48 +222,42 @@ class Banisher(object):
             output_tokens.append(first_token)
             self.push_context(ContextMode.awaiting_balanced_text_start)
         elif type_ in if_types:
-            condition_stack = deque([first_token])
-            # Get enough tokens to evaluate condition. Populating might add
-            # more tokens than are needed to evaluate the condition, so we need
-            # to add output tokens, then find the longest input sequence that
-            # will parse, and drop that input sequence from the stack, as we
-            # only need it for the condition.
+            # TODO: aren't all these things actually queues, not stacks?
+            # (Entails lots of renaming.)
+            # Processing input tokens might return many tokens, so
+            # we store them in a buffer.
+            # Want to extend the stack-to-be-parsed one token at a time,
+            # so we can break as soon as we have all we need.
+            condition_buffer_stack = deque([first_token])
+            condition_parse_stack = deque()
+
+            # Get enough tokens to evaluate condition. We find the longest
+            # input sequence that will parse, and drop that input sequence from
+            # the stack, as we only need it for the condition.
             # We know to stop adding tokens when we see a switch from not
             # parsing, to parsing, to not parsing again.
+            have_parsed = False
             while True:
-                # TODO: isn't this thing actually a queue, not a stack?
-                # (Entails lots of renaming.)
                 # While populating this, maybe we will see an if_type in the
                 # condition. Haven't tested, but it seems like this should
                 # recurse correctly.
-                condition_stack.extend(self.process_next_input_token())
-                have_parsed = False
-                input_string = list(condition_stack)
-                inputs_partial = increasing_window(input_string)
-                for i_max, input_partial in enumerate(inputs_partial):
-                    try:
-                        is_true = condition_parser.parse(iter(input_partial), state='hihi')
-                    except (ParsingError, StopIteration):
-                        if have_parsed:
-                            break
-                    else:
-                        have_parsed = True
-                # If we try all parse strings, and either never can parse, or
-                # do not switch back to an invalid parse, then run again with
-                # more tokens.
+                t = self.pop_or_fill_and_pop(condition_buffer_stack)
+                condition_parse_stack.append(t)
+                try:
+                    is_true = condition_parser.parse(iter(condition_parse_stack), state='hihi')
+                except (ParsingError, StopIteration):
+                    if have_parsed:
+                        break
                 else:
-                    continue
-                # If we have broken from the loop, we have got the no-parse to
-                # parse to no-parse behaviour we want, and we can use 'i'
-                # to get the longest-parsing string.
-                break
-            # Get rid of the condition tokens, as we are done with them,
-            # and the (main) parser will be confused by them.
-            # Minus 1 because we find the first string *not* to parse, meaning
-            # we have some extra fluff.
-            for i in range(i_max - 1):
-                condition_stack.popleft()
-            if_stack = condition_stack
+                    have_parsed = True
+
+            # We got exactly one token of fluff, to make the condition parse
+            # stack not-parse. Put that back on the existing buffer, and that
+            # gives us the start of the condition body stack.
+            # We can forget about the rest of the condition stack, as we are
+            # done with it.
+            condition_buffer_stack.appendleft(condition_parse_stack.pop())
+            if_stack = condition_buffer_stack
 
             # Now get the body of the condition text.
             # TeXbook:
@@ -269,64 +267,40 @@ class Banisher(object):
             # being ignored."
             # From testing, the above does not seem to hold, so I am going
             # to carry on expansion.
+            nr_conditions = 1
+            in_else = None
+            not_skipped_tokens = []
+            condition_block_delimiter_types = ('ELSE', 'OR')
+            condition_types = ('END_IF',) + tuple(if_types) + tuple(condition_block_delimiter_types)
             while True:
-                nr_conditions = 1
-                # This is very wasteful, because we check the same tokens
-                # over and over, but it saves us worrying about stuff that
-                # is already on the input stack from before.
-                i_else = None
-                # for i, t in enumerate(self.input_tokens_stack):
-                for i, t in enumerate(if_stack):
-                    print(t)
-                    if t.type in if_types:
-                        nr_conditions += 1
-                    elif t.type == 'END_IF':
-                        nr_conditions -= 1
-                    # If we are at the pertinent if-nesting level, then
-                    # a condition block delimiter should be kept track of.
-                    # We only keep one delimiter here; fuck ifcase, we will
-                    # handle that later.
-                    if nr_conditions == 1 and t.type in ('ELSE', 'OR'):
-                        i_else = i
-                    if nr_conditions == 0:
-                        break
-                # If we do not get to the end of the if,
-                # add a token and go again.
-                else:
-                    if_stack.extend(self.process_next_input_token())
-                    continue
-                break
-            i_end_if = i
+                t = self.pop_or_fill_and_pop(if_stack)
+                # Keep track of nested conditions.
+                # Since we expand, I'm not actually sure this is needed,
+                # as an if_type will be handled inside the process call,
+                # but I don't think it does any harm.
+                if t.type in if_types:
+                    nr_conditions += 1
+                # This one *is* needed, for the matching END_IF.
+                elif t.type == 'END_IF':
+                    nr_conditions -= 1
 
-            # Now we need to strip the skipped block.
-            # In all cases we will drop the END_IF; its work is done.
-            # We never read past this, so it will not mess up indexing.
-            del if_stack[i_end_if]
-            # Similar to removing the condition tokens, drop the input tokens
-            # in the truth-ey or false-ey (else) block.
-            if is_true:
-                # If we have an ELSE, then we drop from that, inclusive, until
-                # the END_IF, exclusive.
-                i_to_del = i_else
-                if i_else is not None:
-                    range_to_del = range(i_else, i_end_if)
-                # Otherwise, we do nothing.
-                else:
-                    range_to_del = range(0)
-            else:
-                # If we have an ELSE, then we drop until that, inclusive.
-                i_to_del = 0
-                if i_else is not None:
-                    range_to_del = range(i_else + 1)
-                # Otherwise, we drop until the END_IF, exclusive.
-                else:
-                    range_to_del = range(i_end_if)
-            # Note that we always del at the same index, because the indices will
-            # shift when we do a del.
-            for i in range_to_del:
-                del if_stack[i_to_del]
+                # If we are at the pertinent if-nesting level, then
+                # a condition block delimiter should be kept track of.
+                # We only keep one delimiter here; fuck ifcase, we will
+                # handle that later.
+                if nr_conditions == 1 and t.type in condition_block_delimiter_types:
+                    in_else = True
 
-            output_tokens.extendleft(reversed(if_stack))
+                # Don't include internal tokens.
+                if t.type not in condition_types:
+                    # Include token if we're in first block and condition is
+                    # true, or we're in the else block and condition is false.
+                    if (is_true and not in_else) or (not is_true and in_else):
+                        not_skipped_tokens.append(t)
+
+                if nr_conditions == 0:
+                    break
+            output_tokens.extendleft(reversed(not_skipped_tokens))
 
         elif type_ == 'STRING':
             next_token = self.pop_next_input_token()
@@ -343,14 +317,12 @@ class Banisher(object):
             char_term_tokens = [make_char_cat_term_token(c, CatCode.other)
                                 for c in chars]
             tokens += char_term_tokens
-            self.input_tokens_stack.extendleft(tokens[::-1])
+            self.input_tokens_stack.extendleft(reversed(tokens))
         # elif type_ == 'CS_NAME':
-        #     saved_output_stack = self.output_terminal_tokens_stack.copy()
         #     chars = []
         #     while True:
         #         self.populate_output_stack()
         #         if self.
-        #     self.output_terminal_tokens_stack.extendleft(saved_output_stack)
         elif type_ == 'ESCAPE_CHAR':
             escape_char_param_token = self.expander.expand_to_token_list('escapechar',
                                                                          argument_text=[])
@@ -366,5 +338,8 @@ class Banisher(object):
         return output_tokens
 
     def populate_output_stack(self):
+        self.process_input_to_stack(self.output_terminal_tokens_stack)
+
+    def process_input_to_stack(self, stack):
         next_output_tokens = self.process_next_input_token()
-        self.output_terminal_tokens_stack.extend(next_output_tokens)
+        stack.extend(next_output_tokens)
