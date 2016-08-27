@@ -32,7 +32,6 @@ class ContextMode(Enum):
     awaiting_balanced_text_start = 2
     awaiting_unexpanded_cs = 3
     absorbing_parameter_text = 4
-    reading_macro_arguments = 5
 
 
 expanding_modes = (
@@ -110,15 +109,6 @@ class Banisher(object):
         balanced_text = TerminalToken(type_='BALANCED_TEXT', value=tokens[:-1])
         return balanced_text
 
-    def check_macro_argument_text(self):
-        if len(self.argument_text) == get_nr_params(self.param_text):
-            # Now run again, hopefully now seeing a primitive token.
-            # (Might not, if the expansion needs more expansion, but the
-            # ultimate escape route is to see a primitive token.)
-            expanded_first_token = self.expander.expand_to_token_list(self.macro_name, self.argument_text)
-            self.input_tokens_stack.extendleft(expanded_first_token[::-1])
-            self.pop_context()
-
     def push_context(self, mode):
         self.context_mode_stack.append(mode)
 
@@ -150,21 +140,21 @@ class Banisher(object):
         # Might be a lex token, a primitive token or a terminal token.
         first_token = self.pop_next_input_token()
         type_ = first_token.type
-        # print(first_token)
-        # print(self.context_mode_stack)
-        # print()
-        if self.context_mode == ContextMode.reading_macro_arguments:
-            self.argument_text.append(first_token)
-            self.check_macro_argument_text()
+
         # If we get a control sequence token, we need to either start expanding
         # it, or add it as an un-expanded token, depending on the context.
-        elif self.expanding_control_sequences and type_ in unexpanded_cs_types:
+        if self.expanding_control_sequences and type_ in unexpanded_cs_types:
             name = first_token.value
-            self.push_context(ContextMode.reading_macro_arguments)
-            self.macro_name = name
-            self.param_text = self.expander.expand_to_parameter_text(name)
-            self.argument_text = []
-            self.check_macro_argument_text()
+            param_text = self.expander.expand_to_parameter_text(name)
+            argument_text = []
+            for _ in range(len(param_text)):
+                next_token = self.pop_next_input_token()
+                argument_text.append(next_token)
+            # Now run again, hopefully now seeing a primitive token.
+            # (Might not, if the expansion needs more expansion, but the
+            # ultimate escape route is to see a primitive token.)
+            expanded_first_token = self.expander.expand_to_token_list(name, argument_text)
+            self.input_tokens_stack.extendleft(reversed(expanded_first_token))
         elif (self.context_mode == ContextMode.awaiting_balanced_text_start and
                 type_ == 'LEFT_BRACE'):
             # Put the LEFT_BRACE on the output stack.
@@ -209,15 +199,11 @@ class Banisher(object):
                 self.parameter_text_tokens = []
             elif type_ == 'LET':
                 self.push_context(ContextMode.awaiting_unexpanded_cs)
-        # elif type_ == 'EXPAND_AFTER':
-        #     saved_output_stack = self.output_terminal_tokens_stack
-        #     self.output_terminal_tokens_stack = deque()
-        #     unexpanded_token = self.pop_next_input_token()
-        #     self.populate_output_stack()
-        #     # TODO: check if this puts them on in the wrong order.
-        #     self.input_tokens_stack.extendleft(self.output_terminal_tokens_stack)
-        #     self.input_tokens_stack.appendleft(unexpanded_token)
-        #     self.output_terminal_tokens_stack = saved_output_stack
+        elif type_ == 'EXPAND_AFTER':
+            unexpanded_token = self.pop_next_input_token()
+            next_tokens = self.process_next_input_token()
+            self.input_tokens_stack.extendleft(reversed(next_tokens))
+            self.input_tokens_stack.appendleft(unexpanded_token)
         elif type_ in message_types:
             output_tokens.append(first_token)
             self.push_context(ContextMode.awaiting_balanced_text_start)

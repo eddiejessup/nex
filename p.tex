@@ -250,54 +250,26 @@
 \def\ch@ck#1#2#3{\ifnum\count1#1<#2%
   \else\errmessage{No room for a new #3}\fi}
 
-% % Here are some examples of allocation.
-% \newdimen\maxdimen \maxdimen=16383.99999pt % the largest legal <dimen>
-% \newskip\hideskip \hideskip=-1000pt plus 1fill % negative but can grow
-% \newskip\centering \centering=0pt plus 1000pt minus 1000pt
-% \newdimen\p@ \p@=1pt % this saves macro space and time
-% \newdimen\z@ \z@=0pt % can be used both for 0pt and 0
-% \newskip\z@skip \z@skip=0pt plus0pt minus0pt
-% \newbox\voidb@x % permanently void box register
+% Here are some examples of allocation.
+\newdimen\maxdimen \maxdimen=16383.99999pt % the largest legal <dimen>
+\newskip\hideskip \hideskip=-1000pt plus 1fill % negative but can grow
+\newskip\centering \centering=0pt plus 1000pt minus 1000pt
+\newdimen\p@ \p@=1pt % this saves macro space and time
+\newdimen\z@ \z@=0pt % can be used both for 0pt and 0
+\newskip\z@skip \z@skip=0pt plus0pt minus0pt
+\newbox\voidb@x % permanently void box register
 
-\outer\def\newif#1{
-  \count@=\escapechar
-  \escapechar=\m@ne
+% And here's a different sort of allocation:
+% For example, \newif\iffoo creates \footrue, \foofalse to go with \iffoo.
+\outer\def\newif#1{\count@\escapechar \escapechar\m@ne
+  \expandafter\expandafter\expandafter
+   \def\@if#1{true}{\let#1=\iftrue}%
+  \expandafter\expandafter\expandafter
+   \def\@if#1{false}{\let#1=\iffalse}%
+  \@if#1{false}\escapechar\count@} % the condition starts out false
+\def\@if#1#2{\csname\expandafter\if@\string#1#2\endcsname}
+% {\uccode`1=`i \uccode`2=`f \uppercase{\gdef\if@12{}}} % `if' is required
 
-  % \expandafter
-  % \expandafter
-  % \expandafter
-  \def\@if#1{true}{\let#1=\iftrue}
-  % \def\@if#1{true}{\let#1=\iftrue}
-
-  % \expandafter
-  % \expandafter
-  % \expandafter
-  % \def\@if#1{false}{\let#1=\iffalse}
-
-  % \@if#1{false}
-
-  \escapechar=\count@
-} % the condition starts out false
-
-% \newif12
-
-% \@if
-
-% \def\shilly{tut}
-% \expandafter\def\shilly{hoho}
-% % \expandafter\expandafter1r
-% % \expandafter
-% % \expandafter
-% % \expandafter
-% % \def\@if#1{true}
-% % {\let#1=\iftrue}%
-
-% % \expandafter
-% % \expandafter
-% % \def\@if#1{true}
-% % {\let#1=\iftrue}%
-
-% hihi
-
-\ifnum\count22<2 \ifnum1<2 b\else c\fi \else y\fi
-% \ifnum\count22<2\ifnum2>1\message{h}\fi\else\message{y}\fi
+\def\a#1{#1}
+% Assign initial values to TeX's parameters
+\expandafter\def\a\b{hoho}
