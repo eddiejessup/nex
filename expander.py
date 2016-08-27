@@ -74,7 +74,7 @@ delim_macro_param_type = 'DELIMITED_PARAM'
 macro_param_types = (undelim_macro_param_type, delim_macro_param_type)
 
 composite_terminal_control_sequence_types = (
-    'BALANCED_TEXT',
+    'BALANCED_TEXT_AND_RIGHT_BRACE',
     'PARAMETER_TEXT',
 )
 

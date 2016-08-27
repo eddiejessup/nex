@@ -105,9 +105,7 @@ class Banisher(object):
                 brace_level -= 1
             if brace_level == 0:
                 break
-        # Put the ending right brace token back on the input stack.
-        self.input_tokens_stack.appendleft(tokens[-1])
-        balanced_text = TerminalToken(type_='BALANCED_TEXT', value=tokens[:-1])
+        balanced_text = TerminalToken(type_='BALANCED_TEXT_AND_RIGHT_BRACE', value=tokens[:-1])
         return balanced_text
 
     def push_context(self, mode):
@@ -161,9 +159,8 @@ class Banisher(object):
             # Put the LEFT_BRACE on the output stack.
             output_tokens.append(first_token)
             # Now merge all lex tokens until right brace lex token seen,
-            # into a 'BALANCED_TEXT' terminal token, which we put on the
-            # input stack to read later. We also put the right brace
-            # back on the stack to read later.
+            # into a 'BALANCED_TEXT_AND_RIGHT_BRACE' terminal token, which we put on the
+            # input stack to read later.
             balanced_text_token = self.get_balanced_text_token()
             # Put it on the input stack to be read again.
             self.input_tokens_stack.appendleft(balanced_text_token)
@@ -189,6 +186,17 @@ class Banisher(object):
             output_tokens.append(first_token)
             # Done with getting an un-expanded control sequence.
             self.pop_context()
+        elif type_ == 'LEFT_BRACE':
+            # We know we aren't seeing a left brace to do with defining a
+            # macro, and for now, knowing no better, we will assume we are
+            # starting a new level of grouping. This case should include things
+            # that have been \let equal to a begin_group-ey character token.
+            # TODO: implement \let = <character token>
+            # But this isn't the same as \begingroup.
+            pass
+        elif type_ == 'RIGHT_BRACE':
+            # I think roughly same comments as for LEFT_BRACE above apply.
+            pass
         elif type_ in read_unexpanded_control_sequence_types:
             # Get an unexpanded control sequence token and add it to the
             # output stack, along with the first token.

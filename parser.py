@@ -87,7 +87,7 @@ def message(parser_state, p):
                  value={'content': p[1]})
 
 
-@pg.production('general_text : filler implicit_left_brace BALANCED_TEXT RIGHT_BRACE')
+@pg.production('general_text : filler implicit_left_brace BALANCED_TEXT_AND_RIGHT_BRACE')
 def general_text(parser_state, p):
     return p[2]
 
@@ -136,7 +136,7 @@ def definition(parser_state, p):
     return def_token
 
 
-@pg.production('definition_text : PARAMETER_TEXT LEFT_BRACE BALANCED_TEXT RIGHT_BRACE')
+@pg.production('definition_text : PARAMETER_TEXT LEFT_BRACE BALANCED_TEXT_AND_RIGHT_BRACE')
 def definition_text(parser_state, p):
     # TODO: maybe move this parsing logic to inside the Expander.
     replacement_text = parse_replacement_text(p[2].value)
