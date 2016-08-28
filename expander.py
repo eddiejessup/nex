@@ -9,7 +9,6 @@ terminal_primitive_control_sequences_map = {
     'sfcode': 'SPACE_FACTOR_CODE',
     'delcode': 'DELIMITER_CODE',
 
-    'def': 'DEF',
     'let': 'LET',
 
     'count': 'COUNT',
@@ -38,6 +37,12 @@ parameter_types = {
     'integer': 'INTEGER_PARAMETER',
 }
 
+def_map = {
+    'def': 'DEF',
+    'gdef': 'G_DEF',
+    'edef': 'E_DEF',
+    'xdef': 'X_DEF',
+}
 
 short_hand_def_map = {
     'chardef': 'CHAR_DEF',
@@ -55,6 +60,7 @@ short_hand_def_to_token_map = {
 }
 
 terminal_primitive_control_sequences_map.update(short_hand_def_map)
+terminal_primitive_control_sequences_map.update(def_map)
 
 if_map = {
     'ifnum': 'IF_NUM',

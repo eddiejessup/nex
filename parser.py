@@ -116,12 +116,22 @@ def macro_assignment(parser_state, p):
     return macro_token
 
 
-@pg.production('definition : DEF control_sequence definition_text')
+@pg.production('definition : def control_sequence definition_text')
 def definition(parser_state, p):
     def_token = Token(type_='definition',
-                      value={'name': p[1].value['name'],
+                      value={'def_type': p[0],
+                             'name': p[1].value['name'],
                              'text': p[2]})
     return def_token
+
+
+# TODO: can automate this, and many like it, using expander maps.
+@pg.production('def : DEF')
+@pg.production('def : G_DEF')
+@pg.production('def : E_DEF')
+@pg.production('def : X_DEF')
+def def_(parser_state, p):
+    return p[0]
 
 
 @pg.production('definition_text : PARAMETER_TEXT LEFT_BRACE BALANCED_TEXT_AND_RIGHT_BRACE')

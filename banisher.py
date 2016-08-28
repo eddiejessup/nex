@@ -4,14 +4,13 @@ from enum import Enum
 
 from rply.errors import ParsingError
 
-from common import Token, TerminalToken, InternalToken
-from utils import increasing_window
-from lexer import make_char_cat_token, make_control_sequence_token, CatCode
+from common import TerminalToken, InternalToken
+from lexer import (make_char_cat_token, CatCode,
+                   char_cat_lex_type)
 from typer import (lex_token_to_unexpanded_terminal_token,
                    make_unexpanded_control_sequence_terminal_token,
-                   unexpanded_cs_types, unexpanded_cs_type,
-                   unexpanded_one_char_cs_type)
-from expander import short_hand_def_map, get_nr_params, parse_parameter_text, if_map
+                   unexpanded_cs_types)
+from expander import short_hand_def_map, def_map, parse_parameter_text, if_map
 from condition_parser import condition_parser
 from general_text_parser import general_text_parser
 
@@ -19,10 +18,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
 
 read_unexpanded_control_sequence_types = (
-    'DEF',
     'LET',
     'BACKTICK',
 )
+read_unexpanded_control_sequence_types += tuple(set(def_map.values()))
 read_unexpanded_control_sequence_types += tuple(set(short_hand_def_map.values()))
 
 if_types = if_map.values()
@@ -204,7 +203,7 @@ class Banisher(object):
             next_token = self.pop_next_input_token()
             output_tokens.append(first_token)
             output_tokens.append(next_token)
-            if type_ == 'DEF':
+            if type_ in def_map.values():
                 self.push_context(ContextMode.absorbing_parameter_text)
                 self.parameter_text_tokens = []
             elif type_ == 'LET':
@@ -353,9 +352,29 @@ class Banisher(object):
             # Check arguments obey the rules of a 'general text'.
             balanced_text_token = general_text_parser.parse(iter(case_tokens),
                                                             state='hihi')
-            # for tok in balanced_text_token:
 
-            import pdb; pdb.set_trace()
+            case_maps_map = {
+                'LOWER_CASE': self.lexer.lower_case_code,
+                'UPPER_CASE': self.lexer.upper_case_code,
+            }
+            case_map = case_maps_map[type_]
+
+            def modify_tok(tok):
+                if tok.value['lex_type'] == char_cat_lex_type:
+                    old_char = tok.value['char']
+                    new_char = case_map[old_char]
+                    if new_char == chr(0):
+                        new_char = old_char
+                    new_lex_tok = make_char_cat_token(char=new_char,
+                                                      cat=tok.value['cat'])
+                    new_tok = lex_token_to_unexpanded_terminal_token(new_lex_tok)
+                    return new_tok
+                else:
+                    return tok
+
+            new_toks = list(map(modify_tok, balanced_text_token.value))
+            # Put cased tokens back on the stack to read again.
+            self.input_tokens_stack.extendleft(reversed(new_toks))
 
         # Just some semantic bullshit, stick it on the output stack
         # for the interpreter to deal with.

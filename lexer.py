@@ -99,6 +99,7 @@ class ReadingState(Enum):
 char_cat_lex_type = 'CHAR_CAT_PAIR'
 control_sequence_lex_type = 'CONTROL_SEQUENCE'
 
+
 def make_char_cat_token(char, cat):
     return Token(type_=char_cat_lex_type, value={'char': char, 'cat': cat})
 
@@ -115,6 +116,7 @@ class Lexer(object):
         self.reading_state = ReadingState.line_begin
         self.initialize_char_cats()
         self.initialize_char_math_codes()
+        # TODO: move some of these to separate class or something.
         self.initialize_case_codes()
         self.initialize_space_factor_codes()
         self.initialize_delimiter_codes()
