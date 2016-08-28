@@ -13,6 +13,7 @@ from typer import (lex_token_to_unexpanded_terminal_token,
                    unexpanded_one_char_cs_type)
 from expander import short_hand_def_map, get_nr_params, parse_parameter_text, if_map
 from condition_parser import condition_parser
+from general_text_parser import general_text_parser
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
@@ -143,7 +144,7 @@ class Banisher(object):
         # If we get a control sequence token, we need to either start expanding
         # it, or add it as an un-expanded token, depending on the context.
         if self.expanding_control_sequences and type_ in unexpanded_cs_types:
-            name = first_token.value
+            name = first_token.value['name']
             param_text = self.expander.expand_to_parameter_text(name)
             argument_text = []
             for _ in range(len(param_text)):
@@ -214,6 +215,8 @@ class Banisher(object):
             self.input_tokens_stack.extendleft(reversed(next_tokens))
             self.input_tokens_stack.appendleft(unexpanded_token)
         elif type_ in message_types:
+            # TODO: this is all wrong, these things expect general_text.
+            # do like (upper/lower)case does.
             output_tokens.append(first_token)
             self.push_context(ContextMode.awaiting_balanced_text_start)
         elif type_ in if_types:
@@ -338,6 +341,22 @@ class Banisher(object):
             escape_char_token = make_char_cat_term_token(escape_char,
                                                          CatCode.other)
             output_tokens.append(escape_char_token)
+        elif type_ in ('UPPER_CASE', 'LOWER_CASE'):
+            case_tokens = []
+            while True:
+                t = self.pop_next_input_token()
+                case_tokens.append(t)
+                if t.type == 'LEFT_BRACE':
+                    balanced_text_token = self.get_balanced_text_token()
+                    case_tokens.append(balanced_text_token)
+                    break
+            # Check arguments obey the rules of a 'general text'.
+            balanced_text_token = general_text_parser.parse(iter(case_tokens),
+                                                            state='hihi')
+            # for tok in balanced_text_token:
+
+            import pdb; pdb.set_trace()
+
         # Just some semantic bullshit, stick it on the output stack
         # for the interpreter to deal with.
         else:

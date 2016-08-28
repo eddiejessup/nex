@@ -47,7 +47,7 @@ def evaluate_size(size_token):
                 # If we have a single character control sequence in this context,
                 # it is just a way of specifying a character in a way that
                 # won't invoke its special effects.
-                char = unexpanded_token.value
+                char = unexpanded_token.value['name']
             elif unexpanded_token.type == 'character':
                 char = unexpanded_token.value['char']
             else:
@@ -99,7 +99,7 @@ def evaluate_dimen(dimen_token):
 @pg.production('control_sequence : UNEXPANDED_CONTROL_SEQUENCE')
 @pg.production('control_sequence : UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE')
 def control_sequence(parser_state, p):
-    return Token(type_=p[0].type, value={'name': p[0].value})
+    return p[0]
 
 
 @pg.production('control_sequence : ACTIVE_CHARACTER')
@@ -429,10 +429,8 @@ def plus_or_minus(parser_state, p):
     return p[0].value['char']
 
 
-# @pg.production('equals : optional_spaces')
-# @pg.production('equals : optional_spaces')
-# @pg.production('equals : optional_spaces EQUALS')
-@pg.production('equals : EQUALS')
+@pg.production('equals : optional_spaces')
+@pg.production('equals : optional_spaces EQUALS')
 def eq(parser_state, p):
     return None
 

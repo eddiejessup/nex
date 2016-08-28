@@ -28,6 +28,9 @@ terminal_primitive_control_sequences_map = {
     'outer': 'OUTER',
 
     'expandafter': 'EXPAND_AFTER',
+
+    'uppercase': 'UPPER_CASE',
+    'lowercase': 'LOWER_CASE',
 }
 
 

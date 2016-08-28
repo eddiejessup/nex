@@ -9,6 +9,7 @@ from banisher import Banisher
 from expander import Expander, parse_replacement_text, parameter_types
 from registers import registers
 from common_parsing import pg as common_pg, evaluate_number, evaluate_dimen
+from general_text_parser import gen_txt_pg
 
 from expander import short_hand_def_map
 
@@ -87,20 +88,7 @@ def message(parser_state, p):
                  value={'content': p[1]})
 
 
-@pg.production('general_text : filler implicit_left_brace BALANCED_TEXT_AND_RIGHT_BRACE')
-def general_text(parser_state, p):
-    return p[2]
-
-
-@pg.production('filler : optional_spaces')
-@pg.production('filler : filler RELAX optional_spaces')
-def filler(parser_state, p):
-    return None
-
-
-@pg.production('implicit_left_brace : LEFT_BRACE')
-def implicit_left_brace(parser_state, p):
-    return p[0]
+pg.add_recent_productions(gen_txt_pg)
 
 
 @pg.production('macro_assignment : prefix macro_assignment')

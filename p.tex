@@ -268,12 +268,12 @@
    \def\@if#1{false}{\let#1=\iffalse}%
   \@if#1{false}\escapechar\count@} % the condition starts out false
 \def\@if#1#2{\csname\expandafter\if@\string#1#2\endcsname}
-% {\uccode`1=`i \uccode`2=`f \uppercase{\gdef\if@12{}}} % `if' is required
+{\uccode`1=`i \uccode`2=`f \uppercase{\gdef\if@12{}}} % `if' is required
 
 \def\a#1{#1}
 % Assign initial values to TeX's parameters
 \expandafter\def\a\b{hoho}
 
 \def\mymac{par}
-\csname\mymac\endcsname
-{}
+\csname{\mymac}\endcsname
+\csname{par}\endcsname

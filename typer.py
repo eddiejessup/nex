@@ -1,6 +1,6 @@
 from enum import Enum
 from common import TerminalToken, InternalToken
-from lexer import CatCode
+from lexer import CatCode, char_cat_lex_type, control_sequence_lex_type
 
 
 class PhysicalUnit(Enum):
@@ -144,10 +144,12 @@ def get_char_cat_pair_terminal_type(char_cat_pair_token):
     return terminal_token_type
 
 
-def char_cat_pair_to_terminal_token(char_cat_pair_token):
+def make_char_cat_pair_terminal_token(char_cat_pair_token):
     terminal_token_type = get_char_cat_pair_terminal_type(char_cat_pair_token)
+    value = char_cat_pair_token.value
+    value['lex_type'] = char_cat_pair_token.type
     terminal_token = TerminalToken(type_=terminal_token_type,
-                                   value=char_cat_pair_token.value)
+                                   value=value)
     return terminal_token
 
 
@@ -155,15 +157,16 @@ def make_unexpanded_control_sequence_terminal_token(name):
     type_ = (unexpanded_one_char_cs_type if len(name) == 1
              else unexpanded_cs_type)
     # Convert to a primitive unexpanded control sequence.
-    terminal_token = TerminalToken(type_=type_, value=name)
+    value = {'name': name, 'lex_type': control_sequence_lex_type}
+    terminal_token = TerminalToken(type_=type_, value=value)
     return terminal_token
 
 
 def lex_token_to_unexpanded_terminal_token(lex_token):
     # If we have a char-cat pair, we must type it to its terminal version,
-    if lex_token.type == 'CHAR_CAT_PAIR':
-        terminal_token = char_cat_pair_to_terminal_token(lex_token)
-    elif lex_token.type == 'CONTROL_SEQUENCE':
+    if lex_token.type == char_cat_lex_type:
+        terminal_token = make_char_cat_pair_terminal_token(lex_token)
+    elif lex_token.type == control_sequence_lex_type:
         name = lex_token.value
         terminal_token = make_unexpanded_control_sequence_terminal_token(name)
     elif isinstance(lex_token, InternalToken):

@@ -96,6 +96,17 @@ class ReadingState(Enum):
     skipping_blanks = 'S'
 
 
+char_cat_lex_type = 'CHAR_CAT_PAIR'
+control_sequence_lex_type = 'CONTROL_SEQUENCE'
+
+def make_char_cat_token(char, cat):
+    return Token(type_=char_cat_lex_type, value={'char': char, 'cat': cat})
+
+
+def make_control_sequence_token(name):
+    return Token(type_=control_sequence_lex_type, value=name)
+
+
 class Lexer(object):
 
     def __init__(self, reader):
@@ -329,11 +340,3 @@ class Lexer(object):
             # return token
         else:
             import pdb; pdb.set_trace()
-
-
-def make_char_cat_token(char, cat):
-    return Token(type_='CHAR_CAT_PAIR', value={'char': char, 'cat': cat})
-
-
-def make_control_sequence_token(name):
-    return Token(type_='CONTROL_SEQUENCE', value=name)
