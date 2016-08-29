@@ -2,12 +2,14 @@ from rply import ParserGenerator
 
 from common import Token
 
-from expander import (terminal_primitive_control_sequences_map,
-                      short_hand_def_to_token_map,
-                      composite_terminal_control_sequence_types,
-                      parameter_types)
+from expander import parameter_types
 from registers import registers
-from typer import literal_types, PhysicalUnit, units_in_scaled_points, unexpanded_cs_types
+from typer import (literal_types, PhysicalUnit, units_in_scaled_points,
+                   unexpanded_cs_types,
+                   terminal_primitive_control_sequences_map,
+                   short_hand_def_to_token_map,
+                   composite_terminal_control_sequence_types,
+                   )
 
 
 from character_parsing import add_character_productions
@@ -131,6 +133,7 @@ def integer_variable_count(parser_state, p):
 
 @pg.production('integer_variable : INTEGER_PARAMETER')
 def integer_variable_parameter(parser_state, p):
+    parser_state.ttt = True
     return p[0]
 
 
@@ -261,7 +264,7 @@ def internal_dimen_short_hand_token(parser_state, p):
 
 @pg.production('internal_integer : INTEGER_PARAMETER')
 def internal_integer_parameter(parser_state, p):
-    return parser_state.e.get_parameter(p[0].value)
+    return parser_state.e.get_parameter_value(p[0].value)
 
 
 @pg.production('internal_integer : count_register')
@@ -418,7 +421,7 @@ def optional_signs(parser_state, p):
     if len(p) > 1:
         v = p[1]
         if v == '-':
-            return flip_sign(v)
+            return flip_sign(p[0])
     else:
         return '+'
 

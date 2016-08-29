@@ -172,3 +172,96 @@ def lex_token_to_unexpanded_terminal_token(lex_token):
     elif isinstance(lex_token, InternalToken):
         terminal_token = lex_token
     return terminal_token
+
+
+terminal_primitive_control_sequences_map = {
+    'catcode': 'CAT_CODE',
+    'mathcode': 'MATH_CODE',
+    'uccode': 'UPPER_CASE_CODE',
+    'lccode': 'LOWER_CASE_CODE',
+    'sfcode': 'SPACE_FACTOR_CODE',
+    'delcode': 'DELIMITER_CODE',
+
+    'let': 'LET',
+
+    'count': 'COUNT',
+    'advance': 'ADVANCE',
+
+    'par': 'PAR',
+    'relax': 'RELAX',
+    'immediate': 'IMMEDIATE',
+
+    'message': 'MESSAGE',
+    'errmessage': 'ERROR_MESSAGE',
+    'write': 'WRITE',
+
+    'global': 'GLOBAL',
+    'long': 'LONG',
+    'outer': 'OUTER',
+
+    'expandafter': 'EXPAND_AFTER',
+
+    'uppercase': 'UPPER_CASE',
+    'lowercase': 'LOWER_CASE',
+}
+
+
+short_hand_def_map = {
+    'chardef': 'CHAR_DEF',
+    'mathchardef': 'MATH_CHAR_DEF',
+    'countdef': 'COUNT_DEF',
+    'dimendef': 'DIMEN_DEF',
+    'skipdef': 'SKIP_DEF',
+    'muskipdef': 'MU_SKIP_DEF',
+    'toksdef': 'TOKS_DEF',
+}
+terminal_primitive_control_sequences_map.update(short_hand_def_map)
+
+short_hand_def_to_token_map = {
+    k: '{}_TOKEN'.format(k)
+    for k in short_hand_def_map.values()
+}
+
+def_map = {
+    'def': 'DEF',
+    'gdef': 'G_DEF',
+    'edef': 'E_DEF',
+    'xdef': 'X_DEF',
+}
+terminal_primitive_control_sequences_map.update(def_map)
+
+non_terminal_primitive_control_sequences_map = {
+    'else': 'ELSE',
+    'fi': 'END_IF',
+    'string': 'STRING',
+    'csname': 'CS_NAME',
+    'endcsname': 'END_CS_NAME',
+}
+
+if_map = {
+    'ifnum': 'IF_NUM',
+    'iftrue': 'IF_TRUE',
+    'iffalse': 'IF_FALSE',
+}
+non_terminal_primitive_control_sequences_map.update(if_map)
+
+primitive_control_sequences_map = dict(**terminal_primitive_control_sequences_map,
+                                       **non_terminal_primitive_control_sequences_map)
+
+
+composite_terminal_control_sequence_types = (
+    'BALANCED_TEXT_AND_RIGHT_BRACE',
+    'PARAMETER_TEXT',
+)
+
+
+def type_primitive_control_sequence(call_token):
+    name = call_token.value['name']
+    # Terminals are tokens that may be passed to the parser.
+    # Non-terminals are tokens that will be consumed by the banisher before the
+    # parser sees them.
+    is_terminal = name in terminal_primitive_control_sequences_map
+    TokenCls = TerminalToken if is_terminal else InternalToken
+    primitive_type = primitive_control_sequences_map[name]
+    primitive_token = TokenCls(type_=primitive_type, value=call_token.value)
+    return primitive_token

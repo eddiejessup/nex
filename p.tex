@@ -270,10 +270,65 @@
 \def\@if#1#2{\csname\expandafter\if@\string#1#2\endcsname}
 {\uccode`1=`i \uccode`2=`f \uppercase{\gdef\if@12{}}} % `if' is required
 
-% \def\a#1{#1}
-% % Assign initial values to TeX's parameters
-% \expandafter\def\a\b{hoho}
+% Assign initial values to TeX's parameters
 
-% \def\mymac{par}
-% \csname{\mymac}\endcsname
-% \csname{par}\endcsname
+\message{parameters,}
+
+% All of TeX's numeric parameters are listed here,
+% but the code is commented out if no special value needs to be set.
+% INITEX makes all parameters zero except where noted.
+
+\pretolerance=100
+\tolerance=200 % INITEX sets this to 10000
+\hbadness=1000
+\vbadness=1000
+\linepenalty=10
+\hyphenpenalty=50
+\exhyphenpenalty=50
+\binoppenalty=700
+\relpenalty=500
+\clubpenalty=150
+\widowpenalty=150
+\displaywidowpenalty=50
+\brokenpenalty=100
+\predisplaypenalty=10000
+% \postdisplaypenalty=0
+% \interlinepenalty=0
+% \floatingpenalty=0, set during \insert
+% \outputpenalty=0, set before TeX enters \output
+\doublehyphendemerits=10000
+\finalhyphendemerits=5000
+\adjdemerits=10000
+% \looseness=0, cleared by TeX after each paragraph
+% \pausing=0
+% \holdinginserts=0
+% \tracingonline=0
+% \tracingmacros=0
+% \tracingstats=0
+% \tracingparagraphs=0
+% \tracingpages=0
+% \tracingoutput=0
+\tracinglostchars=1
+% \tracingcommands=0
+% \tracingrestores=0
+% \language=0
+\uchyph=1
+% \lefthyphenmin=2 \righthyphenmin=3 set below
+% \globaldefs=0
+% \maxdeadcycles=25 % INITEX does this
+% \hangafter=1 % INITEX does this, also TeX after each paragraph
+% \fam=0
+% \mag=1000 % INITEX does this
+% \escapechar=`\\ % INITEX does this
+\defaulthyphenchar=`\-
+\defaultskewchar=-1
+% \endlinechar=`\^^M % INITEX does this
+\newlinechar=-1
+\delimiterfactor=901
+% \time=now % TeX does this at beginning of job
+% \day=now % TeX does this at beginning of job
+% \month=now % TeX does this at beginning of job
+% \year=now % TeX does this at beginning of job
+\showboxbreadth=5
+\showboxdepth=3
+\errorcontextlines=5

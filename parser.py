@@ -11,21 +11,6 @@ from registers import registers
 from common_parsing import pg as common_pg, evaluate_number, evaluate_dimen
 from general_text_parser import gen_txt_pg
 
-from expander import short_hand_def_map
-
-
-short_hand_def_to_token_map = {
-    k: '{}_TOKEN'.format(k)
-    for k in short_hand_def_map.values()
-}
-
-
-# tokens = ()
-# tokens += tuple(terminal_primitive_control_sequences_map.values())
-# tokens += tuple(short_hand_def_to_token_map.values())
-# tokens += tuple(literal_types)
-# tokens += tuple(special_terminal_control_sequence_types)
-# tokens = tuple(set(tokens))
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
@@ -108,12 +93,10 @@ def prefix(parser_state, p):
 
 @pg.production('macro_assignment : definition')
 def macro_assignment(parser_state, p):
-    macro_token = Token(type_='macro',
-                        value={'prefixes': set(),
-                               'definition': p[0]})
     name = p[0].value['name']
-    parser_state.e.set_control_sequence(name, macro_token)
-    return macro_token
+    parser_state.e.set_macro(name, p[0], prefixes=None)
+    return Token(type_='macro_assignment', value={'prefixes': set(),
+                                                  'definition': p[0]})
 
 
 @pg.production('definition : def control_sequence definition_text')
@@ -197,11 +180,10 @@ def variable_assignment_dimen(parser_state, p):
 def variable_assignment_integer(parser_state, p):
     value = evaluate_number(p[2])
     var = p[0]
-    # TODO: Could also be a count parameter.
     if var.type == 'count':
         # TODO: make a safe wrapper round this.
         registers.count[var.value] = value
-    elif var.type == parameter_types['integer']:
+    elif var.type in parameter_types.values():
         param_name = var.value
         parser_state.e.set_parameter(name=param_name, value=value)
     return Token(type_='variable_assignment',
@@ -237,12 +219,12 @@ def short_hand_definition(parser_state, p):
 @pg.production('let_assignment : LET control_sequence equals one_optional_space control_sequence')
 def let_assignment_control_sequence(parser_state, p):
     # TODO allow char_cat_pair.
-    target_name = p[4].value['name']
+    target_token = p[4]
     new_name = p[1].value['name']
-    parser_state.e.do_let_assignment(new_name, target_name)
+    parser_state.e.do_let_assignment(new_name, target_token)
     return Token(type_='let_assignment',
                  value={'name': new_name,
-                        'target_name': target_name})
+                        'target_name': target_token.value['name']})
 
 
 @pg.production('short_hand_def : CHAR_DEF')

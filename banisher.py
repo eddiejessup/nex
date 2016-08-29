@@ -9,8 +9,10 @@ from lexer import (make_char_cat_token, CatCode,
                    char_cat_lex_type)
 from typer import (lex_token_to_unexpanded_terminal_token,
                    make_unexpanded_control_sequence_terminal_token,
-                   unexpanded_cs_types)
-from expander import short_hand_def_map, def_map, parse_parameter_text, if_map
+                   type_primitive_control_sequence,
+                   unexpanded_cs_types,
+                   short_hand_def_map, def_map, if_map)
+from expander import parse_parameter_text
 from condition_parser import condition_parser
 from general_text_parser import general_text_parser
 
@@ -124,6 +126,16 @@ class Banisher(object):
         else:
             return ContextMode.normal
 
+    def get_escape_char_token(self):
+        escape_char_code = self.expander.get_parameter_value('escapechar')
+        if escape_char_code >= 0:
+            escape_char = chr(escape_char_code)
+            escape_char_token = make_char_cat_term_token(escape_char,
+                                                         CatCode.other)
+            return escape_char_token
+        else:
+            return None
+
     def process_next_input_token(self):
         output_tokens = deque()
 
@@ -138,21 +150,50 @@ class Banisher(object):
         # A terminal token is simply a token that is accepted by the parser.
         # Might be a lex token, a primitive token or a terminal token.
         first_token = self.pop_next_input_token()
+
+        # If the token is a control sequence call, then we must check if it is
+        # a user control sequence. If it is, then we expand it. If it isn't, we
+        # will 'type' it into a primitive sequence. NOT like macro expansion,
+        # because it happens in the same call. This is important, because sometimes
+        # we are only expanding once, not recursively, so it is important what
+        # one expansion call does.
+        if (self.expanding_control_sequences and
+                first_token.type in unexpanded_cs_types):
+            name = first_token.value['name']
+            is_user_control_sequence = self.expander.name_is_user_control_sequence(name)
+            if not is_user_control_sequence:
+                if self.expander.name_is_let_control_sequence(name):
+                    first_token = self.expander.get_let_control_sequence(name)
+                if self.expander.is_parameter_control_sequence(name):
+                    first_token = self.expander.get_parameter_token(name)
+                else:
+                    # Assume it's a primitive non-parameter control sequence.
+                    first_token = type_primitive_control_sequence(first_token)
+
         type_ = first_token.type
 
-        # If we get a control sequence token, we need to either start expanding
-        # it, or add it as an un-expanded token, depending on the context.
-        if self.expanding_control_sequences and type_ in unexpanded_cs_types:
+        if (self.expanding_control_sequences and
+                first_token.type in unexpanded_cs_types and
+                self.expander.name_is_user_control_sequence(first_token.value['name'])):
             name = first_token.value['name']
             param_text = self.expander.expand_to_parameter_text(name)
             argument_text = []
             for _ in range(len(param_text)):
                 next_token = self.pop_next_input_token()
-                argument_text.append(next_token)
+                if next_token.type == 'LEFT_BRACE':
+                    arg_token = self.get_balanced_text_token()
+                    next_tokens = arg_token.value
+                else:
+                    next_tokens = [next_token]
+                argument_text.append(next_tokens)
             # Now run again, hopefully now seeing a primitive token.
             # (Might not, if the expansion needs more expansion, but the
             # ultimate escape route is to see a primitive token.)
             expanded_first_token = self.expander.expand_to_token_list(name, argument_text)
+
+            # Now run again, hopefully now seeing a primitive token.
+            # (Might not, if the expansion needs more expansion, but the
+            # ultimate escape route is to see a primitive token.)
             self.input_tokens_stack.extendleft(reversed(expanded_first_token))
         elif (self.context_mode == ContextMode.awaiting_balanced_text_start and
                 type_ == 'LEFT_BRACE'):
@@ -298,16 +339,14 @@ class Banisher(object):
                 if nr_conditions == 0:
                     break
             output_tokens.extendleft(reversed(not_skipped_tokens))
-
         elif type_ == 'STRING':
             next_token = self.pop_next_input_token()
             string_tokens = []
             if next_token.type in unexpanded_cs_types:
-                chars = list(next_token.value)
-                # Internal instruction to produce an escape character token.
-                escape_char_token = InternalToken(type_='ESCAPE_CHAR',
-                                                  value=None)
-                string_tokens += [escape_char_token]
+                chars = list(next_token.value['name'])
+                escape_char_token = self.get_escape_char_token()
+                if escape_char_token is not None:
+                    string_tokens += [escape_char_token]
             else:
                 char = next_token.value['char']
                 chars = [char]
@@ -331,15 +370,11 @@ class Banisher(object):
             # put them back on the input stack.
             self.input_tokens_stack.extendleft(reversed(cs_name_stack))
             # But first comes our shiny new control sequence token.
-            self.input_tokens_stack.appendleft(cs_token)
+            output_tokens.append(cs_token)
         elif type_ == 'ESCAPE_CHAR':
-            escape_char_param_token = self.expander.expand_to_token_list('escapechar',
-                                                                         argument_text=[])
-            escape_char_code = escape_char_param_token.value
-            escape_char = chr(escape_char_code)
-            escape_char_token = make_char_cat_term_token(escape_char,
-                                                         CatCode.other)
-            output_tokens.append(escape_char_token)
+            escape_char_token = self.get_escape_char_token()
+            if escape_char_token is not None:
+                output_tokens.append(escape_char_token)
         elif type_ in ('UPPER_CASE', 'LOWER_CASE'):
             case_tokens = []
             while True:
@@ -359,22 +394,24 @@ class Banisher(object):
             }
             case_map = case_maps_map[type_]
 
-            def modify_tok(tok):
-                if tok.value['lex_type'] == char_cat_lex_type:
-                    old_char = tok.value['char']
-                    new_char = case_map[old_char]
-                    if new_char == chr(0):
-                        new_char = old_char
-                    new_lex_tok = make_char_cat_token(char=new_char,
-                                                      cat=tok.value['cat'])
-                    new_tok = lex_token_to_unexpanded_terminal_token(new_lex_tok)
-                    return new_tok
+            def get_cased_tok(un_cased_tok):
+                if un_cased_tok.value['lex_type'] == char_cat_lex_type:
+                    un_cased_char = un_cased_tok.value['char']
+                    cased_char = case_map[un_cased_char]
+                    if cased_char == chr(0):
+                        cased_char = un_cased_char
+                    # Note that the category code is not changed.
+                    cased_lex_tok = make_char_cat_token(char=cased_char,
+                                                        cat=un_cased_tok.value['cat'])
+                    cased_tok = lex_token_to_unexpanded_terminal_token(cased_lex_tok)
+                    return cased_tok
                 else:
-                    return tok
+                    return un_cased_tok
 
-            new_toks = list(map(modify_tok, balanced_text_token.value))
+            un_cased_toks = balanced_text_token.value
+            cased_toks = list(map(get_cased_tok, un_cased_toks))
             # Put cased tokens back on the stack to read again.
-            self.input_tokens_stack.extendleft(reversed(new_toks))
+            self.input_tokens_stack.extendleft(reversed(cased_toks))
 
         # Just some semantic bullshit, stick it on the output stack
         # for the interpreter to deal with.
