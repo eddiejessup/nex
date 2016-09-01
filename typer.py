@@ -1,3 +1,4 @@
+from string import ascii_letters
 from enum import Enum
 from common import TerminalToken, InternalToken
 from lexer import CatCode, char_cat_lex_type, control_sequence_lex_type
@@ -14,6 +15,10 @@ class PhysicalUnit(Enum):
     cicero = 'cc'
     scaled_point = 'sp'
     fil = 'fil'
+
+
+class MuUnit(Enum):
+    mu = 'mu'
 
 
 units_in_scaled_points = {}
@@ -70,39 +75,10 @@ hex_letters_map = {
 }
 literals_map.update(hex_letters_map)
 
-non_active_literals = [
-    # by
-    'b',
-    'y',
-
-    # true
-    't',
-    'r',
-    'u',
-    'e',
-
-    # pt
-    'p',
-
-    # minus
-    'm',
-    'i',
-    'n',
-    'u',
-    's',
-
-    # plus
-    'l',
-
-    # fil
-    'f',
-]
-
 non_active_literals_map = {}
-for c in non_active_literals:
+for c in ascii_letters:
     terminal_type = 'NON_ACTIVE_UNCASED_{}'.format(c.lower())
-    non_active_literals_map[c.lower()] = terminal_type
-    non_active_literals_map[c.upper()] = terminal_type
+    non_active_literals_map[c] = terminal_type
 
 
 other_literal_type = 'MISC_CHAR_CAT_PAIR'
@@ -184,7 +160,6 @@ terminal_primitive_control_sequences_map = {
 
     'let': 'LET',
 
-    'count': 'COUNT',
     'advance': 'ADVANCE',
 
     'par': 'PAR',
@@ -205,6 +180,14 @@ terminal_primitive_control_sequences_map = {
     'lowercase': 'LOWER_CASE',
 }
 
+
+register_tokens = {
+    'count': 'COUNT',
+    'dimen': 'DIMEN',
+    'skip': 'SKIP',
+    'muskip': 'MU_SKIP',
+}
+terminal_primitive_control_sequences_map.update(register_tokens)
 
 short_hand_def_map = {
     'chardef': 'CHAR_DEF',

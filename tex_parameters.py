@@ -5,6 +5,9 @@ midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
 seconds_since_midnight = (now - midnight).total_seconds()
 minutes_since_midnight = int(seconds_since_midnight // 60)
 
+glue_keys = ('dimen', 'stretch', 'shrink')
+
+
 integer_parameters = {
     'pretolerance': 0,
     'tolerance': 10000,
@@ -61,4 +64,61 @@ integer_parameters = {
     'showboxbreadth': 0,
     'showboxdepth': 0,
     'errorcontextlines': 0,
+}
+
+dimen_parameters = {
+    'hfuzz': 0,
+    'vfuzz': 0,
+    'overfullrule': 0,
+    'hsize': 0,
+    'vsize': 0,
+    'maxdepth': 0,
+    'splitmaxdepth': 0,
+    'boxmaxdepth': 0,
+    'lineskiplimit': 0,
+    'delimitershortfall': 0,
+    'nulldelimiterspace': 0,
+    'scriptspace': 0,
+    'mathsurround': 0,
+    'predisplaysize': 0,
+    'displaywidth': 0,
+    'displayindent': 0,
+    'parindent': 0,
+    'hangindent': 0,
+    'hoffset': 0,
+    'voffset': 0,
+}
+
+get_zero_glue = lambda: {k: 0 for k in glue_keys}
+glue_parameter_names = (
+    'baselineskip',
+    'lineskip',
+    'parskip',
+    'abovedisplayskip',
+    'abovedisplayshortskip',
+    'belowdisplayskip',
+    'belowdisplayshortskip',
+    'leftskip',
+    'rightskip',
+    'topskip',
+    'splittopskip',
+    'tabskip',
+    'spaceskip',
+    'xspaceskip',
+    'parfillskip',
+)
+glue_parameters = {p: get_zero_glue() for p in glue_parameter_names}
+
+mu_glue_parameter_names = (
+    'thinmuskip',
+    'medmuskip',
+    'thickmuskip',
+)
+mu_glue_parameters = {p: get_zero_glue() for p in mu_glue_parameter_names}
+
+default_parameters = {
+    'INTEGER_PARAMETER': integer_parameters,
+    'DIMEN_PARAMETER': dimen_parameters,
+    'GLUE_PARAMETER': glue_parameters,
+    'MU_GLUE_PARAMETER': mu_glue_parameters,
 }

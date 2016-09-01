@@ -4,12 +4,13 @@ from common import Token
 
 from expander import parameter_types
 from registers import registers
-from typer import (literal_types, PhysicalUnit, units_in_scaled_points,
+from typer import (literal_types, PhysicalUnit, MuUnit, units_in_scaled_points,
                    unexpanded_cs_types,
                    terminal_primitive_control_sequences_map,
                    short_hand_def_to_token_map,
                    composite_terminal_control_sequence_types,
                    )
+from tex_parameters import glue_keys
 
 
 from character_parsing import add_character_productions
@@ -17,7 +18,7 @@ from character_parsing import add_character_productions
 tokens = ()
 tokens += tuple(terminal_primitive_control_sequences_map.values())
 tokens += tuple(short_hand_def_to_token_map.values())
-tokens += tuple(parameter_types.values())
+tokens += tuple(parameter_types)
 tokens += tuple(literal_types)
 tokens += tuple(unexpanded_cs_types)
 tokens += tuple(composite_terminal_control_sequence_types)
@@ -79,14 +80,21 @@ def evaluate_number(number_token):
 
 def evaluate_dimen(dimen_token):
     size_token, sign = dimen_token['size'], dimen_token['sign']
+    if isinstance(size_token, int):
+        return size_token
     number_of_units_token = size_token.value['factor']
     unit_token = size_token.value['unit']
     number_of_units = evaluate_size(number_of_units_token)
     unit = unit_token['unit']
     if unit == PhysicalUnit.fil:
+        if 'number_of_fils' not in unit_token:
+            import pdb; pdb.set_trace()
         return Token(type_='fil_dimension',
                      value={'factor': number_of_units,
                             'number_of_fils': unit_token['number_of_fils']})
+    # Only one unit in mu units, a mu. I don't know what a mu is though...
+    elif unit in MuUnit:
+        return number_of_units
     is_true_unit = unit_token['true']
     number_of_scaled_points = units_in_scaled_points[unit] * number_of_units
     # TODO: deal with 'true' and 'not-true' scales properly
@@ -96,6 +104,18 @@ def evaluate_dimen(dimen_token):
     if sign == '-':
         number_of_scaled_points *= -1
     return number_of_scaled_points
+
+
+def evaluate_glue(glue_token):
+    evaluated_glue = {}
+    for k in glue_keys:
+        dimen = glue_token[k]
+        if dimen is None:
+            evaluated_dimen = None
+        else:
+            evaluated_dimen = evaluate_dimen(dimen)
+        evaluated_glue[k] = evaluated_dimen
+    return evaluated_glue
 
 
 @pg.production('control_sequence : UNEXPANDED_CONTROL_SEQUENCE')
@@ -116,13 +136,25 @@ def control_sequence_active(parser_state, p):
 add_character_productions(pg)
 
 
+@pg.production('mu_glue_variable : mu_skip_register')
 @pg.production('glue_variable : skip_register')
 def glue_variable_register(parser_state, p):
     return p[0]
 
 
+@pg.production('mu_glue_variable : MU_GLUE_PARAMETER')
+@pg.production('glue_variable : GLUE_PARAMETER')
+def glue_variable_parameter(parser_state, p):
+    return p[0]
+
+
 @pg.production('dimen_variable : dimen_register')
 def dimen_variable_register(parser_state, p):
+    return p[0]
+
+
+@pg.production('dimen_variable : DIMEN_PARAMETER')
+def dimen_variable_parameter(parser_state, p):
     return p[0]
 
 
@@ -133,8 +165,22 @@ def integer_variable_count(parser_state, p):
 
 @pg.production('integer_variable : INTEGER_PARAMETER')
 def integer_variable_parameter(parser_state, p):
-    parser_state.ttt = True
     return p[0]
+
+
+@pg.production('mu_skip_register : MU_SKIP number')
+def mu_skip_register_explicit(parser_state, p):
+    return Token(type_='mu_glue', value=p[1]['size'])
+
+
+@pg.production('skip_register : SKIP number')
+def skip_register_explicit(parser_state, p):
+    return Token(type_='glue', value=p[1]['size'])
+
+
+@pg.production('dimen_register : DIMEN number')
+def dimen_register_explicit(parser_state, p):
+    return Token(type_='dimen', value=p[1]['size'])
 
 
 @pg.production('count_register : COUNT number')
@@ -147,6 +193,11 @@ def skip_register_token(parser_state, p):
     return Token(type_='skip', value=p[0].value)
 
 
+@pg.production('mu_skip_register : MU_SKIP_DEF_TOKEN')
+def mu_skip_register_token(parser_state, p):
+    return Token(type_='mu_skip', value=p[0].value)
+
+
 @pg.production('dimen_register : DIMEN_DEF_TOKEN')
 def dimen_register_token(parser_state, p):
     return Token(type_='dimen', value=p[0].value)
@@ -157,6 +208,7 @@ def count_register_token(parser_state, p):
     return Token(type_='count', value=p[0].value)
 
 
+@pg.production('mu_glue : mu_dimen mu_stretch mu_shrink')
 @pg.production('glue : dimen stretch shrink')
 def glue(parser_state, p):
     # Wrap up arguments in a dict.
@@ -167,12 +219,18 @@ def glue(parser_state, p):
 @pg.production('shrink : minus fil_dimen')
 @pg.production('stretch : plus dimen')
 @pg.production('stretch : plus fil_dimen')
+@pg.production('mu_shrink : minus mu_dimen')
+@pg.production('mu_shrink : minus fil_dimen')
+@pg.production('mu_stretch : plus mu_dimen')
+@pg.production('mu_stretch : plus fil_dimen')
 def stretch_or_shrink_non_stated(parser_state, p):
     return p[1]
 
 
 @pg.production('stretch : optional_spaces')
 @pg.production('shrink : optional_spaces')
+@pg.production('mu_stretch : optional_spaces')
+@pg.production('mu_shrink : optional_spaces')
 def stretch_or_shrink_omitted(parser_state, p):
     return None
 
@@ -201,8 +259,9 @@ def fil_unit(parser_state, p):
     return unit
 
 
+@pg.production('mu_dimen : optional_signs unsigned_mu_dimen')
 @pg.production('dimen : optional_signs unsigned_dimen')
-def dimen(parser_state, p):
+def maybe_mu_dimen(parser_state, p):
     return {'sign': p[0], 'size': p[1]}
 
 
@@ -211,9 +270,11 @@ def number(parser_state, p):
     return {'sign': p[0], 'size': p[1]}
 
 
+@pg.production('unsigned_mu_dimen : normal_mu_dimen')
+# @pg.production('unsigned_mu_dimen : coerced_mu_dimen')
 @pg.production('unsigned_dimen : normal_dimen')
 # @pg.production('unsigned_dimen : coerced_dimen')
-def unsigned_dimen(parser_state, p):
+def maybe_mu_unsigned_dimen(parser_state, p):
     return p[0]
 
 
@@ -276,6 +337,12 @@ def internal_integer_count_register(parser_state, p):
 @pg.production('normal_integer : integer_constant one_optional_space')
 def normal_integer_integer(parser_state, p):
     return get_integer_constant(p[0])
+
+
+@pg.production('normal_mu_dimen : factor mu_unit')
+def normal_mu_dimen_explicit(parser_state, p):
+    return Token(type_='normal_mu_dimen',
+                 value={'factor': p[0], 'unit': p[1]})
 
 
 @pg.production('normal_dimen : factor unit_of_measure')

@@ -1,5 +1,5 @@
 from common import Token, TerminalToken, InternalToken
-from tex_parameters import integer_parameters
+from tex_parameters import default_parameters
 from typer import (short_hand_def_to_token_map,
                    type_primitive_control_sequence)
 
@@ -7,10 +7,7 @@ undelim_macro_param_type = 'UNDELIMITED_PARAM'
 delim_macro_param_type = 'DELIMITED_PARAM'
 macro_param_types = (undelim_macro_param_type, delim_macro_param_type)
 
-
-parameter_types = {
-    'integer': 'INTEGER_PARAMETER',
-}
+parameter_types = default_parameters.keys()
 
 
 def parse_parameter_text(tokens):
@@ -107,9 +104,7 @@ class Expander(object):
     def initialize_control_sequences(self):
         self.control_sequences = {}
         self.let_map = {}
-        self.parameter_maps = {
-            parameter_types['integer']: integer_parameters.copy(),
-        }
+        self.parameter_maps = default_parameters.copy()
 
     # TODO: Since we handle internal parameters through this interface,
     # this should probably be renamed.

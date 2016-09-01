@@ -1,25 +1,20 @@
 import logging
 
 from utils import post_mortem
-from common import Token, TerminalToken
+from common import Token
 from lexer import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from reader import Reader, EndOfFile
 from lexer import Lexer
 from banisher import Banisher
 from expander import Expander, parse_replacement_text, parameter_types
 from registers import registers
-from common_parsing import pg as common_pg, evaluate_number, evaluate_dimen
+from common_parsing import (pg as common_pg,
+                            evaluate_number, evaluate_dimen, evaluate_glue)
 from general_text_parser import gen_txt_pg
 
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
-
-
-# prec = (
-#     ('left', 'SPACE'),
-#     # ('left', 'UNEXPANDED_CONTROL_SEQUENCE'),
-# )
 
 
 pg = common_pg.copy_to_extend()
@@ -148,46 +143,45 @@ def simple_assignment(parser_state, p):
     return p[0]
 
 
+def do_variable_assignment(parser_state, variable, value):
+    register_map = {
+        'count': registers.count,
+        'dimen': registers.dimen,
+        'skip': registers.skip,
+    }
+    if variable.type in register_map.keys():
+        # TODO: make a safe wrapper round this.
+        register = register_map[variable.type]
+        register[variable.value] = value
+    elif variable.type in parameter_types:
+        param_name = variable.value
+        parser_state.e.set_parameter(name=param_name, value=value)
+
+
+@pg.production('variable_assignment : mu_glue_variable equals mu_glue')
 @pg.production('variable_assignment : glue_variable equals glue')
 def variable_assignment_glue(parser_state, p):
     glue = p[2]
-    evaluated_glue = {}
-    for k in ('dimen', 'stretch', 'shrink'):
-        dimen = glue[k]
-        if dimen is None:
-            evaluated_dimen = None
-        else:
-            evaluated_dimen = evaluate_dimen(dimen)
-        evaluated_glue[k] = evaluated_dimen
-    # TODO: Could also be a glue parameter.
-    if p[0].type == 'glue':
-        registers.skip[p[0].value] = evaluated_glue
+    evaluated_glue = evaluate_glue(glue)
+    do_variable_assignment(parser_state, p[0], evaluated_glue)
     return Token(type_='variable_assignment',
                  value={'variable': p[0], 'value': p[2]})
 
 
 @pg.production('variable_assignment : dimen_variable equals dimen')
 def variable_assignment_dimen(parser_state, p):
-    value = evaluate_dimen(p[2])
-    # TODO: Could also be a dimen parameter.
-    if p[0].type == 'dimen':
-        registers.dimen[p[0].value] = value
+    evaluated_dimen = evaluate_dimen(p[2])
+    do_variable_assignment(parser_state, p[0], evaluated_dimen)
     return Token(type_='variable_assignment',
                  value={'variable': p[0], 'value': p[2]})
 
 
 @pg.production('variable_assignment : integer_variable equals number')
 def variable_assignment_integer(parser_state, p):
-    value = evaluate_number(p[2])
-    var = p[0]
-    if var.type == 'count':
-        # TODO: make a safe wrapper round this.
-        registers.count[var.value] = value
-    elif var.type in parameter_types.values():
-        param_name = var.value
-        parser_state.e.set_parameter(name=param_name, value=value)
+    evaluated_number = evaluate_number(p[2])
+    do_variable_assignment(parser_state, p[0], evaluated_number)
     return Token(type_='variable_assignment',
-                 value={'variable': var, 'value': p[2]})
+                 value={'variable': p[0], 'value': p[2]})
 
 
 @pg.production('arithmetic : ADVANCE integer_variable optional_by number')
