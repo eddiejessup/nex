@@ -211,8 +211,6 @@ def_map = {
 terminal_primitive_control_sequences_map.update(def_map)
 
 non_terminal_primitive_control_sequences_map = {
-    'else': 'ELSE',
-    'fi': 'END_IF',
     'string': 'STRING',
     'csname': 'CS_NAME',
     'endcsname': 'END_CS_NAME',
@@ -223,6 +221,12 @@ non_terminal_primitive_control_sequences_map = {
     'lowercase': 'LOWER_CASE',
 }
 
+condition_tokens_map = {
+    'else': 'ELSE',
+    'fi': 'END_IF',
+    'or': 'OR',
+}
+non_terminal_primitive_control_sequences_map.update(condition_tokens_map)
 if_map = {
     'ifnum': 'IF_NUM',
     'iftrue': 'IF_TRUE',

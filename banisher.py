@@ -2,8 +2,6 @@ import logging
 from collections import deque
 from enum import Enum
 
-from rply.errors import ParsingError
-
 from common import TerminalToken
 from lexer import (make_char_cat_token, CatCode,
                    char_cat_lex_type)
@@ -13,7 +11,7 @@ from typer import (lex_token_to_unexpanded_terminal_token,
                    unexpanded_cs_types,
                    short_hand_def_map, def_map, if_map)
 from expander import parse_parameter_text
-from condition_parser import condition_parser
+from condition_parser import condition_parser, ExpectedParsingError
 from general_text_parser import general_text_parser
 
 logger = logging.getLogger(__name__)
@@ -282,12 +280,17 @@ class Banisher(object):
                 t = self.pop_or_fill_and_pop(condition_buffer_stack)
                 condition_parse_stack.append(t)
                 try:
-                    is_true = condition_parser.parse(iter(condition_parse_stack), state='hihi')
-                except (ParsingError, StopIteration):
+                    outcome = condition_parser.parse(iter(condition_parse_stack), state='hihi')
+                except (ExpectedParsingError, StopIteration):
                     if have_parsed:
                         break
                 else:
                     have_parsed = True
+
+            if type_ == 'IF_CASE':
+                i_block_to_pick = outcome
+            else:
+                i_block_to_pick = 0 if outcome else 1
 
             # We got exactly one token of fluff, to make the condition parse
             # stack not-parse. Put that back on the existing buffer, and that
@@ -306,7 +309,7 @@ class Banisher(object):
             # From testing, the above does not seem to hold, so I am going
             # to carry on expansion.
             nr_conditions = 1
-            in_else = None
+            i_block = 0
             not_skipped_tokens = []
             condition_block_delimiter_types = ('ELSE', 'OR')
             condition_types = ('END_IF',) + tuple(if_types) + tuple(condition_block_delimiter_types)
@@ -324,16 +327,14 @@ class Banisher(object):
 
                 # If we are at the pertinent if-nesting level, then
                 # a condition block delimiter should be kept track of.
-                # We only keep one delimiter here; fuck ifcase, we will
-                # handle that later.
                 if nr_conditions == 1 and t.type in condition_block_delimiter_types:
-                    in_else = True
+                    i_block += 1
 
                 # Don't include internal tokens.
                 if t.type not in condition_types:
-                    # Include token if we're in first block and condition is
-                    # true, or we're in the else block and condition is false.
-                    if (is_true and not in_else) or (not is_true and in_else):
+                    # Include token if we're in the block the condition says
+                    # we should pick.
+                    if i_block == i_block_to_pick:
                         not_skipped_tokens.append(t)
 
                 if nr_conditions == 0:

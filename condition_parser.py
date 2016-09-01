@@ -9,6 +9,10 @@ pg = common_pg.copy_to_extend()
 pg.tokens += tuple(if_map.values())
 
 
+class ExpectedParsingError(Exception):
+    pass
+
+
 @pg.production('condition : IF_TRUE')
 def condition_if_true(parser_state, p):
     return True
@@ -44,5 +48,10 @@ def condition_if_case(parser_state, p):
 @pg.production('relation : GREATER_THAN')
 def relation(parser_state, p):
     return p[0]
+
+
+@pg.error
+def error(parser_state, p):
+    raise ExpectedParsingError
 
 condition_parser = pg.build()
