@@ -10,12 +10,12 @@ pg.tokens += tuple(if_map.values())
 
 
 @pg.production('condition : IF_TRUE')
-def condition_if_num(parser_state, p):
+def condition_if_true(parser_state, p):
     return True
 
 
 @pg.production('condition : IF_FALSE')
-def condition_if_num(parser_state, p):
+def condition_if_false(parser_state, p):
     return False
 
 
@@ -32,6 +32,11 @@ def condition_if_num(parser_state, p):
     op = operator_map[relation]
     outcome = op(nr_1, nr_2)
     return outcome
+
+
+@pg.production('condition : IF_CASE number')
+def condition_if_case(parser_state, p):
+    return evaluate_number(p[1])
 
 
 @pg.production('relation : LESS_THAN')

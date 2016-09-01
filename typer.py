@@ -175,11 +175,6 @@ terminal_primitive_control_sequences_map = {
     'global': 'GLOBAL',
     'long': 'LONG',
     'outer': 'OUTER',
-
-    'expandafter': 'EXPAND_AFTER',
-
-    'uppercase': 'UPPER_CASE',
-    'lowercase': 'LOWER_CASE',
 }
 
 
@@ -221,12 +216,18 @@ non_terminal_primitive_control_sequences_map = {
     'string': 'STRING',
     'csname': 'CS_NAME',
     'endcsname': 'END_CS_NAME',
+
+    'expandafter': 'EXPAND_AFTER',
+
+    'uppercase': 'UPPER_CASE',
+    'lowercase': 'LOWER_CASE',
 }
 
 if_map = {
     'ifnum': 'IF_NUM',
     'iftrue': 'IF_TRUE',
     'iffalse': 'IF_FALSE',
+    'ifcase': 'IF_CASE',
 }
 non_terminal_primitive_control_sequences_map.update(if_map)
 
