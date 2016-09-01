@@ -4,7 +4,7 @@ from enum import Enum
 
 from rply.errors import ParsingError
 
-from common import TerminalToken, InternalToken
+from common import TerminalToken
 from lexer import (make_char_cat_token, CatCode,
                    char_cat_lex_type)
 from typer import (lex_token_to_unexpanded_terminal_token,
