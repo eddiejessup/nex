@@ -1,6 +1,6 @@
 from common import Token, TerminalToken, InternalToken
 from tex_parameters import default_parameters
-from fonts import FontInfo
+from fonts import FontInfo, get_empty_font_family
 from typer import (short_hand_def_to_token_map, font_def_token_type,
                    type_primitive_control_sequence)
 
@@ -106,6 +106,7 @@ class Expander(object):
         self.control_sequences = {}
         self.let_map = {}
         self.font_control_sequences = {}
+        self.font_families = {i: get_empty_font_family() for i in range(16)}
 
         self.parameter_maps = default_parameters.copy()
 
@@ -191,6 +192,9 @@ class Expander(object):
         font_info = FontInfo(file_name, at_clause)
         self.font_control_sequences[name] = font_info
         return definition_token
+
+    def set_font_family(self, family_nr, font_range, name):
+        self.font_families[family_nr][font_range] = name
 
     def do_short_hand_definition(self, name, def_type, code):
         def_token_type = short_hand_def_to_token_map[def_type]

@@ -7,6 +7,7 @@ from reader import Reader, EndOfFile
 from lexer import Lexer
 from banisher import Banisher
 from expander import Expander, parse_replacement_text, parameter_types
+from fonts import FontRange
 from registers import Registers
 from common_parsing import (pg as common_pg,
                             evaluate_number, evaluate_dimen, evaluate_glue)
@@ -139,10 +140,23 @@ def non_macro_assignment(parser_state, p):
 @pg.production('simple_assignment : code_assignment')
 @pg.production('simple_assignment : let_assignment')
 @pg.production('simple_assignment : short_hand_definition')
+@pg.production('simple_assignment : family_assignment')
 @pg.production('simple_assignment : font_definition')
 @pg.production('simple_assignment : global_assignment')
 def simple_assignment(parser_state, p):
     return p[0]
+
+
+@pg.production('family_assignment : family_member equals font')
+def family_assignment(parser_state, p):
+    control_sequence_name = p[2]
+    font_range = p[0].type
+    family_nr = evaluate_number(parser_state, p[0].value)
+    parser_state.e.set_font_family(family_nr, font_range, control_sequence_name)
+    return Token(type_='family_assignment',
+                 value={'family_nr': family_nr,
+                        'font_range': font_range,
+                        'font_name': control_sequence_name})
 
 
 @pg.production('font_definition : FONT control_sequence equals optional_spaces file_name filler at_clause')
@@ -221,7 +235,7 @@ def family_member(parser_state, p):
 @pg.production('font_range : SCRIPT_FONT')
 @pg.production('font_range : SCRIPT_SCRIPT_FONT')
 def font_range(parser_state, p):
-    return p[0]
+    return FontRange(p[0].type)
 
 
 def do_variable_assignment(parser_state, variable, value):

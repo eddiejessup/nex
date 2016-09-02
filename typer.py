@@ -1,5 +1,6 @@
 from string import ascii_letters
 from enum import Enum
+
 from common import TerminalToken, InternalToken
 from lexer import CatCode, char_cat_lex_type, control_sequence_lex_type
 
