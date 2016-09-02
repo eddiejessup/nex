@@ -312,19 +312,24 @@ def normal_dimen_internal_dimen(parser_state, p):
     return p[0]
 
 
+@pg.production('internal_mu_glue : mu_skip_register')
+@pg.production('internal_glue : skip_register')
+@pg.production('internal_dimen : dimen_register')
+def internal_complex_quantity_register(parser_state, p):
+    return p[0].value
+
+
 @pg.production('internal_integer : CHAR_DEF_TOKEN')
 @pg.production('internal_integer : MATH_CHAR_DEF_TOKEN')
-def internal_integer_short_hand_token(parser_state, p):
+def internal_integer_weird_short_hand_token(parser_state, p):
     return p[0].value
 
 
-@pg.production('internal_dimen : DIMEN_DEF_TOKEN')
-def internal_dimen_short_hand_token(parser_state, p):
-    return p[0].value
-
-
+@pg.production('internal_mu_glue : MU_GLUE_PARAMETER')
+@pg.production('internal_glue : GLUE_PARAMETER')
+@pg.production('internal_dimen : DIMEN_PARAMETER')
 @pg.production('internal_integer : INTEGER_PARAMETER')
-def internal_integer_parameter(parser_state, p):
+def internal_quantity_parameter(parser_state, p):
     return parser_state.e.get_parameter_value(p[0].value)
 
 
