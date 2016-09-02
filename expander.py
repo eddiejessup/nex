@@ -1,7 +1,7 @@
 from common import Token, TerminalToken, InternalToken
 from tex_parameters import default_parameters
 from fonts import FontInfo
-from typer import (short_hand_def_to_token_map,
+from typer import (short_hand_def_to_token_map, font_def_token_type,
                    type_primitive_control_sequence)
 
 undelim_macro_param_type = 'UNDELIMITED_PARAM'
@@ -109,11 +109,6 @@ class Expander(object):
 
         self.parameter_maps = default_parameters.copy()
 
-    def define_new_font(self, name, file_name, at_clause):
-        # TODO: do this properly.
-        font_info = FontInfo(file_name)
-        self.font_control_sequences[name] = font_info
-
     def set_skew_char(self, name, number):
         self.font_control_sequences[name].skew_char = number
 
@@ -183,7 +178,21 @@ class Expander(object):
             typed_primitive_token = type_primitive_control_sequence(target_token)
             self.let_map[new_name] = typed_primitive_token
 
-    def do_short_hand_assignment(self, name, def_type, code):
+    def do_font_definition(self, name, file_name, at_clause):
+        primitive_token = TerminalToken(type_=font_def_token_type,
+                                        value=name)
+        definition_token = make_simple_definition_token(name,
+                                                        [primitive_token])
+        # Note, this token just records the name; the information
+        # is stored below, because it has internal state that might be
+        # modified later; we need to know where to get at it.
+        self.set_macro(name, definition_token, prefixes=None)
+        # TODO: do this properly.
+        font_info = FontInfo(file_name, at_clause)
+        self.font_control_sequences[name] = font_info
+        return definition_token
+
+    def do_short_hand_definition(self, name, def_type, code):
         def_token_type = short_hand_def_to_token_map[def_type]
         primitive_token = TerminalToken(type_=def_token_type, value=code)
         definition_token = make_simple_definition_token(name,

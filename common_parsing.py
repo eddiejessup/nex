@@ -6,7 +6,7 @@ from expander import parameter_types
 from typer import (literal_types, PhysicalUnit, MuUnit, units_in_scaled_points,
                    unexpanded_cs_types,
                    terminal_primitive_control_sequences_map,
-                   short_hand_def_to_token_map,
+                   short_hand_def_to_token_map, font_def_token_type,
                    composite_terminal_control_sequence_types,
                    )
 from tex_parameters import glue_keys
@@ -17,6 +17,7 @@ from character_parsing import add_character_productions
 tokens = ()
 tokens += tuple(terminal_primitive_control_sequences_map.values())
 tokens += tuple(short_hand_def_to_token_map.values())
+tokens += (font_def_token_type,)
 tokens += tuple(parameter_types)
 tokens += tuple(literal_types)
 tokens += tuple(unexpanded_cs_types)

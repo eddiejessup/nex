@@ -173,9 +173,16 @@ terminal_primitive_control_sequences_map = {
     'write': 'WRITE',
 
     'font': 'FONT',
+
+    # Font assignment things.
     'skewchar': 'SKEW_CHAR',
     'hyphenchar': 'HYPHEN_CHAR',
     'fontdimen': 'FONT_DIMEN',
+
+    # Font ranges
+    'textfont': 'TEXT_FONT',
+    'scriptfont': 'SCRIPT_FONT',
+    'scriptscriptfont': 'SCRIPT_SCRIPT_FONT',
 
     'undefined': 'UNDEFINED',
 
@@ -208,6 +215,7 @@ short_hand_def_to_token_map = {
     k: '{}_TOKEN'.format(k)
     for k in short_hand_def_map.values()
 }
+font_def_token_type = 'FONT_DEF_TOKEN'
 
 def_map = {
     'def': 'DEF',
@@ -249,7 +257,6 @@ primitive_control_sequences_map = dict(**terminal_primitive_control_sequences_ma
 composite_terminal_control_sequence_types = (
     'BALANCED_TEXT_AND_RIGHT_BRACE',
     'PARAMETER_TEXT',
-    'FONT_IDENTIFIER',
 )
 
 

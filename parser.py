@@ -147,13 +147,12 @@ def simple_assignment(parser_state, p):
 
 @pg.production('font_definition : FONT control_sequence equals optional_spaces file_name filler at_clause')
 def font_definition(parser_state, p):
-    name = p[1].value['name']
-    parser_state.e.define_new_font(name,
-                                   file_name=p[4], at_clause=p[6])
-    return Token(type_='font_definition',
-                 value={'name': name,
-                        'file_name': p[4],
-                        'at_clause': p[6]})
+    file_name, at_clause = p[4], p[6]
+    control_sequence_name = p[1].value['name']
+    macro_token = parser_state.e.do_font_definition(control_sequence_name,
+                                                    file_name,
+                                                    at_clause)
+    return macro_token
 
 
 @pg.production('file_name : character')
@@ -206,13 +205,23 @@ def font_assignment_skew(parser_state, p):
                  value={'font': p[1], 'code': p[3]})
 
 
-@pg.production('font : FONT_IDENTIFIER')
-# @pg.production('font : TEXT_FONT number')
-# @pg.production('font : SCRIPT_FONT number')
-# @pg.production('font : SCRIPT_SCRIPT_FONT number')
+@pg.production('font : FONT_DEF_TOKEN')
+# @pg.production('font : family_member')
 # @pg.production('font : FONT')
 def font(parser_state, p):
-    return p[0].value['name']
+    return p[0].value
+
+
+@pg.production('family_member : font_range number')
+def family_member(parser_state, p):
+    return Token(type_=p[0], value=p[1])
+
+
+@pg.production('font_range : TEXT_FONT')
+@pg.production('font_range : SCRIPT_FONT')
+@pg.production('font_range : SCRIPT_SCRIPT_FONT')
+def font_range(parser_state, p):
+    return p[0]
 
 
 def do_variable_assignment(parser_state, variable, value):
@@ -275,7 +284,7 @@ def short_hand_definition(parser_state, p):
     code = evaluate_number(parser_state, p[3])
     def_type = p[0].type
     control_sequence_name = p[1].value['name']
-    macro_token = parser_state.e.do_short_hand_assignment(control_sequence_name,
+    macro_token = parser_state.e.do_short_hand_definition(control_sequence_name,
                                                           def_type,
                                                           code)
     # Just for the sake of output.

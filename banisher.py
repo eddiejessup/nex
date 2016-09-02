@@ -165,8 +165,6 @@ class Banisher(object):
             if not is_user_control_sequence:
                 if self.expander.name_is_let_control_sequence(name):
                     first_token = self.expander.get_let_control_sequence(name)
-                if self.expander.name_is_font_control_sequence(name):
-                    first_token.type = 'FONT_IDENTIFIER'
                 elif self.expander.is_parameter_control_sequence(name):
                     first_token = self.expander.get_parameter_token(name)
                 else:
