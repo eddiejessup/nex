@@ -99,22 +99,14 @@ def make_simple_definition_token(name, tokens):
 
 class Expander(object):
 
-    def __init__(self):
+    def __init__(self, font_state):
+        self.font_state = font_state
         self.initialize_control_sequences()
 
     def initialize_control_sequences(self):
         self.control_sequences = {}
         self.let_map = {}
-        self.font_control_sequences = {}
-        self.font_families = {i: get_empty_font_family() for i in range(16)}
-
         self.parameter_maps = default_parameters.copy()
-
-    def set_skew_char(self, name, number):
-        self.font_control_sequences[name].skew_char = number
-
-    def set_hyphen_char(self, name, number):
-        self.font_control_sequences[name].hyphen_char = number
 
     # TODO: Since we handle internal parameters through this interface,
     # this should probably be renamed.
@@ -147,9 +139,6 @@ class Expander(object):
 
     def name_is_user_control_sequence(self, name):
         return name in self.control_sequences
-
-    def name_is_font_control_sequence(self, name):
-        return name in self.font_control_sequences
 
     def name_is_let_control_sequence(self, name):
         return name in self.let_map
@@ -188,13 +177,8 @@ class Expander(object):
         # is stored below, because it has internal state that might be
         # modified later; we need to know where to get at it.
         self.set_macro(name, definition_token, prefixes=None)
-        # TODO: do this properly.
-        font_info = FontInfo(file_name, at_clause)
-        self.font_control_sequences[name] = font_info
+        self.font_state.do_font_definition(name, file_name, at_clause)
         return definition_token
-
-    def set_font_family(self, family_nr, font_range, name):
-        self.font_families[family_nr][font_range] = name
 
     def do_short_hand_definition(self, name, def_type, code):
         def_token_type = short_hand_def_to_token_map[def_type]

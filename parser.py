@@ -7,7 +7,7 @@ from reader import Reader, EndOfFile
 from lexer import Lexer
 from banisher import Banisher
 from expander import Expander, parse_replacement_text, parameter_types
-from fonts import FontRange
+from fonts import FontRange, FontState
 from registers import Registers
 from common_parsing import (pg as common_pg,
                             evaluate_number, evaluate_dimen, evaluate_glue)
@@ -147,12 +147,18 @@ def simple_assignment(parser_state, p):
     return p[0]
 
 
+@pg.production('simple_assignment : FONT_DEF_TOKEN')
+def simple_assignment_font_selection(parser_state, p):
+    parser_state.e.font_state.set_current_font(p[0].value)
+    return Token(type_='font_selection', value=p[0].value)
+
+
 @pg.production('family_assignment : family_member equals font')
 def family_assignment(parser_state, p):
     control_sequence_name = p[2]
     font_range = p[0].type
     family_nr = evaluate_number(parser_state, p[0].value)
-    parser_state.e.set_font_family(family_nr, font_range, control_sequence_name)
+    parser_state.e.font_state.set_font_family(family_nr, font_range, control_sequence_name)
     return Token(type_='family_assignment',
                  value={'family_nr': family_nr,
                         'font_range': font_range,
@@ -206,7 +212,7 @@ def global_assignment(parser_state, p):
 @pg.production('font_assignment : HYPHEN_CHAR font equals number')
 def font_assignment_hyphen(parser_state, p):
     evaluated_number = evaluate_number(parser_state, p[3])
-    parser_state.e.set_hyphen_char(p[1], evaluated_number)
+    parser_state.e.font_state.set_hyphen_char(p[1], evaluated_number)
     return Token(type_='skew_char_assignment',
                  value={'font': p[1], 'code': p[3]})
 
@@ -214,7 +220,7 @@ def font_assignment_hyphen(parser_state, p):
 @pg.production('font_assignment : SKEW_CHAR font equals number')
 def font_assignment_skew(parser_state, p):
     evaluated_number = evaluate_number(parser_state, p[3])
-    parser_state.e.set_skew_char(p[1], evaluated_number)
+    parser_state.e.font_state.set_skew_char(p[1], evaluated_number)
     return Token(type_='skew_char_assignment',
                  value={'font': p[1], 'code': p[3]})
 
@@ -407,7 +413,8 @@ class LexWrapper(object):
         self.file_name = file_name
         self.r = Reader(file_name)
         self.lex = Lexer(self.r)
-        self.e = Expander()
+        self.font_state = FontState()
+        self.e = Expander(self.font_state)
         self.b = Banisher(self.lex, self.e, wrapper=self)
         self.registers = Registers()
 

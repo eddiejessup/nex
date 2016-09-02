@@ -80,8 +80,8 @@ def evaluate_number(parser_state, number_token):
 
 def evaluate_dimen(parser_state, dimen_token):
     size_token, sign = dimen_token['size'], dimen_token['sign']
-    if isinstance(size_token, int):
-        return size_token
+    if isinstance(size_token.value, int):
+        return size_token.value
     number_of_units_token = size_token.value['factor']
     unit_token = size_token.value['unit']
     number_of_units = evaluate_size(parser_state, number_of_units_token)
@@ -271,17 +271,33 @@ def number(parser_state, p):
 
 
 @pg.production('unsigned_mu_dimen : normal_mu_dimen')
-# @pg.production('unsigned_mu_dimen : coerced_mu_dimen')
+@pg.production('unsigned_mu_dimen : coerced_mu_dimen')
 @pg.production('unsigned_dimen : normal_dimen')
-# @pg.production('unsigned_dimen : coerced_dimen')
+@pg.production('unsigned_dimen : coerced_dimen')
 def maybe_mu_unsigned_dimen(parser_state, p):
     return p[0]
 
 
+@pg.production('coerced_dimen : internal_glue')
+@pg.production('coerced_mu_dimen : internal_mu_glue')
+def maybe_mu_coerced_dimen(parser_state, p):
+    import pdb; pdb.set_trace()
+
+
 @pg.production('unsigned_number : normal_integer')
-# @pg.production('unsigned_number : coerced_integer')
+@pg.production('unsigned_number : coerced_integer')
 def unsigned_number(parser_state, p):
     return p[0]
+
+
+@pg.production('coerced_integer : internal_dimen')
+def coerced_integer_dimen(parser_state, p):
+    return p[0]
+
+
+@pg.production('coerced_integer : internal_glue')
+def coerced_integer_glue(parser_state, p):
+    import pdb; pdb.set_trace()
 
 
 def get_integer_constant(collection):
@@ -316,7 +332,7 @@ def normal_dimen_internal_dimen(parser_state, p):
 @pg.production('internal_glue : skip_register')
 @pg.production('internal_dimen : dimen_register')
 def internal_complex_quantity_register(parser_state, p):
-    return p[0].value
+    return p[0]
 
 
 @pg.production('internal_integer : CHAR_DEF_TOKEN')
