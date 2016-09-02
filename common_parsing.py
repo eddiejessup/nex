@@ -501,7 +501,7 @@ def plus_or_minus(parser_state, p):
 
 @pg.production('equals : optional_spaces')
 @pg.production('equals : optional_spaces EQUALS')
-def eq(parser_state, p):
+def equals(parser_state, p):
     return None
 
 

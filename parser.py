@@ -139,8 +139,41 @@ def non_macro_assignment(parser_state, p):
 @pg.production('simple_assignment : code_assignment')
 @pg.production('simple_assignment : let_assignment')
 @pg.production('simple_assignment : short_hand_definition')
+@pg.production('simple_assignment : font_definition')
 def simple_assignment(parser_state, p):
     return p[0]
+
+
+@pg.production('font_definition : FONT control_sequence equals optional_spaces file_name filler at_clause')
+def font_assignment(parser_state, p):
+    return Token(type_='font_definition',
+                 value={'name': p[1].value['name'],
+                        'file_name': p[4],
+                        'at_clause': p[6]})
+
+
+@pg.production('file_name : character')
+@pg.production('file_name : file_name character')
+def file_name(parser_state, p):
+    if len(p) > 1:
+        return p[0] + p[1].value['char']
+    else:
+        return p[0].value['char']
+
+
+@pg.production('at_clause : at dimen')
+def at_clause_dimen(parser_state, p):
+    return Token(type_='at_dimen', value=p[1])
+
+
+@pg.production('at_clause : scaled number')
+def at_clause_scaled(parser_state, p):
+    return Token(type_='scaled_number', value=p[1])
+
+
+@pg.production('at_clause : optional_spaces')
+def at_clause_empty(parser_state, p):
+    return None
 
 
 def do_variable_assignment(parser_state, variable, value):

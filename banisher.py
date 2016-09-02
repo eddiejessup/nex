@@ -20,6 +20,7 @@ logger.setLevel('DEBUG')
 read_unexpanded_control_sequence_types = (
     'LET',
     'BACKTICK',
+    'FONT',
 )
 read_unexpanded_control_sequence_types += tuple(set(def_map.values()))
 read_unexpanded_control_sequence_types += tuple(set(short_hand_def_map.values()))

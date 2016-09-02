@@ -70,6 +70,14 @@ def add_character_productions(pg):
     def plus(parser_state, p):
         return None
 
+    @pg.production(word_to_pr('at'))
+    def at(parser_state, p):
+        return None
+
+    @pg.production(word_to_pr('scaled'))
+    def scaled(parser_state, p):
+        return None
+
     @pg.production(word_to_pr('mu', target='mu_unit') + ' one_optional_space')
     def unit_of_mu_measure(parser_state, p):
         return {'unit': MuUnit.mu}

@@ -172,6 +172,10 @@ terminal_primitive_control_sequences_map = {
     'errmessage': 'ERROR_MESSAGE',
     'write': 'WRITE',
 
+    'font': 'FONT',
+
+    'undefined': 'UNDEFINED',
+
     'global': 'GLOBAL',
     'long': 'LONG',
     'outer': 'OUTER',
