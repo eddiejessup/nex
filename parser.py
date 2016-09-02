@@ -7,7 +7,7 @@ from reader import Reader, EndOfFile
 from lexer import Lexer
 from banisher import Banisher
 from expander import Expander, parse_replacement_text, parameter_types
-from registers import registers
+from registers import Registers
 from common_parsing import (pg as common_pg,
                             evaluate_number, evaluate_dimen, evaluate_glue)
 from general_text_parser import gen_txt_pg
@@ -140,14 +140,18 @@ def non_macro_assignment(parser_state, p):
 @pg.production('simple_assignment : let_assignment')
 @pg.production('simple_assignment : short_hand_definition')
 @pg.production('simple_assignment : font_definition')
+@pg.production('simple_assignment : global_assignment')
 def simple_assignment(parser_state, p):
     return p[0]
 
 
 @pg.production('font_definition : FONT control_sequence equals optional_spaces file_name filler at_clause')
-def font_assignment(parser_state, p):
+def font_definition(parser_state, p):
+    name = p[1].value['name']
+    parser_state.e.define_new_font(name,
+                                   file_name=p[4], at_clause=p[6])
     return Token(type_='font_definition',
-                 value={'name': p[1].value['name'],
+                 value={'name': name,
                         'file_name': p[4],
                         'at_clause': p[6]})
 
@@ -176,11 +180,46 @@ def at_clause_empty(parser_state, p):
     return None
 
 
+@pg.production('global_assignment : font_assignment')
+# @pg.production('global_assignment : hyphenation_assignment')
+# @pg.production('global_assignment : box_size_assignment')
+# @pg.production('global_assignment : interaction_mode_assignment')
+# @pg.production('global_assignment : intimate_assignment')
+def global_assignment(parser_state, p):
+    return p[0]
+
+
+# @pg.production('font_assignment : FONT_DIMEN number font equals dimen')
+@pg.production('font_assignment : HYPHEN_CHAR font equals number')
+def font_assignment_hyphen(parser_state, p):
+    evaluated_number = evaluate_number(parser_state, p[3])
+    parser_state.e.set_hyphen_char(p[1], evaluated_number)
+    return Token(type_='skew_char_assignment',
+                 value={'font': p[1], 'code': p[3]})
+
+
+@pg.production('font_assignment : SKEW_CHAR font equals number')
+def font_assignment_skew(parser_state, p):
+    evaluated_number = evaluate_number(parser_state, p[3])
+    parser_state.e.set_skew_char(p[1], evaluated_number)
+    return Token(type_='skew_char_assignment',
+                 value={'font': p[1], 'code': p[3]})
+
+
+@pg.production('font : FONT_IDENTIFIER')
+# @pg.production('font : TEXT_FONT number')
+# @pg.production('font : SCRIPT_FONT number')
+# @pg.production('font : SCRIPT_SCRIPT_FONT number')
+# @pg.production('font : FONT')
+def font(parser_state, p):
+    return p[0].value['name']
+
+
 def do_variable_assignment(parser_state, variable, value):
     register_map = {
-        'count': registers.count,
-        'dimen': registers.dimen,
-        'skip': registers.skip,
+        'count': parser_state.registers.count,
+        'dimen': parser_state.registers.dimen,
+        'skip': parser_state.registers.skip,
     }
     if variable.type in register_map.keys():
         # TODO: make a safe wrapper round this.
@@ -195,7 +234,7 @@ def do_variable_assignment(parser_state, variable, value):
 @pg.production('variable_assignment : glue_variable equals glue')
 def variable_assignment_glue(parser_state, p):
     glue = p[2]
-    evaluated_glue = evaluate_glue(glue)
+    evaluated_glue = evaluate_glue(parser_state, glue)
     do_variable_assignment(parser_state, p[0], evaluated_glue)
     return Token(type_='variable_assignment',
                  value={'variable': p[0], 'value': p[2]})
@@ -203,7 +242,7 @@ def variable_assignment_glue(parser_state, p):
 
 @pg.production('variable_assignment : dimen_variable equals dimen')
 def variable_assignment_dimen(parser_state, p):
-    evaluated_dimen = evaluate_dimen(p[2])
+    evaluated_dimen = evaluate_dimen(parser_state, p[2])
     do_variable_assignment(parser_state, p[0], evaluated_dimen)
     return Token(type_='variable_assignment',
                  value={'variable': p[0], 'value': p[2]})
@@ -211,7 +250,7 @@ def variable_assignment_dimen(parser_state, p):
 
 @pg.production('variable_assignment : integer_variable equals number')
 def variable_assignment_integer(parser_state, p):
-    evaluated_number = evaluate_number(p[2])
+    evaluated_number = evaluate_number(parser_state, p[2])
     do_variable_assignment(parser_state, p[0], evaluated_number)
     return Token(type_='variable_assignment',
                  value={'variable': p[0], 'value': p[2]})
@@ -219,9 +258,9 @@ def variable_assignment_integer(parser_state, p):
 
 @pg.production('arithmetic : ADVANCE integer_variable optional_by number')
 def arithmetic_integer_variable(parser_state, p):
-    value = evaluate_number(p[3])
+    value = evaluate_number(parser_state, p[3])
     if p[1].type == 'count':
-        registers.count[p[1].value] += value
+        parser_state.registers.count[p[1].value] += value
     return Token(type_='advance', value={'target': p[1], 'value': p[3]})
 
 
@@ -233,7 +272,7 @@ def optional_by(parser_state, p):
 
 @pg.production('short_hand_definition : short_hand_def control_sequence equals number')
 def short_hand_definition(parser_state, p):
-    code = evaluate_number(p[3])
+    code = evaluate_number(parser_state, p[3])
     def_type = p[0].type
     control_sequence_name = p[1].value['name']
     macro_token = parser_state.e.do_short_hand_assignment(control_sequence_name,
@@ -285,7 +324,7 @@ def split_hex_code(n, hex_length, inds):
 @pg.production('code_assignment : code_name number equals number')
 def code_assignment(parser_state, p):
     code_type, char_number, code_number = p[0], p[1], p[3]
-    char_size, code_size = evaluate_number(char_number), evaluate_number(code_number)
+    char_size, code_size = evaluate_number(parser_state, char_number), evaluate_number(parser_state, code_number)
     char = chr(char_size)
     code_type_to_char_map = {
         'CAT_CODE': parser_state.lex.char_to_cat,
@@ -346,7 +385,8 @@ class LexWrapper(object):
         self.r = Reader(file_name)
         self.lex = Lexer(self.r)
         self.e = Expander()
-        self.b = Banisher(self.lex, self.e)
+        self.b = Banisher(self.lex, self.e, wrapper=self)
+        self.registers = Registers()
 
     def __next__(self):
         try:

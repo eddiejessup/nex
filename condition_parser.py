@@ -25,8 +25,8 @@ def condition_if_false(parser_state, p):
 
 @pg.production('condition : IF_NUM number relation number')
 def condition_if_num(parser_state, p):
-    nr_1 = evaluate_number(p[1])
-    nr_2 = evaluate_number(p[3])
+    nr_1 = evaluate_number(parser_state, p[1])
+    nr_2 = evaluate_number(parser_state, p[3])
     relation = p[2].value['char']
     operator_map = {
         '<': operator.lt,
@@ -40,7 +40,7 @@ def condition_if_num(parser_state, p):
 
 @pg.production('condition : IF_CASE number')
 def condition_if_case(parser_state, p):
-    return evaluate_number(p[1])
+    return evaluate_number(parser_state, p[1])
 
 
 @pg.production('relation : LESS_THAN')

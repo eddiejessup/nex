@@ -50,9 +50,11 @@ def make_char_cat_term_token(char, cat):
 
 class Banisher(object):
 
-    def __init__(self, lexer, expander):
+    def __init__(self, lexer, expander, wrapper):
         self.lexer = lexer
         self.expander = expander
+        # *ahem* this is not nice.
+        self.wrapper = wrapper
         # Input buffer.
         self.input_tokens_stack = deque()
         # Output buffer.
@@ -163,7 +165,9 @@ class Banisher(object):
             if not is_user_control_sequence:
                 if self.expander.name_is_let_control_sequence(name):
                     first_token = self.expander.get_let_control_sequence(name)
-                if self.expander.is_parameter_control_sequence(name):
+                if self.expander.name_is_font_control_sequence(name):
+                    first_token.type = 'FONT_IDENTIFIER'
+                elif self.expander.is_parameter_control_sequence(name):
                     first_token = self.expander.get_parameter_token(name)
                 else:
                     # Assume it's a primitive non-parameter control sequence.
@@ -281,7 +285,7 @@ class Banisher(object):
                 t = self.pop_or_fill_and_pop(condition_buffer_stack)
                 condition_parse_stack.append(t)
                 try:
-                    outcome = condition_parser.parse(iter(condition_parse_stack), state='hihi')
+                    outcome = condition_parser.parse(iter(condition_parse_stack), state=self.wrapper)
                 except (ExpectedParsingError, StopIteration):
                     if have_parsed:
                         break
@@ -388,7 +392,7 @@ class Banisher(object):
                     break
             # Check arguments obey the rules of a 'general text'.
             balanced_text_token = general_text_parser.parse(iter(case_tokens),
-                                                            state='hihi')
+                                                            state=self.wrapper)
 
             case_maps_map = {
                 'LOWER_CASE': self.lexer.lower_case_code,

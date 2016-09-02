@@ -173,6 +173,9 @@ terminal_primitive_control_sequences_map = {
     'write': 'WRITE',
 
     'font': 'FONT',
+    'skewchar': 'SKEW_CHAR',
+    'hyphenchar': 'HYPHEN_CHAR',
+    'fontdimen': 'FONT_DIMEN',
 
     'undefined': 'UNDEFINED',
 
@@ -246,6 +249,7 @@ primitive_control_sequences_map = dict(**terminal_primitive_control_sequences_ma
 composite_terminal_control_sequence_types = (
     'BALANCED_TEXT_AND_RIGHT_BRACE',
     'PARAMETER_TEXT',
+    'FONT_IDENTIFIER',
 )
 
 

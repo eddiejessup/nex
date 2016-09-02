@@ -3,7 +3,6 @@ from rply import ParserGenerator
 from common import Token
 
 from expander import parameter_types
-from registers import registers
 from typer import (literal_types, PhysicalUnit, MuUnit, units_in_scaled_points,
                    unexpanded_cs_types,
                    terminal_primitive_control_sequences_map,
@@ -42,7 +41,7 @@ class DigitCollection(object):
         self.digits = []
 
 
-def evaluate_size(size_token):
+def evaluate_size(parser_state, size_token):
     if isinstance(size_token, Token):
         if size_token.type == 'backtick_integer':
             unexpanded_token = size_token.value
@@ -60,31 +59,31 @@ def evaluate_size(size_token):
             # size_token = lexer.state.control_sequences[name]
             raise NotImplementedError
         elif size_token.type == 'count':
-            return registers.count[size_token.value]
+            return parser_state.registers.count[size_token.value]
         elif size_token.type == 'dimen':
-            return registers.dimen[size_token.value]
+            return parser_state.registers.dimen[size_token.value]
         else:
             import pdb; pdb.set_trace()
     else:
         return size_token
 
 
-def evaluate_number(number_token):
+def evaluate_number(parser_state, number_token):
     size_token = number_token['size']
-    number = evaluate_size(size_token)
+    number = evaluate_size(parser_state, size_token)
     sign = number_token['sign']
     if sign == '-':
         number *= -1
     return number
 
 
-def evaluate_dimen(dimen_token):
+def evaluate_dimen(parser_state, dimen_token):
     size_token, sign = dimen_token['size'], dimen_token['sign']
     if isinstance(size_token, int):
         return size_token
     number_of_units_token = size_token.value['factor']
     unit_token = size_token.value['unit']
-    number_of_units = evaluate_size(number_of_units_token)
+    number_of_units = evaluate_size(parser_state, number_of_units_token)
     unit = unit_token['unit']
     if unit == PhysicalUnit.fil:
         if 'number_of_fils' not in unit_token:
@@ -106,14 +105,14 @@ def evaluate_dimen(dimen_token):
     return number_of_scaled_points
 
 
-def evaluate_glue(glue_token):
+def evaluate_glue(parser_state, glue_token):
     evaluated_glue = {}
     for k in glue_keys:
         dimen = glue_token[k]
         if dimen is None:
             evaluated_dimen = None
         else:
-            evaluated_dimen = evaluate_dimen(dimen)
+            evaluated_dimen = evaluate_dimen(parser_state, dimen)
         evaluated_glue[k] = evaluated_dimen
     return evaluated_glue
 

@@ -1,5 +1,6 @@
 from common import Token, TerminalToken, InternalToken
 from tex_parameters import default_parameters
+from fonts import FontInfo
 from typer import (short_hand_def_to_token_map,
                    type_primitive_control_sequence)
 
@@ -104,7 +105,20 @@ class Expander(object):
     def initialize_control_sequences(self):
         self.control_sequences = {}
         self.let_map = {}
+        self.font_control_sequences = {}
+
         self.parameter_maps = default_parameters.copy()
+
+    def define_new_font(self, name, file_name, at_clause):
+        # TODO: do this properly.
+        font_info = FontInfo(file_name)
+        self.font_control_sequences[name] = font_info
+
+    def set_skew_char(self, name, number):
+        self.font_control_sequences[name].skew_char = number
+
+    def set_hyphen_char(self, name, number):
+        self.font_control_sequences[name].hyphen_char = number
 
     # TODO: Since we handle internal parameters through this interface,
     # this should probably be renamed.
@@ -137,6 +151,9 @@ class Expander(object):
 
     def name_is_user_control_sequence(self, name):
         return name in self.control_sequences
+
+    def name_is_font_control_sequence(self, name):
+        return name in self.font_control_sequences
 
     def name_is_let_control_sequence(self, name):
         return name in self.let_map
