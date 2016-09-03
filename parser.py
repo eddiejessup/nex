@@ -379,8 +379,8 @@ def code_assignment(parser_state, p):
         code = DelimiterCode(small_glyph_code, large_glyph_code)
     char_map = code_type_to_char_map[code_type]
     char_map[char] = code
-    return {'type': 'code_assignment', 'code_type': code_type,
-            'char': char, 'code': code}
+    return Token(type_='code_assignment',
+                 value={'code_type': code_type, 'char': char, 'code': code})
 
 
 @pg.production('code_name : CAT_CODE')
