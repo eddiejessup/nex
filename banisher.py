@@ -8,7 +8,6 @@ from typer import (CatCode,
                    char_cat_lex_type,
                    lex_token_to_unexpanded_terminal_token,
                    make_unexpanded_control_sequence_terminal_token,
-                   type_primitive_control_sequence,
                    unexpanded_cs_types, unexpanded_token_type,
                    short_hand_def_map, def_map, if_map)
 from expander import parse_parameter_text

@@ -357,15 +357,3 @@ composite_terminal_control_sequence_types = (
     'HORIZONTAL_MODE_MATERIAL',
     'VERTICAL_MODE_MATERIAL',
 )
-
-
-def type_primitive_control_sequence(call_token):
-    name = call_token.value['name']
-    # Terminals are tokens that may be passed to the parser.
-    # Non-terminals are tokens that will be consumed by the banisher before the
-    # parser sees them.
-    is_terminal = name in terminal_primitive_control_sequences_map
-    TokenCls = TerminalToken if is_terminal else InternalToken
-    primitive_type = primitive_control_sequences_map[name]
-    primitive_token = TokenCls(type_=primitive_type, value=call_token.value)
-    return primitive_token

@@ -2,8 +2,8 @@ from common import Token, TerminalToken, InternalToken
 from tex_parameters import default_parameters
 from typer import (control_sequence_lex_type, char_cat_lex_type,
                    short_hand_def_to_token_map, font_def_token_type,
-                   type_primitive_control_sequence,
                    unexpanded_cs_types,
+                   primitive_control_sequences_map, terminal_primitive_control_sequences_map,
                    )
 
 undelim_macro_param_type = 'UNDELIMITED_PARAM'
@@ -116,6 +116,10 @@ class Expander(object):
                                             value={'parameter_type': param_type,
                                                    'parameter_canonical_name': param_canon_name})
                 self.control_sequences[param_canon_name] = route_token
+        for canon_name, primitive_type in primitive_control_sequences_map.items():
+            # Add a router for the canonical name to the primitive.
+            route_token = InternalToken(type_='primitive', value=canon_name)
+            self.control_sequences[canon_name] = route_token
 
     # TODO: Since we handle internal parameters through this interface,
     # this should probably be renamed.
@@ -175,6 +179,19 @@ class Expander(object):
         # current one.
         self.control_sequences[copy_name] = self.control_sequences[existing_name]
 
+    def type_primitive_control_sequence(self, call_token):
+        name = call_token.value['name']
+        # Terminals are tokens that may be passed to the parser. Non-terminals
+        # are tokens that will be consumed by the banisher before the parser
+        # sees them.
+        route_token = self.control_sequences[name]
+        canonical_name = route_token.value
+        is_terminal = canonical_name in terminal_primitive_control_sequences_map
+        TokenCls = TerminalToken if is_terminal else InternalToken
+        primitive_type = primitive_control_sequences_map[canonical_name]
+        primitive_token = TokenCls(type_=primitive_type, value=call_token.value)
+        return primitive_token
+
     def resolve_control_sequence(self, token):
         # If it is a macro, leave it alone.
         # If it is a non-macro control sequence.
@@ -201,7 +218,7 @@ class Expander(object):
             else:
                 # Assume it's a primitive non-parameter control sequence.
                 # Give it its primitive type.
-                token = type_primitive_control_sequence(token)
+                token = self.type_primitive_control_sequence(token)
         return token
 
     def do_let_assignment(self, new_name, target_token):
