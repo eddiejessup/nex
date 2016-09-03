@@ -32,7 +32,6 @@ message_types = ('MESSAGE', 'ERROR_MESSAGE', 'WRITE')
 class ContextMode(Enum):
     normal = 1
     awaiting_balanced_text_start = 2
-    awaiting_unexpanded_cs = 3
     absorbing_parameter_text = 4
 
 
@@ -213,12 +212,6 @@ class Banisher(object):
                 self.push_context(ContextMode.awaiting_balanced_text_start)
             else:
                 self.parameter_text_tokens.append(first_token)
-        elif (self.context_mode == ContextMode.awaiting_unexpanded_cs and
-              type_ in unexpanded_cs_types):
-            # Put the unexpanded control sequence on the output stack.
-            output_tokens.append(first_token)
-            # Done with getting an un-expanded control sequence.
-            self.pop_context()
         elif type_ == 'LEFT_BRACE':
             # We know we aren't seeing a left brace to do with defining a
             # macro, and for now, knowing no better, we will assume we are
