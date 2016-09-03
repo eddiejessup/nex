@@ -107,60 +107,73 @@ class Expander(object):
 
     def initialize_control_sequences(self):
         self.control_sequences = {}
+        self.macros = {}
         self.let_map = {}
         self.parameter_maps = default_parameters.copy()
+        for param_type, param_map in self.parameter_maps.items():
+            for param_canon_name in param_map:
+                route_token = InternalToken(type_='parameter',
+                                            value={'parameter_type': param_type,
+                                                   'parameter_canonical_name': param_canon_name})
+                self.control_sequences[param_canon_name] = route_token
 
     # TODO: Since we handle internal parameters through this interface,
     # this should probably be renamed.
     def expand_to_token_list(self, name, argument_text):
-        if name in self.control_sequences:
-            token = self.control_sequences[name]
-            if token.type == 'macro':
-                def_token = token.value['definition']
-                def_text_token = def_token.value['text']
-                parameter_text = def_text_token.value['parameter_text']
-                arguments = parse_argument_text(argument_text, parameter_text)
-                replace_text = def_text_token.value['replacement_text']
-                finished_text = substitute_params_with_args(replace_text, arguments)
-                return finished_text
-            else:
-                import pdb; pdb.set_trace()
-        else:
-            import pdb; pdb.set_trace()
+        token = self.get_control_sequence(name)
+        def_token = token.value['definition']
+        def_text_token = def_token.value['text']
+        parameter_text = def_text_token.value['parameter_text']
+        arguments = parse_argument_text(argument_text, parameter_text)
+        replace_text = def_text_token.value['replacement_text']
+        finished_text = substitute_params_with_args(replace_text, arguments)
+        return finished_text
 
     def expand_to_parameter_text(self, name):
-        if name in self.control_sequences:
-            token = self.control_sequences[name]
-            if token.type == 'macro':
-                def_token = token.value['definition']
-                def_text_token = def_token.value['text']
-                param_text = def_text_token.value['parameter_text']
-                return param_text
-        else:
-            import pdb; pdb.set_trace()
+        # TODO: lots of duplication with `expand_to_token_list`.
+        token = self.get_control_sequence(name)
+        def_token = token.value['definition']
+        def_text_token = def_token.value['text']
+        param_text = def_text_token.value['parameter_text']
+        return param_text
 
     def name_is_user_control_sequence(self, name):
-        return name in self.control_sequences
+        if name not in self.control_sequences:
+            return False
+        else:
+            route_token = self.control_sequences[name]
+            return route_token.type == 'macro'
 
     def name_is_let_control_sequence(self, name):
         return name in self.let_map
 
     def get_control_sequence(self, name):
-        return self.control_sequences[name]
+        route_token = self.control_sequences[name]
+        assert route_token.type == 'macro'
+        macro_id = route_token.value
+        token = self.macros[macro_id]
+        assert token.type == 'macro'
+        return token
 
     def get_let_control_sequence(self, name):
         return self.let_map[name]
 
     def set_macro(self, name, definition_token, prefixes=None):
+        macro_id = len(self.macros)
+        route_token = InternalToken(type_='macro', value=macro_id)
+        self.control_sequences[name] = route_token
+
         if prefixes is None:
             prefixes = set()
         macro_token = Token(type_='macro',
                             value={'prefixes': prefixes,
                                    'definition': definition_token})
-        self.control_sequences[name] = macro_token
+        self.macros[macro_id] = macro_token
 
     def copy_control_sequence(self, existing_name, copy_name):
-        self.control_sequences[copy_name] = self.control_sequences[existing_name][:]
+        # Make a new control sequence that is routed to the same spot as the
+        # current one.
+        self.control_sequences[copy_name] = self.control_sequences[existing_name]
 
     def resolve_control_sequence(self, token):
         # If it is a macro, leave it alone.
@@ -173,6 +186,7 @@ class Expander(object):
             # let-ted token that resolves to one of the below cases, and we
             # want to resolve *both* the let and the below case.
 
+            # TODO: what will happen for a \let to a macro?
             # We might have \let something to a parameter, so we might get an
             # internal thing. This might actually stretch to include many
             # other cases, to the point where this 'iffy' approach is not good.
@@ -243,27 +257,39 @@ class Expander(object):
         return definition_token
 
     def get_parameter_type(self, name):
-        for type_, parameter_map in self.parameter_maps.items():
-            if name in parameter_map:
-                return type_
+        param_type, _ = self.unpack_param_route(name)
+        return param_type
+
+    def unpack_param_route(self, name):
+        route_token = self.control_sequences[name]
+        param_type, param_canon_name = (route_token.value['parameter_type'],
+                                        route_token.value['parameter_canonical_name'])
+        return param_type, param_canon_name
 
     def get_parameter_token(self, name):
-        type_ = self.get_parameter_type(name)
-        parameter_token = TerminalToken(type_=type_, value=name)
+        param_type, param_canon_name = self.unpack_param_route(name)
+        parameter_token = TerminalToken(type_=param_type,
+                                        value=param_canon_name)
         return parameter_token
 
     def is_parameter_control_sequence(self, name):
-        return self.get_parameter_type(name) is not None
+        # TODO: remove duplication from macro equivalent.
+        if name not in self.control_sequences:
+            return False
+        else:
+            route_token = self.control_sequences[name]
+            return route_token.type == 'parameter'
 
     def is_parameter_token(self, token):
         return token.type in self.parameter_maps
 
     def get_parameter_value(self, name):
-        type_ = self.get_parameter_type(name)
-        value_map = self.parameter_maps[type_]
-        return value_map[name]
+        param_type, param_canon_name = self.unpack_param_route(name)
+        parameter_map = self.parameter_maps[param_type]
+        parameter_value = parameter_map[param_canon_name]
+        return parameter_value
 
     def set_parameter(self, name, value):
-        type_ = self.get_parameter_type(name)
-        value_map = self.parameter_maps[type_]
-        value_map[name] = value
+        param_type, param_canon_name = self.unpack_param_route(name)
+        parameter_map = self.parameter_maps[param_type]
+        parameter_map[param_canon_name] = value
