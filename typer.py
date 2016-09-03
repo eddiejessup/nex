@@ -181,16 +181,40 @@ terminal_primitive_control_sequences_map = {
     'hyphenchar': 'HYPHEN_CHAR',
     'fontdimen': 'FONT_DIMEN',
 
-    # Font ranges
+    # Font ranges.
     'textfont': 'TEXT_FONT',
     'scriptfont': 'SCRIPT_FONT',
     'scriptscriptfont': 'SCRIPT_SCRIPT_FONT',
 
     'undefined': 'UNDEFINED',
 
+    # Macro modifiers.
     'global': 'GLOBAL',
     'long': 'LONG',
     'outer': 'OUTER',
+
+    # Box related things.
+
+    # Box register assignment.
+    'setbox': 'SET_BOX',
+    # Box register calls.
+    # This one deletes the register contents when called.
+    'box': 'BOX',
+    # This one does not.
+    'copy': 'COPY',
+
+    # Remove and return (pop) the most recent h- or v-box, if any.
+    'lastbox': 'LAST_BOX',
+    # Make a vbox by splitting off a certain amount of material from a box
+    # register.
+    'vsplit': 'V_SPLIT',
+
+    # Box constructions.
+    'hbox': 'H_BOX',
+    'vbox': 'V_BOX',
+    # Like 'vbox', but its baseline is that of the top box inside,
+    # rather than the bottom box inside.
+    'vtop': 'V_TOP',
 }
 
 
@@ -261,6 +285,8 @@ primitive_control_sequences_map = dict(**terminal_primitive_control_sequences_ma
 composite_terminal_control_sequence_types = (
     'BALANCED_TEXT_AND_RIGHT_BRACE',
     'PARAMETER_TEXT',
+    'HORIZONTAL_MODE_MATERIAL',
+    'VERTICAL_MODE_MATERIAL',
 )
 
 

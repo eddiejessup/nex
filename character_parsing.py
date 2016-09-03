@@ -70,6 +70,8 @@ def add_character_productions(pg):
     def plus(parser_state, p):
         return None
 
+    # Font related.
+
     @pg.production(word_to_pr('at'))
     def at(parser_state, p):
         return None
@@ -77,6 +79,18 @@ def add_character_productions(pg):
     @pg.production(word_to_pr('scaled'))
     def scaled(parser_state, p):
         return None
+
+    # Box related.
+
+    @pg.production(word_to_pr('to'))
+    def to(parser_state, p):
+        return None
+
+    @pg.production(word_to_pr('spread'))
+    def spread(parser_state, p):
+        return None
+
+    # Unit related.
 
     @pg.production(word_to_pr('mu', target='mu_unit') + ' one_optional_space')
     def unit_of_mu_measure(parser_state, p):
@@ -97,6 +111,9 @@ def add_character_productions(pg):
             continue
         rule = word_to_pr(unit.value, target='physical_unit')
         physical_unit = wrap(pg, physical_unit, rule)
+
+    # We split out some types of these letters for parsing into hexadecimal
+    # constants. Here we allow them to be considered as normal characters.
 
     @pg.production('non_active_uncased_a : A')
     @pg.production('non_active_uncased_a : NON_ACTIVE_UNCASED_a')

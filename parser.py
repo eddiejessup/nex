@@ -141,6 +141,7 @@ def non_macro_assignment(parser_state, p):
 @pg.production('simple_assignment : let_assignment')
 @pg.production('simple_assignment : short_hand_definition')
 @pg.production('simple_assignment : family_assignment')
+@pg.production('simple_assignment : set_box_assignment')
 @pg.production('simple_assignment : font_definition')
 @pg.production('simple_assignment : global_assignment')
 def simple_assignment(parser_state, p):
@@ -163,6 +164,11 @@ def family_assignment(parser_state, p):
                  value={'family_nr': family_nr,
                         'font_range': font_range,
                         'font_name': control_sequence_name})
+
+
+@pg.production('set_box_assignment : SET_BOX number equals filler box')
+def set_box_assignment(parser_state, p):
+    import pdb; pdb.set_trace()
 
 
 @pg.production('font_definition : FONT control_sequence equals optional_spaces file_name filler at_clause')
@@ -197,6 +203,24 @@ def at_clause_scaled(parser_state, p):
 @pg.production('at_clause : optional_spaces')
 def at_clause_empty(parser_state, p):
     return None
+
+
+@pg.production('box : BOX number')
+@pg.production('box : COPY number')
+@pg.production('box : LAST_BOX')
+@pg.production('box : V_SPLIT number to dimen')
+@pg.production('box : H_BOX box_specification LEFT_BRACE HORIZONTAL_MODE_MATERIAL RIGHT_BRACE')
+@pg.production('box : V_BOX box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL RIGHT_BRACE')
+@pg.production('box : V_TOP box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL RIGHT_BRACE')
+def box(parser_state, p):
+    import pdb; pdb.set_trace()
+
+
+@pg.production('box_specification : to dimen filler')
+@pg.production('box_specification : spread dimen filler')
+@pg.production('box_specification : filler')
+def box_specification(parser_state, p):
+    import pdb; pdb.set_trace()
 
 
 @pg.production('global_assignment : font_assignment')

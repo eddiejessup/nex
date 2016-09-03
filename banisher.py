@@ -330,12 +330,12 @@ class Banisher(object):
                 if nr_conditions == 1 and t.type in condition_block_delimiter_types:
                     i_block += 1
 
-                # Don't include internal tokens.
-                if t.type not in condition_types:
-                    # Include token if we're in the block the condition says
-                    # we should pick.
-                    if i_block == i_block_to_pick:
-                        not_skipped_tokens.append(t)
+                # Don't include internal tokens, and
+                # include token if we're in the block the condition says
+                # we should pick.
+                if (t.type not in condition_types and
+                        i_block == i_block_to_pick):
+                    not_skipped_tokens.append(t)
 
                 if nr_conditions == 0:
                     break
