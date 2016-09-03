@@ -5,6 +5,10 @@ from typer import terminal_primitive_control_sequences_map
 class FontInfo(object):
 
     def __init__(self, file_name, at_clause):
+        # Hacky short-term.
+        self.file_name = file_name
+        self.at_clause = at_clause
+
         self.at_size = None
         self.design_size = None
         self.name = None
@@ -12,6 +16,12 @@ class FontInfo(object):
         self.glue = None
         self.hyphen_char = None
         self.skew_char = None
+
+    def __repr__(self):
+        fields = ('file_name', 'at_clause')
+        field_args = ((f, self.__dict__[f]) for f in fields)
+        args = (','.join('{}={}'.format(k, v) for k, v in field_args))
+        return '{}<{}>'.format(self.__class__.__name__, args)
 
 
 class FontRange(Enum):

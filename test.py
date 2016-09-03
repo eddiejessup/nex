@@ -69,7 +69,7 @@ def test_parser():
 
     result = parser.parse(lex_wrapper, state=lex_wrapper)
     # result = parser.parse(file_name, lexer=lex_wrapper, debug=logger)
-    # post_mortem(lex_wrapper, parser)
+    post_mortem(lex_wrapper, parser)
     for term_tok in result:
         print(term_tok)
 
