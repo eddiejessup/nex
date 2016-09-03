@@ -101,8 +101,8 @@ def make_simple_definition_token(name, tokens):
 
 class Expander(object):
 
-    def __init__(self, font_state):
-        self.font_state = font_state
+    def __init__(self, global_state):
+        self.global_state = global_state
         self.initialize_control_sequences()
 
     def initialize_control_sequences(self):
@@ -220,16 +220,18 @@ class Expander(object):
         else:
             import pdb; pdb.set_trace()
 
-    def do_font_definition(self, name, file_name, at_clause):
+    def define_new_font(self, name, file_name, at_clause):
+        new_font_id = self.global_state.global_font_state.define_new_font(file_name,
+                                                                          at_clause)
+        # Note, this token just records the font id; the information
+        # is stored in the global font state (above), because it has internal
+        # state that might be modified later; we need to know where to get
+        # at it.
         primitive_token = TerminalToken(type_=font_def_token_type,
-                                        value=name)
+                                        value=new_font_id)
         definition_token = make_simple_definition_token(name,
                                                         [primitive_token])
-        # Note, this token just records the name; the information
-        # is stored below, because it has internal state that might be
-        # modified later; we need to know where to get at it.
         self.set_macro(name, definition_token, prefixes=None)
-        self.font_state.do_font_definition(name, file_name, at_clause)
         return definition_token
 
     def do_short_hand_definition(self, name, def_type, code):

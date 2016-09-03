@@ -55,6 +55,7 @@ class Banisher(object):
         self.expander = expander
         # *ahem* this is not nice.
         self.wrapper = wrapper
+        self.global_state = self.wrapper.state
         # Input buffer.
         self.input_tokens_stack = deque()
         # Output buffer.
@@ -390,8 +391,8 @@ class Banisher(object):
                                                             state=self.wrapper)
 
             case_funcs_map = {
-                'LOWER_CASE': self.lexer.global_state.get_lower_case_code,
-                'UPPER_CASE': self.lexer.global_state.get_upper_case_code,
+                'LOWER_CASE': self.global_state.get_lower_case_code,
+                'UPPER_CASE': self.global_state.get_upper_case_code,
             }
             case_func = case_funcs_map[type_]
 

@@ -151,20 +151,22 @@ def simple_assignment(parser_state, p):
 
 @pg.production('simple_assignment : FONT_DEF_TOKEN')
 def simple_assignment_font_selection(parser_state, p):
-    parser_state.e.font_state.set_current_font(p[0].value)
-    return Token(type_='font_selection', value=p[0].value)
+    font_id = p[0].value
+    parser_state.state.set_current_font(font_id)
+    return Token(type_='font_selection', value=font_id)
 
 
 @pg.production('family_assignment : family_member equals font')
 def family_assignment(parser_state, p):
-    control_sequence_name = p[2]
+    # TODO: will this work for productions of font other than FONT_DEF_TOKEN?
+    font_id = p[2].value
     font_range = p[0].type
     family_nr = evaluate_number(parser_state, p[0].value)
-    parser_state.e.font_state.set_font_family(family_nr, font_range, control_sequence_name)
+    parser_state.state.set_font_family(family_nr, font_range, font_id)
     return Token(type_='family_assignment',
                  value={'family_nr': family_nr,
                         'font_range': font_range,
-                        'font_name': control_sequence_name})
+                        'font_id': font_id})
 
 
 @pg.production('set_box_assignment : SET_BOX number equals filler box')
@@ -176,9 +178,9 @@ def set_box_assignment(parser_state, p):
 def font_definition(parser_state, p):
     file_name, at_clause = p[4], p[6]
     control_sequence_name = p[1].value['name']
-    macro_token = parser_state.e.do_font_definition(control_sequence_name,
-                                                    file_name,
-                                                    at_clause)
+    macro_token = parser_state.e.define_new_font(control_sequence_name,
+                                                 file_name,
+                                                 at_clause)
     return macro_token
 
 
@@ -236,25 +238,33 @@ def global_assignment(parser_state, p):
 # @pg.production('font_assignment : FONT_DIMEN number font equals dimen')
 @pg.production('font_assignment : HYPHEN_CHAR font equals number')
 def font_assignment_hyphen(parser_state, p):
+    # TODO: can we make this nicer by storing the char instead of the number?
     evaluated_number = evaluate_number(parser_state, p[3])
-    parser_state.e.font_state.set_hyphen_char(p[1], evaluated_number)
+    # TODO: as for font definition, does this work for non-FONT_DEF_TOKEN font
+    # productions?
+    font_id = p[1].value
+    parser_state.state.global_font_state.set_hyphen_char(font_id, evaluated_number)
     return Token(type_='skew_char_assignment',
-                 value={'font': p[1], 'code': p[3]})
+                 value={'font_id': font_id, 'code': p[3]})
 
 
 @pg.production('font_assignment : SKEW_CHAR font equals number')
 def font_assignment_skew(parser_state, p):
+    # TODO: can we make this nicer by storing the char instead of the number?
     evaluated_number = evaluate_number(parser_state, p[3])
-    parser_state.e.font_state.set_skew_char(p[1], evaluated_number)
+    # TODO: as for font definition, does this work for non-FONT_DEF_TOKEN font
+    # productions?
+    font_id = p[1].value
+    parser_state.state.global_font_state.set_skew_char(font_id, evaluated_number)
     return Token(type_='skew_char_assignment',
-                 value={'font': p[1], 'code': p[3]})
+                 value={'font_id': font_id, 'code': p[3]})
 
 
 @pg.production('font : FONT_DEF_TOKEN')
 # @pg.production('font : family_member')
 # @pg.production('font : FONT')
 def font(parser_state, p):
-    return p[0].value
+    return p[0]
 
 
 @pg.production('family_member : font_range number')
@@ -435,8 +445,7 @@ class LexWrapper(object):
         self.file_name = file_name
         self.r = Reader(file_name)
         self.lex = Lexer(self.r, self.state)
-        self.font_state = FontState()
-        self.e = Expander(self.font_state)
+        self.e = Expander(self.state)
         self.b = Banisher(self.lex, self.e, wrapper=self)
 
     def __next__(self):

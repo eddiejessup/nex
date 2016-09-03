@@ -2,7 +2,8 @@ from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
 from common import ascii_characters
 from typer import (CatCode, WeirdChar, MathClass, GlyphCode, MathCode,
                    not_a_delimiter_code, ignored_delimiter_code)
-from registers import Registers
+from registers import get_initial_registers, get_local_registers
+from fonts import GlobalFontState, get_initial_font_state, get_local_font_state
 
 
 class NotInScopeError(Exception):
@@ -67,15 +68,6 @@ def get_initial_delimiter_codes():
     return delimiter_code
 
 
-def get_initial_registers():
-    count = {i: None for i in range(256)}
-    dimen = {i: None for i in range(256)}
-    skip = {i: None for i in range(256)}
-    mu_skip = {i: None for i in range(256)}
-    registers = Registers(count, dimen, skip, mu_skip)
-    return registers
-
-
 class Scope(object):
 
     def __init__(self,
@@ -85,6 +77,7 @@ class Scope(object):
                  space_factor_code,
                  delimiter_code,
                  registers,
+                 font_state,
                  ):
         self.char_to_cat = char_to_cat
         self.char_to_math_code = char_to_math_code
@@ -103,6 +96,7 @@ class Scope(object):
         }
 
         self.registers = registers
+        self.font_state = font_state
 
     def set_code(self, code_type, char, code):
         char_map = self.code_type_to_char_map[code_type]
@@ -148,6 +142,7 @@ class Scope(object):
     def get_delimiter_code(self, char):
         return self.get_code('delimiter', char)
 
+    # TODO: maybe just have outside things address .registers directly.
     def defer_to_registers(self, func_name, *args, **kwargs):
         f = getattr(self.registers, func_name)
         return f(*args, **kwargs)
@@ -162,15 +157,10 @@ class Scope(object):
         return self.defer_to_registers('advance_register_value', *args, **kwargs)
 
 
-class GlobalSettings(object):
-
-    pass
-
-
 class GlobalState(object):
 
     def __init__(self):
-        self.global_settings = GlobalSettings()
+        self.global_font_state = GlobalFontState()
         self.scopes = []
         global_scope = self.get_global_scope()
         self.push_scope(global_scope)
@@ -181,13 +171,19 @@ class GlobalState(object):
         lower_case_code, upper_case_code = get_initial_case_codes()
         space_factor_code = get_initial_space_factor_codes()
         delimiter_code = get_initial_delimiter_codes()
+
         registers = get_initial_registers()
+
+        font_state = get_initial_font_state()
+
         global_scope = Scope(char_to_cat,
                              char_to_math_code,
                              lower_case_code, upper_case_code,
                              space_factor_code,
                              delimiter_code,
-                             registers)
+                             registers,
+                             font_state,
+                             )
         return global_scope
 
     def get_local_scope(self):
@@ -196,13 +192,18 @@ class GlobalState(object):
         lower_case_code, upper_case_code = {}, {}
         space_factor_code = {}
         delimiter_code = {}
-        registers = Registers(count={}, dimen={}, skip={}, mu_skip={})
+
+        registers = get_local_registers()
+        font_state = get_local_font_state()
+
         local_scope = Scope(char_to_cat,
                             char_to_math_code,
                             lower_case_code, upper_case_code,
                             space_factor_code,
                             delimiter_code,
-                            registers)
+                            registers,
+                            font_state,
+                            )
         return local_scope
 
     def push_scope(self, scope):
@@ -248,6 +249,8 @@ class GlobalState(object):
                 return v
         import pdb; pdb.set_trace()
 
+    # Codes.
+
     def get_cat_code(self, *args, **kwargs):
         return self.try_scope_until_success('get_cat_code', *args, **kwargs)
 
@@ -266,11 +269,21 @@ class GlobalState(object):
     def get_delimiter_code(self, *args, **kwargs):
         return self.try_scope_until_success('get_delimiter_code', *args, **kwargs)
 
+    # Registers.
+
     def get_register_value(self, *args, **kwargs):
         return self.try_scope_until_success('get_register_value', *args, **kwargs)
 
     def set_register_value(self, *args, **kwargs):
-        return self.try_scope_until_success('set_register_value', *args, **kwargs)
+        self.scope.set_register_value(*args, **kwargs)
 
     def advance_register_value(self, *args, **kwargs):
-        return self.try_scope_until_success('advance_register_value', *args, **kwargs)
+        self.try_scope_until_success('advance_register_value', *args, **kwargs)
+
+    # Fonts.
+
+    def set_current_font(self, *args, **kwargs):
+        self.scope.font_state.set_current_font(*args, **kwargs)
+
+    def set_font_family(self, *args, **kwargs):
+        self.scope.font_state.set_font_family(*args, **kwargs)

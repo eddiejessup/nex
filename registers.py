@@ -17,6 +17,20 @@ def register_token_type_to_register_type(type_):
     return reverse_token_map[type_]
 
 
+def get_initial_registers():
+    count = {i: None for i in range(256)}
+    dimen = {i: None for i in range(256)}
+    skip = {i: None for i in range(256)}
+    mu_skip = {i: None for i in range(256)}
+    registers = Registers(count, dimen, skip, mu_skip)
+    return registers
+
+
+def get_local_registers():
+    registers = Registers(count={}, dimen={}, skip={}, mu_skip={})
+    return registers
+
+
 class Registers(object):
 
     def __init__(self, count, dimen, skip, mu_skip):
