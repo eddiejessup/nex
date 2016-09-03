@@ -9,7 +9,7 @@ from lexer import Lexer
 from banisher import Banisher
 from expander import Expander, parse_replacement_text, parameter_types
 from fonts import FontRange, FontState
-from registers import Registers
+from registers import is_register_type
 from common_parsing import (pg as common_pg,
                             evaluate_number, evaluate_dimen, evaluate_glue)
 from general_text_parser import gen_txt_pg
@@ -270,10 +270,10 @@ def font_range(parser_state, p):
 
 
 def do_variable_assignment(parser_state, variable, value):
-    if parser_state.registers.is_register_type(variable.type):
-        register = parser_state.registers.get_register(variable.type)
-        # TODO: make a safe wrapper round this.
-        register[variable.value] = value
+    if is_register_type(variable.type):
+        parser_state.state.set_register_value(variable.type,
+                                              i=variable.value,
+                                              value=value)
     elif variable.type in parameter_types:
         param_name = variable.value
         parser_state.e.set_parameter(name=param_name, value=value)
@@ -308,9 +308,10 @@ def variable_assignment_integer(parser_state, p):
 @pg.production('arithmetic : ADVANCE integer_variable optional_by number')
 def arithmetic_integer_variable(parser_state, p):
     value = evaluate_number(parser_state, p[3])
-    if parser_state.registers.is_register_type(p[1].type):
-        register = parser_state.registers.get_register(p[1].type)
-        register[p[1].value] += value
+    if is_register_type(p[1].type):
+        parser_state.state.advance_register_value(p[1].type,
+                                                  i=p[1].value,
+                                                  value=value)
     return Token(type_='advance', value={'target': p[1], 'value': p[3]})
 
 
@@ -437,7 +438,6 @@ class LexWrapper(object):
         self.font_state = FontState()
         self.e = Expander(self.font_state)
         self.b = Banisher(self.lex, self.e, wrapper=self)
-        self.registers = Registers()
 
     def __next__(self):
         try:

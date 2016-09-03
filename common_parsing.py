@@ -10,6 +10,7 @@ from typer import (literal_types, PhysicalUnit, MuUnit, units_in_scaled_points,
                    composite_terminal_control_sequence_types,
                    )
 from tex_parameters import glue_keys
+from registers import is_register_type, register_token_type_to_register_type
 
 from character_parsing import add_character_productions
 
@@ -59,9 +60,10 @@ def evaluate_size(parser_state, size_token):
         elif size_token.type == 'control_sequence':
             # size_token = lexer.state.control_sequences[name]
             raise NotImplementedError
-        elif parser_state.registers.is_register_type(size_token.type):
-            register = parser_state.registers.get_register(size_token.type)
-            return register[size_token.value]
+        elif is_register_type(size_token.type):
+            v = parser_state.state.get_register_value(size_token.type,
+                                                      i=size_token.value)
+            return v
         else:
             import pdb; pdb.set_trace()
     else:
@@ -164,7 +166,7 @@ def register_explicit(parser_state, p):
 @pg.production('dimen_register : DIMEN_DEF_TOKEN')
 @pg.production('count_register : COUNT_DEF_TOKEN')
 def register_token(parser_state, p):
-    type_ = parser_state.registers.register_token_to_register_type(p[0].type)
+    type_ = register_token_type_to_register_type(p[0].type)
     return Token(type_=type_, value=p[0].value)
 
 

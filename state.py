@@ -2,6 +2,7 @@ from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
 from common import ascii_characters
 from typer import (CatCode, WeirdChar, MathClass, GlyphCode, MathCode,
                    not_a_delimiter_code, ignored_delimiter_code)
+from registers import Registers
 
 
 class NotInScopeError(Exception):
@@ -66,6 +67,15 @@ def get_initial_delimiter_codes():
     return delimiter_code
 
 
+def get_initial_registers():
+    count = {i: None for i in range(256)}
+    dimen = {i: None for i in range(256)}
+    skip = {i: None for i in range(256)}
+    mu_skip = {i: None for i in range(256)}
+    registers = Registers(count, dimen, skip, mu_skip)
+    return registers
+
+
 class Scope(object):
 
     def __init__(self,
@@ -74,6 +84,7 @@ class Scope(object):
                  lower_case_code, upper_case_code,
                  space_factor_code,
                  delimiter_code,
+                 registers,
                  ):
         self.char_to_cat = char_to_cat
         self.char_to_math_code = char_to_math_code
@@ -90,6 +101,8 @@ class Scope(object):
             'space_factor': self.space_factor_code,
             'delimiter': self.delimiter_code,
         }
+
+        self.registers = registers
 
     def set_code(self, code_type, char, code):
         char_map = self.code_type_to_char_map[code_type]
@@ -135,6 +148,19 @@ class Scope(object):
     def get_delimiter_code(self, char):
         return self.get_code('delimiter', char)
 
+    def defer_to_registers(self, func_name, *args, **kwargs):
+        f = getattr(self.registers, func_name)
+        return f(*args, **kwargs)
+
+    def get_register_value(self, *args, **kwargs):
+        return self.defer_to_registers('get_register_value', *args, **kwargs)
+
+    def set_register_value(self, *args, **kwargs):
+        return self.defer_to_registers('set_register_value', *args, **kwargs)
+
+    def advance_register_value(self, *args, **kwargs):
+        return self.defer_to_registers('advance_register_value', *args, **kwargs)
+
 
 class GlobalSettings(object):
 
@@ -155,11 +181,13 @@ class GlobalState(object):
         lower_case_code, upper_case_code = get_initial_case_codes()
         space_factor_code = get_initial_space_factor_codes()
         delimiter_code = get_initial_delimiter_codes()
+        registers = get_initial_registers()
         global_scope = Scope(char_to_cat,
                              char_to_math_code,
                              lower_case_code, upper_case_code,
                              space_factor_code,
-                             delimiter_code)
+                             delimiter_code,
+                             registers)
         return global_scope
 
     def get_local_scope(self):
@@ -168,11 +196,13 @@ class GlobalState(object):
         lower_case_code, upper_case_code = {}, {}
         space_factor_code = {}
         delimiter_code = {}
+        registers = Registers(count={}, dimen={}, skip={}, mu_skip={})
         local_scope = Scope(char_to_cat,
                             char_to_math_code,
                             lower_case_code, upper_case_code,
                             space_factor_code,
-                            delimiter_code)
+                            delimiter_code,
+                            registers)
         return local_scope
 
     def push_scope(self, scope):
@@ -235,3 +265,12 @@ class GlobalState(object):
 
     def get_delimiter_code(self, *args, **kwargs):
         return self.try_scope_until_success('get_delimiter_code', *args, **kwargs)
+
+    def get_register_value(self, *args, **kwargs):
+        return self.try_scope_until_success('get_register_value', *args, **kwargs)
+
+    def set_register_value(self, *args, **kwargs):
+        return self.try_scope_until_success('set_register_value', *args, **kwargs)
+
+    def advance_register_value(self, *args, **kwargs):
+        return self.try_scope_until_success('advance_register_value', *args, **kwargs)

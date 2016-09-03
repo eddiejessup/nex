@@ -1,24 +1,30 @@
 from typer import register_tokens
 
 
+reverse_token_map = {
+    'COUNT_DEF_TOKEN': 'COUNT',
+    'DIMEN_DEF_TOKEN': 'DIMEN',
+    'SKIP_DEF_TOKEN': 'SKIP',
+    'MU_SKIP_DEF_TOKEN': 'MU_SKIP',
+}
+
+
+def is_register_type(type_):
+    return type_ in register_tokens.values()
+
+
+def register_token_type_to_register_type(type_):
+    return reverse_token_map[type_]
+
+
 class Registers(object):
 
-    def __init__(self):
-        self.count = {i: None for i in range(256)}
-        self.dimen = {i: None for i in range(256)}
-        self.skip = {i: None for i in range(256)}
-        self.mu_skip = {i: None for i in range(256)}
+    def __init__(self, count, dimen, skip, mu_skip):
         cmd_register_map = {
-            'count': self.count,
-            'dimen': self.dimen,
-            'skip': self.skip,
-            'muskip': self.mu_skip,
-        }
-        self.reverse_token_map = {
-            'COUNT_DEF_TOKEN': 'COUNT',
-            'DIMEN_DEF_TOKEN': 'DIMEN',
-            'SKIP_DEF_TOKEN': 'SKIP',
-            'MU_SKIP_DEF_TOKEN': 'MU_SKIP',
+            'count': count,
+            'dimen': dimen,
+            'skip': skip,
+            'muskip': mu_skip,
         }
 
         self.register_map = {register_tokens[c]: r for
@@ -27,8 +33,14 @@ class Registers(object):
     def get_register(self, type_):
         return self.register_map[type_]
 
-    def register_token_to_register_type(self, type_):
-        return self.reverse_token_map[type_]
+    def get_register_value(self, type_, i):
+        register = self.get_register(type_)
+        return register[i]
 
-    def is_register_type(self, type_):
-        return type_ in self.register_map
+    def set_register_value(self, type_, i, value):
+        register = self.get_register(type_)
+        register[i] = value
+
+    def advance_register_value(self, type_, i, value):
+        register = self.get_register(type_)
+        register[i] += value
