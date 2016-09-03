@@ -59,10 +59,9 @@ def evaluate_size(parser_state, size_token):
         elif size_token.type == 'control_sequence':
             # size_token = lexer.state.control_sequences[name]
             raise NotImplementedError
-        elif size_token.type == 'count':
-            return parser_state.registers.count[size_token.value]
-        elif size_token.type == 'dimen':
-            return parser_state.registers.dimen[size_token.value]
+        elif parser_state.registers.is_register_type(size_token.type):
+            register = parser_state.registers.get_register(size_token.type)
+            return register[size_token.value]
         else:
             import pdb; pdb.set_trace()
     else:
@@ -138,74 +137,35 @@ add_character_productions(pg)
 
 @pg.production('mu_glue_variable : mu_skip_register')
 @pg.production('glue_variable : skip_register')
-def glue_variable_register(parser_state, p):
+@pg.production('dimen_variable : dimen_register')
+@pg.production('integer_variable : count_register')
+def quantity_variable_register(parser_state, p):
     return p[0]
 
 
 @pg.production('mu_glue_variable : MU_GLUE_PARAMETER')
 @pg.production('glue_variable : GLUE_PARAMETER')
-def glue_variable_parameter(parser_state, p):
-    return p[0]
-
-
-@pg.production('dimen_variable : dimen_register')
-def dimen_variable_register(parser_state, p):
-    return p[0]
-
-
 @pg.production('dimen_variable : DIMEN_PARAMETER')
-def dimen_variable_parameter(parser_state, p):
-    return p[0]
-
-
-@pg.production('integer_variable : count_register')
-def integer_variable_count(parser_state, p):
-    return p[0]
-
-
 @pg.production('integer_variable : INTEGER_PARAMETER')
-def integer_variable_parameter(parser_state, p):
+def quantity_variable_parameter(parser_state, p):
     return p[0]
 
 
 @pg.production('mu_skip_register : MU_SKIP number')
-def mu_skip_register_explicit(parser_state, p):
-    return Token(type_='mu_glue', value=p[1]['size'])
-
-
 @pg.production('skip_register : SKIP number')
-def skip_register_explicit(parser_state, p):
-    return Token(type_='glue', value=p[1]['size'])
-
-
 @pg.production('dimen_register : DIMEN number')
-def dimen_register_explicit(parser_state, p):
-    return Token(type_='dimen', value=p[1]['size'])
-
-
 @pg.production('count_register : COUNT number')
-def count_register_explicit(parser_state, p):
-    return Token(type_='count', value=p[1]['size'])
-
-
-@pg.production('skip_register : SKIP_DEF_TOKEN')
-def skip_register_token(parser_state, p):
-    return Token(type_='skip', value=p[0].value)
+def register_explicit(parser_state, p):
+    return Token(type_=p[0].type, value=p[1]['size'])
 
 
 @pg.production('mu_skip_register : MU_SKIP_DEF_TOKEN')
-def mu_skip_register_token(parser_state, p):
-    return Token(type_='mu_skip', value=p[0].value)
-
-
+@pg.production('skip_register : SKIP_DEF_TOKEN')
 @pg.production('dimen_register : DIMEN_DEF_TOKEN')
-def dimen_register_token(parser_state, p):
-    return Token(type_='dimen', value=p[0].value)
-
-
 @pg.production('count_register : COUNT_DEF_TOKEN')
-def count_register_token(parser_state, p):
-    return Token(type_='count', value=p[0].value)
+def register_token(parser_state, p):
+    type_ = parser_state.registers.register_token_to_register_type(p[0].type)
+    return Token(type_=type_, value=p[0].value)
 
 
 @pg.production('mu_glue : mu_dimen mu_stretch mu_shrink')
@@ -331,13 +291,15 @@ def normal_dimen_internal_dimen(parser_state, p):
 @pg.production('internal_mu_glue : mu_skip_register')
 @pg.production('internal_glue : skip_register')
 @pg.production('internal_dimen : dimen_register')
-def internal_complex_quantity_register(parser_state, p):
+@pg.production('internal_integer : count_register')
+def internal_quantity_register(parser_state, p):
     return p[0]
 
 
 @pg.production('internal_integer : CHAR_DEF_TOKEN')
 @pg.production('internal_integer : MATH_CHAR_DEF_TOKEN')
 def internal_integer_weird_short_hand_token(parser_state, p):
+    # TODO: add other kinds of internal integer.
     return p[0].value
 
 
@@ -347,12 +309,6 @@ def internal_integer_weird_short_hand_token(parser_state, p):
 @pg.production('internal_integer : INTEGER_PARAMETER')
 def internal_quantity_parameter(parser_state, p):
     return parser_state.e.get_parameter_value(p[0].value)
-
-
-@pg.production('internal_integer : count_register')
-def internal_integer_count_register(parser_state, p):
-    # TODO: add other kinds of internal integer.
-    return p[0]
 
 
 @pg.production('normal_integer : integer_constant one_optional_space')

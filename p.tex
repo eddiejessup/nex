@@ -491,3 +491,26 @@
 \newfam\ttfam \def\tt{\fam\ttfam\tentt} % \tt is family 7
 \textfont\ttfam=\tentt
 
+% Macros for setting ordinary text
+\message{macros,}
+
+\def\frenchspacing{\sfcode`\.\@m \sfcode`\?\@m \sfcode`\!\@m
+  \sfcode`\:\@m \sfcode`\;\@m \sfcode`\,\@m}
+\def\nonfrenchspacing{\sfcode`\.3000\sfcode`\?3000\sfcode`\!3000%
+  \sfcode`\:2000\sfcode`\;1500\sfcode`\,1250 }
+
+\def\normalbaselines{\lineskip\normallineskip
+  \baselineskip\normalbaselineskip \lineskiplimit\normallineskiplimit}
+
+\def\^^M{\ } % control <return> = control <space>
+\def\^^I{\ } % same for <tab>
+
+\def\lq{`} \def\rq{'}
+\def\lbrack{[} \def\rbrack{]}
+
+\let\endgraf=\par \let\endline=\cr
+
+\def\space{ }
+\def\empty{}
+
+\space

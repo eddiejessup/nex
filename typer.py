@@ -204,17 +204,17 @@ terminal_primitive_control_sequences_map.update(register_tokens)
 short_hand_def_map = {
     'chardef': 'CHAR_DEF',
     'mathchardef': 'MATH_CHAR_DEF',
-    'countdef': 'COUNT_DEF',
-    'dimendef': 'DIMEN_DEF',
-    'skipdef': 'SKIP_DEF',
-    'muskipdef': 'MU_SKIP_DEF',
     'toksdef': 'TOKS_DEF',
 }
+short_hand_def_register_map = {
+    '{}def'.format(k): '{}_DEF'.format(v) for k, v in register_tokens.items()
+}
+short_hand_def_map.update(short_hand_def_register_map)
 terminal_primitive_control_sequences_map.update(short_hand_def_map)
 
 short_hand_def_to_token_map = {
-    k: '{}_TOKEN'.format(k)
-    for k in short_hand_def_map.values()
+    v: '{}_TOKEN'.format(v)
+    for v in short_hand_def_map.values()
 }
 font_def_token_type = 'FONT_DEF_TOKEN'
 
@@ -235,6 +235,8 @@ non_terminal_primitive_control_sequences_map = {
 
     'uppercase': 'UPPER_CASE',
     'lowercase': 'LOWER_CASE',
+
+    'cr': 'CR',
 }
 
 condition_tokens_map = {

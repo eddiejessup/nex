@@ -245,14 +245,9 @@ def font_range(parser_state, p):
 
 
 def do_variable_assignment(parser_state, variable, value):
-    register_map = {
-        'count': parser_state.registers.count,
-        'dimen': parser_state.registers.dimen,
-        'skip': parser_state.registers.skip,
-    }
-    if variable.type in register_map.keys():
+    if parser_state.registers.is_register_type(variable.type):
+        register = parser_state.registers.get_register(variable.type)
         # TODO: make a safe wrapper round this.
-        register = register_map[variable.type]
         register[variable.value] = value
     elif variable.type in parameter_types:
         param_name = variable.value
@@ -288,8 +283,9 @@ def variable_assignment_integer(parser_state, p):
 @pg.production('arithmetic : ADVANCE integer_variable optional_by number')
 def arithmetic_integer_variable(parser_state, p):
     value = evaluate_number(parser_state, p[3])
-    if p[1].type == 'count':
-        parser_state.registers.count[p[1].value] += value
+    if parser_state.registers.is_register_type(p[1].type):
+        register = parser_state.registers.get_register(p[1].type)
+        register[p[1].value] += value
     return Token(type_='advance', value={'target': p[1], 'value': p[3]})
 
 
