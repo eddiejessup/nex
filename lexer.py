@@ -1,48 +1,12 @@
-from collections import namedtuple
-import string
-from string import ascii_letters, ascii_lowercase, ascii_uppercase
 from enum import Enum
 # import logging
 
 from reader import EndOfFile
-from common import Token, ascii_characters
-
+from common import Token
+from typer import CatCode, char_cat_lex_type, control_sequence_lex_type
 
 # logger = logging.getLogger(__name__)
 # logger.setLevel('DEBUG')
-
-cat_codes = [
-    'escape',  # 0
-    'begin_group',  # 1
-    'end_group',  # 2
-    'math_shift',  # 3
-    'align_tab',  # 4
-    'end_of_line',  # 5
-    'parameter',  # 6
-    'superscript',  # 7
-    'subscript',  # 8
-    'ignored',  # 9
-    'space',  # 10
-    'letter',  # 11
-    'other',  # 12
-    'active',  # 13
-    'comment',  # 14
-    'invalid',  # 15
-]
-
-CatCode = Enum('CatCode', {symbol: i for i, symbol in enumerate(cat_codes)})
-
-
-weird_char_codes = {
-    'null': 0,
-    'line_feed': 10,
-    'carriage_return': 13,
-    'delete': 127,
-}
-weird_chars = {
-    k: chr(v) for k, v in weird_char_codes.items()
-}
-WeirdChar = Enum('WeirdChar', weird_chars)
 
 
 tokenise_cats = [
@@ -59,45 +23,10 @@ tokenise_cats = [
 ]
 
 
-math_classes = [
-    'ordinary',  # 0
-    'large_operator',  # 1
-    'binary_relation',  # 2
-    'relation',  # 3
-    'opening',  # 4
-    'closing',  # 5
-    'punctuation',  # 6
-    'variable_family',  # 7
-    'special_active',  # 8 (weird special case)
-]
-
-MathClass = Enum('MathClass', {symbol: i for i, symbol in enumerate(math_classes)})
-
-GlyphCode = namedtuple('GlyphCode', ('family', 'position'))
-ignored_glyph_code = GlyphCode(family=0, position=0)
-
-MathCode = namedtuple('MathCode', ('math_class', 'glyph_code'))
-active_math_code = MathCode(math_class=MathClass.special_active,
-                            glyph_code=ignored_glyph_code)
-
-DelimiterCode = namedtuple('DelimiterCode',
-                           ('small_glyph_code', 'large_glyph_code'))
-not_a_delimiter_code = DelimiterCode(small_glyph_code=None,
-                                     large_glyph_code=None)
-ignored_delimiter_code = DelimiterCode(
-    small_glyph_code=ignored_glyph_code,
-    large_glyph_code=ignored_glyph_code
-)
-
-
 class ReadingState(Enum):
     line_begin = 'N'
     line_middle = 'M'
     skipping_blanks = 'S'
-
-
-char_cat_lex_type = 'CHAR_CAT_PAIR'
-control_sequence_lex_type = 'CONTROL_SEQUENCE'
 
 
 def make_char_cat_token(char, cat):
@@ -110,72 +39,16 @@ def make_control_sequence_token(name):
 
 class Lexer(object):
 
-    def __init__(self, reader):
+    def __init__(self, reader, global_state):
         self.reader = reader
-
         self.reading_state = ReadingState.line_begin
-        self.initialize_char_cats()
-        self.initialize_char_math_codes()
-        # TODO: move some of these to separate class or something.
-        self.initialize_case_codes()
-        self.initialize_space_factor_codes()
-        self.initialize_delimiter_codes()
-
-    def initialize_char_cats(self):
-        self.char_to_cat = {
-            c: CatCode.other for c in ascii_characters
-        }
-        self.char_to_cat.update({let: CatCode.letter
-                                 for let in ascii_letters})
-
-        self.char_to_cat['\\'] = CatCode.escape
-        self.char_to_cat[' '] = CatCode.space
-        self.char_to_cat['%'] = CatCode.comment
-        self.char_to_cat[WeirdChar.null.value] = CatCode.ignored
-        # NON-STANDARD
-        self.char_to_cat[WeirdChar.line_feed.value] = CatCode.end_of_line
-        self.char_to_cat[WeirdChar.carriage_return.value] = CatCode.end_of_line
-        self.char_to_cat[WeirdChar.delete.value] = CatCode.invalid
-
-    def initialize_char_math_codes(self):
-        self.char_to_math_code = {}
-        for i, c in enumerate(ascii_characters):
-            if c in ascii_letters:
-                family = 1
-            else:
-                family = 0
-            if c in (ascii_letters + string.digits):
-                math_class = MathClass.variable_family
-            else:
-                math_class = MathClass.ordinary
-            glyph_code = GlyphCode(family=family, position=i)
-            self.char_to_math_code[i] = MathCode(math_class, glyph_code)
-            # TODO: handle special active_math_code value,
-            # page 155 of The TeXbook.
-
-    def initialize_case_codes(self):
-        self.lower_case_code, self.upper_case_code = [
-            {c: chr(0) for c in ascii_characters}
-            for _ in range(2)
-        ]
-        for lower, upper in zip(ascii_lowercase, ascii_uppercase):
-            self.lower_case_code[lower] = lower
-            self.upper_case_code[upper] = upper
-            self.lower_case_code[upper] = lower
-            self.upper_case_code[lower] = upper
-
-    def initialize_space_factor_codes(self):
-        self.space_factor_code = {c: (999 if c in ascii_uppercase else 1000)
-                                  for c in ascii_characters}
-
-    def initialize_delimiter_codes(self):
-        self.delimiter_code = {c: not_a_delimiter_code
-                               for c in ascii_characters}
-        self.delimiter_code['.'] = ignored_delimiter_code
+        self.global_state = global_state
 
     def peek_ahead(self, n=1):
+        # TODO: stop peeking ahead very far, because scope might change and
+        # results would be incorrect.
         char = self.reader.peek_ahead(n)
-        cat = self.char_to_cat[char]
+        cat = self.global_state.get_cat_code(char)
         return char, cat
 
     @property
@@ -224,7 +97,7 @@ class Lexer(object):
                     else:
                         triod_ascii_code += 64
                     char = chr(triod_ascii_code)
-                    cat = self.char_to_cat[char]
+                    cat = self.global_state.get_cat_code(char)
                     if not peek:
                         self.reader.advance_loc(n=2)
         return char, cat

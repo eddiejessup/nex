@@ -11,7 +11,6 @@ from typer import (literal_types, PhysicalUnit, MuUnit, units_in_scaled_points,
                    )
 from tex_parameters import glue_keys
 
-
 from character_parsing import add_character_productions
 
 tokens = ()

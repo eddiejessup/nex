@@ -1,8 +1,77 @@
+from collections import namedtuple
 from string import ascii_letters
 from enum import Enum
 
 from common import TerminalToken, InternalToken
-from lexer import CatCode, char_cat_lex_type, control_sequence_lex_type
+
+
+cat_codes = [
+    'escape',  # 0
+    'begin_group',  # 1
+    'end_group',  # 2
+    'math_shift',  # 3
+    'align_tab',  # 4
+    'end_of_line',  # 5
+    'parameter',  # 6
+    'superscript',  # 7
+    'subscript',  # 8
+    'ignored',  # 9
+    'space',  # 10
+    'letter',  # 11
+    'other',  # 12
+    'active',  # 13
+    'comment',  # 14
+    'invalid',  # 15
+]
+
+CatCode = Enum('CatCode', {symbol: i for i, symbol in enumerate(cat_codes)})
+
+
+weird_char_codes = {
+    'null': 0,
+    'line_feed': 10,
+    'carriage_return': 13,
+    'delete': 127,
+}
+weird_chars = {
+    k: chr(v) for k, v in weird_char_codes.items()
+}
+WeirdChar = Enum('WeirdChar', weird_chars)
+
+
+math_classes = [
+    'ordinary',  # 0
+    'large_operator',  # 1
+    'binary_relation',  # 2
+    'relation',  # 3
+    'opening',  # 4
+    'closing',  # 5
+    'punctuation',  # 6
+    'variable_family',  # 7
+    'special_active',  # 8 (weird special case)
+]
+
+MathClass = Enum('MathClass', {symbol: i for i, symbol in enumerate(math_classes)})
+
+GlyphCode = namedtuple('GlyphCode', ('family', 'position'))
+ignored_glyph_code = GlyphCode(family=0, position=0)
+
+MathCode = namedtuple('MathCode', ('math_class', 'glyph_code'))
+active_math_code = MathCode(math_class=MathClass.special_active,
+                            glyph_code=ignored_glyph_code)
+
+DelimiterCode = namedtuple('DelimiterCode',
+                           ('small_glyph_code', 'large_glyph_code'))
+not_a_delimiter_code = DelimiterCode(small_glyph_code=None,
+                                     large_glyph_code=None)
+ignored_delimiter_code = DelimiterCode(
+    small_glyph_code=ignored_glyph_code,
+    large_glyph_code=ignored_glyph_code
+)
+
+
+char_cat_lex_type = 'CHAR_CAT_PAIR'
+control_sequence_lex_type = 'CONTROL_SEQUENCE'
 
 
 class PhysicalUnit(Enum):

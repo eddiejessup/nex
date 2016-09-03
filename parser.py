@@ -1,8 +1,9 @@
 import logging
 
 from utils import post_mortem
+from typer import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from common import Token
-from lexer import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
+from state import GlobalState
 from reader import Reader, EndOfFile
 from lexer import Lexer
 from banisher import Banisher
@@ -374,13 +375,13 @@ def code_assignment(parser_state, p):
     code_type, char_number, code_number = p[0], p[1], p[3]
     char_size, code_size = evaluate_number(parser_state, char_number), evaluate_number(parser_state, code_number)
     char = chr(char_size)
-    code_type_to_char_map = {
-        'CAT_CODE': parser_state.lex.char_to_cat,
-        'MATH_CODE': parser_state.lex.char_to_math_code,
-        'UPPER_CASE_CODE': parser_state.lex.upper_case_code,
-        'LOWER_CASE_CODE': parser_state.lex.lower_case_code,
-        'SPACE_FACTOR_CODE': parser_state.lex.space_factor_code,
-        'DELIMITER_CODE': parser_state.lex.delimiter_code,
+    code_type_to_func_map = {
+        'CAT_CODE': parser_state.state.set_cat_code,
+        'MATH_CODE': parser_state.state.set_math_code,
+        'UPPER_CASE_CODE': parser_state.state.set_lower_case_code,
+        'LOWER_CASE_CODE': parser_state.state.set_upper_case_code,
+        'SPACE_FACTOR_CODE': parser_state.state.set_space_factor_code,
+        'DELIMITER_CODE': parser_state.state.set_delimiter_code,
     }
     if code_type == 'CAT_CODE':
         code = CatCode(code_size)
@@ -400,8 +401,8 @@ def code_assignment(parser_state, p):
         small_glyph_code = GlyphCode(small_family, small_position)
         large_glyph_code = GlyphCode(large_family, large_position)
         code = DelimiterCode(small_glyph_code, large_glyph_code)
-    char_map = code_type_to_char_map[code_type]
-    char_map[char] = code
+    set_func = code_type_to_func_map[code_type]
+    set_func(char, code)
     return Token(type_='code_assignment',
                  value={'code_type': code_type, 'char': char, 'code': code})
 
@@ -429,9 +430,10 @@ parser = pg.build()
 class LexWrapper(object):
 
     def __init__(self, file_name):
+        self.state = GlobalState()
         self.file_name = file_name
         self.r = Reader(file_name)
-        self.lex = Lexer(self.r)
+        self.lex = Lexer(self.r, self.state)
         self.font_state = FontState()
         self.e = Expander(self.font_state)
         self.b = Banisher(self.lex, self.e, wrapper=self)

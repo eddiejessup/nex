@@ -3,9 +3,10 @@ from collections import deque
 from enum import Enum
 
 from common import TerminalToken
-from lexer import (make_char_cat_token, CatCode,
-                   char_cat_lex_type)
-from typer import (lex_token_to_unexpanded_terminal_token,
+from lexer import make_char_cat_token
+from typer import (CatCode,
+                   char_cat_lex_type,
+                   lex_token_to_unexpanded_terminal_token,
                    make_unexpanded_control_sequence_terminal_token,
                    type_primitive_control_sequence,
                    unexpanded_cs_types, unexpanded_token_type,
@@ -217,12 +218,11 @@ class Banisher(object):
             # macro, and for now, knowing no better, we will assume we are
             # starting a new level of grouping. This case should include things
             # that have been \let equal to a begin_group-ey character token.
-            # TODO: implement \let = <character token>
             # But this isn't the same as \begingroup.
-            pass
+            self.lexer.global_state.push_new_scope()
         elif type_ == 'RIGHT_BRACE':
             # I think roughly same comments as for LEFT_BRACE above apply.
-            pass
+            self.lexer.global_state.pop_scope()
         elif type_ in read_unexpanded_control_sequence_types:
             # Get an unexpanded control sequence token and add it to the
             # output stack, along with the first token.
@@ -389,16 +389,16 @@ class Banisher(object):
             balanced_text_token = general_text_parser.parse(iter(case_tokens),
                                                             state=self.wrapper)
 
-            case_maps_map = {
-                'LOWER_CASE': self.lexer.lower_case_code,
-                'UPPER_CASE': self.lexer.upper_case_code,
+            case_funcs_map = {
+                'LOWER_CASE': self.lexer.global_state.get_lower_case_code,
+                'UPPER_CASE': self.lexer.global_state.get_upper_case_code,
             }
-            case_map = case_maps_map[type_]
+            case_func = case_funcs_map[type_]
 
             def get_cased_tok(un_cased_tok):
                 if un_cased_tok.value['lex_type'] == char_cat_lex_type:
                     un_cased_char = un_cased_tok.value['char']
-                    cased_char = case_map[un_cased_char]
+                    cased_char = case_func(un_cased_char)
                     if cased_char == chr(0):
                         cased_char = un_cased_char
                     # Note that the category code is not changed.

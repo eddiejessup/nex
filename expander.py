@@ -1,7 +1,7 @@
 from common import Token, TerminalToken, InternalToken
 from tex_parameters import default_parameters
-from lexer import control_sequence_lex_type, char_cat_lex_type
-from typer import (short_hand_def_to_token_map, font_def_token_type,
+from typer import (control_sequence_lex_type, char_cat_lex_type,
+                   short_hand_def_to_token_map, font_def_token_type,
                    type_primitive_control_sequence,
                    unexpanded_cs_types,
                    )
