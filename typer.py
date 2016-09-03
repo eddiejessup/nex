@@ -95,6 +95,7 @@ category_map = {
 }
 
 
+unexpanded_token_type = 'UNEXPANDED_TOKEN'
 unexpanded_cs_type = 'UNEXPANDED_CONTROL_SEQUENCE'
 unexpanded_one_char_cs_type = 'UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE'
 unexpanded_cs_types = (unexpanded_cs_type, unexpanded_one_char_cs_type)

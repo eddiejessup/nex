@@ -307,15 +307,14 @@ def short_hand_definition(parser_state, p):
     return macro_token
 
 
-@pg.production('let_assignment : LET control_sequence equals one_optional_space control_sequence')
+@pg.production('let_assignment : LET control_sequence equals one_optional_space UNEXPANDED_TOKEN')
 def let_assignment_control_sequence(parser_state, p):
-    # TODO allow char_cat_pair.
-    target_token = p[4]
+    target_token = p[4].value
     new_name = p[1].value['name']
     parser_state.e.do_let_assignment(new_name, target_token)
     return Token(type_='let_assignment',
                  value={'name': new_name,
-                        'target_name': target_token.value['name']})
+                        'target_name': target_token})
 
 
 @pg.production('short_hand_def : CHAR_DEF')

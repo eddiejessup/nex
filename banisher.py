@@ -8,7 +8,7 @@ from lexer import (make_char_cat_token, CatCode,
 from typer import (lex_token_to_unexpanded_terminal_token,
                    make_unexpanded_control_sequence_terminal_token,
                    type_primitive_control_sequence,
-                   unexpanded_cs_types,
+                   unexpanded_cs_types, unexpanded_token_type,
                    short_hand_def_map, def_map, if_map)
 from expander import parse_parameter_text
 from condition_parser import condition_parser, ExpectedParsingError
@@ -160,16 +160,7 @@ class Banisher(object):
         # one expansion call does.
         if (self.expanding_control_sequences and
                 first_token.type in unexpanded_cs_types):
-            name = first_token.value['name']
-            is_user_control_sequence = self.expander.name_is_user_control_sequence(name)
-            if not is_user_control_sequence:
-                if self.expander.name_is_let_control_sequence(name):
-                    first_token = self.expander.get_let_control_sequence(name)
-                elif self.expander.is_parameter_control_sequence(name):
-                    first_token = self.expander.get_parameter_token(name)
-                else:
-                    # Assume it's a primitive non-parameter control sequence.
-                    first_token = type_primitive_control_sequence(first_token)
+            first_token = self.expander.resolve_control_sequence(first_token)
 
         type_ = first_token.type
 
@@ -249,7 +240,20 @@ class Banisher(object):
                 self.push_context(ContextMode.absorbing_parameter_text)
                 self.parameter_text_tokens = []
             elif type_ == 'LET':
-                self.push_context(ContextMode.awaiting_unexpanded_cs)
+                # We are going to parse the arguments of LET ourselves,
+                # because we want to allow the target token be basically
+                # anything, and this would be a pain to tell the parser.
+                let_arguments = []
+                let_arguments.append(self.pop_next_input_token())
+                # If we have found an equals, ignore that and read again.
+                if let_arguments[-1].type == 'EQUALS':
+                    let_arguments.append(self.pop_next_input_token())
+                if let_arguments[-1].type == 'SPACE':
+                    let_arguments.append(self.pop_next_input_token())
+                # Make the target argument into a special 'any' token.
+                let_arguments[-1] = TerminalToken(type_=unexpanded_token_type,
+                                                  value=let_arguments[-1])
+                output_tokens.extend(let_arguments)
         elif type_ == 'EXPAND_AFTER':
             unexpanded_token = self.pop_next_input_token()
             next_tokens = self.process_next_input_token()

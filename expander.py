@@ -1,8 +1,10 @@
 from common import Token, TerminalToken, InternalToken
 from tex_parameters import default_parameters
-from fonts import FontInfo, get_empty_font_family
+from lexer import control_sequence_lex_type, char_cat_lex_type
 from typer import (short_hand_def_to_token_map, font_def_token_type,
-                   type_primitive_control_sequence)
+                   type_primitive_control_sequence,
+                   unexpanded_cs_types,
+                   )
 
 undelim_macro_param_type = 'UNDELIMITED_PARAM'
 delim_macro_param_type = 'DELIMITED_PARAM'
@@ -160,13 +162,63 @@ class Expander(object):
     def copy_control_sequence(self, existing_name, copy_name):
         self.control_sequences[copy_name] = self.control_sequences[existing_name][:]
 
+    def resolve_control_sequence(self, token):
+        # If it is a macro, leave it alone.
+        # If it is a non-macro control sequence.
+        if not self.name_is_user_control_sequence(token.value['name']):
+            # If it is a let, canonicalize this.
+            if self.name_is_let_control_sequence(token.value['name']):
+                token = self.get_let_control_sequence(token.value['name'])
+            # Note, the following are not 'elif', because we could have a
+            # let-ted token that resolves to one of the below cases, and we
+            # want to resolve *both* the let and the below case.
+
+            # We might have \let something to a parameter, so we might get an
+            # internal thing. This might actually stretch to include many
+            # other cases, to the point where this 'iffy' approach is not good.
+            if self.is_parameter_token(token):
+                pass
+            elif token.value['lex_type'] == char_cat_lex_type:
+                pass
+            # If it is a call to a parameter, resolve this into the
+            # underlying parameter token.
+            elif self.is_parameter_control_sequence(token.value['name']):
+                token = self.get_parameter_token(token.value['name'])
+            else:
+                # Assume it's a primitive non-parameter control sequence.
+                # Give it its primitive type.
+                token = type_primitive_control_sequence(token)
+        return token
+
     def do_let_assignment(self, new_name, target_token):
-        target_name = target_token.value['name']
-        if self.name_is_user_control_sequence(target_name):
-            self.copy_control_sequence(target_name, new_name)
+        # TODO: maybe this way of checking for a control sequence is useful
+        # in places where we are now checking `type in unexpanded_cs_types`?
+        if target_token.value['lex_type'] == control_sequence_lex_type:
+            target_token = self.resolve_control_sequence(target_token)
+        # Do not merge the above and below seemingly similar checks.
+        # The meaning of 'target_token' may change after the above, so
+        # we need to check again.
+        # If it is a parameter, alias this control sequence to mean that.
+        # I think this is different, and better, than aliasing to the
+        # parameter *name*, because this might be corrupted by re-defining
+        # the parameter control sequence name through \def or whatever.
+        if self.is_parameter_token(target_token):
+            self.let_map[new_name] = target_token
+        # The other cases are lex types.
+        elif target_token.value['lex_type'] == control_sequence_lex_type:
+            target_name = target_token.value['name']
+            # If it is a macro, copy the macro contents into
+            # a new macro.
+            if self.name_is_user_control_sequence(target_name):
+                self.copy_control_sequence(target_name, new_name)
+            # Otherwise, it is a primitive control sequence or parameter,
+            # and we should just alias this control sequence to mean that.
+            else:
+                self.let_map[new_name] = target_token
+        elif target_token.value['lex_type'] == char_cat_lex_type:
+            self.let_map[new_name] = target_token
         else:
-            typed_primitive_token = type_primitive_control_sequence(target_token)
-            self.let_map[new_name] = typed_primitive_token
+            import pdb; pdb.set_trace()
 
     def do_font_definition(self, name, file_name, at_clause):
         primitive_token = TerminalToken(type_=font_def_token_type,
@@ -199,7 +251,10 @@ class Expander(object):
         return parameter_token
 
     def is_parameter_control_sequence(self, name):
-        return self.get_parameter_type(name)
+        return self.get_parameter_type(name) is not None
+
+    def is_parameter_token(self, token):
+        return token.type in self.parameter_maps
 
     def get_parameter_value(self, name):
         type_ = self.get_parameter_type(name)
