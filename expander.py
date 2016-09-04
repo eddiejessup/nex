@@ -133,14 +133,6 @@ class Expander(object):
         finished_text = substitute_params_with_args(replace_text, arguments)
         return finished_text
 
-    def expand_to_parameter_text(self, name):
-        # TODO: lots of duplication with `expand_to_token_list`.
-        token = self.get_control_sequence(name)
-        def_token = token.value['definition']
-        def_text_token = def_token.value['text']
-        param_text = def_text_token.value['parameter_text']
-        return param_text
-
     def name_is_user_control_sequence(self, name):
         if name not in self.control_sequences:
             return False
@@ -153,7 +145,7 @@ class Expander(object):
         assert route_token.type == 'macro'
         macro_id = route_token.value
         token = self.macros[macro_id]
-        assert token.type == 'macro'
+        assert token.type == 'MACRO'
         return token
 
     def set_macro(self, name, definition_token, prefixes=None):
@@ -163,9 +155,9 @@ class Expander(object):
 
         if prefixes is None:
             prefixes = set()
-        macro_token = Token(type_='macro',
-                            value={'prefixes': prefixes,
-                                   'definition': definition_token})
+        macro_token = InternalToken(type_='MACRO',
+                                    value={'prefixes': prefixes,
+                                           'definition': definition_token})
         self.macros[macro_id] = macro_token
 
     def copy_control_sequence(self, existing_name, copy_name):
@@ -185,17 +177,6 @@ class Expander(object):
         primitive_token = TokenCls(type_=primitive_type, value={'name': name})
         return primitive_token
 
-    def resolve_control_sequence(self, token):
-        # If it is a macro, leave it alone.
-        # If it is a non-macro control sequence.
-        if not self.name_is_user_control_sequence(token.value['name']):
-            # TODO: what will happen for a \let to a macro?
-            if token.value['lex_type'] == char_cat_lex_type:
-                pass
-            else:
-                token = self.get_routed_control_sequence(token.value['name'])
-        return token
-
     def get_routed_control_sequence(self, name):
         # If it is a call to a parameter, resolve this into the
         # underlying parameter token.
@@ -204,6 +185,9 @@ class Expander(object):
         # Give it its primitive type.
         elif self.is_primitive_control_sequence(name):
             token = self.type_primitive_control_sequence(name)
+        # Give it its primitive type.
+        elif self.name_is_user_control_sequence(name):
+            token = self.get_control_sequence(name)
         else:
             import pdb; pdb.set_trace()
         return token

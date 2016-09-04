@@ -160,15 +160,15 @@ class Banisher(object):
         # one expansion call does.
         if (self.expanding_control_sequences and
                 first_token.type in unexpanded_cs_types):
-            first_token = self.expander.resolve_control_sequence(first_token)
-
+            first_token = self.expander.get_routed_control_sequence(first_token.value['name'])
         type_ = first_token.type
 
-        if (self.expanding_control_sequences and
-                first_token.type in unexpanded_cs_types and
-                self.expander.name_is_user_control_sequence(first_token.value['name'])):
-            name = first_token.value['name']
-            param_text = self.expander.expand_to_parameter_text(name)
+        if type_ == 'MACRO':
+            macro_definition = first_token.value['definition']
+            name = macro_definition.value['name']
+            macro_text = macro_definition.value['text']
+            param_text = macro_text.value['parameter_text']
+
             argument_text = []
             for _ in range(len(param_text)):
                 next_token = self.pop_next_input_token()
