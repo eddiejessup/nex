@@ -181,7 +181,7 @@ class Banisher(object):
             # Now run again, hopefully now seeing a primitive token.
             # (Might not, if the expansion needs more expansion, but the
             # ultimate escape route is to see a primitive token.)
-            expanded_first_token = self.expander.expand_to_token_list(name, argument_text)
+            expanded_first_token = self.expander.expand_macro_to_token_list(name, argument_text)
 
             # Now run again, hopefully now seeing a primitive token.
             # (Might not, if the expansion needs more expansion, but the

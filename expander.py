@@ -121,10 +121,8 @@ class Expander(object):
             route_token = InternalToken(type_='primitive', value=canon_name)
             self.control_sequences[canon_name] = route_token
 
-    # TODO: Since we handle internal parameters through this interface,
-    # this should probably be renamed.
-    def expand_to_token_list(self, name, argument_text):
-        token = self.get_control_sequence(name)
+    def expand_macro_to_token_list(self, name, argument_text):
+        token = self.get_macro_token(name)
         def_token = token.value['definition']
         def_text_token = def_token.value['text']
         parameter_text = def_text_token.value['parameter_text']
@@ -133,14 +131,56 @@ class Expander(object):
         finished_text = substitute_params_with_args(replace_text, arguments)
         return finished_text
 
-    def name_is_user_control_sequence(self, name):
+    def name_is_macro(self, name):
         if name not in self.control_sequences:
             return False
         else:
             route_token = self.control_sequences[name]
             return route_token.type == 'macro'
 
-    def get_control_sequence(self, name):
+    def name_is_parameter_control_sequence(self, name):
+        # TODO: remove duplication from macro equivalent.
+        if name not in self.control_sequences:
+            return False
+        else:
+            route_token = self.control_sequences[name]
+            return route_token.type == 'parameter'
+
+    def name_is_primitive_control_sequence(self, name):
+        # TODO: remove duplication from macro equivalent.
+        if name not in self.control_sequences:
+            return False
+        else:
+            route_token = self.control_sequences[name]
+            return route_token.type == 'primitive'
+
+    def name_is_let_character(self, name):
+        # TODO: remove duplication from macro equivalent.
+        if name not in self.control_sequences:
+            return False
+        else:
+            route_token = self.control_sequences[name]
+            return route_token.type == 'let_character'
+
+    def get_routed_control_sequence(self, name):
+        # If it is a call to a parameter, resolve this into the
+        # underlying parameter token.
+        if self.name_is_parameter_control_sequence(name):
+            token = self.get_parameter_token(name)
+        # Give it its primitive type.
+        elif self.name_is_primitive_control_sequence(name):
+            token = self.type_primitive_control_sequence(name)
+        # Give it its primitive type.
+        elif self.name_is_macro(name):
+            token = self.get_macro_token(name)
+        # Give it its primitive type.
+        elif self.name_is_let_character(name):
+            token = self.get_let_character(name)
+        else:
+            import pdb; pdb.set_trace()
+        return token
+
+    def get_macro_token(self, name):
         route_token = self.control_sequences[name]
         assert route_token.type == 'macro'
         macro_id = route_token.value
@@ -160,10 +200,13 @@ class Expander(object):
                                            'definition': definition_token})
         self.macros[macro_id] = macro_token
 
-    def copy_control_sequence(self, existing_name, copy_name):
-        # Make a new control sequence that is routed to the same spot as the
-        # current one.
-        self.control_sequences[copy_name] = self.control_sequences[existing_name]
+    def do_short_hand_definition(self, name, def_type, code):
+        def_token_type = short_hand_def_to_token_map[def_type]
+        primitive_token = TerminalToken(type_=def_token_type, value=code)
+        definition_token = make_simple_definition_token(name,
+                                                        [primitive_token])
+        self.set_macro(name, definition_token, prefixes=None)
+        return definition_token
 
     def type_primitive_control_sequence(self, name):
         # Terminals are tokens that may be passed to the parser. Non-terminals
@@ -177,27 +220,24 @@ class Expander(object):
         primitive_token = TokenCls(type_=primitive_type, value={'name': name})
         return primitive_token
 
-    def get_routed_control_sequence(self, name):
-        # If it is a call to a parameter, resolve this into the
-        # underlying parameter token.
-        if self.is_parameter_control_sequence(name):
-            token = self.get_parameter_token(name)
-        # Give it its primitive type.
-        elif self.is_primitive_control_sequence(name):
-            token = self.type_primitive_control_sequence(name)
-        # Give it its primitive type.
-        elif self.name_is_user_control_sequence(name):
-            token = self.get_control_sequence(name)
-        else:
-            import pdb; pdb.set_trace()
-        return token
-
     def set_let_character(self, name, char_cat_token):
         let_char_id = len(self.let_chars)
         route_token = InternalToken(type_='let_character',
                                     value=let_char_id)
         self.control_sequences[name] = route_token
         self.let_chars[let_char_id] = char_cat_token
+
+    def get_let_character(self, name):
+        let_char_id = len(self.let_chars)
+        route_token = self.control_sequences[name]
+        let_char_id = route_token.value
+        token = self.let_chars[let_char_id]
+        return token
+
+    def copy_control_sequence(self, existing_name, copy_name):
+        # Make a new control sequence that is routed to the same spot as the
+        # current one.
+        self.control_sequences[copy_name] = self.control_sequences[existing_name]
 
     def do_let_assignment(self, new_name, target_token):
         if target_token.value['lex_type'] == control_sequence_lex_type:
@@ -219,20 +259,9 @@ class Expander(object):
                                         value=new_font_id)
         definition_token = make_simple_definition_token(name,
                                                         [primitive_token])
+        # TODO: Set directly as font token, not as a macro.
         self.set_macro(name, definition_token, prefixes=None)
         return definition_token
-
-    def do_short_hand_definition(self, name, def_type, code):
-        def_token_type = short_hand_def_to_token_map[def_type]
-        primitive_token = TerminalToken(type_=def_token_type, value=code)
-        definition_token = make_simple_definition_token(name,
-                                                        [primitive_token])
-        self.set_macro(name, definition_token, prefixes=None)
-        return definition_token
-
-    def get_parameter_type(self, name):
-        param_type, _ = self.unpack_param_route(name)
-        return param_type
 
     def unpack_param_route(self, name):
         route_token = self.control_sequences[name]
@@ -245,25 +274,6 @@ class Expander(object):
         parameter_token = TerminalToken(type_=param_type,
                                         value=param_canon_name)
         return parameter_token
-
-    def is_parameter_control_sequence(self, name):
-        # TODO: remove duplication from macro equivalent.
-        if name not in self.control_sequences:
-            return False
-        else:
-            route_token = self.control_sequences[name]
-            return route_token.type == 'parameter'
-
-    def is_primitive_control_sequence(self, name):
-        # TODO: remove duplication from macro equivalent.
-        if name not in self.control_sequences:
-            return False
-        else:
-            route_token = self.control_sequences[name]
-            return route_token.type == 'primitive'
-
-    def is_parameter_token(self, token):
-        return token.type in self.parameter_maps
 
     def get_parameter_value(self, name):
         param_type, param_canon_name = self.unpack_param_route(name)
