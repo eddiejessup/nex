@@ -231,8 +231,10 @@ class GlobalState(object):
     def set_current_font(self, *args, **kwargs):
         self.scope.font_state.set_current_font(*args, **kwargs)
 
-    def set_font_family(self, *args, **kwargs):
-        self.scope.font_state.set_font_family(*args, **kwargs)
+    def set_font_family(self, is_global, *args, **kwargs):
+        scopes = self.get_scopes(is_global)
+        for scope in scopes:
+            self.scope.font_state.set_font_family(*args, **kwargs)
 
     # Expander.
 
@@ -257,8 +259,7 @@ class GlobalState(object):
         return macro_token
 
     def do_short_hand_definition(self, is_global, *args, **kwargs):
-        scopes = self.get_scopes(is_global)
-        for scope in scopes:
+        for scope in self.get_scopes(is_global):
             macro_token = self.scope.do_short_hand_definition(*args, **kwargs)
         return macro_token
 
@@ -274,9 +275,9 @@ class GlobalState(object):
 
     # Hybrid, expander and global fonts.
 
-    def define_new_font(self, name, file_name, at_clause):
+    def define_new_font(self, is_global, name, file_name, at_clause):
         new_font_id = self.global_font_state.define_new_font(file_name,
                                                              at_clause)
-        definition_token = self.scope.expander.define_new_font_control_sequence(name,
-                                                                                new_font_id)
+        for scope in self.get_scopes(is_global):
+            definition_token = scope.expander.define_new_font_control_sequence(name, new_font_id)
         return definition_token

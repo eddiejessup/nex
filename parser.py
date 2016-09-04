@@ -167,12 +167,12 @@ def simple_assignment_font_selection(parser_state, p):
 
 # Start of 'variable assignment', a simple assignment.
 
-@pg.production('simple_assignment : optional_global variable_assignment')
+@pg.production('simple_assignment : optional_globals variable_assignment')
 def simple_assignment_variable(parser_state, p):
     return p[0]
 
 
-@pg.production('variable_assignment : optional_global evaluated_variable_assignment')
+@pg.production('variable_assignment : optional_globals evaluated_variable_assignment')
 def variable_assignment(parser_state, p):
     is_global = p[0]
     variable, value = p[1]
@@ -210,7 +210,7 @@ def variable_assignment_integer(parser_state, p):
 # Start of 'arithmetic', a simple assignment.
 
 
-@pg.production('arithmetic : optional_global ADVANCE integer_variable optional_by number')
+@pg.production('arithmetic : optional_globals ADVANCE integer_variable optional_by number')
 def arithmetic_integer_variable(parser_state, p):
     is_global = p[0]
     value = evaluate_number(parser_state, p[4])
@@ -320,7 +320,7 @@ def let_assignment_control_sequence(parser_state, p):
 # Start of 'short-hand definition', a simple assignment.
 
 
-@pg.production('short_hand_definition : optional_global short_hand_def control_sequence equals number')
+@pg.production('short_hand_definition : optional_globals short_hand_def control_sequence equals number')
 def short_hand_definition(parser_state, p):
     is_global = p[0]
     code = evaluate_number(parser_state, p[4])
@@ -350,13 +350,14 @@ def short_hand_def(parser_state, p):
 # Start of 'family assignment', a simple assignment.
 
 
-@pg.production('family_assignment : family_member equals font')
+@pg.production('family_assignment : optional_globals family_member equals font')
 def family_assignment(parser_state, p):
+    is_global = p[0]
     # TODO: will this work for productions of font other than FONT_DEF_TOKEN?
-    font_id = p[2].value
-    font_range = p[0].type
-    family_nr = evaluate_number(parser_state, p[0].value)
-    parser_state.state.set_font_family(family_nr, font_range, font_id)
+    font_id = p[3].value
+    font_range = p[1].type
+    family_nr = evaluate_number(parser_state, p[1].value)
+    parser_state.state.set_font_family(is_global, family_nr, font_range, font_id)
     return Token(type_='family_assignment',
                  value={'family_nr': family_nr,
                         'font_range': font_range,
@@ -380,8 +381,9 @@ def font_range(parser_state, p):
 # Start of 'set box assignment', a simple assignment.
 
 
-@pg.production('set_box_assignment : SET_BOX number equals filler box')
+@pg.production('set_box_assignment : optional_globals SET_BOX number equals filler box')
 def set_box_assignment(parser_state, p):
+    is_global = p[0]
     import pdb; pdb.set_trace()
 
 
@@ -408,11 +410,13 @@ def box_specification(parser_state, p):
 # Start of 'font definition', a simple assignment.
 
 
-@pg.production('font_definition : FONT control_sequence equals optional_spaces file_name filler at_clause')
+@pg.production('font_definition : optional_globals FONT control_sequence equals optional_spaces file_name filler at_clause')
 def font_definition(parser_state, p):
-    file_name, at_clause = p[4], p[6]
-    control_sequence_name = p[1].value['name']
-    macro_token = parser_state.state.define_new_font(control_sequence_name,
+    is_global = p[0]
+    file_name, at_clause = p[5], p[7]
+    control_sequence_name = p[2].value['name']
+    macro_token = parser_state.state.define_new_font(is_global,
+                                                     control_sequence_name,
                                                      file_name,
                                                      at_clause)
     return macro_token
@@ -445,6 +449,12 @@ def at_clause_empty(parser_state, p):
 # End of 'font definition', a simple assignment.
 
 # Start of 'global assignment', a simple assignment.
+
+
+@pg.production('global_assignment : optional_globals global_assignment')
+def global_assignment(parser_state, p):
+    # Global prefixes have no effect.
+    return p[1]
 
 
 @pg.production('global_assignment : font_assignment')
@@ -491,9 +501,14 @@ def font(parser_state, p):
 # End of 'global assignment', a simple assignment.
 
 
-@pg.production('optional_global : GLOBAL')
-@pg.production('optional_global : empty')
-def optional_global(parser_state, p):
+@pg.production('optional_globals : optional_globals GLOBAL')
+def optional_globals_extend(parser_state, p):
+    return True
+
+
+@pg.production('optional_globals : GLOBAL')
+@pg.production('optional_globals : empty')
+def optional_globals(parser_state, p):
     return bool(p[0])
 
 
