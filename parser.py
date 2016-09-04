@@ -73,12 +73,28 @@ def message(parser_state, p):
 pg.add_recent_productions(gen_txt_pg)
 
 
-@pg.production('macro_assignment : prefix macro_assignment')
+@pg.production('macro_assignment : prefixes definition')
 def macro_assignment_prefix(parser_state, p):
-    v = p[1]
-    # TODO: actually do something about this in expander.
-    v.value['prefixes'].add(p[0])
-    return v
+    prefixes = p[0]
+    definition_token = p[1]
+    name = definition_token.value['name']
+    macro_token = parser_state.state.set_macro(name, definition_token,
+                                               prefixes=prefixes)
+    return macro_token
+
+
+@pg.production('prefixes : prefix')
+@pg.production('prefixes : prefixes prefix')
+def prefix(parser_state, p):
+    if len(p) > 1:
+        return p[0] + [p[1]]
+    else:
+        return [p[0]]
+
+
+@pg.production('prefixes : empty')
+def prefix(parser_state, p):
+    return []
 
 
 @pg.production('prefix : GLOBAL')
@@ -88,11 +104,12 @@ def prefix(parser_state, p):
     return p[0].type
 
 
-@pg.production('macro_assignment : definition')
-def macro_assignment(parser_state, p):
-    name = p[0].value['name']
-    macro_token = parser_state.state.set_macro(name, p[0], prefixes=None)
-    return macro_token
+# @pg.production('macro_assignment : definition')
+# def macro_assignment(parser_state, p):
+#     macro_token = Token(type_='macro',
+#                         value={'prefixes': set(),
+#                                'definition': p[0]})
+#     return macro_token
 
 
 @pg.production('definition : def control_sequence definition_text')

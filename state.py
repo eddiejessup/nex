@@ -146,6 +146,10 @@ class GlobalState(object):
     def scope(self):
         return self.scopes[-1]
 
+    @property
+    def global_scope(self):
+        return self.scopes[0]
+
     def try_scope_until_success(self, func_name, *args, **kwargs):
         for scope in reversed(self.scopes):
             f = getattr(scope, func_name)
@@ -222,8 +226,16 @@ class GlobalState(object):
     def resolve_control_sequence_to_token(self, *args, **kwargs):
         return self.try_scope_until_success('resolve_control_sequence_to_token', *args, **kwargs)
 
-    def set_macro(self, *args, **kwargs):
-        return self.scope.set_macro(*args, **kwargs)
+    def set_macro(self, name, definition_token, prefixes):
+        # TODO: Consider of \globaldefs integer parameter.
+        # TODO: do something about \outer. Although it seems a bit fussy...
+        # TODO: do something about \long. Although the above also applies...
+        def_type = definition_token.value['def_type']
+        is_global = def_type in ('G_DEF', 'X_DEF') or 'GLOBAL' in prefixes
+        # TODO: do something about this.
+        is_expanded = def_type in ('E_DEF', 'X_DEF')
+        scope = self.global_scope if is_global else self.scope
+        return scope.set_macro(name, definition_token, prefixes)
 
     def do_short_hand_definition(self, *args, **kwargs):
         return self.scope.do_short_hand_definition(*args, **kwargs)
