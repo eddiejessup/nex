@@ -150,6 +150,9 @@ class GlobalState(object):
     def global_scope(self):
         return self.scopes[0]
 
+    def get_scopes(self, is_global):
+        return self.scopes if is_global else [self.scope]
+
     def try_scope_until_success(self, func_name, *args, **kwargs):
         for scope in reversed(self.scopes):
             f = getattr(scope, func_name)
@@ -204,11 +207,24 @@ class GlobalState(object):
     def get_register_value(self, *args, **kwargs):
         return self.try_scope_until_success('get_register_value', *args, **kwargs)
 
-    def set_register_value(self, *args, **kwargs):
-        self.scope.set_register_value(*args, **kwargs)
+    def get_advanced_register_value(self, *args, **kwargs):
+        return self.try_scope_until_success('get_advanced_register_value', *args, **kwargs)
 
-    def advance_register_value(self, *args, **kwargs):
-        self.try_scope_until_success('advance_register_value', *args, **kwargs)
+    def set_register_value(self, is_global, *args, **kwargs):
+        for scope in self.get_scopes(is_global):
+            scope.set_register_value(*args, **kwargs)
+
+    def advance_register_value(self, is_global, type_, i, value):
+        # The in-place arithmetic is a bit strange.
+        # The operand is defined as normal: the most-locally defined register.
+        # But the result should create/update the register in
+        # the strictly local scope.
+        # If the operation is \global, the operation is done as above,
+        # on the most-local register value; then the strictly-local register
+        # value becomes the value for all scopes.
+        # That is to say, the \global bit is acted on last.
+        result = self.get_advanced_register_value(type_, i, value)
+        self.set_register_value(is_global, type_, i, result)
 
     # Fonts.
 
@@ -234,11 +250,17 @@ class GlobalState(object):
         is_global = def_type in ('G_DEF', 'X_DEF') or 'GLOBAL' in prefixes
         # TODO: do something about this.
         is_expanded = def_type in ('E_DEF', 'X_DEF')
-        scope = self.global_scope if is_global else self.scope
-        return scope.set_macro(name, definition_token, prefixes)
+        # Need to set for all outer scopes, in case we have already defined
+        # the macro in a non-global scope.
+        for scope in self.get_scopes(is_global):
+            macro_token = scope.set_macro(name, definition_token, prefixes)
+        return macro_token
 
-    def do_short_hand_definition(self, *args, **kwargs):
-        return self.scope.do_short_hand_definition(*args, **kwargs)
+    def do_short_hand_definition(self, is_global, *args, **kwargs):
+        scopes = self.get_scopes(is_global)
+        for scope in scopes:
+            macro_token = self.scope.do_short_hand_definition(*args, **kwargs)
+        return macro_token
 
     def do_let_assignment(self, *args, **kwargs):
         self.scope.do_let_assignment(*args, **kwargs)
@@ -246,8 +268,9 @@ class GlobalState(object):
     def get_parameter_value(self, *args, **kwargs):
         return self.try_scope_until_success('get_parameter_value', *args, **kwargs)
 
-    def set_parameter(self, *args, **kwargs):
-        self.scope.set_parameter(*args, **kwargs)
+    def set_parameter(self, is_global, *args, **kwargs):
+        for scope in self.get_scopes(is_global):
+            scope.set_parameter(*args, **kwargs)
 
     # Hybrid, expander and global fonts.
 

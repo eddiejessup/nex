@@ -55,6 +55,7 @@ class Registers(object):
         register = self.get_register(type_)
         register[i] = value
 
-    def advance_register_value(self, type_, i, value):
+    def get_advanced_register_value(self, type_, i, value):
         register = self.get_register(type_)
-        register[i] += value
+        result = register[i] + value
+        return result

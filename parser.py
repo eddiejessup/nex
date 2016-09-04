@@ -140,13 +140,6 @@ def definition_text(parser_state, p):
     return def_text_token
 
 
-@pg.production('non_macro_assignment : GLOBAL non_macro_assignment')
-def non_macro_assignment_global(parser_state, p):
-    v = p[1]
-    v.value['global'] = True
-    return v
-
-
 @pg.production('non_macro_assignment : simple_assignment')
 def non_macro_assignment(parser_state, p):
     return p[0]
@@ -172,172 +165,63 @@ def simple_assignment_font_selection(parser_state, p):
     return Token(type_='font_selection', value=font_id)
 
 
-@pg.production('family_assignment : family_member equals font')
-def family_assignment(parser_state, p):
-    # TODO: will this work for productions of font other than FONT_DEF_TOKEN?
-    font_id = p[2].value
-    font_range = p[0].type
-    family_nr = evaluate_number(parser_state, p[0].value)
-    parser_state.state.set_font_family(family_nr, font_range, font_id)
-    return Token(type_='family_assignment',
-                 value={'family_nr': family_nr,
-                        'font_range': font_range,
-                        'font_id': font_id})
+# Start of 'variable assignment', a simple assignment.
 
-
-@pg.production('set_box_assignment : SET_BOX number equals filler box')
-def set_box_assignment(parser_state, p):
-    import pdb; pdb.set_trace()
-
-
-@pg.production('font_definition : FONT control_sequence equals optional_spaces file_name filler at_clause')
-def font_definition(parser_state, p):
-    file_name, at_clause = p[4], p[6]
-    control_sequence_name = p[1].value['name']
-    macro_token = parser_state.state.define_new_font(control_sequence_name,
-                                                     file_name,
-                                                     at_clause)
-    return macro_token
-
-
-@pg.production('file_name : character')
-@pg.production('file_name : file_name character')
-def file_name(parser_state, p):
-    if len(p) > 1:
-        return p[0] + p[1].value['char']
-    else:
-        return p[0].value['char']
-
-
-@pg.production('at_clause : at dimen')
-def at_clause_dimen(parser_state, p):
-    return Token(type_='at_dimen', value=p[1])
-
-
-@pg.production('at_clause : scaled number')
-def at_clause_scaled(parser_state, p):
-    return Token(type_='scaled_number', value=p[1])
-
-
-@pg.production('at_clause : optional_spaces')
-def at_clause_empty(parser_state, p):
-    return None
-
-
-@pg.production('box : BOX number')
-@pg.production('box : COPY number')
-@pg.production('box : LAST_BOX')
-@pg.production('box : V_SPLIT number to dimen')
-@pg.production('box : H_BOX box_specification LEFT_BRACE HORIZONTAL_MODE_MATERIAL RIGHT_BRACE')
-@pg.production('box : V_BOX box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL RIGHT_BRACE')
-@pg.production('box : V_TOP box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL RIGHT_BRACE')
-def box(parser_state, p):
-    import pdb; pdb.set_trace()
-
-
-@pg.production('box_specification : to dimen filler')
-@pg.production('box_specification : spread dimen filler')
-@pg.production('box_specification : filler')
-def box_specification(parser_state, p):
-    import pdb; pdb.set_trace()
-
-
-@pg.production('global_assignment : font_assignment')
-# @pg.production('global_assignment : hyphenation_assignment')
-# @pg.production('global_assignment : box_size_assignment')
-# @pg.production('global_assignment : interaction_mode_assignment')
-# @pg.production('global_assignment : intimate_assignment')
-def global_assignment(parser_state, p):
+@pg.production('simple_assignment : optional_global variable_assignment')
+def simple_assignment_variable(parser_state, p):
     return p[0]
 
 
-# @pg.production('font_assignment : FONT_DIMEN number font equals dimen')
-@pg.production('font_assignment : HYPHEN_CHAR font equals number')
-def font_assignment_hyphen(parser_state, p):
-    # TODO: can we make this nicer by storing the char instead of the number?
-    evaluated_number = evaluate_number(parser_state, p[3])
-    # TODO: as for font definition, does this work for non-FONT_DEF_TOKEN font
-    # productions?
-    font_id = p[1].value
-    parser_state.state.global_font_state.set_hyphen_char(font_id, evaluated_number)
-    return Token(type_='skew_char_assignment',
-                 value={'font_id': font_id, 'code': p[3]})
-
-
-@pg.production('font_assignment : SKEW_CHAR font equals number')
-def font_assignment_skew(parser_state, p):
-    # TODO: can we make this nicer by storing the char instead of the number?
-    evaluated_number = evaluate_number(parser_state, p[3])
-    # TODO: as for font definition, does this work for non-FONT_DEF_TOKEN font
-    # productions?
-    font_id = p[1].value
-    parser_state.state.global_font_state.set_skew_char(font_id, evaluated_number)
-    return Token(type_='skew_char_assignment',
-                 value={'font_id': font_id, 'code': p[3]})
-
-
-@pg.production('font : FONT_DEF_TOKEN')
-# @pg.production('font : family_member')
-# @pg.production('font : FONT')
-def font(parser_state, p):
-    return p[0]
-
-
-@pg.production('family_member : font_range number')
-def family_member(parser_state, p):
-    return Token(type_=p[0], value=p[1])
-
-
-@pg.production('font_range : TEXT_FONT')
-@pg.production('font_range : SCRIPT_FONT')
-@pg.production('font_range : SCRIPT_SCRIPT_FONT')
-def font_range(parser_state, p):
-    return FontRange(p[0].type)
-
-
-def do_variable_assignment(parser_state, variable, value):
+@pg.production('variable_assignment : optional_global evaluated_variable_assignment')
+def variable_assignment(parser_state, p):
+    is_global = p[0]
+    variable, value = p[1]
     if is_register_type(variable.type):
-        parser_state.state.set_register_value(variable.type,
+        parser_state.state.set_register_value(is_global=is_global,
+                                              type_=variable.type,
                                               i=variable.value,
                                               value=value)
     elif variable.type in parameter_types:
         param_name = variable.value['canonical_name']
-        parser_state.state.set_parameter(name=param_name, value=value)
+        parser_state.state.set_parameter(is_global=is_global,
+                                         name=param_name, value=value)
+    return Token(type_='variable_assignment',
+                 value={'variable': variable, 'value': value})
 
 
-@pg.production('variable_assignment : mu_glue_variable equals mu_glue')
-@pg.production('variable_assignment : glue_variable equals glue')
+@pg.production('evaluated_variable_assignment : mu_glue_variable equals mu_glue')
+@pg.production('evaluated_variable_assignment : glue_variable equals glue')
 def variable_assignment_glue(parser_state, p):
-    glue = p[2]
-    evaluated_glue = evaluate_glue(parser_state, glue)
-    do_variable_assignment(parser_state, p[0], evaluated_glue)
-    return Token(type_='variable_assignment',
-                 value={'variable': p[0], 'value': p[2]})
+    return [p[0], evaluate_glue(parser_state, p[2])]
 
 
-@pg.production('variable_assignment : dimen_variable equals dimen')
+@pg.production('evaluated_variable_assignment : dimen_variable equals dimen')
 def variable_assignment_dimen(parser_state, p):
-    evaluated_dimen = evaluate_dimen(parser_state, p[2])
-    do_variable_assignment(parser_state, p[0], evaluated_dimen)
-    return Token(type_='variable_assignment',
-                 value={'variable': p[0], 'value': p[2]})
+    return [p[0], evaluate_dimen(parser_state, p[2])]
 
 
-@pg.production('variable_assignment : integer_variable equals number')
+@pg.production('evaluated_variable_assignment : integer_variable equals number')
 def variable_assignment_integer(parser_state, p):
-    evaluated_number = evaluate_number(parser_state, p[2])
-    do_variable_assignment(parser_state, p[0], evaluated_number)
-    return Token(type_='variable_assignment',
-                 value={'variable': p[0], 'value': p[2]})
+    return [p[0], evaluate_number(parser_state, p[2])]
 
 
-@pg.production('arithmetic : ADVANCE integer_variable optional_by number')
+# End of 'variable assignment', a simple assignment.
+
+# Start of 'arithmetic', a simple assignment.
+
+
+@pg.production('arithmetic : optional_global ADVANCE integer_variable optional_by number')
 def arithmetic_integer_variable(parser_state, p):
-    value = evaluate_number(parser_state, p[3])
+    is_global = p[0]
+    value = evaluate_number(parser_state, p[4])
     if is_register_type(p[1].type):
-        parser_state.state.advance_register_value(p[1].type,
+        parser_state.state.advance_register_value(is_global=is_global,
+                                                  type_=p[1].type,
                                                   i=p[1].value,
                                                   value=value)
+    # TODO: Allow arithmetic on parameters.
+    # TODO: Allow multiply and divide operations.
+    # TODO: Allow arithmetic on dimen, glue and muglue.
     return Token(type_='advance', value={'target': p[1], 'value': p[3]})
 
 
@@ -347,37 +231,9 @@ def optional_by(parser_state, p):
     return None
 
 
-@pg.production('short_hand_definition : short_hand_def control_sequence equals number')
-def short_hand_definition(parser_state, p):
-    code = evaluate_number(parser_state, p[3])
-    def_type = p[0].type
-    control_sequence_name = p[1].value['name']
-    macro_token = parser_state.state.do_short_hand_definition(control_sequence_name,
-                                                              def_type,
-                                                              code)
-    # Just for the sake of output.
-    return macro_token
+# End of 'arithmetic', a simple assignment.
 
-
-@pg.production('let_assignment : LET control_sequence equals one_optional_space UNEXPANDED_TOKEN')
-def let_assignment_control_sequence(parser_state, p):
-    target_token = p[4].value
-    new_name = p[1].value['name']
-    parser_state.state.do_let_assignment(new_name, target_token)
-    return Token(type_='let_assignment',
-                 value={'name': new_name,
-                        'target_name': target_token})
-
-
-@pg.production('short_hand_def : CHAR_DEF')
-@pg.production('short_hand_def : MATH_CHAR_DEF')
-@pg.production('short_hand_def : COUNT_DEF')
-@pg.production('short_hand_def : DIMEN_DEF')
-@pg.production('short_hand_def : SKIP_DEF')
-@pg.production('short_hand_def : MU_SKIP_DEF')
-@pg.production('short_hand_def : TOKS_DEF')
-def short_hand_def(parser_state, p):
-    return p[0]
+# Start of 'code assignment', a simple assignment.
 
 
 def split_at(s, inds):
@@ -443,6 +299,205 @@ def code_assignment(parser_state, p):
 def code_name_cat(parser_state, p):
     return p[0].type
 
+
+# End of 'code assignment', a simple assignment.
+
+# Start of 'let assignment', a simple assignment.
+
+
+@pg.production('let_assignment : LET control_sequence equals one_optional_space UNEXPANDED_TOKEN')
+def let_assignment_control_sequence(parser_state, p):
+    target_token = p[4].value
+    new_name = p[1].value['name']
+    parser_state.state.do_let_assignment(new_name, target_token)
+    return Token(type_='let_assignment',
+                 value={'name': new_name,
+                        'target_name': target_token})
+
+
+# End of 'let assignment', a simple assignment.
+
+# Start of 'short-hand definition', a simple assignment.
+
+
+@pg.production('short_hand_definition : optional_global short_hand_def control_sequence equals number')
+def short_hand_definition(parser_state, p):
+    is_global = p[0]
+    code = evaluate_number(parser_state, p[4])
+    def_type = p[1].type
+    control_sequence_name = p[2].value['name']
+    macro_token = parser_state.state.do_short_hand_definition(is_global,
+                                                              control_sequence_name,
+                                                              def_type,
+                                                              code)
+    # Just for the sake of output.
+    return macro_token
+
+
+@pg.production('short_hand_def : CHAR_DEF')
+@pg.production('short_hand_def : MATH_CHAR_DEF')
+@pg.production('short_hand_def : COUNT_DEF')
+@pg.production('short_hand_def : DIMEN_DEF')
+@pg.production('short_hand_def : SKIP_DEF')
+@pg.production('short_hand_def : MU_SKIP_DEF')
+@pg.production('short_hand_def : TOKS_DEF')
+def short_hand_def(parser_state, p):
+    return p[0]
+
+
+# End of 'short-hand definition', a simple assignment.
+
+# Start of 'family assignment', a simple assignment.
+
+
+@pg.production('family_assignment : family_member equals font')
+def family_assignment(parser_state, p):
+    # TODO: will this work for productions of font other than FONT_DEF_TOKEN?
+    font_id = p[2].value
+    font_range = p[0].type
+    family_nr = evaluate_number(parser_state, p[0].value)
+    parser_state.state.set_font_family(family_nr, font_range, font_id)
+    return Token(type_='family_assignment',
+                 value={'family_nr': family_nr,
+                        'font_range': font_range,
+                        'font_id': font_id})
+
+
+@pg.production('family_member : font_range number')
+def family_member(parser_state, p):
+    return Token(type_=p[0], value=p[1])
+
+
+@pg.production('font_range : TEXT_FONT')
+@pg.production('font_range : SCRIPT_FONT')
+@pg.production('font_range : SCRIPT_SCRIPT_FONT')
+def font_range(parser_state, p):
+    return FontRange(p[0].type)
+
+
+# End of 'family assignment', a simple assignment.
+
+# Start of 'set box assignment', a simple assignment.
+
+
+@pg.production('set_box_assignment : SET_BOX number equals filler box')
+def set_box_assignment(parser_state, p):
+    import pdb; pdb.set_trace()
+
+
+@pg.production('box : BOX number')
+@pg.production('box : COPY number')
+@pg.production('box : LAST_BOX')
+@pg.production('box : V_SPLIT number to dimen')
+@pg.production('box : H_BOX box_specification LEFT_BRACE HORIZONTAL_MODE_MATERIAL RIGHT_BRACE')
+@pg.production('box : V_BOX box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL RIGHT_BRACE')
+@pg.production('box : V_TOP box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL RIGHT_BRACE')
+def box(parser_state, p):
+    import pdb; pdb.set_trace()
+
+
+@pg.production('box_specification : to dimen filler')
+@pg.production('box_specification : spread dimen filler')
+@pg.production('box_specification : filler')
+def box_specification(parser_state, p):
+    import pdb; pdb.set_trace()
+
+
+# End of 'set box assignment', a simple assignment.
+
+# Start of 'font definition', a simple assignment.
+
+
+@pg.production('font_definition : FONT control_sequence equals optional_spaces file_name filler at_clause')
+def font_definition(parser_state, p):
+    file_name, at_clause = p[4], p[6]
+    control_sequence_name = p[1].value['name']
+    macro_token = parser_state.state.define_new_font(control_sequence_name,
+                                                     file_name,
+                                                     at_clause)
+    return macro_token
+
+
+@pg.production('file_name : character')
+@pg.production('file_name : file_name character')
+def file_name(parser_state, p):
+    if len(p) > 1:
+        return p[0] + p[1].value['char']
+    else:
+        return p[0].value['char']
+
+
+@pg.production('at_clause : at dimen')
+def at_clause_dimen(parser_state, p):
+    return Token(type_='at_dimen', value=p[1])
+
+
+@pg.production('at_clause : scaled number')
+def at_clause_scaled(parser_state, p):
+    return Token(type_='scaled_number', value=p[1])
+
+
+@pg.production('at_clause : optional_spaces')
+def at_clause_empty(parser_state, p):
+    return None
+
+
+# End of 'font definition', a simple assignment.
+
+# Start of 'global assignment', a simple assignment.
+
+
+@pg.production('global_assignment : font_assignment')
+# @pg.production('global_assignment : hyphenation_assignment')
+# @pg.production('global_assignment : box_size_assignment')
+# @pg.production('global_assignment : interaction_mode_assignment')
+# @pg.production('global_assignment : intimate_assignment')
+def global_assignment(parser_state, p):
+    return p[0]
+
+
+# @pg.production('font_assignment : FONT_DIMEN number font equals dimen')
+@pg.production('font_assignment : HYPHEN_CHAR font equals number')
+def font_assignment_hyphen(parser_state, p):
+    # TODO: can we make this nicer by storing the char instead of the number?
+    evaluated_number = evaluate_number(parser_state, p[3])
+    # TODO: as for font definition, does this work for non-FONT_DEF_TOKEN font
+    # productions?
+    font_id = p[1].value
+    parser_state.state.global_font_state.set_hyphen_char(font_id, evaluated_number)
+    return Token(type_='skew_char_assignment',
+                 value={'font_id': font_id, 'code': p[3]})
+
+
+@pg.production('font_assignment : SKEW_CHAR font equals number')
+def font_assignment_skew(parser_state, p):
+    # TODO: can we make this nicer by storing the char instead of the number?
+    evaluated_number = evaluate_number(parser_state, p[3])
+    # TODO: as for font definition, does this work for non-FONT_DEF_TOKEN font
+    # productions?
+    font_id = p[1].value
+    parser_state.state.global_font_state.set_skew_char(font_id, evaluated_number)
+    return Token(type_='skew_char_assignment',
+                 value={'font_id': font_id, 'code': p[3]})
+
+
+@pg.production('font : FONT_DEF_TOKEN')
+# @pg.production('font : family_member')
+# @pg.production('font : FONT')
+def font(parser_state, p):
+    return p[0]
+
+
+# End of 'global assignment', a simple assignment.
+
+
+@pg.production('optional_global : GLOBAL')
+@pg.production('optional_global : empty')
+def optional_global(parser_state, p):
+    return bool(p[0])
+
+
+# End of the simple assignments.
 
 @pg.error
 def error(parser_state, p):
