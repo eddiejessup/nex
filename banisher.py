@@ -159,7 +159,7 @@ class Banisher(object):
         # one expansion call does.
         if (self.expanding_control_sequences and
                 first_token.type in unexpanded_cs_types):
-            first_token = self.global_state.get_routed_control_sequence(first_token.value['name'])
+            first_token = self.global_state.resolve_control_sequence_to_token(first_token.value['name'])
         type_ = first_token.type
 
         if type_ == 'MACRO':

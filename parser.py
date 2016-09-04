@@ -284,7 +284,7 @@ def do_variable_assignment(parser_state, variable, value):
                                               i=variable.value,
                                               value=value)
     elif variable.type in parameter_types:
-        param_name = variable.value
+        param_name = variable.value['canonical_name']
         parser_state.state.set_parameter(name=param_name, value=value)
 
 

@@ -1,4 +1,6 @@
 from enum import Enum
+
+from utils import get_unique_id
 from typer import terminal_primitive_control_sequences_map
 
 
@@ -83,7 +85,7 @@ class GlobalFontState(object):
 
     def __init__(self):
         # TODO: put in null font (it's explained in the TeXBook somewhere).
-        self.fonts = []
+        self.fonts = {}
 
     def set_skew_char(self, font_id, number):
         self.fonts[font_id].skew_char = number
@@ -94,6 +96,7 @@ class GlobalFontState(object):
     def define_new_font(self, file_name, at_clause):
         # TODO: do this properly.
         font_info = FontInfo(file_name, at_clause)
-        self.fonts.append(font_info)
+        font_id = get_unique_id()
+        self.fonts[font_id] = font_info
         # Return new font id.
-        return len(self.fonts)
+        return font_id

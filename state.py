@@ -84,8 +84,8 @@ class Scope(object):
     def expand_macro_to_token_list(self, *args, **kwargs):
         return self.defer_to_expander('expand_macro_to_token_list', *args, **kwargs)
 
-    def get_routed_control_sequence(self, *args, **kwargs):
-        return self.defer_to_expander('get_routed_control_sequence', *args, **kwargs)
+    def resolve_control_sequence_to_token(self, *args, **kwargs):
+        return self.defer_to_expander('resolve_control_sequence_to_token', *args, **kwargs)
 
     def set_macro(self, *args, **kwargs):
         return self.defer_to_expander('set_macro', *args, **kwargs)
@@ -115,11 +115,11 @@ def get_initial_scope():
     return initial_scope
 
 
-def get_local_scope():
+def get_local_scope(enclosing_scope):
     codes = get_local_codes()
     registers = get_local_registers()
     font_state = get_local_font_state()
-    expander = get_local_expander()
+    expander = get_local_expander(enclosing_scope)
     local_scope = Scope(codes, registers, font_state, expander)
     return local_scope
 
@@ -136,7 +136,7 @@ class GlobalState(object):
         self.scopes.append(scope)
 
     def push_new_scope(self):
-        scope = get_local_scope()
+        scope = get_local_scope(self.scope)
         self.scopes.append(scope)
 
     def pop_scope(self):
@@ -219,8 +219,8 @@ class GlobalState(object):
     def expand_macro_to_token_list(self, *args, **kwargs):
         return self.try_scope_until_success('expand_macro_to_token_list', *args, **kwargs)
 
-    def get_routed_control_sequence(self, *args, **kwargs):
-        return self.try_scope_until_success('get_routed_control_sequence', *args, **kwargs)
+    def resolve_control_sequence_to_token(self, *args, **kwargs):
+        return self.try_scope_until_success('resolve_control_sequence_to_token', *args, **kwargs)
 
     def set_macro(self, *args, **kwargs):
         return self.scope.set_macro(*args, **kwargs)
