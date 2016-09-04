@@ -200,23 +200,19 @@ class GlobalState(object):
 
     # Codes.
 
-    def set_cat_code(self, *args, **kwargs):
-        self.scope.set_cat_code(*args, **kwargs)
-
-    def set_math_code(self, *args, **kwargs):
-        self.scope.set_math_code(*args, **kwargs)
-
-    def set_upper_case_code(self, *args, **kwargs):
-        self.scope.set_upper_case_code(*args, **kwargs)
-
-    def set_lower_case_code(self, *args, **kwargs):
-        self.scope.set_lower_case_code(*args, **kwargs)
-
-    def set_space_factor_code(self, *args, **kwargs):
-        self.scope.set_space_factor_code(*args, **kwargs)
-
-    def set_delimiter_code(self, *args, **kwargs):
-        self.scope.set_delimiter_code(*args, **kwargs)
+    def set_code(self, is_global, code_type, char, code):
+        code_type_to_func_map = {
+            'CAT_CODE': 'set_cat_code',
+            'MATH_CODE': 'set_math_code',
+            'UPPER_CASE_CODE': 'set_lower_case_code',
+            'LOWER_CASE_CODE': 'set_upper_case_code',
+            'SPACE_FACTOR_CODE': 'set_space_factor_code',
+            'DELIMITER_CODE': 'set_delimiter_code',
+        }
+        func_name = code_type_to_func_map[code_type]
+        for scope in self.get_scopes(is_global):
+            set_func = getattr(scope, func_name)
+            set_func(char, code)
 
     def get_cat_code(self, *args, **kwargs):
         return self.try_scope_until_success('get_cat_code', *args, **kwargs)
@@ -297,8 +293,9 @@ class GlobalState(object):
             macro_token = self.scope.do_short_hand_definition(*args, **kwargs)
         return macro_token
 
-    def do_let_assignment(self, *args, **kwargs):
-        self.scope.do_let_assignment(*args, **kwargs)
+    def do_let_assignment(self, is_global, *args, **kwargs):
+        for scope in self.get_scopes(is_global):
+            scope.do_let_assignment(*args, **kwargs)
 
     def get_parameter_value(self, *args, **kwargs):
         return self.try_scope_until_success('get_parameter_value', *args, **kwargs)

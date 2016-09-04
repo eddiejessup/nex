@@ -250,19 +250,12 @@ def split_hex_code(n, hex_length, inds):
     return parts
 
 
-@pg.production('code_assignment : code_name number equals number')
+@pg.production('code_assignment : optional_globals code_name number equals number')
 def code_assignment(parser_state, p):
-    code_type, char_number, code_number = p[0], p[1], p[3]
+    is_global = p[0]
+    code_type, char_number, code_number = p[1], p[2], p[4]
     char_size, code_size = evaluate_number(parser_state, char_number), evaluate_number(parser_state, code_number)
     char = chr(char_size)
-    code_type_to_func_map = {
-        'CAT_CODE': parser_state.state.set_cat_code,
-        'MATH_CODE': parser_state.state.set_math_code,
-        'UPPER_CASE_CODE': parser_state.state.set_lower_case_code,
-        'LOWER_CASE_CODE': parser_state.state.set_upper_case_code,
-        'SPACE_FACTOR_CODE': parser_state.state.set_space_factor_code,
-        'DELIMITER_CODE': parser_state.state.set_delimiter_code,
-    }
     if code_type == 'CAT_CODE':
         code = CatCode(code_size)
     elif code_type == 'MATH_CODE':
@@ -281,8 +274,7 @@ def code_assignment(parser_state, p):
         small_glyph_code = GlyphCode(small_family, small_position)
         large_glyph_code = GlyphCode(large_family, large_position)
         code = DelimiterCode(small_glyph_code, large_glyph_code)
-    set_func = code_type_to_func_map[code_type]
-    set_func(char, code)
+    parser_state.state.set_code(is_global, code_type, char, code)
     return Token(type_='code_assignment',
                  value={'code_type': code_type, 'char': char, 'code': code})
 
@@ -302,11 +294,12 @@ def code_name_cat(parser_state, p):
 # Start of 'let assignment', a simple assignment.
 
 
-@pg.production('let_assignment : LET control_sequence equals one_optional_space UNEXPANDED_TOKEN')
+@pg.production('let_assignment : optional_globals LET control_sequence equals one_optional_space UNEXPANDED_TOKEN')
 def let_assignment_control_sequence(parser_state, p):
-    target_token = p[4].value
-    new_name = p[1].value['name']
-    parser_state.state.do_let_assignment(new_name, target_token)
+    is_global = p[0]
+    target_token = p[5].value
+    new_name = p[2].value['name']
+    parser_state.state.do_let_assignment(is_global, new_name, target_token)
     return Token(type_='let_assignment',
                  value={'name': new_name,
                         'target_name': target_token})
