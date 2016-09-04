@@ -170,8 +170,14 @@ class Expander(object):
         finished_text = substitute_params_with_args(replace_text, arguments)
         return finished_text
 
+    def set_route_token(self, name, route_token):
+        self.control_sequences[name] = route_token
+
+    def get_route_token(self, name):
+        return self.control_sequences[name]
+
     def get_routed_control_sequence(self, name):
-        route_token = self.control_sequences[name]
+        route_token = self.get_route_token(name)
         type_ = route_token.type
         if type_ == 'parameter':
             token = self.get_parameter_token(name)
@@ -189,7 +195,7 @@ class Expander(object):
     def get_macro_token(self, name):
         # TODO: check what happens if we \let something to a macro,
         # then call \csname on it. Do we get the original macro name?
-        route_token = self.control_sequences[name]
+        route_token = self.get_route_token(name)
         assert route_token.type == 'macro'
         macro_id = route_token.value
         token = self.macros[macro_id]
@@ -199,7 +205,7 @@ class Expander(object):
     def set_macro(self, name, definition_token, prefixes=None):
         macro_id = len(self.macros)
         route_token = InternalToken(type_='macro', value=macro_id)
-        self.control_sequences[name] = route_token
+        self.set_route_token(name, route_token)
 
         if prefixes is None:
             prefixes = set()
@@ -218,7 +224,7 @@ class Expander(object):
         return macro_token
 
     def get_primitive_token(self, name):
-        route_token = self.control_sequences[name]
+        route_token = self.get_route_token(name)
         canonical_name = route_token.value
         canonical_token = self.primitives[canonical_name]
         TokenCls = canonical_token.__class__
@@ -230,12 +236,11 @@ class Expander(object):
         let_char_id = len(self.let_chars)
         route_token = InternalToken(type_='let_character',
                                     value=let_char_id)
-        self.control_sequences[name] = route_token
+        self.set_route_token(name, route_token)
         self.let_chars[let_char_id] = char_cat_token
 
     def get_let_character(self, name):
-        let_char_id = len(self.let_chars)
-        route_token = self.control_sequences[name]
+        route_token = self.get_route_token(name)
         let_char_id = route_token.value
         token = self.let_chars[let_char_id]
         return token
@@ -243,7 +248,7 @@ class Expander(object):
     def copy_control_sequence(self, existing_name, copy_name):
         # Make a new control sequence that is routed to the same spot as the
         # current one.
-        self.control_sequences[copy_name] = self.control_sequences[existing_name]
+        self.set_route_token(copy_name, self.get_route_token(existing_name))
 
     def do_let_assignment(self, new_name, target_token):
         if target_token.value['lex_type'] == control_sequence_lex_type:
@@ -268,7 +273,7 @@ class Expander(object):
         return definition_token
 
     def unpack_param_route(self, name):
-        route_token = self.control_sequences[name]
+        route_token = self.get_route_token(name)
         param_type, param_canon_name = (route_token.value['parameter_type'],
                                         route_token.value['parameter_canonical_name'])
         return param_type, param_canon_name
