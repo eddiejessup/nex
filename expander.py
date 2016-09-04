@@ -211,14 +211,20 @@ class Expander(object):
                 pass
             elif token.value['lex_type'] == char_cat_lex_type:
                 pass
-            # If it is a call to a parameter, resolve this into the
-            # underlying parameter token.
-            elif self.is_parameter_control_sequence(token.value['name']):
-                token = self.get_parameter_token(token.value['name'])
             else:
-                # Assume it's a primitive non-parameter control sequence.
-                # Give it its primitive type.
-                token = self.type_primitive_control_sequence(token)
+                token = self.get_routed_control_sequence(token)
+        return token
+
+    def get_routed_control_sequence(self, token):
+        # If it is a call to a parameter, resolve this into the
+        # underlying parameter token.
+        if self.is_parameter_control_sequence(token.value['name']):
+            token = self.get_parameter_token(token.value['name'])
+        # Give it its primitive type.
+        elif self.is_primitive_control_sequence(token.value['name']):
+            token = self.type_primitive_control_sequence(token)
+        else:
+            import pdb; pdb.set_trace()
         return token
 
     def do_let_assignment(self, new_name, target_token):
@@ -296,6 +302,14 @@ class Expander(object):
         else:
             route_token = self.control_sequences[name]
             return route_token.type == 'parameter'
+
+    def is_primitive_control_sequence(self, name):
+        # TODO: remove duplication from macro equivalent.
+        if name not in self.control_sequences:
+            return False
+        else:
+            route_token = self.control_sequences[name]
+            return route_token.type == 'primitive'
 
     def is_parameter_token(self, token):
         return token.type in self.parameter_maps
