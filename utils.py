@@ -9,8 +9,8 @@ def post_mortem(lex_wrapper, parser):
     lex = lex_wrapper.lex
     tl = ban._secret_terminal_list
     rtl = tl[-100:]
-    for t in rtl:
-        print(t)
+    # for t in rtl:
+    #     print(t)
     ss = parser.sym_stack
     sts = parser.state_stack
     la = parser.look_ahead

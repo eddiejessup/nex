@@ -69,9 +69,9 @@ def test_parser():
 
     result = parser.parse(lex_wrapper, state=lex_wrapper)
     # result = parser.parse(file_name, lexer=lex_wrapper, debug=logger)
-    post_mortem(lex_wrapper, parser)
     for term_tok in result:
         print(term_tok)
+    post_mortem(lex_wrapper, parser)
 
 if __name__ == '__main__':
     test_parser()

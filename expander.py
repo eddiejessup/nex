@@ -179,8 +179,7 @@ class Expander(object):
         # current one.
         self.control_sequences[copy_name] = self.control_sequences[existing_name]
 
-    def type_primitive_control_sequence(self, call_token):
-        name = call_token.value['name']
+    def type_primitive_control_sequence(self, name):
         # Terminals are tokens that may be passed to the parser. Non-terminals
         # are tokens that will be consumed by the banisher before the parser
         # sees them.
@@ -189,7 +188,7 @@ class Expander(object):
         is_terminal = canonical_name in terminal_primitive_control_sequences_map
         TokenCls = TerminalToken if is_terminal else InternalToken
         primitive_type = primitive_control_sequences_map[canonical_name]
-        primitive_token = TokenCls(type_=primitive_type, value=call_token.value)
+        primitive_token = TokenCls(type_=primitive_type, value={'name': name})
         return primitive_token
 
     def resolve_control_sequence(self, token):
@@ -204,54 +203,28 @@ class Expander(object):
             # want to resolve *both* the let and the below case.
 
             # TODO: what will happen for a \let to a macro?
-            # We might have \let something to a parameter, so we might get an
-            # internal thing. This might actually stretch to include many
-            # other cases, to the point where this 'iffy' approach is not good.
-            if self.is_parameter_token(token):
-                pass
-            elif token.value['lex_type'] == char_cat_lex_type:
+            if token.value['lex_type'] == char_cat_lex_type:
                 pass
             else:
-                token = self.get_routed_control_sequence(token)
+                token = self.get_routed_control_sequence(token.value['name'])
         return token
 
-    def get_routed_control_sequence(self, token):
+    def get_routed_control_sequence(self, name):
         # If it is a call to a parameter, resolve this into the
         # underlying parameter token.
-        if self.is_parameter_control_sequence(token.value['name']):
-            token = self.get_parameter_token(token.value['name'])
+        if self.is_parameter_control_sequence(name):
+            token = self.get_parameter_token(name)
         # Give it its primitive type.
-        elif self.is_primitive_control_sequence(token.value['name']):
-            token = self.type_primitive_control_sequence(token)
+        elif self.is_primitive_control_sequence(name):
+            token = self.type_primitive_control_sequence(name)
         else:
             import pdb; pdb.set_trace()
         return token
 
     def do_let_assignment(self, new_name, target_token):
-        # TODO: maybe this way of checking for a control sequence is useful
-        # in places where we are now checking `type in unexpanded_cs_types`?
         if target_token.value['lex_type'] == control_sequence_lex_type:
-            target_token = self.resolve_control_sequence(target_token)
-        # Do not merge the above and below seemingly similar checks.
-        # The meaning of 'target_token' may change after the above, so
-        # we need to check again.
-        # If it is a parameter, alias this control sequence to mean that.
-        # I think this is different, and better, than aliasing to the
-        # parameter *name*, because this might be corrupted by re-defining
-        # the parameter control sequence name through \def or whatever.
-        if self.is_parameter_token(target_token):
-            self.let_map[new_name] = target_token
-        # The other cases are lex types.
-        elif target_token.value['lex_type'] == control_sequence_lex_type:
             target_name = target_token.value['name']
-            # If it is a macro, copy the macro contents into
-            # a new macro.
-            if self.name_is_user_control_sequence(target_name):
-                self.copy_control_sequence(target_name, new_name)
-            # Otherwise, it is a primitive control sequence or parameter,
-            # and we should just alias this control sequence to mean that.
-            else:
-                self.let_map[new_name] = target_token
+            self.copy_control_sequence(target_name, new_name)
         elif target_token.value['lex_type'] == char_cat_lex_type:
             self.let_map[new_name] = target_token
         else:
