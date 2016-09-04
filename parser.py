@@ -18,16 +18,16 @@ logger.setLevel('DEBUG')
 pg = common_pg.copy_to_extend()
 
 
-@pg.production('commands : commands command')
-def commands_extend(parser_state, p):
-    v = p[0]
-    v.append(p[1])
-    return v
+# @pg.production('commands : commands command')
+# def commands_extend(parser_state, p):
+#     v = p[0]
+#     v.append(p[1])
+#     return v
 
 
-@pg.production('commands : command')
-def commands(parser_state, p):
-    return [p[0]]
+# @pg.production('commands : command')
+# def commands(parser_state, p):
+#     return [p[0]]
 
 
 @pg.production('command : assignment')
@@ -515,9 +515,14 @@ def optional_globals(parser_state, p):
 
 @pg.error
 def error(parser_state, p):
-    print("Syntax error in input!")
-    post_mortem(parser_state, parser)
-    raise ValueError
+    from condition_parser import ExpectedParsingError
+    raise ExpectedParsingError
+
+# @pg.error
+# def error(parser_state, p):
+#     print("Syntax error in input!")
+#     post_mortem(parser_state, parser)
+#     raise ValueError
 
 # Build the parser
 parser = pg.build()

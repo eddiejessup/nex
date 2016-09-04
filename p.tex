@@ -512,8 +512,22 @@
 
 \def\space{ }
 \def\empty{}
-\def\null{\hbox{a\space}}
+\def\null{\hbox{}}
 
 \let\bgroup={ \let\egroup=}
 
-\null
+% In \obeylines, we say `\let^^M=\par' instead of `\def^^M{\par}'
+% since this allows, for example, `\let\par=\cr \obeylines \halign{...'
+{\catcode`\^^M=\active % these lines must end with %
+  \gdef\obeylines{\catcode`\^^M\active \let^^M\par}%
+  \global\let^^M\par} % this is in case ^^M appears in a \write
+\def\obeyspaces{\catcode`\ \active}
+{\obeyspaces\global\let =\space}
+
+\def\loop#1\repeat{\def\body{#1}\iterate}
+\def\iterate{\body \let\next\iterate \else\let\next\relax\fi \next}
+\let\repeat=\fi % this makes \loop...\if...\repeat skippable
+
+\newcount\n
+\def\punishment#1#2{\n=0\ifnum\n<1{Hihi}\else{nono}\fi}
+\punishment12
