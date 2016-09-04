@@ -278,13 +278,17 @@ terminal_primitive_control_sequences_map = {
     # register.
     'vsplit': 'V_SPLIT',
 
-    # Box constructions.
+}
+
+
+explicit_box_map = {
     'hbox': 'H_BOX',
     'vbox': 'V_BOX',
     # Like 'vbox', but its baseline is that of the top box inside,
     # rather than the bottom box inside.
     'vtop': 'V_TOP',
 }
+terminal_primitive_control_sequences_map.update(explicit_box_map)
 
 
 register_tokens = {
@@ -354,6 +358,6 @@ primitive_control_sequences_map = dict(**terminal_primitive_control_sequences_ma
 composite_terminal_control_sequence_types = (
     'BALANCED_TEXT_AND_RIGHT_BRACE',
     'PARAMETER_TEXT',
-    'HORIZONTAL_MODE_MATERIAL',
-    'VERTICAL_MODE_MATERIAL',
+    'HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE',
+    'VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE',
 )

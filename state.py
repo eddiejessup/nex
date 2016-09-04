@@ -1,3 +1,4 @@
+from interpreter import Mode, Group
 from codes import get_initial_codes, get_local_codes
 from registers import get_initial_registers, get_local_registers
 from fonts import GlobalFontState, get_initial_font_state, get_local_font_state
@@ -128,9 +129,38 @@ class GlobalState(object):
 
     def __init__(self):
         self.global_font_state = GlobalFontState()
+        # At the beginning, TeX is in vertical mode, ready to construct pages.
+        self.modes = [Mode.vertical]
+        self.groups = [Group.outside]
         self.scopes = []
         initial_scope = get_initial_scope()
         self.push_scope(initial_scope)
+
+    # Mode.
+
+    @property
+    def mode(self):
+        return self.modes[-1]
+
+    def push_mode(self, mode):
+        self.modes.append(mode)
+
+    def pop_mode(self):
+        return self.modes.pop()
+
+    # Group.
+
+    @property
+    def group(self):
+        return self.groups[-1]
+
+    def push_group(self, group):
+        self.groups.append(group)
+
+    def pop_group(self):
+        return self.groups.pop()
+
+    # Scope.
 
     def push_scope(self, scope):
         self.scopes.append(scope)
@@ -151,6 +181,10 @@ class GlobalState(object):
         return self.scopes[0]
 
     def get_scopes(self, is_global):
+        # Here seems the correct place to explain the behaviour of \global.
+        # Maybe this quote from the TeXBook will help:
+        # "In general, \global makes the immediately following definition
+        # pertain to all existing groups, not just to the innermost one."
         return self.scopes if is_global else [self.scope]
 
     def try_scope_until_success(self, func_name, *args, **kwargs):

@@ -3,12 +3,8 @@ import logging
 from utils import post_mortem
 from typer import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from common import Token
-from state import GlobalState
-from reader import Reader, EndOfFile
-from lexer import Lexer
-from banisher import Banisher
-from expander import Expander, parse_replacement_text, parameter_types
-from fonts import FontRange, FontState
+from expander import parse_replacement_text, parameter_types
+from fonts import FontRange
 from registers import is_register_type
 from common_parsing import (pg as common_pg,
                             evaluate_number, evaluate_dimen, evaluate_glue)
@@ -41,6 +37,7 @@ def commands(parser_state, p):
 @pg.production('command : message')
 @pg.production('command : write')
 @pg.production('command : RELAX')
+@pg.production('command : box')
 def command(parser_state, p):
     return p[0]
 
@@ -387,22 +384,31 @@ def set_box_assignment(parser_state, p):
     import pdb; pdb.set_trace()
 
 
-@pg.production('box : BOX number')
-@pg.production('box : COPY number')
-@pg.production('box : LAST_BOX')
-@pg.production('box : V_SPLIT number to dimen')
-@pg.production('box : H_BOX box_specification LEFT_BRACE HORIZONTAL_MODE_MATERIAL RIGHT_BRACE')
-@pg.production('box : V_BOX box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL RIGHT_BRACE')
-@pg.production('box : V_TOP box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL RIGHT_BRACE')
+# @pg.production('box : BOX number')
+# @pg.production('box : COPY number')
+# @pg.production('box : LAST_BOX')
+# @pg.production('box : V_SPLIT number to dimen')
+@pg.production('box : H_BOX box_specification LEFT_BRACE HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE')
+# @pg.production('box : V_BOX box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
+# @pg.production('box : V_TOP box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
 def box(parser_state, p):
-    import pdb; pdb.set_trace()
+    return Token(type_='h_box', value={'specification': p[1],
+                                       'contents': p[3]})
 
 
 @pg.production('box_specification : to dimen filler')
+def box_specification_to(parser_state, p):
+    return Token(type_='to', value=p[1])
+
+
 @pg.production('box_specification : spread dimen filler')
+def box_specification_spread(parser_state, p):
+    return Token(type_='spread', value=p[1])
+
+
 @pg.production('box_specification : filler')
-def box_specification(parser_state, p):
-    import pdb; pdb.set_trace()
+def box_specification_empty(parser_state, p):
+    return None
 
 
 # End of 'set box assignment', a simple assignment.
@@ -522,19 +528,3 @@ def error(parser_state, p):
 
 # Build the parser
 parser = pg.build()
-
-
-class LexWrapper(object):
-
-    def __init__(self, file_name):
-        self.state = GlobalState()
-        self.file_name = file_name
-        self.r = Reader(file_name)
-        self.lex = Lexer(self.r, self.state)
-        self.b = Banisher(self.lex, wrapper=self)
-
-    def __next__(self):
-        try:
-            return self.b.next_token
-        except EndOfFile:
-            return None

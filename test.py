@@ -1,11 +1,12 @@
 import logging
 
 from utils import post_mortem
+from parse_utils import LexWrapper
 from reader import Reader, EndOfFile
 from lexer import Lexer
 from banisher import Banisher
 from expander import Expander
-from parser import parser, LexWrapper
+from parser import parser
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
@@ -71,7 +72,7 @@ def test_parser():
     # result = parser.parse(file_name, lexer=lex_wrapper, debug=logger)
     for term_tok in result:
         print(term_tok)
-    post_mortem(lex_wrapper, parser)
+    # post_mortem(lex_wrapper, parser)
 
 if __name__ == '__main__':
     test_parser()

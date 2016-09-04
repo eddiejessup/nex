@@ -3,13 +3,17 @@ from collections import deque
 from enum import Enum
 
 from common import TerminalToken
+from reader import EndOfFile
 from lexer import make_char_cat_token
+from parser import pg, parser
 from typer import (CatCode,
                    char_cat_lex_type,
                    lex_token_to_unexpanded_terminal_token,
                    make_unexpanded_control_sequence_terminal_token,
                    unexpanded_cs_types, unexpanded_token_type,
+                   explicit_box_map,
                    short_hand_def_map, def_map, if_map)
+from interpreter import Mode, Group
 from expander import parse_parameter_text
 from condition_parser import condition_parser, ExpectedParsingError
 from general_text_parser import general_text_parser
@@ -32,13 +36,25 @@ message_types = ('MESSAGE', 'ERROR_MESSAGE', 'WRITE')
 class ContextMode(Enum):
     normal = 1
     awaiting_balanced_text_start = 2
-    absorbing_parameter_text = 4
+    awaiting_make_h_box_start = 3
+    awaiting_make_v_box_start = 4
+    awaiting_make_v_top_start = 5
+    absorbing_parameter_text = 6
 
 
 expanding_modes = (
     ContextMode.normal,
-    ContextMode.awaiting_balanced_text_start
+    ContextMode.awaiting_balanced_text_start,
+    ContextMode.awaiting_make_h_box_start,
+    ContextMode.awaiting_make_v_box_start,
+    ContextMode.awaiting_make_v_top_start,
 )
+
+box_context_mode_map = {
+    'H_BOX': ContextMode.awaiting_make_h_box_start,
+    'V_BOX': ContextMode.awaiting_make_v_box_start,
+    'V_TOP': ContextMode.awaiting_make_v_top_start,
+}
 
 
 def make_char_cat_term_token(char, cat):
@@ -62,6 +78,8 @@ class Banisher(object):
 
         self._secret_terminal_list = []
 
+        self.finish_up = False
+
     @property
     def _next_lex_token(self):
         return self.lexer.next_token
@@ -80,6 +98,9 @@ class Banisher(object):
         return next_token
 
     def pop_or_fill_and_pop(self, stack):
+        if not stack and self.finish_up:
+            self.finish_up = False
+            raise EndOfFile
         while not stack:
             self.process_input_to_stack(stack)
         next_token = stack.popleft()
@@ -186,6 +207,7 @@ class Banisher(object):
             # (Might not, if the expansion needs more expansion, but the
             # ultimate escape route is to see a primitive token.)
             self.input_tokens_stack.extendleft(reversed(expanded_first_token))
+        # TODO: Maybe put these as sub-checks, inside seeing 'LEFT_BRACE'.
         elif (self.context_mode == ContextMode.awaiting_balanced_text_start and
                 type_ == 'LEFT_BRACE'):
             # Put the LEFT_BRACE on the output stack.
@@ -198,6 +220,47 @@ class Banisher(object):
             self.input_tokens_stack.appendleft(balanced_text_token)
             # Done with getting balanced text.
             self.pop_context()
+        elif (self.context_mode in box_context_mode_map.values() and
+                type_ == 'LEFT_BRACE'):
+            # Put the LEFT_BRACE on the output stack.
+            output_tokens.append(first_token)
+
+            # Left brace initiates a new level of grouping.
+            # See Group class for explanation of this bit.
+            if self.context_mode == ContextMode.awaiting_make_v_box_start:
+                box_group = Group.v_box
+            elif self.context_mode == ContextMode.awaiting_make_v_top_start:
+                box_group = Group.v_top
+            elif self.context_mode == ContextMode.awaiting_make_h_box_start:
+                if self.global_state.mode == Mode.vertical:
+                    box_group = Group.adjusted_h_box
+                else:
+                    box_group = Group.h_box
+            self.global_state.push_group(box_group)
+            # (By later context, can tell this means a new scope.)
+            self.global_state.push_new_scope()
+
+            # Enter relevant mode.
+            if self.context_mode in (ContextMode.awaiting_make_v_box_start,
+                                     ContextMode.awaiting_make_v_top_start):
+                mode = Mode.internal_vertical
+            elif self.context_mode == ContextMode.awaiting_make_h_box_start:
+                mode = Mode.restricted_horizontal
+            self.global_state.push_mode(mode)
+
+            # Done with the context.
+            self.pop_context()
+
+            # box_parser = pg.build()
+            box_parser = parser
+            results = box_parser.parse(self.wrapper, state=self.wrapper)
+            material_map = {
+                Mode.internal_vertical: 'VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE',
+                Mode.restricted_horizontal: 'HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE',
+            }
+            material_type = material_map[mode]
+            material = TerminalToken(type_=material_type, value=results)
+            output_tokens.append(material)
         elif self.context_mode == ContextMode.absorbing_parameter_text:
             if type_ == 'LEFT_BRACE':
                 parameter_text_template = parse_parameter_text(self.parameter_text_tokens)
@@ -213,15 +276,27 @@ class Banisher(object):
             else:
                 self.parameter_text_tokens.append(first_token)
         elif type_ == 'LEFT_BRACE':
-            # We know we aren't seeing a left brace to do with defining a
-            # macro, and for now, knowing no better, we will assume we are
-            # starting a new level of grouping. This case should include things
-            # that have been \let equal to a begin_group-ey character token.
-            # But this isn't the same as \begingroup.
-            self.lexer.global_state.push_new_scope()
+            # We think we aren't seeing a left brace to do with defining a
+            # macro, or starting a box, and for now, knowing no better, we will
+            # assume we are starting a new level of grouping. This case should
+            # include things that have been \let equal to a begin_group-ey
+            # character token. But this isn't the same as \begingroup.
+            self.global_state.push_group(Group.local)
+            self.global_state.push_new_scope()
         elif type_ == 'RIGHT_BRACE':
             # I think roughly same comments as for LEFT_BRACE above apply.
-            self.lexer.global_state.pop_scope()
+            if self.global_state.group == Group.local:
+                self.global_state.pop_group()
+                self.global_state.pop_scope()
+            elif self.global_state.group == Group.adjusted_h_box:
+                self.global_state.pop_group()
+                self.global_state.pop_scope()
+                # If we do not append the right brace, it looks to the parser
+                # like a nice enclosed command sequence, which is exactly
+                # what we want! This is one unholy monster I'm building.
+                self.finish_up = True
+            else:
+                import pdb; pdb.set_trace()
         elif type_ in read_unexpanded_control_sequence_types:
             # Get an unexpanded control sequence token and add it to the
             # output stack, along with the first token.
@@ -412,6 +487,12 @@ class Banisher(object):
             cased_toks = list(map(get_cased_tok, un_cased_toks))
             # Put cased tokens back on the stack to read again.
             self.input_tokens_stack.extendleft(reversed(cased_toks))
+        elif type_ in explicit_box_map.values():
+            # First we read until box specification is finished.
+            # Then we will do actual group and scope changes and so on.
+            self.push_context(box_context_mode_map[type_])
+            # Put the box token on the stack.
+            output_tokens.append(first_token)
 
         # Just some semantic bullshit, stick it on the output stack
         # for the interpreter to deal with.

@@ -14,10 +14,11 @@ def post_mortem(lex_wrapper, parser):
     rtl = tl[-100:]
     for t in rtl:
         print(t)
-    ss = parser.sym_stack
-    sts = parser.state_stack
-    la = parser.look_ahead
-    las = parser.look_ahead_stack
+    # ss = parser.sym_stack
+    # sts = parser.state_stack
+    # la = parser.look_ahead
+    # las = parser.look_ahead_stack
+    st = lex_wrapper.state
     import pdb; pdb.set_trace()
 
 
