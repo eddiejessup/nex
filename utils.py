@@ -5,7 +5,6 @@ def increasing_window(a):
 
 def post_mortem(lex_wrapper, parser):
     ban = lex_wrapper.b
-    exp = lex_wrapper.e
     lex = lex_wrapper.lex
     tl = ban._secret_terminal_list
     rtl = tl[-100:]

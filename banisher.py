@@ -49,9 +49,8 @@ def make_char_cat_term_token(char, cat):
 
 class Banisher(object):
 
-    def __init__(self, lexer, expander, wrapper):
+    def __init__(self, lexer, wrapper):
         self.lexer = lexer
-        self.expander = expander
         # *ahem* this is not nice.
         self.wrapper = wrapper
         self.global_state = self.wrapper.state
@@ -128,7 +127,7 @@ class Banisher(object):
             return ContextMode.normal
 
     def get_escape_char_token(self):
-        escape_char_code = self.expander.get_parameter_value('escapechar')
+        escape_char_code = self.global_state.get_parameter_value('escapechar')
         if escape_char_code >= 0:
             escape_char = chr(escape_char_code)
             escape_char_token = make_char_cat_term_token(escape_char,
@@ -160,7 +159,7 @@ class Banisher(object):
         # one expansion call does.
         if (self.expanding_control_sequences and
                 first_token.type in unexpanded_cs_types):
-            first_token = self.expander.get_routed_control_sequence(first_token.value['name'])
+            first_token = self.global_state.get_routed_control_sequence(first_token.value['name'])
         type_ = first_token.type
 
         if type_ == 'MACRO':
@@ -181,7 +180,7 @@ class Banisher(object):
             # Now run again, hopefully now seeing a primitive token.
             # (Might not, if the expansion needs more expansion, but the
             # ultimate escape route is to see a primitive token.)
-            expanded_first_token = self.expander.expand_macro_to_token_list(name, argument_text)
+            expanded_first_token = self.global_state.expand_macro_to_token_list(name, argument_text)
 
             # Now run again, hopefully now seeing a primitive token.
             # (Might not, if the expansion needs more expansion, but the

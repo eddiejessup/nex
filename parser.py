@@ -91,9 +91,8 @@ def prefix(parser_state, p):
 @pg.production('macro_assignment : definition')
 def macro_assignment(parser_state, p):
     name = p[0].value['name']
-    parser_state.e.set_macro(name, p[0], prefixes=None)
-    return Token(type_='macro_assignment', value={'prefixes': set(),
-                                                  'definition': p[0]})
+    macro_token = parser_state.state.set_macro(name, p[0], prefixes=None)
+    return macro_token
 
 
 @pg.production('definition : def control_sequence definition_text')
@@ -178,9 +177,9 @@ def set_box_assignment(parser_state, p):
 def font_definition(parser_state, p):
     file_name, at_clause = p[4], p[6]
     control_sequence_name = p[1].value['name']
-    macro_token = parser_state.e.define_new_font(control_sequence_name,
-                                                 file_name,
-                                                 at_clause)
+    macro_token = parser_state.state.define_new_font(control_sequence_name,
+                                                     file_name,
+                                                     at_clause)
     return macro_token
 
 
@@ -286,7 +285,7 @@ def do_variable_assignment(parser_state, variable, value):
                                               value=value)
     elif variable.type in parameter_types:
         param_name = variable.value
-        parser_state.e.set_parameter(name=param_name, value=value)
+        parser_state.state.set_parameter(name=param_name, value=value)
 
 
 @pg.production('variable_assignment : mu_glue_variable equals mu_glue')
@@ -336,9 +335,9 @@ def short_hand_definition(parser_state, p):
     code = evaluate_number(parser_state, p[3])
     def_type = p[0].type
     control_sequence_name = p[1].value['name']
-    macro_token = parser_state.e.do_short_hand_definition(control_sequence_name,
-                                                          def_type,
-                                                          code)
+    macro_token = parser_state.state.do_short_hand_definition(control_sequence_name,
+                                                              def_type,
+                                                              code)
     # Just for the sake of output.
     return macro_token
 
@@ -347,7 +346,7 @@ def short_hand_definition(parser_state, p):
 def let_assignment_control_sequence(parser_state, p):
     target_token = p[4].value
     new_name = p[1].value['name']
-    parser_state.e.do_let_assignment(new_name, target_token)
+    parser_state.state.do_let_assignment(new_name, target_token)
     return Token(type_='let_assignment',
                  value={'name': new_name,
                         'target_name': target_token})
@@ -445,8 +444,7 @@ class LexWrapper(object):
         self.file_name = file_name
         self.r = Reader(file_name)
         self.lex = Lexer(self.r, self.state)
-        self.e = Expander(self.state)
-        self.b = Banisher(self.lex, self.e, wrapper=self)
+        self.b = Banisher(self.lex, wrapper=self)
 
     def __next__(self):
         try:
