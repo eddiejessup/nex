@@ -108,7 +108,7 @@ class Expander(object):
     def initialize_control_sequences(self):
         self.control_sequences = {}
         self.macros = {}
-        self.let_map = {}
+        self.let_chars = {}
         self.parameter_maps = default_parameters.copy()
         for param_type, param_map in self.parameter_maps.items():
             for param_canon_name in param_map:
@@ -148,9 +148,6 @@ class Expander(object):
             route_token = self.control_sequences[name]
             return route_token.type == 'macro'
 
-    def name_is_let_control_sequence(self, name):
-        return name in self.let_map
-
     def get_control_sequence(self, name):
         route_token = self.control_sequences[name]
         assert route_token.type == 'macro'
@@ -158,9 +155,6 @@ class Expander(object):
         token = self.macros[macro_id]
         assert token.type == 'macro'
         return token
-
-    def get_let_control_sequence(self, name):
-        return self.let_map[name]
 
     def set_macro(self, name, definition_token, prefixes=None):
         macro_id = len(self.macros)
@@ -195,13 +189,6 @@ class Expander(object):
         # If it is a macro, leave it alone.
         # If it is a non-macro control sequence.
         if not self.name_is_user_control_sequence(token.value['name']):
-            # If it is a let, canonicalize this.
-            if self.name_is_let_control_sequence(token.value['name']):
-                token = self.get_let_control_sequence(token.value['name'])
-            # Note, the following are not 'elif', because we could have a
-            # let-ted token that resolves to one of the below cases, and we
-            # want to resolve *both* the let and the below case.
-
             # TODO: what will happen for a \let to a macro?
             if token.value['lex_type'] == char_cat_lex_type:
                 pass
@@ -221,12 +208,19 @@ class Expander(object):
             import pdb; pdb.set_trace()
         return token
 
+    def set_let_character(self, name, char_cat_token):
+        let_char_id = len(self.let_chars)
+        route_token = InternalToken(type_='let_character',
+                                    value=let_char_id)
+        self.control_sequences[name] = route_token
+        self.let_chars[let_char_id] = char_cat_token
+
     def do_let_assignment(self, new_name, target_token):
         if target_token.value['lex_type'] == control_sequence_lex_type:
             target_name = target_token.value['name']
             self.copy_control_sequence(target_name, new_name)
         elif target_token.value['lex_type'] == char_cat_lex_type:
-            self.let_map[new_name] = target_token
+            self.set_let_character(new_name, target_token)
         else:
             import pdb; pdb.set_trace()
 
