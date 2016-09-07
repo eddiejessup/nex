@@ -32,6 +32,7 @@ pg = common_pg.copy_to_extend()
 
 @pg.production('command : assignment')
 @pg.production('command : add_kern')
+@pg.production('command : add_glue')
 @pg.production('command : character')
 @pg.production('command : PAR')
 @pg.production('command : SPACE')
@@ -521,6 +522,24 @@ def optional_globals(parser_state, p):
 @pg.production('add_kern : MATH_KERN mu_dimen')
 def add_kern(parser_state, p):
     return Token(type_=p[0].type, value=p[1])
+
+
+@pg.production('add_glue : H_FIL')
+@pg.production('add_glue : H_FILL')
+@pg.production('add_glue : H_STRETCH_OR_SHRINK')
+@pg.production('add_glue : H_FIL_NEG')
+@pg.production('add_glue : V_FIL')
+@pg.production('add_glue : V_FILL')
+@pg.production('add_glue : V_STRETCH_OR_SHRINK')
+@pg.production('add_glue : V_FIL_NEG')
+def add_special_glue(parser_state, p):
+    return Token(type_=p[0], value=None)
+
+
+@pg.production('add_glue : H_SKIP glue')
+@pg.production('add_glue : V_SKIP glue')
+def add_glue(parser_state, p):
+    return Token(type_=p[0], value=p[1])
 
 
 @pg.error

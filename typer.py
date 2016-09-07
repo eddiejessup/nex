@@ -287,6 +287,18 @@ terminal_primitive_control_sequences_map = {
     'mkern': 'MATH_KERN',
 }
 
+add_glue_stems = {
+    'skip': 'SKIP',
+    'fil': 'FIL',
+    'fill': 'FILL',
+    'ss': 'STRETCH_OR_SHRINK',
+    'filneg': 'FIL_NEG',
+}
+add_glue_tokens = {'{}{}'.format(c, cs_stem): '{}_{}'.format(c.upper(), tok_stem)
+                   for c in ('h, v')
+                   for cs_stem, tok_stem in add_glue_stems.items()
+                   }
+terminal_primitive_control_sequences_map.update(add_glue_tokens)
 
 explicit_box_map = {
     'hbox': 'H_BOX',
