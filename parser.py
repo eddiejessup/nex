@@ -31,6 +31,7 @@ pg = common_pg.copy_to_extend()
 
 
 @pg.production('command : assignment')
+@pg.production('command : add_kern')
 @pg.production('command : character')
 @pg.production('command : PAR')
 @pg.production('command : SPACE')
@@ -514,6 +515,13 @@ def optional_globals(parser_state, p):
 
 
 # End of the simple assignments.
+
+
+@pg.production('add_kern : KERN dimen')
+@pg.production('add_kern : MATH_KERN mu_dimen')
+def add_kern(parser_state, p):
+    return Token(type_=p[0].type, value=p[1])
+
 
 @pg.error
 def error(parser_state, p):

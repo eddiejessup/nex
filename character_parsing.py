@@ -1,5 +1,5 @@
 from common import Token
-from typer import PhysicalUnit, MuUnit, non_active_literals_map, hex_letters_map
+from typer import PhysicalUnit, MuUnit, InternalUnit, non_active_literals_map, hex_letters_map
 
 
 letter_to_non_active_uncased_type_map = {}
@@ -91,6 +91,14 @@ def add_character_productions(pg):
         return None
 
     # Unit related.
+
+    @pg.production(word_to_pr('em'))
+    def em(parser_state, p):
+        return InternalUnit.em
+
+    @pg.production(word_to_pr('ex'))
+    def ex(parser_state, p):
+        return InternalUnit.em
 
     @pg.production(word_to_pr('mu', target='mu_unit') + ' one_optional_space')
     def unit_of_mu_measure(parser_state, p):

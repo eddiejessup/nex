@@ -75,6 +75,15 @@ class Scope(object):
     def get_advanced_register_value(self, *args, **kwargs):
         return self.defer_to_registers('get_advanced_register_value', *args, **kwargs)
 
+    # Font interface.
+    def defer_to_font_state(self, func_name, *args, **kwargs):
+        f = getattr(self.font_state, func_name)
+        return f(*args, **kwargs)
+
+    @property
+    def current_font_id(self):
+        return self.font_state.current_font_id
+
     # Expander interface.
 
     # TODO: maybe just have outside things address .expander directly.
@@ -107,10 +116,10 @@ class Scope(object):
         return self.defer_to_expander('set_parameter', *args, **kwargs)
 
 
-def get_initial_scope():
+def get_initial_scope(global_font_state):
     codes = get_initial_codes()
     registers = get_initial_registers()
-    font_state = get_initial_font_state()
+    font_state = get_initial_font_state(global_font_state)
     expander = get_initial_expander()
     initial_scope = Scope(codes, registers, font_state, expander)
     return initial_scope
@@ -133,7 +142,7 @@ class GlobalState(object):
         self.modes = [Mode.vertical]
         self.groups = [Group.outside]
         self.scopes = []
-        initial_scope = get_initial_scope()
+        initial_scope = get_initial_scope(self.global_font_state)
         self.push_scope(initial_scope)
 
     # Mode.
@@ -187,7 +196,7 @@ class GlobalState(object):
         # pertain to all existing groups, not just to the innermost one."
         return self.scopes if is_global else [self.scope]
 
-    def try_scope_until_success(self, func_name, *args, **kwargs):
+    def try_scope_func_until_success(self, func_name, *args, **kwargs):
         for scope in reversed(self.scopes):
             f = getattr(scope, func_name)
             try:
@@ -196,6 +205,16 @@ class GlobalState(object):
                 pass
             else:
                 return v
+        import pdb; pdb.set_trace()
+
+    def try_scope_attr_until_success(self, attr_name):
+        for scope in reversed(self.scopes):
+            try:
+                a = getattr(scope, attr_name)
+            except (NotInScopeError, AttributeError):
+                pass
+            else:
+                return a
         import pdb; pdb.set_trace()
 
     # Codes.
@@ -215,30 +234,30 @@ class GlobalState(object):
             set_func(char, code)
 
     def get_cat_code(self, *args, **kwargs):
-        return self.try_scope_until_success('get_cat_code', *args, **kwargs)
+        return self.try_scope_func_until_success('get_cat_code', *args, **kwargs)
 
     def get_math_code(self, *args, **kwargs):
-        return self.try_scope_until_success('get_math_code', *args, **kwargs)
+        return self.try_scope_func_until_success('get_math_code', *args, **kwargs)
 
     def get_lower_case_code(self, *args, **kwargs):
-        return self.try_scope_until_success('get_lower_case_code', *args, **kwargs)
+        return self.try_scope_func_until_success('get_lower_case_code', *args, **kwargs)
 
     def get_upper_case_code(self, *args, **kwargs):
-        return self.try_scope_until_success('get_upper_case_code', *args, **kwargs)
+        return self.try_scope_func_until_success('get_upper_case_code', *args, **kwargs)
 
     def get_space_factor_code(self, *args, **kwargs):
-        return self.try_scope_until_success('get_space_factor_code', *args, **kwargs)
+        return self.try_scope_func_until_success('get_space_factor_code', *args, **kwargs)
 
     def get_delimiter_code(self, *args, **kwargs):
-        return self.try_scope_until_success('get_delimiter_code', *args, **kwargs)
+        return self.try_scope_func_until_success('get_delimiter_code', *args, **kwargs)
 
     # Registers.
 
     def get_register_value(self, *args, **kwargs):
-        return self.try_scope_until_success('get_register_value', *args, **kwargs)
+        return self.try_scope_func_until_success('get_register_value', *args, **kwargs)
 
     def get_advanced_register_value(self, *args, **kwargs):
-        return self.try_scope_until_success('get_advanced_register_value', *args, **kwargs)
+        return self.try_scope_func_until_success('get_advanced_register_value', *args, **kwargs)
 
     def set_register_value(self, is_global, *args, **kwargs):
         for scope in self.get_scopes(is_global):
@@ -258,6 +277,12 @@ class GlobalState(object):
 
     # Fonts.
 
+    @property
+    def current_font(self, *args, **kwargs):
+        current_font_id = self.try_scope_attr_until_success('current_font_id')
+        current_font = self.global_font_state.fonts[current_font_id]
+        return current_font
+
     def set_current_font(self, *args, **kwargs):
         self.scope.font_state.set_current_font(*args, **kwargs)
 
@@ -269,10 +294,10 @@ class GlobalState(object):
     # Expander.
 
     def expand_macro_to_token_list(self, *args, **kwargs):
-        return self.try_scope_until_success('expand_macro_to_token_list', *args, **kwargs)
+        return self.try_scope_func_until_success('expand_macro_to_token_list', *args, **kwargs)
 
     def resolve_control_sequence_to_token(self, *args, **kwargs):
-        return self.try_scope_until_success('resolve_control_sequence_to_token', *args, **kwargs)
+        return self.try_scope_func_until_success('resolve_control_sequence_to_token', *args, **kwargs)
 
     def set_macro(self, name, definition_token, prefixes):
         # TODO: Consider of \globaldefs integer parameter.
@@ -298,7 +323,7 @@ class GlobalState(object):
             scope.do_let_assignment(*args, **kwargs)
 
     def get_parameter_value(self, *args, **kwargs):
-        return self.try_scope_until_success('get_parameter_value', *args, **kwargs)
+        return self.try_scope_func_until_success('get_parameter_value', *args, **kwargs)
 
     def set_parameter(self, is_global, *args, **kwargs):
         for scope in self.get_scopes(is_global):

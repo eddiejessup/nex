@@ -25,6 +25,14 @@ class FontInfo(object):
         args = (','.join('{}={}'.format(k, v) for k, v in field_args))
         return '{}<{}>'.format(self.__class__.__name__, args)
 
+    @property
+    def em_size(self):
+        return 1
+
+    @property
+    def ex_size(self):
+        return 1
+
 
 class FontRange(Enum):
     text = terminal_primitive_control_sequences_map['textfont']
@@ -40,9 +48,10 @@ def get_initial_font_families():
     return font_families
 
 
-def get_initial_font_state():
+def get_initial_font_state(global_font_state):
     font_families = get_initial_font_families()
     font_state = FontState(font_families)
+    font_state.set_current_font(global_font_state.null_font_id)
     return font_state
 
 
@@ -67,8 +76,6 @@ class FontState(object):
     # TODO: make font_family getter, but raise KeyError if entry is None.
 
     def set_current_font(self, font_id):
-        if font_id not in self.font_control_sequences:
-            raise ValueError
         self._current_font_id = font_id
 
     @property
@@ -76,22 +83,28 @@ class FontState(object):
         # We raise an error on None, because we will be calling this from a
         # scope. If the font is None, we want to go to the outer scope, which
         # we know to do when a KeyError is raised.
-        if self.current_font_id is not None:
+        if self._current_font_id is not None:
             return self._current_font_id
         raise KeyError
 
 
 class GlobalFontState(object):
 
+    null_font_id = 0
+
     def __init__(self):
-        # TODO: put in null font (it's explained in the TeXBook somewhere).
-        self.fonts = {}
+        null_font = FontInfo(file_name=None, at_clause=None)
+        self.fonts = {self.null_font_id: null_font}
 
     def set_skew_char(self, font_id, number):
         self.fonts[font_id].skew_char = number
 
     def set_hyphen_char(self, font_id, number):
         self.fonts[font_id].hyphen_char = number
+
+    @property
+    def null_font(self):
+        return self.fonts[self.null_font_id]
 
     def define_new_font(self, file_name, at_clause):
         # TODO: do this properly.

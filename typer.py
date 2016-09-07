@@ -91,6 +91,11 @@ class MuUnit(Enum):
     mu = 'mu'
 
 
+class InternalUnit(Enum):
+    em = 'em'
+    ex = 'ex'
+
+
 units_in_scaled_points = {}
 units_in_scaled_points[PhysicalUnit.scaled_point] = 1
 units_in_scaled_points[PhysicalUnit.point] = 65536 * units_in_scaled_points[PhysicalUnit.scaled_point]
@@ -278,6 +283,8 @@ terminal_primitive_control_sequences_map = {
     # register.
     'vsplit': 'V_SPLIT',
 
+    'kern': 'KERN',
+    'mkern': 'MATH_KERN',
 }
 
 

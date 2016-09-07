@@ -3,7 +3,7 @@ from rply import ParserGenerator
 from common import Token
 
 from expander import parameter_types
-from typer import (literal_types, PhysicalUnit, MuUnit, units_in_scaled_points,
+from typer import (literal_types, PhysicalUnit, MuUnit, InternalUnit, units_in_scaled_points,
                    unexpanded_cs_types, unexpanded_token_type,
                    terminal_primitive_control_sequences_map,
                    short_hand_def_to_token_map, font_def_token_type,
@@ -95,13 +95,19 @@ def evaluate_dimen(parser_state, dimen_token):
                             'number_of_fils': unit_token['number_of_fils']})
     # Only one unit in mu units, a mu. I don't know what a mu is though...
     elif unit in MuUnit:
-        return number_of_units
-    is_true_unit = unit_token['true']
-    number_of_scaled_points = units_in_scaled_points[unit] * number_of_units
-    # TODO: deal with 'true' and 'not-true' scales properly
-    mag_parameter = 1000.0
-    if is_true_unit:
-        number_of_scaled_points *= 1000.0 / mag_parameter
+        number_of_scaled_points = number_of_units
+    elif unit in InternalUnit:
+        if unit == InternalUnit.em:
+            number_of_scaled_points = parser_state.state.current_font.em_size
+        elif unit == InternalUnit.ex:
+            number_of_scaled_points = parser_state.state.current_font.ex_size
+    else:
+        is_true_unit = unit_token['true']
+        number_of_scaled_points = units_in_scaled_points[unit] * number_of_units
+        # TODO: deal with 'true' and 'not-true' scales properly
+        mag_parameter = 1000.0
+        if is_true_unit:
+            number_of_scaled_points *= 1000.0 / mag_parameter
     if sign == '-':
         number_of_scaled_points *= -1
     return number_of_scaled_points
@@ -364,6 +370,20 @@ def decimal_constant_append(parser_state, p):
     v = p[0]
     v.digits = v.digits + [p[1]]
     return v
+
+
+@pg.production('unit_of_measure : optional_spaces internal_unit')
+def unit_of_measure_internal(parser_state, p):
+    return p[1]
+
+
+@pg.production('internal_unit : em one_optional_space')
+@pg.production('internal_unit : ex one_optional_space')
+# @pg.production('internal_unit : internal_integer')
+# @pg.production('internal_unit : internal_dimen')
+# @pg.production('internal_unit : internal_glue')
+def internal_unit(parser_state, p):
+    return {'unit': p[0]}
 
 
 @pg.production('unit_of_measure : optional_true physical_unit one_optional_space')
