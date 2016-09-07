@@ -63,6 +63,8 @@ def evaluate_size(parser_state, size_token):
         elif is_register_type(size_token.type):
             v = parser_state.state.get_register_value(size_token.type,
                                                       i=size_token.value)
+            if size_token.type == 'SKIP':
+                import pdb; pdb.set_trace()
             return v
         else:
             import pdb; pdb.set_trace()
@@ -249,7 +251,7 @@ def maybe_mu_unsigned_dimen(parser_state, p):
 @pg.production('coerced_dimen : internal_glue')
 @pg.production('coerced_mu_dimen : internal_mu_glue')
 def maybe_mu_coerced_dimen(parser_state, p):
-    import pdb; pdb.set_trace()
+    return p[0]
 
 
 @pg.production('unsigned_number : normal_integer')
