@@ -211,15 +211,17 @@ def variable_assignment_integer(parser_state, p):
 def arithmetic_integer_variable(parser_state, p):
     is_global = p[0]
     value = evaluate_number(parser_state, p[4])
-    if is_register_type(p[1].type):
+    if is_register_type(p[2].type):
         parser_state.state.advance_register_value(is_global=is_global,
-                                                  type_=p[1].type,
-                                                  i=p[1].value,
+                                                  type_=p[2].type,
+                                                  i=p[2].value,
                                                   value=value)
+    else:
+        import pdb; pdb.set_trace()
     # TODO: Allow arithmetic on parameters.
     # TODO: Allow multiply and divide operations.
     # TODO: Allow arithmetic on dimen, glue and muglue.
-    return Token(type_='advance', value={'target': p[1], 'value': p[3]})
+    return Token(type_='advance', value={'target': p[2], 'value': p[4]})
 
 
 @pg.production('optional_by : by')
@@ -515,14 +517,16 @@ def optional_globals(parser_state, p):
 
 @pg.error
 def error(parser_state, p):
-    from condition_parser import ExpectedParsingError
-    raise ExpectedParsingError
+    if parser_state.in_recovery_mode:
+        print("Syntax error in input!")
+        post_mortem(parser_state, parser)
+        raise ValueError
+    else:
+        from condition_parser import ExpectedParsingError
+        raise ExpectedParsingError
 
 # @pg.error
 # def error(parser_state, p):
-#     print("Syntax error in input!")
-#     post_mortem(parser_state, parser)
-#     raise ValueError
 
 # Build the parser
 parser = pg.build()

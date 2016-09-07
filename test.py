@@ -8,7 +8,7 @@ from lexer import Lexer
 from banisher import Banisher
 from expander import Expander
 from parser import parser
-from condition_parser import condition_parser, ExpectedParsingError
+from condition_parser import ExpectedParsingError
 
 
 ch = logging.StreamHandler()
@@ -73,26 +73,36 @@ class CommandGrabber(object):
         self.banisher = banisher
         self.lex_wrapper = lex_wrapper
 
-        self.condition_buffer_stack = deque()
+        self.buffer_stack = deque()
 
     def get_command(self):
-        condition_parse_stack = deque()
+        parse_stack = deque()
         have_parsed = False
         while True:
-            # While populating this, maybe we will see an if_type in the
-            # condition. Haven't tested, but it seems like this should
-            # recurse correctly.
-            t = self.banisher.pop_or_fill_and_pop(self.condition_buffer_stack)
-            condition_parse_stack.append(t)
             try:
-                outcome = parser.parse(iter(condition_parse_stack),
+                t = self.banisher.pop_or_fill_and_pop(self.buffer_stack)
+            except EndOfFile:
+                # import pdb; pdb.set_trace()
+                if have_parsed:
+                    break
+                elif not parse_stack:
+                    raise EndOfFile
+                else:
+                    import pdb; pdb.set_trace()
+                # if parse_stack:
+                #     self.lex_wrapper.in_recovery_mode = True
+                #     parser.parse(iter(parse_stack), state=self.lex_wrapper)
+                #     import pdb; pdb.set_trace()
+            parse_stack.append(t)
+            try:
+                outcome = parser.parse(iter(parse_stack),
                                        state=self.lex_wrapper)
             except (ExpectedParsingError, StopIteration):
                 if have_parsed:
+                    self.buffer_stack.appendleft(parse_stack.pop())
                     break
             else:
                 have_parsed = True
-        self.condition_buffer_stack.appendleft(condition_parse_stack.pop())
         return outcome
 
 
@@ -112,7 +122,9 @@ def test_parser():
         else:
             commands.append(command)
 
-    import pdb; pdb.set_trace()
+    for command in commands:
+        print(command)
+        print()
 
 
     # result = parser.parse(lex_wrapper, state=lex_wrapper)

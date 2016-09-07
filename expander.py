@@ -17,34 +17,59 @@ parameter_types = default_parameters.keys()
 def parse_parameter_text(tokens):
     p_nr = 1
     i = 0
-    tokens_processed = []
+    parameters = []
     while i < len(tokens):
         t = tokens[i]
-        if t.type == 'PARAMETER':
+
+        # The only time we should see a non-parameter, is if there is text
+        # preceding the parameters proper. Anything else should be
+        # gobbled down below. Ooh-err.
+        # "
+        # Tokens that precede the first parameter token in the parameter
+        # text of a definition are required to follow the control sequence; in
+        # effect, they become part of the control sequence name.
+        # "
+        if t.type != 'PARAMETER':
+            assert p_nr == 1
+            parameters.append(t)
             i += 1
-            t_next = tokens[i]
-            if int(t_next.value['char']) != p_nr:
-                raise ValueError
-            # How does TeX determine where an argument stops, you ask. Answer:
-            # There are two cases.
-            # An undelimited parameter is followed immediately in the parameter
-            # text by a parameter token, or it occurs at the very end of the
-            # parameter text; [...]
-            if i == len(tokens) - 1:
-                type_ = undelim_macro_param_type
-            else:
-                t_after = tokens[i + 1]
-                if t_after.type == 'PARAMETER':
-                    type_ = undelim_macro_param_type
-                # A delimited parameter is followed in the parameter text by
-                # one or more non-parameter tokens [...]
-                else:
-                    type_ = delim_macro_param_type
-            t = InternalToken(type_=type_, value=p_nr)
-            p_nr += 1
-        tokens_processed.append(t)
+            continue
+
+        # Go forward to get the parameter number,
+        # and check it is numbered correctly.
         i += 1
-    return tokens_processed
+        t_next = tokens[i]
+        if int(t_next.value['char']) != p_nr:
+            raise ValueError
+
+        # "
+        # How does TeX determine where an argument stops, you ask. Answer:
+        # There are two cases.
+        # An undelimited parameter is followed immediately in the parameter
+        # text by a parameter token, or it occurs at the very end of the
+        # parameter text; [...]
+        # A delimited parameter is followed in the parameter text by
+        # one or more non-parameter tokens [...]
+        # "
+        delim_tokens = []
+        i += 1
+        if i < len(tokens):
+            # If there are more tokens, go forward in the token list collecting
+            # delimiter tokens.
+            while i < len(tokens):
+                d_t = tokens[i]
+                if d_t.type == 'PARAMETER':
+                    break
+                else:
+                    delim_tokens.append(d_t)
+                i += 1
+        type_ = (delim_macro_param_type if delim_tokens
+                 else undelim_macro_param_type)
+        param = InternalToken(type_=type_, value={'param_nr': p_nr,
+                                                  'delim_tokens': delim_tokens})
+        p_nr += 1
+        parameters.append(param)
+    return parameters
 
 
 def parse_replacement_text(tokens):
@@ -72,11 +97,6 @@ def get_nr_params(param_text):
     return sum(t.type in macro_param_types for t in param_text)
 
 
-def parse_argument_text(argument_text, parameter_text):
-    # Just assume all undelimited arguments
-    return argument_text
-
-
 def substitute_params_with_args(replace_text, arguments):
     finished_text = []
     for i, t in enumerate(replace_text):
@@ -101,7 +121,8 @@ def make_simple_definition_token(name, tokens):
 
 
 def make_control_sequence_call_token(Cls, type_, name):
-    return Cls(type_=type_, value={'name': name})
+    return Cls(type_=type_, value={'name': name,
+                                   'lex_type': control_sequence_lex_type})
 
 
 def get_initial_expander():
@@ -176,12 +197,10 @@ class Expander(object):
 
         self.enclosing_scope = enclosing_scope
 
-    def expand_macro_to_token_list(self, name, argument_text):
+    def expand_macro_to_token_list(self, name, arguments):
         token = self.resolve_control_sequence_to_token(name)
         def_token = token.value['definition']
         def_text_token = def_token.value['text']
-        parameter_text = def_text_token.value['parameter_text']
-        arguments = parse_argument_text(argument_text, parameter_text)
         replace_text = def_text_token.value['replacement_text']
         finished_text = substitute_params_with_args(replace_text, arguments)
         return finished_text
@@ -190,12 +209,13 @@ class Expander(object):
         self.control_sequences[name] = route_token
 
     def resolve_name_to_route_token(self, name):
-        if isinstance(name, dict):
-            import pdb; pdb.set_trace()
         if name in self.control_sequences:
             route_token = self.control_sequences[name]
         else:
-            route_token = self.enclosing_scope.expander.resolve_name_to_route_token(name)
+            try:
+                route_token = self.enclosing_scope.expander.resolve_name_to_route_token(name)
+            except:
+                import pdb; pdb.set_trace()
         return route_token
 
     def _resolve_route_token_to_raw_value(self, r):
@@ -222,7 +242,8 @@ class Expander(object):
             # Amend canonical token to give it the proper control sequence
             # 'name'.
             TokenCls = token.__class__
-            token = TokenCls(type_=token.type, value={'name': name})
+            token = TokenCls(type_=token.type, value=token.value.copy())
+            token.value['name'] = name
         # TODO: check what happens if we \let something to a macro,
         # then call \csname on it. Do we get the original macro name?
         # Maybe need to do something like for primitive tokens above.

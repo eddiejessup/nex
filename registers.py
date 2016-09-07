@@ -49,10 +49,17 @@ class Registers(object):
 
     def get_register_value(self, type_, i):
         register = self.get_register(type_)
+        # if i == 22 and type_ == 'COUNT':
+        #     import pdb; pdb.set_trace()
         return register[i]
 
     def set_register_value(self, type_, i, value):
         register = self.get_register(type_)
+        # if i == 22 and type_ == 'COUNT':
+        #     if value == 1:
+        #         self.okok = True
+        #     if hasattr(self, 'okok'):
+        #         import pdb; pdb.set_trace()
         register[i] = value
 
     def get_advanced_register_value(self, type_, i, value):

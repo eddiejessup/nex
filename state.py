@@ -72,8 +72,8 @@ class Scope(object):
     def set_register_value(self, *args, **kwargs):
         return self.defer_to_registers('set_register_value', *args, **kwargs)
 
-    def advance_register_value(self, *args, **kwargs):
-        return self.defer_to_registers('advance_register_value', *args, **kwargs)
+    def get_advanced_register_value(self, *args, **kwargs):
+        return self.defer_to_registers('get_advanced_register_value', *args, **kwargs)
 
     # Expander interface.
 

@@ -12,12 +12,10 @@ class LexWrapper(object):
         self.r = Reader(file_name)
         self.lex = Lexer(self.r, self.state)
         self.b = Banisher(self.lex, wrapper=self)
+        self.in_recovery_mode = False
 
     def __next__(self):
         try:
             return self.b.next_token
         except EndOfFile:
             return None
-
-    def be_done(self):
-        self.fake_done = True

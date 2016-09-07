@@ -3,6 +3,7 @@ from enum import Enum
 
 from reader import EndOfFile
 from common import Token
+# TODO: Make lex types into an enum. Love an enum, makes me feel so safe.
 from typer import CatCode, char_cat_lex_type, control_sequence_lex_type
 
 # logger = logging.getLogger(__name__)
@@ -146,7 +147,7 @@ class Lexer(object):
                         control_sequence_chars.append(next_char)
                     else:
                         break
-                self.reading_state = ReadingState.line_middle
+                self.reading_state = ReadingState.skipping_blanks
             control_sequence_name = ''.join(control_sequence_chars)
             return make_control_sequence_token(control_sequence_name)
             # logger.debug('Got control sequence {}'.format(control_sequence_name))

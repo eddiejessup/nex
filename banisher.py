@@ -7,7 +7,7 @@ from reader import EndOfFile
 from lexer import make_char_cat_token
 from parser import pg, parser
 from typer import (CatCode,
-                   char_cat_lex_type,
+                   char_cat_lex_type, control_sequence_lex_type,
                    lex_token_to_unexpanded_terminal_token,
                    make_unexpanded_control_sequence_terminal_token,
                    unexpanded_cs_types, unexpanded_token_type,
@@ -31,6 +31,12 @@ read_unexpanded_control_sequence_types += tuple(set(short_hand_def_map.values())
 
 if_types = if_map.values()
 message_types = ('MESSAGE', 'ERROR_MESSAGE', 'WRITE')
+
+
+def is_control_sequence_call(token):
+    return (isinstance(token.value, dict) and
+            'lex_type' in token.value and
+            token.value['lex_type'] == control_sequence_lex_type)
 
 
 class ContextMode(Enum):
@@ -63,6 +69,15 @@ def make_char_cat_term_token(char, cat):
     return char_term_token
 
 
+def get_brace_sign(token):
+    if token.type == 'LEFT_BRACE':
+        return 1
+    elif token.type == 'RIGHT_BRACE':
+        return -1
+    else:
+        return 0
+
+
 class Banisher(object):
 
     def __init__(self, lexer, wrapper):
@@ -73,7 +88,7 @@ class Banisher(object):
         # Input buffer.
         self.input_tokens_stack = deque()
         # Output buffer.
-        self.output_terminal_tokens_stack = deque()
+        # self.output_terminal_tokens_stack = deque()
         self.context_mode_stack = []
 
         self._secret_terminal_list = []
@@ -88,14 +103,14 @@ class Banisher(object):
     def expanding_control_sequences(self):
         return self.context_mode in expanding_modes
 
-    @property
-    def next_token(self):
-        next_token = self.pop_or_fill_and_pop(self.output_terminal_tokens_stack)
-        logger.debug(self.output_terminal_tokens_stack)
-        self._secret_terminal_list.append(next_token)
-        # for t in self._secret_terminal_list[-20:]:
-        #     print(t)
-        return next_token
+    # @property
+    # def next_token(self):
+    #     next_token = self.pop_or_fill_and_pop(self.output_terminal_tokens_stack)
+    #     logger.debug(self.output_terminal_tokens_stack)
+    #     self._secret_terminal_list.append(next_token)
+    #     # for t in self._secret_terminal_list[-20:]:
+    #     #     print(t)
+    #     return next_token
 
     def pop_or_fill_and_pop(self, stack):
         if not stack and self.finish_up:
@@ -104,6 +119,12 @@ class Banisher(object):
         while not stack:
             self.process_input_to_stack(stack)
         next_token = stack.popleft()
+        return next_token
+
+    def pop_or_fill_and_pop_input(self, input_stack):
+        if not input_stack:
+            self.pop_input_to_stack(input_stack)
+        next_token = input_stack.popleft()
         return next_token
 
     def populate_input_stack(self):
@@ -122,10 +143,7 @@ class Banisher(object):
         while True:
             token = self.pop_next_input_token()
             tokens.append(token)
-            if token.type == 'LEFT_BRACE':
-                brace_level += 1
-            elif token.type == 'RIGHT_BRACE':
-                brace_level -= 1
+            brace_level += get_brace_sign(token)
             if brace_level == 0:
                 break
         balanced_text = TerminalToken(type_='BALANCED_TEXT_AND_RIGHT_BRACE', value=tokens[:-1])
@@ -182,26 +200,73 @@ class Banisher(object):
                 first_token.type in unexpanded_cs_types):
             first_token = self.global_state.resolve_control_sequence_to_token(first_token.value['name'])
         type_ = first_token.type
-
         if type_ == 'MACRO':
             macro_definition = first_token.value['definition']
             name = macro_definition.value['name']
             macro_text = macro_definition.value['text']
-            param_text = macro_text.value['parameter_text']
+            params = macro_text.value['parameter_text']
 
-            argument_text = []
-            for _ in range(len(param_text)):
-                next_token = self.pop_next_input_token()
-                if next_token.type == 'LEFT_BRACE':
-                    arg_token = self.get_balanced_text_token()
-                    next_tokens = arg_token.value
+            def tokens_equal(t, u):
+                if t.value['lex_type'] != u.value['lex_type']:
+                    return False
+                if t.value['lex_type'] == char_cat_lex_type:
+                    attr_keys = ('char', 'cat')
+                elif t.value['lex_type'] == control_sequence_lex_type:
+                    attr_keys = ('name',)
                 else:
-                    next_tokens = [next_token]
-                argument_text.append(next_tokens)
-            # Now run again, hopefully now seeing a primitive token.
-            # (Might not, if the expansion needs more expansion, but the
-            # ultimate escape route is to see a primitive token.)
-            expanded_first_token = self.global_state.expand_macro_to_token_list(name, argument_text)
+                    import pdb; pdb.set_trace()
+                try:
+                    return all(t.value[k] == u.value[k] for k in attr_keys)
+                except:
+                    import pdb; pdb.set_trace()
+
+            arguments = []
+            i_param = 0
+            for i_param in range(len(params)):
+                arg_toks = []
+                p_t = params[i_param]
+                assert p_t.value['param_nr'] == i_param + 1
+                delim_toks = p_t.value['delim_tokens']
+                if p_t.type == 'UNDELIMITED_PARAM':
+                    assert not delim_toks
+                    next_token = self.pop_next_input_token()
+                    if next_token.type == 'LEFT_BRACE':
+                        b_tok = self.get_balanced_text_token()
+                        arg_toks.extend(b_tok.value)
+                    else:
+                        arg_toks.append(next_token)
+                elif p_t.type == 'DELIMITED_PARAM':
+                    # To be finished, we must be balanced brace-wise.
+                    brace_level = 0
+                    while True:
+                        next_token = self.pop_next_input_token()
+                        brace_level += get_brace_sign(next_token)
+                        arg_toks.append(next_token)
+                        # If we are balanced, and we could possibly
+                        # have got the delimiter tokens.
+                        if brace_level == 0 and len(arg_toks) >= len(delim_toks):
+                            # Check if the recent argument tokens match the
+                            # delimiter tokens, and if so, we are done.
+                            to_compare = zip(reversed(arg_toks),
+                                             reversed(delim_toks))
+                            if all(tokens_equal(*ts) for ts in to_compare):
+                                break
+                    # Remove the delimiter tokens as they are not part of
+                    # the argument
+                    arg_toks = arg_toks[:-len(delim_toks)]
+                    # We remove exactly one set of braces, if present.
+                    if arg_toks[0].type == 'LEFT_BRACE' and arg_toks[-1].type == 'RIGHT_BRACE':
+                        arg_toks = arg_toks[1:-1]
+                else:
+                    # We should only see non-parameters in the parameter list,
+                    # if they are text preceding the parameters proper. See
+                    # the comments in `parse_parameter_text` for further
+                    # details.
+                    assert not arguments
+                    pass
+                arguments.append(arg_toks)
+
+            expanded_first_token = self.global_state.expand_macro_to_token_list(name, arguments)
 
             # Now run again, hopefully now seeing a primitive token.
             # (Might not, if the expansion needs more expansion, but the
@@ -261,20 +326,6 @@ class Banisher(object):
             material_type = material_map[mode]
             material = TerminalToken(type_=material_type, value=results)
             output_tokens.append(material)
-        elif self.context_mode == ContextMode.absorbing_parameter_text:
-            if type_ == 'LEFT_BRACE':
-                parameter_text_template = parse_parameter_text(self.parameter_text_tokens)
-                parameter_text_token = TerminalToken(type_='PARAMETER_TEXT',
-                                                     value=parameter_text_template)
-                output_tokens.append(parameter_text_token)
-                # Put the LEFT_BRACE back on the input stack.
-                self.input_tokens_stack.appendleft(first_token)
-                # Done absorbing parameter text.
-                self.pop_context()
-                # Now get the replacement text.
-                self.push_context(ContextMode.awaiting_balanced_text_start)
-            else:
-                self.parameter_text_tokens.append(first_token)
         elif type_ == 'LEFT_BRACE':
             # We think we aren't seeing a left brace to do with defining a
             # macro, or starting a box, and for now, knowing no better, we will
@@ -304,8 +355,23 @@ class Banisher(object):
             output_tokens.append(first_token)
             output_tokens.append(next_token)
             if type_ in def_map.values():
-                self.push_context(ContextMode.absorbing_parameter_text)
-                self.parameter_text_tokens = []
+                parameter_text_tokens = []
+                while True:
+                    tok = self.pop_next_input_token()
+                    if tok.type == 'LEFT_BRACE':
+                        break
+                    parameter_text_tokens.append(tok)
+                parameters = parse_parameter_text(parameter_text_tokens)
+                parameters_token = TerminalToken(type_='PARAMETER_TEXT',
+                                                 value=parameters)
+                # Now get the replacement text.
+                # TODO: this is where expanded-def will be differentiated from
+                # normal-def.
+                balanced_text_token = self.get_balanced_text_token()
+                # Put the parameter text, LEFT_BRACE and replacement
+                # text on the output stack.
+                output_tokens.extend([parameters_token, tok,
+                                      balanced_text_token])
             elif type_ == 'LET':
                 # We are going to parse the arguments of LET ourselves,
                 # because we want to allow the target token be basically
@@ -351,7 +417,10 @@ class Banisher(object):
                 # While populating this, maybe we will see an if_type in the
                 # condition. Haven't tested, but it seems like this should
                 # recurse correctly.
-                t = self.pop_or_fill_and_pop(condition_buffer_stack)
+                try:
+                    t = self.pop_or_fill_and_pop(condition_buffer_stack)
+                except EndOfFile:
+                    import pdb; pdb.set_trace()
                 condition_parse_stack.append(t)
                 try:
                     outcome = condition_parser.parse(iter(condition_parse_stack), state=self.wrapper)
@@ -385,35 +454,45 @@ class Banisher(object):
             nr_conditions = 1
             i_block = 0
             not_skipped_tokens = []
-            condition_block_delimiter_types = ('ELSE', 'OR')
-            condition_types = ('END_IF',) + tuple(if_types) + tuple(condition_block_delimiter_types)
+            condition_block_delimiter_names = ('else', 'or')
+
+            if_names = if_map.keys()
+
+            def get_condition_sign(token):
+                if not is_control_sequence_call(token):
+                    return 0
+                name = token.value['name']
+                if name in if_names:
+                    return 1
+                elif name == 'fi':
+                    return -1
+                else:
+                    return 0
+
+            def is_condition_delimiter(token):
+                return (is_control_sequence_call(token) and
+                        t.value['name'] in condition_block_delimiter_names)
             while True:
-                t = self.pop_or_fill_and_pop(if_stack)
+                t = self.pop_or_fill_and_pop_input(if_stack)
                 # Keep track of nested conditions.
-                # Since we expand, I'm not actually sure this is needed,
-                # as an if_type will be handled inside the process call,
-                # but I don't think it does any harm.
-                if t.type in if_types:
-                    nr_conditions += 1
-                # This one *is* needed, for the matching END_IF.
-                elif t.type == 'END_IF':
-                    nr_conditions -= 1
 
-                # If we are at the pertinent if-nesting level, then
-                # a condition block delimiter should be kept track of.
-                if nr_conditions == 1 and t.type in condition_block_delimiter_types:
-                    i_block += 1
+                nr_conditions += get_condition_sign(t)
 
-                # Don't include internal tokens, and
-                # include token if we're in the block the condition says
-                # we should pick.
-                if (t.type not in condition_types and
-                        i_block == i_block_to_pick):
-                    not_skipped_tokens.append(t)
-
+                # If we get the terminal  \fi, break
                 if nr_conditions == 0:
                     break
-            output_tokens.extendleft(reversed(not_skipped_tokens))
+                # If we are at the pertinent if-nesting level, then
+                # a condition block delimiter should be kept track of.
+                elif nr_conditions == 1 and is_condition_delimiter(t):
+                    i_block += 1
+                # if we're in the block the condition says we should pick,
+                # include token.
+                elif i_block == i_block_to_pick:
+                    not_skipped_tokens.append(t)
+                # Otherwise we are skipping tokens.
+                else:
+                    pass
+            self.input_tokens_stack.extendleft(reversed(not_skipped_tokens))
         elif type_ == 'STRING':
             next_token = self.pop_next_input_token()
             string_tokens = []
@@ -500,9 +579,13 @@ class Banisher(object):
             output_tokens.append(first_token)
         return output_tokens
 
-    def populate_output_stack(self):
-        self.process_input_to_stack(self.output_terminal_tokens_stack)
+    # def populate_output_stack(self):
+    #     self.process_input_to_stack(self.output_terminal_tokens_stack)
 
     def process_input_to_stack(self, stack):
         next_output_tokens = self.process_next_input_token()
         stack.extend(next_output_tokens)
+
+    def pop_input_to_stack(self, stack):
+        next_input_token = self.pop_next_input_token()
+        stack.append(next_input_token)
