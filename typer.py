@@ -166,6 +166,7 @@ category_map = {
     CatCode.active: 'ACTIVE_CHARACTER',
     # TODO: This is not a terminal token.
     CatCode.parameter: 'PARAMETER',
+    CatCode.math_shift: 'MATH_SHIFT',
 }
 
 

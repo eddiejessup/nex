@@ -9,7 +9,7 @@ from typer import (literal_types, PhysicalUnit, MuUnit, InternalUnit, units_in_s
                    short_hand_def_to_token_map, font_def_token_type,
                    composite_terminal_control_sequence_types,
                    )
-from tex_parameters import glue_keys
+from tex_parameters import glue_keys, special_quantity_types
 from registers import is_register_type, register_token_type_to_register_type
 
 from character_parsing import add_character_productions
@@ -19,6 +19,7 @@ tokens += tuple(terminal_primitive_control_sequences_map.values())
 tokens += tuple(short_hand_def_to_token_map.values())
 tokens += (font_def_token_type,)
 tokens += tuple(parameter_types)
+tokens += special_quantity_types
 tokens += tuple(literal_types)
 tokens += (unexpanded_token_type,)
 tokens += tuple(unexpanded_cs_types)
@@ -295,6 +296,14 @@ def normal_integer_internal_integer(parser_state, p):
 
 @pg.production('normal_dimen : internal_dimen')
 def normal_dimen_internal_dimen(parser_state, p):
+    return p[0]
+
+
+# Special quantities.
+
+@pg.production('internal_integer : SPECIAL_INTEGER')
+@pg.production('internal_dimen : SPECIAL_DIMEN')
+def internal_quantity_special(parser_state, p):
     return p[0]
 
 

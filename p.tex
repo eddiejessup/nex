@@ -540,7 +540,49 @@
 \def\medskip{\vskip\medskipamount}
 \def\bigskip{\vskip\bigskipamount}
 
-\bigskip
-
 \def\nointerlineskip{\prevdepth-1000\p@}
-\nointerlineskip
+\def\offinterlineskip{\baselineskip-1000\p@
+  \lineskip\z@ \lineskiplimit\maxdimen}
+
+\def\topglue{\nointerlineskip\vglue-\topskip\vglue} % for top of page
+\def\vglue{\afterassignment\vgl@\skip@=}
+\def\vgl@{\par \dimen@\prevdepth \hrule height\z@
+  \nobreak\vskip\skip@ \prevdepth\dimen@}
+\def\hglue{\afterassignment\hgl@\skip@=}
+\def\hgl@{\leavevmode \count@\spacefactor \vrule width\z@
+  \nobreak\hskip\skip@ \spacefactor\count@}
+
+\def~{\penalty\@M \ } % tie
+\def\slash{/\penalty\exhyphenpenalty} % a `/' that acts like a `-'
+
+\def\break{\penalty-\@M}
+\def\nobreak{\penalty \@M}
+\def\allowbreak{\penalty \z@}
+
+\def\filbreak{\par\vfil\penalty-200\vfilneg}
+\def\goodbreak{\par\penalty-500 }
+\def\eject{\par\break}
+\def\supereject{\par\penalty-\@MM}
+
+\def\removelastskip{\ifdim\lastskip=\z@\else\vskip-\lastskip\fi}
+\def\smallbreak{\par\ifdim\lastskip<\smallskipamount
+  \removelastskip\penalty-50\smallskip\fi}
+\def\medbreak{\par\ifdim\lastskip<\medskipamount
+  \removelastskip\penalty-100\medskip\fi}
+\def\bigbreak{\par\ifdim\lastskip<\bigskipamount
+  \removelastskip\penalty-200\bigskip\fi}
+
+\def\line{\hbox to\hsize}
+\def\leftline#1{\line{#1\hss}}
+\def\rightline#1{\line{\hss#1}}
+\def\centerline#1{\line{\hss#1\hss}}
+
+\def\rlap#1{\hbox to\z@{#1\hss}}
+\def\llap#1{\hbox to\z@{\hss#1}}
+
+\def\m@th{\mathsurround\z@}
+\def\underbar#1{$\setbox\z@\hbox{#1}\dp\z@\z@
+  \m@th \underline{\box\z@}$}
+
+\newbox\strutbox
+\newbox\strutbox

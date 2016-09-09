@@ -122,3 +122,27 @@ default_parameters = {
     'GLUE_PARAMETER': glue_parameters,
     'MU_GLUE_PARAMETER': mu_glue_parameters,
 }
+
+special_integer_names = (
+    'spacefactor',
+    'prevgraf',
+    'deadcycles',
+    'insertpenalties',
+)
+
+special_dimen_names = (
+    'prevdepth',
+    'pagegoal',
+    'pagetotal',
+    'pagestretch',
+    'pagefilstretch',
+    'pagefillstretch',
+    'pagefilllstretch',
+    'pageshrink',
+    'pagedepth',
+)
+
+special_quantity_types = (
+    'SPECIAL_INTEGER',
+    'SPECIAL_DIMEN',
+)
