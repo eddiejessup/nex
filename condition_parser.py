@@ -2,15 +2,12 @@ import operator
 
 from typer import if_map
 from common_parsing import pg as common_pg, evaluate_number
+from parse_utils import ExpectedParsingError
 
 
 pg = common_pg.copy_to_extend()
 
 pg.tokens += tuple(if_map.values())
-
-
-class ExpectedParsingError(Exception):
-    pass
 
 
 @pg.production('condition : IF_TRUE')

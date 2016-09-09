@@ -2,10 +2,11 @@ import logging
 from collections import deque
 from enum import Enum
 
+from state import GlobalState
 from common import TerminalToken
-from reader import EndOfFile
-from lexer import make_char_cat_token
-from parser import pg, parser
+from reader import Reader, EndOfFile
+from lexer import make_char_cat_token, Lexer
+from parser import parser, CommandGrabber
 from typer import (CatCode,
                    char_cat_lex_type, control_sequence_lex_type,
                    lex_token_to_unexpanded_terminal_token,
@@ -15,7 +16,7 @@ from typer import (CatCode,
                    short_hand_def_map, def_map, if_map)
 from interpreter import Mode, Group
 from expander import parse_parameter_text
-from condition_parser import condition_parser, ExpectedParsingError
+from condition_parser import condition_parser
 from general_text_parser import general_text_parser
 
 logger = logging.getLogger(__name__)
@@ -400,48 +401,16 @@ class Banisher(object):
         elif type_ in if_types:
             # TODO: aren't all these things actually queues, not stacks?
             # (Entails lots of renaming.)
-            # Processing input tokens might return many tokens, so
-            # we store them in a buffer.
-            # Want to extend the stack-to-be-parsed one token at a time,
-            # so we can break as soon as we have all we need.
-            condition_buffer_stack = deque([first_token])
-            condition_parse_stack = deque()
-
-            # Get enough tokens to evaluate condition. We find the longest
-            # input sequence that will parse, and drop that input sequence from
-            # the stack, as we only need it for the condition.
-            # We know to stop adding tokens when we see a switch from not
-            # parsing, to parsing, to not parsing again.
-            have_parsed = False
-            while True:
-                # While populating this, maybe we will see an if_type in the
-                # condition. Haven't tested, but it seems like this should
-                # recurse correctly.
-                try:
-                    t = self.pop_or_fill_and_pop(condition_buffer_stack)
-                except EndOfFile:
-                    import pdb; pdb.set_trace()
-                condition_parse_stack.append(t)
-                try:
-                    outcome = condition_parser.parse(iter(condition_parse_stack), state=self.wrapper)
-                except (ExpectedParsingError, StopIteration):
-                    if have_parsed:
-                        break
-                else:
-                    have_parsed = True
+            grabber = CommandGrabber(self, self.wrapper,
+                                     parser=condition_parser)
+            outcome = grabber.get_command()
+            # Pick up any left-over tokens from the condition command parsing.
+            if_stack = grabber.buffer_stack
 
             if type_ == 'IF_CASE':
                 i_block_to_pick = outcome
             else:
                 i_block_to_pick = 0 if outcome else 1
-
-            # We got exactly one token of fluff, to make the condition parse
-            # stack not-parse. Put that back on the existing buffer, and that
-            # gives us the start of the condition body stack.
-            # We can forget about the rest of the condition stack, as we are
-            # done with it.
-            condition_buffer_stack.appendleft(condition_parse_stack.pop())
-            if_stack = condition_buffer_stack
 
             # Now get the body of the condition text.
             # TeXbook:
@@ -589,3 +558,20 @@ class Banisher(object):
     def pop_input_to_stack(self, stack):
         next_input_token = self.pop_next_input_token()
         stack.append(next_input_token)
+
+
+class LexWrapper(object):
+
+    def __init__(self, file_name):
+        self.state = GlobalState()
+        self.file_name = file_name
+        self.r = Reader(file_name)
+        self.lex = Lexer(self.r, self.state)
+        self.b = Banisher(self.lex, wrapper=self)
+        self.in_recovery_mode = False
+
+    def __next__(self):
+        try:
+            return self.b.next_token
+        except EndOfFile:
+            return None

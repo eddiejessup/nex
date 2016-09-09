@@ -1,5 +1,7 @@
+from collections import deque
 import logging
 
+from reader import EndOfFile
 from utils import post_mortem
 from typer import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from common import Token
@@ -8,6 +10,7 @@ from fonts import FontRange
 from registers import is_register_type
 from common_parsing import (pg as common_pg,
                             evaluate_number, evaluate_dimen, evaluate_glue)
+from parse_utils import ExpectedParsingError
 from general_text_parser import gen_txt_pg
 
 
@@ -557,3 +560,52 @@ def error(parser_state, p):
 
 # Build the parser
 parser = pg.build()
+
+
+class CommandGrabber(object):
+
+    def __init__(self, banisher, lex_wrapper, parser):
+        self.banisher = banisher
+        self.lex_wrapper = lex_wrapper
+        self.parser = parser
+
+        # Processing input tokens might return many tokens, so
+        # we store them in a buffer.
+        self.buffer_stack = deque()
+
+    def get_command(self):
+        # Want to extend the stack-to-be-parsed one token at a time,
+        # so we can break as soon as we have all we need.
+        parse_stack = deque()
+        # Get enough tokens to evaluate command.
+        # We know to stop adding tokens when we see a switch from not
+        # parsing, to parsing, to not parsing again.
+        have_parsed = False
+        while True:
+            try:
+                t = self.banisher.pop_or_fill_and_pop(self.buffer_stack)
+            except EndOfFile:
+                # import pdb; pdb.set_trace()
+                if have_parsed:
+                    break
+                elif not parse_stack:
+                    raise EndOfFile
+                else:
+                    import pdb; pdb.set_trace()
+                # if parse_stack:
+                #     self.lex_wrapper.in_recovery_mode = True
+                #     parser.parse(iter(parse_stack), state=self.lex_wrapper)
+                #     import pdb; pdb.set_trace()
+            parse_stack.append(t)
+            try:
+                result = parser.parse(iter(parse_stack),
+                                      state=self.lex_wrapper)
+            except (ExpectedParsingError, StopIteration):
+                if have_parsed:
+                    # We got exactly one token of fluff, to make the parse
+                    # stack not-parse. Put that back on the existing buffer.
+                    self.buffer_stack.appendleft(parse_stack.pop())
+                    break
+            else:
+                have_parsed = True
+        return result
