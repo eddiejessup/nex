@@ -67,15 +67,7 @@ def test_parser():
 
     b = lex_wrapper.b
     grabber = CommandGrabber(b, lex_wrapper, parser=parser)
-
-    commands = []
-    while True:
-        try:
-            command = grabber.get_command()
-        except EndOfFile:
-            break
-        else:
-            commands.append(command)
+    commands = list(grabber.get_commands_until_end())
 
     for command in commands:
         print(command)

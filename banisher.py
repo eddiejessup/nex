@@ -293,6 +293,7 @@ class Banisher(object):
 
             # Left brace initiates a new level of grouping.
             # See Group class for explanation of this bit.
+            # TODO: merge pushing group and scope with helper method(s).
             if self.context_mode == ContextMode.awaiting_make_v_box_start:
                 box_group = Group.v_box
             elif self.context_mode == ContextMode.awaiting_make_v_top_start:
@@ -317,9 +318,13 @@ class Banisher(object):
             # Done with the context.
             self.pop_context()
 
-            # box_parser = pg.build()
             box_parser = parser
-            results = box_parser.parse(self.wrapper, state=self.wrapper)
+            grabber = CommandGrabber(self, self.wrapper, parser=box_parser)
+
+            # Matching right brace should enable 'finish_up', then we will
+            # trigger EndOfFile and return.
+            results = list(grabber.get_commands_until_end())
+
             material_map = {
                 Mode.internal_vertical: 'VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE',
                 Mode.restricted_horizontal: 'HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE',
@@ -399,10 +404,10 @@ class Banisher(object):
             output_tokens.append(first_token)
             self.push_context(ContextMode.awaiting_balanced_text_start)
         elif type_ in if_types:
-            # TODO: aren't all these things actually queues, not stacks?
-            # (Entails lots of renaming.)
             grabber = CommandGrabber(self, self.wrapper,
                                      parser=condition_parser)
+            # TODO: aren't all these things actually queues, not stacks?
+            # (Entails lots of renaming.)
             grabber.buffer_stack.append(first_token)
             outcome = grabber.get_command()
             # Pick up any left-over tokens from the condition command parsing.

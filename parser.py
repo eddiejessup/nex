@@ -609,3 +609,12 @@ class CommandGrabber(object):
             else:
                 have_parsed = True
         return result
+
+    def get_commands_until_end(self):
+        while True:
+            try:
+                command = self.get_command()
+            except EndOfFile:
+                return
+            else:
+                yield command
