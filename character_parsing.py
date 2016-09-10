@@ -90,6 +90,18 @@ def add_character_productions(pg):
     def spread(parser_state, p):
         return None
 
+    @pg.production(word_to_pr('width'))
+    def width(parser_state, p):
+        return 'width'
+
+    @pg.production(word_to_pr('height'))
+    def height(parser_state, p):
+        return 'height'
+
+    @pg.production(word_to_pr('depth'))
+    def depth(parser_state, p):
+        return 'depth'
+
     # Unit related.
 
     @pg.production(word_to_pr('em'))

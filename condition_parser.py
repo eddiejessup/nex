@@ -2,7 +2,7 @@ import operator
 
 from typer import if_map
 from common_parsing import pg as common_pg, evaluate_number
-from parse_utils import ExpectedParsingError
+from parse_utils import ExpectedParsingError, ExhaustedTokensError, is_end_token
 
 
 pg = common_pg.copy_to_extend()
@@ -49,7 +49,23 @@ def relation(parser_state, p):
 
 
 @pg.error
-def error(parser_state, p):
-    raise ExpectedParsingError
+def error(parser_state, look_ahead):
+    # TODO: remove duplication of this function with main parser.
+    # If we have exhausted the list of tokens while still
+    # having a valid command, we should read more tokens until we get a syntax
+    # error.
+    if is_end_token(look_ahead):
+        raise ExhaustedTokensError
+    # Assume we have an actual syntax error, which we interpret to mean the
+    # current command has finished being parsed and we are looking at tokens
+    # for the next command.
+    elif look_ahead is not None:
+        raise ExpectedParsingError
+    else:
+        import pdb; pdb.set_trace()
+    # if parser_state.in_recovery_mode:
+    #     print("Syntax error in input!")
+    #     post_mortem(parser_state, parser)
+    #     raise ValueError
 
 condition_parser = pg.build()

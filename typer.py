@@ -286,6 +286,9 @@ terminal_primitive_control_sequences_map = {
 
     'kern': 'KERN',
     'mkern': 'MATH_KERN',
+
+    'vrule': 'V_RULE',
+    'hrule': 'H_RULE',
 }
 
 add_glue_stems = {

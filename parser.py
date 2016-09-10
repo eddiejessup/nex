@@ -10,7 +10,7 @@ from fonts import FontRange
 from registers import is_register_type
 from common_parsing import (pg as common_pg,
                             evaluate_number, evaluate_dimen, evaluate_glue)
-from parse_utils import ExpectedParsingError
+from parse_utils import ExpectedParsingError, ExhaustedTokensError, is_end_token
 from general_text_parser import gen_txt_pg
 
 
@@ -43,6 +43,8 @@ pg = common_pg.copy_to_extend()
 @pg.production('command : write')
 @pg.production('command : RELAX')
 @pg.production('command : box')
+@pg.production('command : vertical_rule')
+@pg.production('command : horizontal_rule')
 def command(parser_state, p):
     return p[0]
 
@@ -381,7 +383,9 @@ def font_range(parser_state, p):
 @pg.production('set_box_assignment : optional_globals SET_BOX number equals filler box')
 def set_box_assignment(parser_state, p):
     is_global = p[0]
-    import pdb; pdb.set_trace()
+    # TODO: Actually put these contents in a register.
+    return Token(type_='set_box_assignment',
+                 value={'is_global': is_global, 'nr': p[2], 'contents': p[5]})
 
 
 # @pg.production('box : BOX number')
@@ -545,18 +549,56 @@ def add_glue(parser_state, p):
     return Token(type_=p[0], value=p[1])
 
 
-@pg.error
-def error(parser_state, p):
-    if parser_state.in_recovery_mode:
-        print("Syntax error in input!")
-        post_mortem(parser_state, parser)
-        raise ValueError
-    else:
-        from condition_parser import ExpectedParsingError
-        raise ExpectedParsingError
+@pg.production('vertical_rule : V_RULE rule_specification')
+@pg.production('horizontal_rule : H_RULE rule_specification')
+def rule(parser_state, p):
+    return Token(type_=p[0], value=p[1])
 
-# @pg.error
-# def error(parser_state, p):
+
+@pg.production('rule_specification : rule_dimension rule_specification')
+def rule_specification(parser_state, p):
+    t = p[1]
+    # TODO: does this give the correct overwrite order?
+    # Presumably, repeating the same axis should obey the last one.
+    dim_type = p[0].value['axis']
+    t.value[dim_type] = p[0].value['dimen']
+    return t
+
+
+@pg.production('rule_specification : optional_spaces')
+def rule_specification_empty(parser_state, p):
+    dims = {'width': None, 'height': None, 'depth': None}
+    return Token(type_='rule_specification', value=dims)
+
+
+# TODO: these literals are getting unclear. Introduce some convention to make
+# clear which (non-terminal) tokens represent literals.
+@pg.production('rule_dimension : width dimen')
+@pg.production('rule_dimension : height dimen')
+@pg.production('rule_dimension : depth dimen')
+def rule_dimension(parser_state, p):
+    return Token(type_='rule_dimension',
+                 value={'axis': p[0], 'dimen': p[1]})
+
+
+@pg.error
+def error(parser_state, look_ahead):
+    # If we have exhausted the list of tokens while still
+    # having a valid command, we should read more tokens until we get a syntax
+    # error.
+    if is_end_token(look_ahead):
+        raise ExhaustedTokensError
+    # Assume we have an actual syntax error, which we interpret to mean the
+    # current command has finished being parsed and we are looking at tokens
+    # for the next command.
+    elif look_ahead is not None:
+        raise ExpectedParsingError
+    else:
+        import pdb; pdb.set_trace()
+    # if parser_state.in_recovery_mode:
+    #     print("Syntax error in input!")
+    #     post_mortem(parser_state, parser)
+    #     raise ValueError
 
 # Build the parser
 parser = pg.build()
@@ -573,23 +615,31 @@ class CommandGrabber(object):
         # we store them in a buffer.
         self.buffer_stack = deque()
 
+        self.max_nr_extra_tokens = 1
+
     def get_command(self):
         # Want to extend the stack-to-be-parsed one token at a time,
         # so we can break as soon as we have all we need.
         parse_stack = deque()
-        # Get enough tokens to evaluate command.
-        # We know to stop adding tokens when we see a switch from not
-        # parsing, to parsing, to not parsing again.
+        # Get enough tokens to evaluate command. We know to stop adding tokens
+        # when we see a switch from failing because we run out of tokens
+        # (ExhaustedTokensError) to an actual syntax error
+        # (ExpectedParsingError).
+        # We keep track of if we have parsed, just for checking for weird
+        # situations.
         have_parsed = False
         while True:
             try:
                 t = self.banisher.pop_or_fill_and_pop(self.buffer_stack)
             except EndOfFile:
-                # import pdb; pdb.set_trace()
                 if have_parsed:
                     break
+                # If we get an EndOfFile, and we have just started trying to
+                # get a command, we are done, so just return.
                 elif not parse_stack:
-                    raise EndOfFile
+                    raise
+                # If we get to the end of the file in the middle of a command,
+                # something is wrong.
                 else:
                     import pdb; pdb.set_trace()
                 # if parse_stack:
@@ -600,21 +650,28 @@ class CommandGrabber(object):
             try:
                 result = self.parser.parse(iter(parse_stack),
                                            state=self.lex_wrapper)
-            except (ExpectedParsingError, StopIteration):
+            except ExpectedParsingError:
                 if have_parsed:
-                    # We got exactly one token of fluff, to make the parse
-                    # stack not-parse. Put that back on the existing buffer.
+                    # We got so many tokens of fluff due to extra reads,
+                    # to make the parse stack not-parse.
+                    # Put them back on the buffer.
                     self.buffer_stack.appendleft(parse_stack.pop())
                     break
+                else:
+                    import pdb; pdb.set_trace()
+            except ExhaustedTokensError:
+                # Carry on getting more tokens, because it seems we can.
+                pass
             else:
                 have_parsed = True
         return result
 
     def get_commands_until_end(self):
+        commands = []
         while True:
             try:
                 command = self.get_command()
             except EndOfFile:
-                return
+                return commands
             else:
-                yield command
+                commands.append(command)

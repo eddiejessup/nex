@@ -63,6 +63,13 @@ box_context_mode_map = {
     'V_TOP': ContextMode.awaiting_make_v_top_start,
 }
 
+sub_parser_groups = (
+    Group.h_box,
+    Group.adjusted_h_box,
+    Group.v_box,
+    Group.v_top,
+)
+
 
 def make_char_cat_term_token(char, cat):
     char_lex_token = make_char_cat_token(char, cat)
@@ -114,10 +121,10 @@ class Banisher(object):
     #     return next_token
 
     def pop_or_fill_and_pop(self, stack):
-        if not stack and self.finish_up:
-            self.finish_up = False
-            raise EndOfFile
         while not stack:
+            if self.finish_up:
+                self.finish_up = False
+                raise EndOfFile
             self.process_input_to_stack(stack)
         next_token = stack.popleft()
         return next_token
@@ -345,7 +352,10 @@ class Banisher(object):
             if self.global_state.group == Group.local:
                 self.global_state.pop_group()
                 self.global_state.pop_scope()
-            elif self.global_state.group == Group.adjusted_h_box:
+            # Groups where we start a sub-parser to get the command list.
+            # We need to tell the banisher to finish up so the resulting
+            # list can be made into the container token.
+            elif self.global_state.group in sub_parser_groups:
                 self.global_state.pop_group()
                 self.global_state.pop_scope()
                 # If we do not append the right brace, it looks to the parser

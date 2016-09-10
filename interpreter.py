@@ -54,5 +54,3 @@ class Group(Enum):
     math_shift = 15
     # \left...\right
     math_left_right = 16
-
-
