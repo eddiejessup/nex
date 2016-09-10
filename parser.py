@@ -598,8 +598,8 @@ class CommandGrabber(object):
                 #     import pdb; pdb.set_trace()
             parse_stack.append(t)
             try:
-                result = parser.parse(iter(parse_stack),
-                                      state=self.lex_wrapper)
+                result = self.parser.parse(iter(parse_stack),
+                                           state=self.lex_wrapper)
             except (ExpectedParsingError, StopIteration):
                 if have_parsed:
                     # We got exactly one token of fluff, to make the parse

@@ -403,6 +403,7 @@ class Banisher(object):
             # (Entails lots of renaming.)
             grabber = CommandGrabber(self, self.wrapper,
                                      parser=condition_parser)
+            grabber.buffer_stack.append(first_token)
             outcome = grabber.get_command()
             # Pick up any left-over tokens from the condition command parsing.
             if_stack = grabber.buffer_stack
