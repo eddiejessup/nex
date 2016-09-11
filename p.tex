@@ -596,3 +596,53 @@
 \def\sp@n{\span\omit\advance\mscount\m@ne}
 
 \newif\ifus@ \newif\if@cr
+\newbox\tabs \newbox\tabsyet \newbox\tabsdone
+
+\def\cleartabs{\global\setbox\tabsyet\null \setbox\tabs\null}
+\def\settabs{\setbox\tabs\null \futurelet\next\sett@b}
+\let\+=\relax % in case this file is being read in twice
+\def\sett@b{\ifx\next\+\def\nxt{\afterassignment\s@tt@b\let\nxt}%
+  \else\let\nxt\s@tcols\fi \let\next\relax \nxt}
+\def\s@tt@b{\let\nxt\relax \us@false\m@ketabbox}
+\def\tabalign{\us@true\m@ketabbox} % non-\outer version of \+
+\outer\def\+{\tabalign}
+\def\s@tcols#1\columns{\count@#1\dimen@\hsize
+  \loop\ifnum\count@>\z@ \@nother \repeat}
+\def\@nother{\dimen@ii\dimen@ \divide\dimen@ii\count@
+  \setbox\tabs\hbox{\hbox to\dimen@ii{}\unhbox\tabs}%
+  \advance\dimen@-\dimen@ii \advance\count@\m@ne}
+
+\def\m@ketabbox{\begingroup
+  \global\setbox\tabsyet\copy\tabs
+  \global\setbox\tabsdone\null
+  \def\cr{\@crtrue\crcr\egroup\egroup
+    \ifus@\unvbox\z@\lastbox\fi\endgroup
+    \setbox\tabs\hbox{\unhbox\tabsyet\unhbox\tabsdone}}%
+  \setbox\z@\vbox\bgroup\@crfalse
+    \ialign\bgroup&\t@bbox##\t@bb@x\crcr}
+
+\def\t@bbox{\setbox\z@\hbox\bgroup}
+\def\t@bb@x{\if@cr\egroup % now \box\z@ holds the column
+  \else\hss\egroup \global\setbox\tabsyet\hbox{\unhbox\tabsyet
+      \global\setbox\@ne\lastbox}% now \box\@ne holds its size
+    \ifvoid\@ne\global\setbox\@ne\hbox to\wd\z@{}%
+    \else\setbox\z@\hbox to\wd\@ne{\unhbox\z@}\fi
+    \global\setbox\tabsdone\hbox{\box\@ne\unhbox\tabsdone}\fi
+  \box\z@}
+
+\def\hang{\hangindent\parindent}
+\def\textindent#1{\indent\llap{#1\enspace}\ignorespaces}
+\def\item{\par\hang\textindent}
+\def\itemitem{\par\indent \hangindent2\parindent \textindent}
+\def\narrower{\advance\leftskip\parindent
+  \advance\rightskip\parindent}
+
+\outer\def\beginsection#1\par{\vskip\z@ plus.3\vsize\penalty-250
+  \vskip\z@ plus-.3\vsize\bigskip\vskip\parskip
+  \message{#1}\leftline{\bf#1}\nobreak\smallskip\noindent}
+\outer\def\proclaim #1. #2\par{\medbreak
+  \noindent{\bf#1.\enspace}{\sl#2\par}%
+  \ifdim\lastskip<\medskipamount \removelastskip\penalty55\medskip\fi}
+
+\def\raggedright{\rightskip\z@ plus2em \spaceskip.3333em \xspaceskip.5em\relax}
+\def\ttraggedright{\tt\rightskip\z@ plus2em\relax} % for use with \tt only

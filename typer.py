@@ -167,6 +167,7 @@ category_map = {
     # TODO: This is not a terminal token.
     CatCode.parameter: 'PARAMETER',
     CatCode.math_shift: 'MATH_SHIFT',
+    CatCode.align_tab: 'ALIGN_TAB',
 }
 
 

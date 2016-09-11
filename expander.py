@@ -84,7 +84,9 @@ def parse_replacement_text(tokens):
             # the parameter text, or else the # should be followed by another
             # #.
             if t_next.type == 'PARAMETER':
-                raise NotImplementedError
+                # TODO: I don't know if the cat-code of this should be changed.
+                # Look in TeX: The Program to see what it does.
+                tokens_processed.append(t_next)
             else:
                 p_nr = int(t_next.value['char'])
                 t = InternalToken(type_='PARAM_NUMBER', value=p_nr)
