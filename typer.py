@@ -287,6 +287,10 @@ terminal_primitive_control_sequences_map = {
     # register.
     'vsplit': 'V_SPLIT',
 
+    'ht': 'BOX_DIMEN_HEIGHT',
+    'wd': 'BOX_DIMEN_WIDTH',
+    'dp': 'BOX_DIMEN_DEPTH',
+
     'kern': 'KERN',
     'mkern': 'MATH_KERN',
 

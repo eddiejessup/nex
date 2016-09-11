@@ -330,6 +330,19 @@ def internal_quantity_parameter(parser_state, p):
     return parser_state.state.get_parameter_value(p[0].value['name'])
 
 
+@pg.production('internal_dimen : box_dimension number')
+def internal_dimen_box_dimension(parser_state, p):
+    # TODO: Implement this.
+    return Token(type_='box_dimen', value=1)
+
+
+@pg.production('box_dimension : BOX_DIMEN_HEIGHT')
+@pg.production('box_dimension : BOX_DIMEN_WIDTH')
+@pg.production('box_dimension : BOX_DIMEN_DEPTH')
+def box_dimension(parser_state, p):
+    return p[0].type
+
+
 @pg.production('normal_integer : integer_constant one_optional_space')
 def normal_integer_integer(parser_state, p):
     return get_integer_constant(p[0])
