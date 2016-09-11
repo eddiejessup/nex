@@ -158,16 +158,18 @@ for c in ascii_letters:
 
 other_literal_type = 'MISC_CHAR_CAT_PAIR'
 
+# TODO: There are non-terminal tokens in here, which rply will get told *are*
+# terminal tokens.
 category_map = {
     CatCode.space: 'SPACE',
     CatCode.begin_group: 'LEFT_BRACE',
-    # TODO: This is not a terminal token.
     CatCode.end_group: 'RIGHT_BRACE',
     CatCode.active: 'ACTIVE_CHARACTER',
-    # TODO: This is not a terminal token.
     CatCode.parameter: 'PARAMETER',
     CatCode.math_shift: 'MATH_SHIFT',
     CatCode.align_tab: 'ALIGN_TAB',
+    CatCode.superscript: 'SUPERSCRIPT',
+    CatCode.subscript: 'SUBSCRIPT',
 }
 
 
