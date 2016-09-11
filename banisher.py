@@ -233,7 +233,17 @@ class Banisher(object):
             for i_param in range(len(params)):
                 arg_toks = []
                 p_t = params[i_param]
-                assert p_t.value['param_nr'] == i_param + 1
+                if p_t.type not in ('UNDELIMITED_PARAM', 'DELIMITED_PARAM'):
+                    # We should only see non-parameters in the parameter list,
+                    # if they are text preceding the parameters proper. See
+                    # the comments in `parse_parameter_text` for further
+                    # details.
+                    # We just swallow up these tokens.
+                    assert not arguments
+                    next_token = self.pop_next_input_token()
+                    if not tokens_equal(p_t, next_token):
+                        raise Exception
+                    continue
                 delim_toks = p_t.value['delim_tokens']
                 if p_t.type == 'UNDELIMITED_PARAM':
                     assert not delim_toks
@@ -265,16 +275,11 @@ class Banisher(object):
                     # We remove exactly one set of braces, if present.
                     if arg_toks[0].type == 'LEFT_BRACE' and arg_toks[-1].type == 'RIGHT_BRACE':
                         arg_toks = arg_toks[1:-1]
-                else:
-                    # We should only see non-parameters in the parameter list,
-                    # if they are text preceding the parameters proper. See
-                    # the comments in `parse_parameter_text` for further
-                    # details.
-                    assert not arguments
-                    pass
                 arguments.append(arg_toks)
 
             expanded_first_token = self.global_state.expand_macro_to_token_list(name, arguments)
+            if name == 'newif':
+                import pdb; pdb.set_trace()
 
             # Now run again, hopefully now seeing a primitive token.
             # (Might not, if the expansion needs more expansion, but the

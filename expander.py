@@ -143,6 +143,7 @@ def get_initial_expander():
             param_canon_token = TerminalToken(
                 type_=param_type,
                 value={'canonical_name': param_canon_name,
+                       'name': param_canon_name,
                        'value': param_value}
             )
             parameters[route_id] = param_canon_token
@@ -209,6 +210,8 @@ class Expander(object):
         self.control_sequences[name] = route_token
 
     def resolve_name_to_route_token(self, name):
+        if isinstance(name, dict):
+            import pdb; pdb.set_trace()
         if name in self.control_sequences:
             route_token = self.control_sequences[name]
         else:
@@ -238,15 +241,15 @@ class Expander(object):
         route_token = self.resolve_name_to_route_token(name)
         type_ = route_token.type
         token = self._resolve_route_token_to_raw_value(route_token)
-        if type_ == 'primitive':
-            # Amend canonical token to give it the proper control sequence
-            # 'name'.
+        # Amend canonical tokens to give them the proper control sequence
+        # 'name'.
+        if type_ in ('primitive',) + tuple(parameter_types):
             TokenCls = token.__class__
             token = TokenCls(type_=token.type, value=token.value.copy())
             token.value['name'] = name
         # TODO: check what happens if we \let something to a macro,
         # then call \csname on it. Do we get the original macro name?
-        # Maybe need to do something like for primitive tokens above.
+        # Maybe need to do something like for canonical tokens above.
         return token
 
     def copy_control_sequence(self, target_name, new_name):

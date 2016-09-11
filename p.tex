@@ -585,7 +585,14 @@
   \m@th \underline{\box\z@}$}
 
 \newbox\strutbox
-\newbox\strutbox
-\null
 \setbox\strutbox=\hbox{\vrule height8.5pt depth3.5pt width\z@}
-aaa
+\def\strut{\relax\ifmmode\copy\strutbox\else\unhcopy\strutbox\fi}
+
+\def\hidewidth{\hskip\hideskip} % for alignment entries that can stick out
+\def\ialign{\everycr{}\tabskip\z@skip\halign} % initialized \halign
+\newcount\mscount
+\def\multispan#1{\omit \mscount#1\relax
+  \loop\ifnum\mscount>\@ne \sp@n\repeat}
+\def\sp@n{\span\omit\advance\mscount\m@ne}
+
+\newif\ifus@ 

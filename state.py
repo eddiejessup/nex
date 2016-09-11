@@ -223,8 +223,8 @@ class GlobalState(object):
         code_type_to_func_map = {
             'CAT_CODE': 'set_cat_code',
             'MATH_CODE': 'set_math_code',
-            'UPPER_CASE_CODE': 'set_lower_case_code',
-            'LOWER_CASE_CODE': 'set_upper_case_code',
+            'UPPER_CASE_CODE': 'set_upper_case_code',
+            'LOWER_CASE_CODE': 'set_lower_case_code',
             'SPACE_FACTOR_CODE': 'set_space_factor_code',
             'DELIMITER_CODE': 'set_delimiter_code',
         }

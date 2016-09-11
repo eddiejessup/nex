@@ -327,7 +327,7 @@ def internal_integer_weird_short_hand_token(parser_state, p):
 @pg.production('internal_dimen : DIMEN_PARAMETER')
 @pg.production('internal_integer : INTEGER_PARAMETER')
 def internal_quantity_parameter(parser_state, p):
-    return parser_state.state.get_parameter_value(p[0].value)
+    return parser_state.state.get_parameter_value(p[0].value['name'])
 
 
 @pg.production('normal_integer : integer_constant one_optional_space')
