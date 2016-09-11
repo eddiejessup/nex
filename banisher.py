@@ -278,8 +278,6 @@ class Banisher(object):
                 arguments.append(arg_toks)
 
             expanded_first_token = self.global_state.expand_macro_to_token_list(name, arguments)
-            if name == 'newif':
-                import pdb; pdb.set_trace()
 
             # Now run again, hopefully now seeing a primitive token.
             # (Might not, if the expansion needs more expansion, but the
@@ -514,7 +512,7 @@ class Banisher(object):
             # put them back on the input stack.
             self.input_tokens_stack.extendleft(reversed(cs_name_stack))
             # But first comes our shiny new control sequence token.
-            output_tokens.append(cs_token)
+            self.input_tokens_stack.appendleft(cs_token)
         elif type_ == 'ESCAPE_CHAR':
             escape_char_token = self.get_escape_char_token()
             if escape_char_token is not None:

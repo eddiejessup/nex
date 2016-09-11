@@ -616,6 +616,7 @@ class CommandGrabber(object):
         self.buffer_stack = deque()
 
         self.max_nr_extra_tokens = 1
+        self.finish_up_grabbing = False
 
     def get_command(self):
         # Want to extend the stack-to-be-parsed one token at a time,
@@ -632,15 +633,21 @@ class CommandGrabber(object):
             try:
                 t = self.banisher.pop_or_fill_and_pop(self.buffer_stack)
             except EndOfFile:
+                # This is the case where we might have been shown a 'fake' EndOfFile.
+                # We need to add the current command, and then return all commands.
                 if have_parsed:
+                    print('EOF, parsed, returning')
+                    self.finish_up_grabbing = True
                     break
                 # If we get an EndOfFile, and we have just started trying to
                 # get a command, we are done, so just return.
                 elif not parse_stack:
+                    print('EOF, empty stack, raise EOF')
                     raise
                 # If we get to the end of the file in the middle of a command,
                 # something is wrong.
                 else:
+                    print('EOF, non-empty stack')
                     import pdb; pdb.set_trace()
                 # if parse_stack:
                 #     self.lex_wrapper.in_recovery_mode = True
@@ -675,3 +682,6 @@ class CommandGrabber(object):
                 return commands
             else:
                 commands.append(command)
+                # This means we got a brace that meant we should stop grabbing.
+                if self.finish_up_grabbing:
+                    return commands
