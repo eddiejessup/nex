@@ -33,6 +33,8 @@ read_unexpanded_control_sequence_types += tuple(set(short_hand_def_map.values())
 if_types = if_map.values()
 message_types = ('MESSAGE', 'ERROR_MESSAGE', 'WRITE')
 
+token_variable_start_types = ('TOKEN_PARAMETER', 'TOKS_DEF_TOKEN', 'TOKS')
+
 
 def is_control_sequence_call(token):
     return (isinstance(token.value, dict) and
@@ -43,6 +45,7 @@ def is_control_sequence_call(token):
 class ContextMode(Enum):
     normal = 1
     awaiting_balanced_text_start = 2
+    awaiting_balanced_text_or_token_variable_start = 7
     awaiting_make_h_box_start = 3
     awaiting_make_v_box_start = 4
     awaiting_make_v_top_start = 5
@@ -52,6 +55,7 @@ class ContextMode(Enum):
 expanding_modes = (
     ContextMode.normal,
     ContextMode.awaiting_balanced_text_start,
+    ContextMode.awaiting_balanced_text_or_token_variable_start,
     ContextMode.awaiting_make_h_box_start,
     ContextMode.awaiting_make_v_box_start,
     ContextMode.awaiting_make_v_top_start,
@@ -284,8 +288,9 @@ class Banisher(object):
             # ultimate escape route is to see a primitive token.)
             self.input_tokens_stack.extendleft(reversed(expanded_first_token))
         # TODO: Maybe put these as sub-checks, inside seeing 'LEFT_BRACE'.
-        elif (self.context_mode == ContextMode.awaiting_balanced_text_start and
-                type_ == 'LEFT_BRACE'):
+        elif (self.context_mode in (ContextMode.awaiting_balanced_text_start,
+                                    ContextMode.awaiting_balanced_text_or_token_variable_start)
+                and type_ == 'LEFT_BRACE'):
             # Put the LEFT_BRACE on the output stack.
             output_tokens.append(first_token)
             # Now merge all lex tokens until right brace lex token seen,
@@ -293,8 +298,15 @@ class Banisher(object):
             # input stack to read later.
             balanced_text_token = self.get_balanced_text_token()
             # Put it on the input stack to be read again.
-            self.input_tokens_stack.appendleft(balanced_text_token)
+            output_tokens.append(balanced_text_token)
             # Done with getting balanced text.
+            self.pop_context()
+        elif (self.context_mode == ContextMode.awaiting_balanced_text_or_token_variable_start and
+              type_ in token_variable_start_types):
+            # Put the token on the output stack.
+            output_tokens.append(first_token)
+            # We can handle this sort of token-list argument in the parser; we
+            # only had this context in case a balanced text needed to be got.
             self.pop_context()
         elif (self.context_mode in box_context_mode_map.values() and
                 type_ == 'LEFT_BRACE'):
@@ -406,6 +418,10 @@ class Banisher(object):
                 let_arguments[-1] = TerminalToken(type_=unexpanded_token_type,
                                                   value=let_arguments[-1])
                 output_tokens.extend(let_arguments)
+        elif type_ in token_variable_start_types:
+            # Watch for a balanced text starting.
+            output_tokens.append(first_token)
+            self.push_context(ContextMode.awaiting_balanced_text_or_token_variable_start)
         elif type_ == 'EXPAND_AFTER':
             unexpanded_token = self.pop_next_input_token()
             next_tokens = self.process_next_input_token()
@@ -460,10 +476,11 @@ class Banisher(object):
             def is_condition_delimiter(token):
                 return (is_control_sequence_call(token) and
                         t.value['name'] in condition_block_delimiter_names)
+
             while True:
                 t = self.pop_or_fill_and_pop_input(if_stack)
-                # Keep track of nested conditions.
 
+                # Keep track of nested conditions.
                 nr_conditions += get_condition_sign(t)
 
                 # If we get the terminal  \fi, break

@@ -36,7 +36,7 @@ class Group(Enum):
     align = 6
     # \noalign{...}.
     no_align = 7
-    # For output routine.
+    # Output routine.
     output = 8
     # For things such as '^{...}'
     math = 9

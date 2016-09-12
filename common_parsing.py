@@ -59,7 +59,6 @@ def evaluate_size(parser_state, size_token):
                 import pdb; pdb.set_trace()
             return ord(char)
         elif size_token.type == 'control_sequence':
-            # size_token = lexer.state.control_sequences[name]
             raise NotImplementedError
         elif is_register_type(size_token.type):
             v = parser_state.state.get_register_value(size_token.type,
@@ -128,6 +127,10 @@ def evaluate_glue(parser_state, glue_token):
     return evaluated_glue
 
 
+def evaluate_token_list(parser_state, token_list_token):
+    raise NotImplementedError
+
+
 @pg.production('control_sequence : UNEXPANDED_CONTROL_SEQUENCE')
 @pg.production('control_sequence : UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE')
 def control_sequence(parser_state, p):
@@ -146,6 +149,7 @@ def control_sequence_active(parser_state, p):
 add_character_productions(pg)
 
 
+@pg.production('token_variable : token_register')
 @pg.production('mu_glue_variable : mu_skip_register')
 @pg.production('glue_variable : skip_register')
 @pg.production('dimen_variable : dimen_register')
@@ -154,6 +158,7 @@ def quantity_variable_register(parser_state, p):
     return p[0]
 
 
+@pg.production('token_variable : TOKEN_PARAMETER')
 @pg.production('mu_glue_variable : MU_GLUE_PARAMETER')
 @pg.production('glue_variable : GLUE_PARAMETER')
 @pg.production('dimen_variable : DIMEN_PARAMETER')
@@ -162,6 +167,7 @@ def quantity_variable_parameter(parser_state, p):
     return p[0]
 
 
+@pg.production('token_register : TOKS number')
 @pg.production('mu_skip_register : MU_SKIP number')
 @pg.production('skip_register : SKIP number')
 @pg.production('dimen_register : DIMEN number')
@@ -170,6 +176,7 @@ def register_explicit(parser_state, p):
     return Token(type_=p[0].type, value=p[1]['size'])
 
 
+@pg.production('token_register : TOKS_DEF_TOKEN')
 @pg.production('mu_skip_register : MU_SKIP_DEF_TOKEN')
 @pg.production('skip_register : SKIP_DEF_TOKEN')
 @pg.production('dimen_register : DIMEN_DEF_TOKEN')

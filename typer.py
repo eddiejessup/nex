@@ -326,13 +326,13 @@ register_tokens = {
     'dimen': 'DIMEN',
     'skip': 'SKIP',
     'muskip': 'MU_SKIP',
+    'toks': 'TOKS',
 }
 terminal_primitive_control_sequences_map.update(register_tokens)
 
 short_hand_def_map = {
     'chardef': 'CHAR_DEF',
     'mathchardef': 'MATH_CHAR_DEF',
-    'toksdef': 'TOKS_DEF',
 }
 short_hand_def_register_map = {
     '{}def'.format(k): '{}_DEF'.format(v) for k, v in register_tokens.items()

@@ -1,12 +1,4 @@
-from typer import register_tokens
-
-
-reverse_token_map = {
-    'COUNT_DEF_TOKEN': 'COUNT',
-    'DIMEN_DEF_TOKEN': 'DIMEN',
-    'SKIP_DEF_TOKEN': 'SKIP',
-    'MU_SKIP_DEF_TOKEN': 'MU_SKIP',
-}
+from typer import register_tokens, short_hand_def_to_token_map
 
 
 def is_register_type(type_):
@@ -14,7 +6,8 @@ def is_register_type(type_):
 
 
 def register_token_type_to_register_type(type_):
-    return reverse_token_map[type_]
+    assert type_ in short_hand_def_to_token_map.values()
+    return type_[:type_.find('_DEF_TOKEN')]
 
 
 def get_initial_registers():
@@ -22,23 +15,25 @@ def get_initial_registers():
     dimen = {i: None for i in range(256)}
     skip = {i: None for i in range(256)}
     mu_skip = {i: None for i in range(256)}
-    registers = Registers(count, dimen, skip, mu_skip)
+    tokens = {i: None for i in range(256)}
+    registers = Registers(count, dimen, skip, mu_skip, tokens)
     return registers
 
 
 def get_local_registers():
-    registers = Registers(count={}, dimen={}, skip={}, mu_skip={})
+    registers = Registers(count={}, dimen={}, skip={}, mu_skip={}, tokens={})
     return registers
 
 
 class Registers(object):
 
-    def __init__(self, count, dimen, skip, mu_skip):
+    def __init__(self, count, dimen, skip, mu_skip, tokens):
         cmd_register_map = {
             'count': count,
             'dimen': dimen,
             'skip': skip,
             'muskip': mu_skip,
+            'toks': tokens,
         }
 
         self.register_map = {register_tokens[c]: r for
@@ -49,17 +44,10 @@ class Registers(object):
 
     def get_register_value(self, type_, i):
         register = self.get_register(type_)
-        # if i == 22 and type_ == 'COUNT':
-        #     import pdb; pdb.set_trace()
         return register[i]
 
     def set_register_value(self, type_, i, value):
         register = self.get_register(type_)
-        # if i == 22 and type_ == 'COUNT':
-        #     if value == 1:
-        #         self.okok = True
-        #     if hasattr(self, 'okok'):
-        #         import pdb; pdb.set_trace()
         register[i] = value
 
     def get_advanced_register_value(self, type_, i, value):

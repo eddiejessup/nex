@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from common import TerminalToken
+
 now = datetime.now()
 midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
 seconds_since_midnight = (now - midnight).total_seconds()
@@ -116,11 +118,27 @@ mu_glue_parameter_names = (
 )
 mu_glue_parameters = {p: get_zero_glue() for p in mu_glue_parameter_names}
 
+get_empty_token_list = lambda: TerminalToken(type_='BALANCED_TEXT_AND_RIGHT_BRACE',
+                                             value=[])
+token_parameter_names = (
+    'output',
+    'everypar',
+    'everymath',
+    'everydisplay',
+    'everyhbox',
+    'everyvbox',
+    'everyjob',
+    'everycr',
+    'errhelp',
+)
+token_parameters = {p: get_empty_token_list() for p in token_parameter_names}
+
 default_parameters = {
     'INTEGER_PARAMETER': integer_parameters,
     'DIMEN_PARAMETER': dimen_parameters,
     'GLUE_PARAMETER': glue_parameters,
     'MU_GLUE_PARAMETER': mu_glue_parameters,
+    'TOKEN_PARAMETER': token_parameters,
 }
 
 special_integer_names = (

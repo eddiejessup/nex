@@ -9,7 +9,8 @@ from expander import parse_replacement_text, parameter_types
 from fonts import FontRange
 from registers import is_register_type
 from common_parsing import (pg as common_pg,
-                            evaluate_number, evaluate_dimen, evaluate_glue)
+                            evaluate_number, evaluate_dimen, evaluate_glue,
+                            evaluate_token_list)
 from parse_utils import ExpectedParsingError, ExhaustedTokensError, is_end_token
 from general_text_parser import gen_txt_pg
 
@@ -191,6 +192,16 @@ def variable_assignment(parser_state, p):
                                          name=param_name, value=value)
     return Token(type_='variable_assignment',
                  value={'variable': variable, 'value': value})
+
+
+@pg.production('evaluated_variable_assignment : token_variable equals general_text')
+def variable_assignment_tokens_explicit(parser_state, p):
+    return [p[0], p[2]]
+
+
+@pg.production('evaluated_variable_assignment : token_variable equals filler token_variable')
+def variable_assignment_tokens_variable(parser_state, p):
+    return [p[0], evaluate_token_list(parser_state, p[3])]
 
 
 @pg.production('evaluated_variable_assignment : mu_glue_variable equals mu_glue')
@@ -636,18 +647,15 @@ class CommandGrabber(object):
                 # This is the case where we might have been shown a 'fake' EndOfFile.
                 # We need to add the current command, and then return all commands.
                 if have_parsed:
-                    print('EOF, parsed, returning')
                     self.finish_up_grabbing = True
                     break
                 # If we get an EndOfFile, and we have just started trying to
                 # get a command, we are done, so just return.
                 elif not parse_stack:
-                    print('EOF, empty stack, raise EOF')
                     raise
                 # If we get to the end of the file in the middle of a command,
                 # something is wrong.
                 else:
-                    print('EOF, non-empty stack')
                     import pdb; pdb.set_trace()
                 # if parse_stack:
                 #     self.lex_wrapper.in_recovery_mode = True
