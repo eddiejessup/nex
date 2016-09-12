@@ -32,6 +32,7 @@ read_unexpanded_control_sequence_types += tuple(set(short_hand_def_map.values())
 
 if_types = if_map.values()
 message_types = ('MESSAGE', 'ERROR_MESSAGE', 'WRITE')
+hyphenation_types = ('HYPHENATION', 'PATTERNS')
 
 token_variable_start_types = ('TOKEN_PARAMETER', 'TOKS_DEF_TOKEN', 'TOKS')
 
@@ -430,6 +431,10 @@ class Banisher(object):
         elif type_ in message_types:
             # TODO: this is all wrong, these things expect general_text.
             # do like (upper/lower)case does.
+            output_tokens.append(first_token)
+            self.push_context(ContextMode.awaiting_balanced_text_start)
+        elif type_ in hyphenation_types:
+            # TODO: See above.
             output_tokens.append(first_token)
             self.push_context(ContextMode.awaiting_balanced_text_start)
         elif type_ in if_types:

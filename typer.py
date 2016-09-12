@@ -298,6 +298,9 @@ terminal_primitive_control_sequences_map = {
     'hrule': 'H_RULE',
 
     'input': 'INPUT',
+
+    'hyphenation': 'HYPHENATION',
+    'patterns': 'PATTERNS',
 }
 
 add_glue_stems = {

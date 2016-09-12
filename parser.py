@@ -471,7 +471,7 @@ def global_assignment(parser_state, p):
 
 
 @pg.production('global_assignment : font_assignment')
-# @pg.production('global_assignment : hyphenation_assignment')
+@pg.production('global_assignment : hyphenation_assignment')
 # @pg.production('global_assignment : box_size_assignment')
 # @pg.production('global_assignment : interaction_mode_assignment')
 # @pg.production('global_assignment : intimate_assignment')
@@ -509,6 +509,13 @@ def font_assignment_skew(parser_state, p):
 # @pg.production('font : FONT')
 def font(parser_state, p):
     return p[0]
+
+
+@pg.production('hyphenation_assignment : HYPHENATION general_text')
+@pg.production('hyphenation_assignment : PATTERNS general_text')
+def hyphenation_assignment(parser_state, p):
+    return Token(type_=p[0],
+                 value=p[1])
 
 
 # End of 'global assignment', a simple assignment.
