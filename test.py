@@ -69,9 +69,9 @@ def test_parser():
     grabber = CommandGrabber(b, lex_wrapper, parser=parser)
     commands = list(grabber.get_commands_until_end())
 
-    # for command in commands:
-    #     print(command)
-    #     print()
+    for command in commands:
+        print(command)
+        print()
 
     # result = parser.parse(lex_wrapper, state=lex_wrapper)
     # # result = parser.parse(file_name, lexer=lex_wrapper, debug=logger)
