@@ -46,6 +46,7 @@ pg = common_pg.copy_to_extend()
 @pg.production('command : box')
 @pg.production('command : vertical_rule')
 @pg.production('command : horizontal_rule')
+@pg.production('command : input')
 def command(parser_state, p):
     return p[0]
 
@@ -443,15 +444,6 @@ def font_definition(parser_state, p):
     return macro_token
 
 
-@pg.production('file_name : character')
-@pg.production('file_name : file_name character')
-def file_name(parser_state, p):
-    if len(p) > 1:
-        return p[0] + p[1].value['char']
-    else:
-        return p[0].value['char']
-
-
 @pg.production('at_clause : at dimen')
 def at_clause_dimen(parser_state, p):
     return Token(type_='at_dimen', value=p[1])
@@ -592,6 +584,21 @@ def rule_dimension(parser_state, p):
                  value={'axis': p[0], 'dimen': p[1]})
 
 
+@pg.production('input : INPUT file_name')
+def input_file(parser_state, p):
+    return Token(type_='input',
+                 value={'file_name': p[1]})
+
+
+@pg.production('file_name : character')
+@pg.production('file_name : file_name character')
+def file_name(parser_state, p):
+    if len(p) > 1:
+        return p[0] + p[1].value['char']
+    else:
+        return p[0].value['char']
+
+
 @pg.error
 def error(parser_state, look_ahead):
     # If we have exhausted the list of tokens while still
@@ -689,6 +696,8 @@ class CommandGrabber(object):
             except EndOfFile:
                 return commands
             else:
+                if command.type == 'input':
+                    self.lex_wrapper.r.append_file(command.value['file_name'])
                 commands.append(command)
                 # This means we got a brace that meant we should stop grabbing.
                 if self.finish_up_grabbing:

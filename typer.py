@@ -296,6 +296,8 @@ terminal_primitive_control_sequences_map = {
 
     'vrule': 'V_RULE',
     'hrule': 'H_RULE',
+
+    'input': 'INPUT',
 }
 
 add_glue_stems = {
