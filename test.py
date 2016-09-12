@@ -62,7 +62,7 @@ logger.addHandler(ch)
 
 
 def test_parser():
-    file_name = 'p.tex'
+    file_name = 'test.tex'
     lex_wrapper = LexWrapper(file_name)
 
     b = lex_wrapper.b

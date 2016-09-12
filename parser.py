@@ -22,18 +22,6 @@ logger.setLevel('DEBUG')
 pg = common_pg.copy_to_extend()
 
 
-# @pg.production('commands : commands command')
-# def commands_extend(parser_state, p):
-#     v = p[0]
-#     v.append(p[1])
-#     return v
-
-
-# @pg.production('commands : command')
-# def commands(parser_state, p):
-#     return [p[0]]
-
-
 @pg.production('command : assignment')
 @pg.production('command : add_kern')
 @pg.production('command : add_glue')
@@ -47,6 +35,7 @@ pg = common_pg.copy_to_extend()
 @pg.production('command : vertical_rule')
 @pg.production('command : horizontal_rule')
 @pg.production('command : input')
+@pg.production('command : END')
 def command(parser_state, p):
     return p[0]
 
@@ -704,7 +693,7 @@ class CommandGrabber(object):
                 return commands
             else:
                 if command.type == 'input':
-                    self.lex_wrapper.r.append_file(command.value['file_name'])
+                    self.lex_wrapper.r.insert_file(command.value['file_name'])
                 commands.append(command)
                 # This means we got a brace that meant we should stop grabbing.
                 if self.finish_up_grabbing:

@@ -22,6 +22,9 @@ class Reader(object):
     def append_file(self, file_name):
         self.chars.extend(tex_file_to_chars(file_name))
 
+    def insert_file(self, file_name):
+        self.chars[self.i + 1:self.i + 1] = tex_file_to_chars(file_name)
+
     @property
     def next_char(self):
         c = self.peek_ahead(n=0)

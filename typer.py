@@ -301,6 +301,8 @@ terminal_primitive_control_sequences_map = {
 
     'hyphenation': 'HYPHENATION',
     'patterns': 'PATTERNS',
+
+    'end': 'END',
 }
 
 add_glue_stems = {
