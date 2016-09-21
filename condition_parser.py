@@ -1,6 +1,7 @@
 import operator
 
 from typer import if_map
+from common import Token
 from common_parsing import pg as common_pg, evaluate_number
 from parse_utils import ExpectedParsingError, ExhaustedTokensError, is_end_token
 
@@ -10,20 +11,25 @@ pg = common_pg.copy_to_extend()
 pg.tokens += tuple(if_map.values())
 
 
-@pg.production('condition : IF_TRUE')
-def condition_if_true(parser_state, p):
+@pg.production('outcome_wrap : outcome')
+def outcome_wrap(parser_state, p):
+    return Token(type_='outcome', value=p[0])
+
+
+@pg.production('outcome : IF_TRUE')
+def outcome_if_true(parser_state, p):
     return True
 
 
-@pg.production('condition : IF_FALSE')
-def condition_if_false(parser_state, p):
+@pg.production('outcome : IF_FALSE')
+def outcome_if_false(parser_state, p):
     return False
 
 
-@pg.production('condition : IF_NUM number relation number')
-def condition_if_num(parser_state, p):
-    nr_1 = evaluate_number(parser_state, p[1])
-    nr_2 = evaluate_number(parser_state, p[3])
+@pg.production('outcome : IF_NUM number relation number')
+def outcome_if_num(parser_state, p):
+    nr_1 = evaluate_number(parser_state.state, p[1])
+    nr_2 = evaluate_number(parser_state.state, p[3])
 
     relation = p[2].value['char']
     operator_map = {
@@ -36,9 +42,9 @@ def condition_if_num(parser_state, p):
     return outcome
 
 
-@pg.production('condition : IF_CASE number')
-def condition_if_case(parser_state, p):
-    return evaluate_number(parser_state, p[1])
+@pg.production('outcome : IF_CASE number')
+def outcome_if_case(parser_state, p):
+    return evaluate_number(parser_state.state, p[1])
 
 
 @pg.production('relation : LESS_THAN')

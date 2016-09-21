@@ -443,7 +443,8 @@ class Banisher(object):
             # TODO: aren't all these things actually queues, not stacks?
             # (Entails lots of renaming.)
             grabber.buffer_stack.append(first_token)
-            outcome = grabber.get_command()
+            outcome_token = grabber.get_command()
+            outcome = outcome_token.value
             # Pick up any left-over tokens from the condition command parsing.
             if_stack = grabber.buffer_stack
 
