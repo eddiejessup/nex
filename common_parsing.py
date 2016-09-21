@@ -44,7 +44,7 @@ class DigitCollection(object):
         self.digits = []
 
 
-def evaluate_size(parser_state, size_token):
+def evaluate_size(state, size_token):
     if isinstance(size_token, Token):
         if size_token.type == 'backtick_integer':
             unexpanded_token = size_token.value
@@ -61,8 +61,7 @@ def evaluate_size(parser_state, size_token):
         elif size_token.type == 'control_sequence':
             raise NotImplementedError
         elif is_register_type(size_token.type):
-            v = parser_state.state.get_register_value(size_token.type,
-                                                      i=size_token.value)
+            v = state.get_register_value(size_token.type, i=size_token.value)
             if size_token.type == 'SKIP':
                 import pdb; pdb.set_trace()
             return v
@@ -72,22 +71,22 @@ def evaluate_size(parser_state, size_token):
         return size_token
 
 
-def evaluate_number(parser_state, number_token):
+def evaluate_number(state, number_token):
     size_token = number_token['size']
-    number = evaluate_size(parser_state, size_token)
+    number = evaluate_size(state, size_token)
     sign = number_token['sign']
     if sign == '-':
         number *= -1
     return number
 
 
-def evaluate_dimen(parser_state, dimen_token):
+def evaluate_dimen(state, dimen_token):
     size_token, sign = dimen_token['size'], dimen_token['sign']
     if isinstance(size_token.value, int):
         return size_token.value
     number_of_units_token = size_token.value['factor']
     unit_token = size_token.value['unit']
-    number_of_units = evaluate_size(parser_state, number_of_units_token)
+    number_of_units = evaluate_size(state, number_of_units_token)
     unit = unit_token['unit']
     if unit == PhysicalUnit.fil:
         if 'number_of_fils' not in unit_token:
@@ -100,9 +99,9 @@ def evaluate_dimen(parser_state, dimen_token):
         number_of_scaled_points = number_of_units
     elif unit in InternalUnit:
         if unit == InternalUnit.em:
-            number_of_scaled_points = parser_state.state.current_font.em_size
+            number_of_scaled_points = state.current_font.em_size
         elif unit == InternalUnit.ex:
-            number_of_scaled_points = parser_state.state.current_font.ex_size
+            number_of_scaled_points = state.current_font.ex_size
     else:
         is_true_unit = unit_token['true']
         number_of_scaled_points = units_in_scaled_points[unit] * number_of_units
@@ -115,14 +114,14 @@ def evaluate_dimen(parser_state, dimen_token):
     return number_of_scaled_points
 
 
-def evaluate_glue(parser_state, glue_token):
+def evaluate_glue(state, glue_token):
     evaluated_glue = {}
     for k in glue_keys:
         dimen = glue_token[k]
         if dimen is None:
             evaluated_dimen = None
         else:
-            evaluated_dimen = evaluate_dimen(parser_state, dimen)
+            evaluated_dimen = evaluate_dimen(state, dimen)
         evaluated_glue[k] = evaluated_dimen
     return evaluated_glue
 

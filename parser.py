@@ -191,23 +191,23 @@ def variable_assignment_tokens_explicit(parser_state, p):
 
 @pg.production('evaluated_variable_assignment : token_variable equals filler token_variable')
 def variable_assignment_tokens_variable(parser_state, p):
-    return [p[0], evaluate_token_list(parser_state, p[3])]
+    return [p[0], evaluate_token_list(parser_state.state, p[3])]
 
 
 @pg.production('evaluated_variable_assignment : mu_glue_variable equals mu_glue')
 @pg.production('evaluated_variable_assignment : glue_variable equals glue')
 def variable_assignment_glue(parser_state, p):
-    return [p[0], evaluate_glue(parser_state, p[2])]
+    return [p[0], evaluate_glue(parser_state.state, p[2])]
 
 
 @pg.production('evaluated_variable_assignment : dimen_variable equals dimen')
 def variable_assignment_dimen(parser_state, p):
-    return [p[0], evaluate_dimen(parser_state, p[2])]
+    return [p[0], evaluate_dimen(parser_state.state, p[2])]
 
 
 @pg.production('evaluated_variable_assignment : integer_variable equals number')
 def variable_assignment_integer(parser_state, p):
-    return [p[0], evaluate_number(parser_state, p[2])]
+    return [p[0], evaluate_number(parser_state.state, p[2])]
 
 
 # End of 'variable assignment', a simple assignment.
@@ -264,7 +264,7 @@ def split_hex_code(n, hex_length, inds):
 def code_assignment(parser_state, p):
     is_global = p[0]
     code_type, char_number, code_number = p[1], p[2], p[4]
-    char_size, code_size = evaluate_number(parser_state, char_number), evaluate_number(parser_state, code_number)
+    char_size, code_size = evaluate_number(parser_state.state, char_number), evaluate_number(parser_state.state, code_number)
     char = chr(char_size)
     if code_type == 'CAT_CODE':
         code = CatCode(code_size)
