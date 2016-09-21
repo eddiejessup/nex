@@ -189,6 +189,24 @@ class Banisher(object):
             return None
 
     def process_next_input_token(self):
+        # A terminal token is simply a token that is accepted by the parser.
+        # Might be a lex token, a primitive token or a terminal token.
+        first_token = self.pop_next_input_token()
+        try:
+            output_tokens = self._process_input_token(first_token)
+        except Exception:
+            # If something goes wrong in the expansion, we *assume* that the
+            # function has had no side effects, and just put the input token
+            # back on the input stack, then raise the exception. This might
+            # happen if we've tried to parse tokens too far in one command, and
+            # bled into another command that only makes sense once the previous
+            # one has executed. For example, defining a new macro, then the
+            # next command calling that macro.
+            self.input_tokens_stack.appendleft(first_token)
+            raise
+        return output_tokens
+
+    def _process_input_token(self, first_token):
         output_tokens = deque()
 
         # To reduce my own confusion:
@@ -198,10 +216,6 @@ class Banisher(object):
         # \def that needs combining with the rest of its bits to make a
         # DEFINITION terminal token.
         # But I might blur the line between these two sometimes.
-
-        # A terminal token is simply a token that is accepted by the parser.
-        # Might be a lex token, a primitive token or a terminal token.
-        first_token = self.pop_next_input_token()
 
         # If the token is a control sequence call, then we must check if it is
         # a user control sequence. If it is, then we expand it. If it isn't, we
