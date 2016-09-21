@@ -283,13 +283,15 @@ class GlobalState(object):
         current_font = self.global_font_state.fonts[current_font_id]
         return current_font
 
-    def set_current_font(self, *args, **kwargs):
-        self.scope.font_state.set_current_font(*args, **kwargs)
+    def set_current_font(self, is_global, *args, **kwargs):
+        scopes = self.get_scopes(is_global)
+        for scope in scopes:
+            scope.font_state.set_current_font(*args, **kwargs)
 
     def set_font_family(self, is_global, *args, **kwargs):
         scopes = self.get_scopes(is_global)
         for scope in scopes:
-            self.scope.font_state.set_font_family(*args, **kwargs)
+            scope.font_state.set_font_family(*args, **kwargs)
 
     # Expander.
 
@@ -304,7 +306,7 @@ class GlobalState(object):
         # TODO: do something about \outer. Although it seems a bit fussy...
         # TODO: do something about \long. Although the above also applies...
         def_type = definition_token.value['def_type']
-        is_global = def_type in ('G_DEF', 'X_DEF') or 'GLOBAL' in prefixes
+        is_global = def_type.type in ('G_DEF', 'X_DEF') or 'GLOBAL' in prefixes
         # TODO: do something about this.
         is_expanded = def_type in ('E_DEF', 'X_DEF')
         # Need to set for all outer scopes, in case we have already defined
@@ -315,7 +317,7 @@ class GlobalState(object):
 
     def do_short_hand_definition(self, is_global, *args, **kwargs):
         for scope in self.get_scopes(is_global):
-            macro_token = self.scope.do_short_hand_definition(*args, **kwargs)
+            macro_token = scope.do_short_hand_definition(*args, **kwargs)
         return macro_token
 
     def do_let_assignment(self, is_global, *args, **kwargs):
