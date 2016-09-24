@@ -93,10 +93,13 @@ def evaluate_dimen(state, dimen_token):
     else:
         is_true_unit = unit_token['true']
         number_of_scaled_points = units_in_scaled_points[unit] * number_of_units
-        # TODO: deal with 'true' and 'not-true' scales properly
-        mag_parameter = 1000.0
+        magnification = state.get_parameter_value('mag')
+        # ['true'] unmagnifies the units, so that the subsequent magnification
+        # will cancel out. For example, `\vskip 0.5 true cm' is equivalent to
+        # `\vskip 0.25 cm' if you have previously said `\magnification=2000'.
         if is_true_unit:
-            number_of_scaled_points *= 1000.0 / mag_parameter
+            number_of_scaled_points *= 1000.0 / magnification
+            number_of_scaled_points = int(number_of_scaled_points)
     if sign == '-':
         number_of_scaled_points *= -1
     return number_of_scaled_points
