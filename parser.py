@@ -42,14 +42,14 @@ def command(parser_state, p):
 
 @pg.production('write : IMMEDIATE write')
 def immediate_write(parser_state, p):
+    p[1].value['prefix'] = 'immediate'
     return p[1]
-    p[0].value['prefix'] = 'immediate'
 
 
 @pg.production('write : WRITE number general_text')
 def write(parser_state, p):
     return Token(type_='write',
-                 value={'stream_number': p[1], 'content': p[2]})
+                 value={'stream_number': p[1], 'content': p[2], 'prefix': None})
 
 
 @pg.production('message : ERROR_MESSAGE general_text')
