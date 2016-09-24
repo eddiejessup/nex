@@ -17,6 +17,10 @@ class Mode(Enum):
     display_math = 'DM'
 
 
+vertical_modes = (Mode.vertical, Mode.internal_vertical)
+horizontal_modes = (Mode.horizontal, Mode.restricted_horizontal)
+
+
 class Group(Enum):
 
     # Note, this is *not* the same as 'global scope'. We could enter

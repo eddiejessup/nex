@@ -1,7 +1,9 @@
 import logging
 
+from dvi_api.dvi_document import DVIDocument
+
 from banisher import LexWrapper
-from reader import EndOfFile
+from executor import execute_commands, write_box_to_doc
 from parser import parser, CommandGrabber
 
 
@@ -62,22 +64,20 @@ logger.addHandler(ch)
 
 
 def test_parser():
-    file_name = 'test.tex'
+    # file_name = 'test.tex'
+    file_name = 'plain.tex'
     lex_wrapper = LexWrapper(file_name)
 
     b = lex_wrapper.b
-    grabber = CommandGrabber(b, lex_wrapper, parser=parser)
-    commands = list(grabber.get_commands_until_end())
+    st = lex_wrapper.state
+    command_grabber = CommandGrabber(b, lex_wrapper, parser=parser)
+    box = execute_commands(command_grabber, state=st, reader=lex_wrapper.r)
+    print(box)
 
-    # for command in commands:
-    #     print(command)
-    #     print()
-
-    # result = parser.parse(lex_wrapper, state=lex_wrapper)
-    # # result = parser.parse(file_name, lexer=lex_wrapper, debug=logger)
-    # for term_tok in result:
-    #     print(term_tok)
-    # post_mortem(lex_wrapper, parser)
+    magnification = st.get_parameter_value('mag')
+    doc = DVIDocument(magnification)
+    write_box_to_doc(doc, box)
+    doc.write('oot.dvi')
 
 if __name__ == '__main__':
     test_parser()

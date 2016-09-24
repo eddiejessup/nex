@@ -15,6 +15,7 @@ from typer import (CatCode,
                    explicit_box_map,
                    short_hand_def_map, def_map, if_map)
 from interpreter import Mode, Group
+from executor import execute_commands
 from expander import parse_parameter_text
 from condition_parser import condition_parser
 from general_text_parser import general_text_parser
@@ -356,18 +357,20 @@ class Banisher(object):
             self.pop_context()
 
             box_parser = parser
-            grabber = CommandGrabber(self, self.wrapper, parser=box_parser)
+            command_grabber = CommandGrabber(self, self.wrapper,
+                                             parser=box_parser)
 
             # Matching right brace should enable 'finish_up', then we will
             # trigger EndOfFile and return.
-            results = list(grabber.get_commands_until_end())
+            box = execute_commands(command_grabber, self.global_state,
+                                   reader=self.wrapper.r)
 
             material_map = {
                 Mode.internal_vertical: 'VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE',
                 Mode.restricted_horizontal: 'HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE',
             }
             material_type = material_map[mode]
-            material = TerminalToken(type_=material_type, value=results)
+            material = TerminalToken(type_=material_type, value=box)
             output_tokens.append(material)
         elif type_ == 'LEFT_BRACE':
             # We think we aren't seeing a left brace to do with defining a
