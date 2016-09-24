@@ -664,6 +664,15 @@ class CommandGrabber(object):
                 # Carry on getting more tokens, because it seems we can.
                 pass
             else:
+                # Implemented in a modified version of rply, we annotate the
+                # output token to indicate whether the only action from the
+                # current parse state could be to end. In this case, we do not
+                # bother adding another token, and just finish the command.
+                # This is important to limit the number of cases where we
+                # expand too far, and must handle bad expansion of the post-
+                # command tokens.
+                if result._could_only_end:
+                    break
                 have_parsed = True
         return result
 
