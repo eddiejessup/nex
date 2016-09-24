@@ -59,10 +59,16 @@ def message(p):
 pg.add_recent_productions(gen_txt_pg)
 
 
+# Start of 'assignment', a command. This is a big section.
+
+
 @pg.production('assignment : macro_assignment')
 @pg.production('assignment : non_macro_assignment')
 def assignment(p):
     return p[0]
+
+
+# Start of 'macro assignment', an assignment.
 
 
 @pg.production('macro_assignment : prefix macro_assignment')
@@ -116,16 +122,27 @@ def definition_text(p):
 
 # End of 'macro assignment', an assignment.
 
-# Start of 'simple assignment', an assignment. (Non macro is just this with
-# an optional 'global' prefix.)
+# Start of 'non-macro assignment', an assignment.
+# (This is basically just 'simple assignment's, with an optional \global
+# prefix.)
 
 
-# TODO: I moved all the global prefixes inside each assignment, because I was
-# implementing the commands in here. Now I am not, I can move them out again
-# to up here.
+@pg.production('non_macro_assignment : GLOBAL non_macro_assignment')
+def non_macro_assignment_global(p):
+    tok = p[1]
+    tok.value['global'] = True
+    return tok
+
+
 @pg.production('non_macro_assignment : simple_assignment')
 def non_macro_assignment(p):
-    return p[0]
+    tok = p[0]
+    # A simple assignment is local (non-global) unless indicated otherwise.
+    # The only way to be already global is if the simple assigment is of type
+    # 'global assignment'. In this case, we should not touch the value.
+    if 'global' not in tok.value:
+        tok.value['global'] = False
+    return tok
 
 
 @pg.production('simple_assignment : variable_assignment')
@@ -133,6 +150,7 @@ def non_macro_assignment(p):
 @pg.production('simple_assignment : code_assignment')
 @pg.production('simple_assignment : let_assignment')
 @pg.production('simple_assignment : short_hand_definition')
+@pg.production('simple_assignment : font_selection')
 @pg.production('simple_assignment : family_assignment')
 @pg.production('simple_assignment : set_box_assignment')
 @pg.production('simple_assignment : font_definition')
@@ -141,26 +159,22 @@ def simple_assignment(p):
     return p[0]
 
 
-@pg.production('simple_assignment : optional_globals FONT_DEF_TOKEN')
+# 'font selection', a simple assignment.
+
+
+@pg.production('font_selection : FONT_DEF_TOKEN')
 def simple_assignment_font_selection(p):
     return Token(type_='font_selection',
-                 value={'global': p[0], 'font_id': p[1].value})
+                 value={'font_id': p[0].value})
 
 
 # Start of 'variable assignment', a simple assignment.
 
-@pg.production('simple_assignment : optional_globals variable_assignment')
-def simple_assignment_variable(p):
-    return p[0]
-
-
-@pg.production('variable_assignment : optional_globals partial_variable_assignment')
+@pg.production('variable_assignment : partial_variable_assignment')
 def variable_assignment(p):
-    is_global = p[0]
-    variable, value = p[1]
+    variable, value = p[0]
     return Token(type_='variable_assignment',
-                 value={'global': is_global,
-                        'variable': variable, 'value': value})
+                 value={'variable': variable, 'value': value})
 
 
 @pg.production('partial_variable_assignment : token_variable equals general_text')
@@ -183,13 +197,13 @@ def partial_variable_assignment_quantity(p):
 # Start of 'arithmetic', a simple assignment.
 
 
-@pg.production('arithmetic : optional_globals ADVANCE integer_variable optional_by number')
+@pg.production('arithmetic : ADVANCE integer_variable optional_by number')
 def arithmetic_integer_variable(p):
     # TODO: Allow arithmetic on parameters.
     # TODO: Allow multiply and divide operations.
     # TODO: Allow arithmetic on dimen, glue and muglue.
     return Token(type_='advance',
-                 value={'global': p[0], 'variable': p[2], 'value': p[4]})
+                 value={'variable': p[1], 'value': p[3]})
 
 
 @pg.production('optional_by : by')
@@ -203,11 +217,10 @@ def optional_by(p):
 # Start of 'code assignment', a simple assignment.
 
 
-@pg.production('code_assignment : optional_globals code_name number equals number')
+@pg.production('code_assignment : code_name number equals number')
 def code_assignment(p):
     return Token(type_='code_assignment',
-                 value={'global': p[0], 'code_type': p[1],
-                        'char': p[2], 'code': p[4]})
+                 value={'code_type': p[0], 'char': p[1], 'code': p[3]})
 
 
 @pg.production('code_name : CAT_CODE')
@@ -225,14 +238,12 @@ def code_name_cat(p):
 # Start of 'let assignment', a simple assignment.
 
 
-@pg.production('let_assignment : optional_globals LET control_sequence equals one_optional_space UNEXPANDED_TOKEN')
+@pg.production('let_assignment : LET control_sequence equals one_optional_space UNEXPANDED_TOKEN')
 def let_assignment_control_sequence(p):
-    is_global = p[0]
-    target_token = p[5].value
-    new_name = p[2].value['name']
+    target_token = p[4].value
+    new_name = p[1].value['name']
     return Token(type_='let_assignment',
-                 value={'global': is_global, 'name': new_name,
-                        'target_token': target_token})
+                 value={'name': new_name, 'target_token': target_token})
 
 
 # End of 'let assignment', a simple assignment.
@@ -240,16 +251,13 @@ def let_assignment_control_sequence(p):
 # Start of 'short-hand definition', a simple assignment.
 
 
-@pg.production('short_hand_definition : optional_globals short_hand_def control_sequence equals number')
+@pg.production('short_hand_definition : short_hand_def control_sequence equals number')
 def short_hand_definition(p):
-    is_global = p[0]
-    code = p[4]
-    def_type = p[1].type
-    control_sequence_name = p[2].value['name']
+    code = p[3]
+    def_type = p[0].type
+    control_sequence_name = p[1].value['name']
     return Token(type_='short_hand_definition',
-                 value={'global': is_global,
-                        'code': code,
-                        'def_type': def_type,
+                 value={'code': code, 'def_type': def_type,
                         'control_sequence_name': control_sequence_name})
 
 
@@ -269,17 +277,14 @@ def short_hand_def(p):
 # Start of 'family assignment', a simple assignment.
 
 
-@pg.production('family_assignment : optional_globals family_member equals font')
+@pg.production('family_assignment : family_member equals font')
 def family_assignment(p):
-    is_global = p[0]
     # TODO: will this work for productions of font other than FONT_DEF_TOKEN?
-    font_id = p[3].value
-    font_range = p[1].type
-    family_nr = p[1].value
+    font_id = p[2].value
+    font_range = p[0].type
+    family_nr = p[0].value
     return Token(type_='family_assignment',
-                 value={'global': is_global,
-                        'family_nr': family_nr,
-                        'font_range': font_range,
+                 value={'family_nr': family_nr, 'font_range': font_range,
                         'font_id': font_id})
 
 
@@ -300,12 +305,10 @@ def font_range(p):
 # Start of 'set box assignment', a simple assignment.
 
 
-@pg.production('set_box_assignment : optional_globals SET_BOX number equals filler box')
+@pg.production('set_box_assignment : SET_BOX number equals filler box')
 def set_box_assignment(p):
-    is_global = p[0]
-    # TODO: Actually put these contents in a register.
     return Token(type_='set_box_assignment',
-                 value={'is_global': is_global, 'nr': p[2], 'contents': p[5]})
+                 value={'nr': p[1], 'contents': p[4]})
 
 
 # @pg.production('box : BOX number')
@@ -316,8 +319,8 @@ def set_box_assignment(p):
 # @pg.production('box : V_BOX box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
 # @pg.production('box : V_TOP box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
 def box(p):
-    return Token(type_='h_box', value={'specification': p[1],
-                                       'contents': p[3]})
+    return Token(type_='h_box',
+                 value={'specification': p[1], 'contents': p[3]})
 
 
 @pg.production('box_specification : to dimen filler')
@@ -340,16 +343,11 @@ def box_specification_empty(p):
 # Start of 'font definition', a simple assignment.
 
 
-# TODO: all these global things can be done *much* better now, because the
-# action is taken *after* all the parsing is done. That is great.
-@pg.production('font_definition : optional_globals FONT control_sequence equals optional_spaces file_name filler at_clause')
+@pg.production('font_definition : FONT control_sequence equals optional_spaces file_name filler at_clause')
 def font_definition(p):
-    is_global = p[0]
-    file_name, at_clause = p[5], p[7]
-    control_sequence_name = p[2].value['name']
+    control_sequence_name = p[1].value['name']
     return Token(type_='font_definition',
-                 value={'global': is_global, 'file_name': file_name,
-                        'at_clause': at_clause,
+                 value={'file_name': p[4], 'at_clause': p[6],
                         'control_sequence_name': control_sequence_name})
 
 
@@ -373,19 +371,16 @@ def at_clause_empty(p):
 # Start of 'global assignment', a simple assignment.
 
 
-@pg.production('global_assignment : optional_globals global_assignment')
-def global_assignment(p):
-    # Global prefixes have no effect.
-    return p[1]
-
-
 @pg.production('global_assignment : font_assignment')
 @pg.production('global_assignment : hyphenation_assignment')
 # @pg.production('global_assignment : box_size_assignment')
 # @pg.production('global_assignment : interaction_mode_assignment')
 # @pg.production('global_assignment : intimate_assignment')
 def global_assignment(p):
-    return p[0]
+    tok = p[0]
+    # Global assignments are always global, even without the \global prefix.
+    tok.value['global'] = True
+    return tok
 
 
 @pg.production('font_assignment : SKEW_CHAR font equals number')
@@ -409,25 +404,16 @@ def font(p):
 @pg.production('hyphenation_assignment : HYPHENATION general_text')
 @pg.production('hyphenation_assignment : PATTERNS general_text')
 def hyphenation_assignment(p):
-    # TODO: Implement.
-    return Token(type_=p[0].type, value=p[1])
+    return Token(type_=p[0].type, value={'content': p[1]})
 
 
 # End of 'global assignment', a simple assignment.
 
 
-@pg.production('optional_globals : optional_globals GLOBAL')
-def optional_globals_extend(p):
-    return True
+# End of 'simple assignment', an assignment.
 
 
-@pg.production('optional_globals : GLOBAL')
-@pg.production('optional_globals : empty')
-def optional_globals(p):
-    return bool(p[0])
-
-
-# End of the simple assignments.
+# End of 'assignment', a command.
 
 
 @pg.production('add_kern : KERN dimen')
