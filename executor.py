@@ -170,23 +170,67 @@ def execute_command(command, state, reader):
         if state.mode in vertical_modes:
             pass
         elif state.mode in horizontal_modes:
+            # Spaces append glue to the current list; the exact amount of glue
+            # depends on \spacefactor, the current font, and the \spaceskip and
+            # \xspaceskip parameters, as described in Chapter 12.
             box.append(command)
-    elif type_ == 'input':
-        reader.insert_file(command.value['file_name'])
-    # I think technically only this should cause the program to end, not
-    # EndOfFile anywhere. But for now, whatever.
-    elif type_ == 'END':
-        raise EndOfFile
+        else:
+            import pdb; pdb.set_trace()
+    elif type_ == 'PAR':
+        if state.mode in vertical_modes:
+            # The primitive \par command has no effect when TeX is in vertical
+            # mode, except that the page builder is exercised in case something
+            # is present on the contribution list, and the paragraph shape
+            # parameters are cleared.
+            pass
+        elif state.mode == Mode.restricted_horizontal:
+            # The primitive \par command, also called \endgraf in plain \TeX,
+            # does nothing in restricted horizontal mode.
+            pass
+        elif state.mode == Mode.horizontal:
+            # But it terminates horizontal mode: The current list is finished
+            # off by doing,
+            #   '\unskip \penalty10000 \parfillskip \hskip\parfillskip'
+            # then it is broken into lines as explained in Chapter 14, and TeX
+            # returns to the enclosing vertical or internal vertical mode. The
+            # lines of the paragraph are appended to the enclosing vertical
+            # list, interspersed with interline glue and interline penalties,
+            # and with the migration of vertical material that was in the
+            # horizontal list. Then TeX exercises the page builder.
+            state.pop_mode()
+            box.append(command)
+        else:
+            import pdb; pdb.set_trace()
+    elif type_ == 'character':
+        box.append(command)
+    elif type_ == 'V_RULE':
+        box.append(command)
+    # The box already has its contents in the correct way, built using this
+    # very method. Recursion still amazes me sometimes.
+    elif type_ == 'h_box':
+        box.append(command)
     # Commands like font commands aren't exactly boxes, but they go through
     # as DVI commands. Just put them in the box for now to deal with later.
     elif type_ == 'font_selection':
         state.set_current_font(v['global'], v['font_id'])
+        box.append(command)
+    elif type_ == 'font_definition':
+        state.define_new_font(v['global'],
+                              v['control_sequence_name'],
+                              v['file_name'],
+                              v['at_clause'])
         box.append(command)
     elif type_ == 'family_assignment':
         family_nr = v['family_nr']
         family_nr_eval = evaluate_number(state, family_nr)
         state.set_font_family(v['global'], family_nr_eval,
                               v['font_range'], v['font_id'])
+    elif type_ == 'input':
+        reader.insert_file(command.value['file_name'])
+    # I think technically only this should cause the program to end, not
+    # EndOfFile anywhere. But for now, whatever.
+    elif type_ == 'END':
+        raise EndOfFile
     elif type_ == 'short_hand_definition':
         code_eval = evaluate_number(state, v['code'])
         state.do_short_hand_definition(v['global'],
@@ -223,12 +267,15 @@ def execute_command(command, state, reader):
             param_name = variable.value['canonical_name']
             state.set_parameter(is_global=v['global'],
                                 name=param_name, value=evaled_value)
-    elif type_ == 'font_definition':
-        state.define_new_font(v['global'],
-                              v['control_sequence_name'],
-                              v['file_name'],
-                              v['at_clause'])
-        box.append(command)
+    elif type_ == 'set_box_assignment':
+        # TODO: Implement.
+        pass
+    elif type_ == 'PATTERNS':
+        # TODO: Implement.
+        pass
+    elif type_ == 'HYPHENATION':
+        # TODO: Implement.
+        pass
     elif type_ == 'code_assignment':
         code_type = v['code_type']
         char_size = evaluate_number(state, v['char'])
@@ -276,16 +323,18 @@ def execute_command(command, state, reader):
         #         number?
         code_eval = evaluate_number(state, v['code'])
         state.global_font_state.set_hyphen_char(v['font_id'], code_eval)
-    elif type_ == 'character':
-        box.append(command)
-    # The box already has its contents in the correct way, built using this
-    # very method. Recursion still amazes me sometimes.
-    elif type_ == 'h_box':
-        box.append(command)
+    elif type_ == 'message':
+        print(command.value)
+    elif type_ == 'write':
+        print(command.value)
+    elif type_ == 'RELAX':
+        pass
+        else:
+            import pdb; pdb.set_trace()
     else:
         # print(type_)
-        pass
-        # import pdb; pdb.set_trace()
+        # pass
+        import pdb; pdb.set_trace()
     return box
 
 
