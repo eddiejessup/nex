@@ -49,82 +49,82 @@ def wrap(pg, func, rule):
 
 def add_character_productions(pg):
 
-    def character(parser_state, p):
+    def character(p):
         return Token(type_='character', value=p[0].value)
     for char_type in normal_char_types:
         rule = 'character : {}'.format(char_type)
         character = wrap(pg, character, rule)
 
     @pg.production(word_to_pr('by'))
-    def by(parser_state, p):
+    def by(p):
         return None
 
     @pg.production(word_to_pr('true'))
-    def true(parser_state, p):
+    def true(p):
         return True
 
     @pg.production(word_to_pr('minus'))
-    def minus(parser_state, p):
+    def minus(p):
         return None
 
     @pg.production(word_to_pr('plus'))
-    def plus(parser_state, p):
+    def plus(p):
         return None
 
     # Font related.
 
     @pg.production(word_to_pr('at'))
-    def at(parser_state, p):
+    def at(p):
         return None
 
     @pg.production(word_to_pr('scaled'))
-    def scaled(parser_state, p):
+    def scaled(p):
         return None
 
     # Box related.
 
     @pg.production(word_to_pr('to'))
-    def to(parser_state, p):
+    def to(p):
         return None
 
     @pg.production(word_to_pr('spread'))
-    def spread(parser_state, p):
+    def spread(p):
         return None
 
     @pg.production(word_to_pr('width'))
-    def width(parser_state, p):
+    def width(p):
         return 'width'
 
     @pg.production(word_to_pr('height'))
-    def height(parser_state, p):
+    def height(p):
         return 'height'
 
     @pg.production(word_to_pr('depth'))
-    def depth(parser_state, p):
+    def depth(p):
         return 'depth'
 
     # Unit related.
 
     @pg.production(word_to_pr('em'))
-    def em(parser_state, p):
+    def em(p):
         return InternalUnit.em
 
     @pg.production(word_to_pr('ex'))
-    def ex(parser_state, p):
+    def ex(p):
         return InternalUnit.em
 
     @pg.production(word_to_pr('mu', target='mu_unit') + ' one_optional_space')
-    def unit_of_mu_measure(parser_state, p):
+    def unit_of_mu_measure(p):
         return {'unit': MuUnit.mu}
 
     @pg.production(word_to_pr('fil'))
-    def fil(parser_state, p):
+    def fil(p):
         # Represents the number of infinities.
         # Obviously that's a sentence that should appear in a program
         # about type-setting...
         return 1
 
-    def physical_unit(parser_state, p):
+    def physical_unit(p):
         string = ''.join([t.value['char'] for t in p])
         return PhysicalUnit(string)
     for unit in PhysicalUnit:
@@ -138,30 +138,30 @@ def add_character_productions(pg):
 
     @pg.production('non_active_uncased_a : A')
     @pg.production('non_active_uncased_a : NON_ACTIVE_UNCASED_a')
-    def non_active_uncased_a(parser_state, p):
+    def non_active_uncased_a(p):
         return p[0]
 
     @pg.production('non_active_uncased_b : B')
     @pg.production('non_active_uncased_b : NON_ACTIVE_UNCASED_b')
-    def non_active_uncased_b(parser_state, p):
+    def non_active_uncased_b(p):
         return p[0]
 
     @pg.production('non_active_uncased_c : C')
     @pg.production('non_active_uncased_c : NON_ACTIVE_UNCASED_c')
-    def non_active_uncased_c(parser_state, p):
+    def non_active_uncased_c(p):
         return p[0]
 
     @pg.production('non_active_uncased_d : D')
     @pg.production('non_active_uncased_d : NON_ACTIVE_UNCASED_d')
-    def non_active_uncased_d(parser_state, p):
+    def non_active_uncased_d(p):
         return p[0]
 
     @pg.production('non_active_uncased_e : NON_ACTIVE_UNCASED_e')
     @pg.production('non_active_uncased_e : E')
-    def non_active_uncased_e(parser_state, p):
+    def non_active_uncased_e(p):
         return p[0]
 
     @pg.production('non_active_uncased_f : NON_ACTIVE_UNCASED_f')
     @pg.production('non_active_uncased_f : F')
-    def non_active_uncased_f(parser_state, p):
+    def non_active_uncased_f(p):
         return p[0]

@@ -10,22 +10,22 @@ pg.tokens += tuple(if_map.values())
 
 
 @pg.production('condition_wrap : condition')
-def condition_wrap(parser_state, p):
+def condition_wrap(p):
     return Token(type_='condition', value=p[0])
 
 
 @pg.production('condition : IF_TRUE')
-def condition_if_true(parser_state, p):
+def condition_if_true(p):
     return Token(type_='if_true', value=None)
 
 
 @pg.production('condition : IF_FALSE')
-def condition_if_false(parser_state, p):
+def condition_if_false(p):
     return Token(type_='if_false', value=None)
 
 
 @pg.production('condition : IF_NUM number relation number')
-def condition_if_num(parser_state, p):
+def condition_if_num(p):
     return Token(type_='if_num',
                  value={'left_number': p[1],
                         'right_number': p[3],
@@ -33,7 +33,7 @@ def condition_if_num(parser_state, p):
 
 
 @pg.production('condition : IF_CASE number')
-def condition_if_case(parser_state, p):
+def condition_if_case(p):
     return Token(type_='if_case',
                  value={'number': p[1]})
 
@@ -41,12 +41,12 @@ def condition_if_case(parser_state, p):
 @pg.production('relation : LESS_THAN')
 @pg.production('relation : EQUALS')
 @pg.production('relation : GREATER_THAN')
-def relation(parser_state, p):
+def relation(p):
     return p[0].value['char']
 
 
 @pg.error
-def error(parser_state, look_ahead):
+def error(look_ahead):
     # TODO: remove duplication of this function with main parser.
     # If we have exhausted the list of tokens while still
     # having a valid command, we should read more tokens until we get a syntax
@@ -60,9 +60,5 @@ def error(parser_state, look_ahead):
         raise ExpectedParsingError
     else:
         import pdb; pdb.set_trace()
-    # if parser_state.in_recovery_mode:
-    #     print("Syntax error in input!")
-    #     post_mortem(parser_state, parser)
-    #     raise ValueError
 
 condition_parser = pg.build()

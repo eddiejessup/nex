@@ -570,8 +570,7 @@ class Banisher(object):
             # Check arguments obey the rules of a 'general text'.
             # TODO: Can this be done better with a command grabber or
             # something?
-            general_text_token = general_text_parser.parse(iter(case_tokens),
-                                                           state=self.wrapper)
+            general_text_token = general_text_parser.parse(iter(case_tokens))
 
             case_funcs_map = {
                 'LOWER_CASE': self.global_state.get_lower_case_code,

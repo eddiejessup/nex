@@ -100,7 +100,7 @@ def evaluate_glue(state, glue_token):
     return evaluated_glue
 
 
-def evaluate_token_list(parser_state, token_list_token):
+def evaluate_token_list(state, token_list_token):
     token_list_value = token_list_token.value
     if token_list_value.type == 'general_text':
         evaluated_token_list = token_list_value.value
