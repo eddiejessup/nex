@@ -1,5 +1,5 @@
 from common import Token, TerminalToken, InternalToken
-from utils import get_unique_id
+from utils import get_unique_id, NoSuchControlSequence
 from tex_parameters import default_parameters
 from typer import (control_sequence_lex_type, char_cat_lex_type,
                    short_hand_def_to_token_map, font_def_token_type,
@@ -212,15 +212,15 @@ class Expander(object):
         self.control_sequences[name] = route_token
 
     def resolve_name_to_route_token(self, name):
-        if isinstance(name, dict):
-            import pdb; pdb.set_trace()
+        # If the route token exists in this scope, return it.
         if name in self.control_sequences:
             route_token = self.control_sequences[name]
+        # Otherwise, if there's an enclosing scope, ask it for it.
+        elif self.enclosing_scope is not None:
+            route_token = self.enclosing_scope.expander.resolve_name_to_route_token(name)
+        # If we are the outermost scope, the control sequence is unknown.
         else:
-            try:
-                route_token = self.enclosing_scope.expander.resolve_name_to_route_token(name)
-            except:
-                import pdb; pdb.set_trace()
+            raise NoSuchControlSequence
         return route_token
 
     def _resolve_route_token_to_raw_value(self, r):

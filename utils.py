@@ -27,3 +27,7 @@ def get_unique_id():
     compressed = base64.urlsafe_b64encode(raw.bytes).decode("utf-8")
     sanitised = compressed.rstrip('=\n').replace('/', '_')
     return sanitised
+
+
+class NoSuchControlSequence(Exception):
+    pass

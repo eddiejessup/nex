@@ -2,12 +2,12 @@ from collections import deque
 import logging
 
 from reader import EndOfFile
-from utils import post_mortem
+from utils import post_mortem, NoSuchControlSequence
 from typer import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from common import Token
 from expander import parse_replacement_text, parameter_types
-from fonts import FontRange
 from registers import is_register_type
+from fonts import FontRange
 from common_parsing import (pg as common_pg,
                             evaluate_number, evaluate_dimen, evaluate_glue,
                             evaluate_token_list)
@@ -37,12 +37,6 @@ pg = common_pg.copy_to_extend()
 @pg.production('command : input')
 @pg.production('command : END')
 def command(parser_state, p):
-    return p[0]
-
-
-@pg.production('assignment : macro_assignment')
-@pg.production('assignment : non_macro_assignment')
-def assignment(parser_state, p):
     return p[0]
 
 
@@ -85,6 +79,11 @@ def prefix(parser_state, p):
         return p[0] + [p[1]]
     else:
         return [p[0]]
+
+@pg.production('assignment : macro_assignment')
+@pg.production('assignment : non_macro_assignment')
+def assignment(parser_state, p):
+    return p[0]
 
 
 @pg.production('prefixes : empty')
@@ -660,10 +659,18 @@ class CommandGrabber(object):
                 # something is wrong.
                 else:
                     import pdb; pdb.set_trace()
-                # if parse_stack:
-                #     self.lex_wrapper.in_recovery_mode = True
-                #     parser.parse(iter(parse_stack), state=self.lex_wrapper)
-                #     import pdb; pdb.set_trace()
+                    pass
+            # If we get an expansion error, it might be because we need to
+            # execute this command first.
+            except NoSuchControlSequence:
+                if have_parsed:
+                    break
+                else:
+                    import pdb; pdb.set_trace()
+                    pass
+            except Exception as e:
+                import pdb; pdb.set_trace()
+                pass
             parse_stack.append(t)
             try:
                 result = self.parser.parse(iter(parse_stack),
@@ -677,6 +684,7 @@ class CommandGrabber(object):
                     break
                 else:
                     import pdb; pdb.set_trace()
+                    pass
             except ExhaustedTokensError:
                 # Carry on getting more tokens, because it seems we can.
                 pass
