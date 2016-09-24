@@ -2,10 +2,9 @@ import logging
 from collections import deque
 from enum import Enum
 
-from state import GlobalState
 from common import TerminalToken
-from reader import Reader, EndOfFile
-from lexer import make_char_cat_token, Lexer
+from reader import EndOfFile
+from lexer import make_char_cat_token
 from parser import parser
 from typer import (CatCode,
                    char_cat_lex_type, control_sequence_lex_type,
@@ -94,11 +93,13 @@ def get_brace_sign(token):
 
 class Banisher(object):
 
-    def __init__(self, lexer, wrapper):
+    def __init__(self, lexer, state, reader):
         self.lexer = lexer
-        # *ahem* this is not nice.
-        self.wrapper = wrapper
-        self.global_state = self.wrapper.state
+        self.global_state = state
+        # The banisher needs the reader because it can execute commands,
+        # and one possible command is '\input', which needs to modify the
+        # reader.
+        self.reader = reader
         # Input buffer.
         self.input_tokens_queue = deque()
         self.context_mode_stack = []
@@ -351,7 +352,7 @@ class Banisher(object):
             # Matching right brace should enable 'finish_up', then we will
             # trigger EndOfFile and return.
             box = execute_commands(command_grabber, self.global_state,
-                                   reader=self.wrapper.r)
+                                   reader=self.reader)
 
             material_map = {
                 Mode.internal_vertical: 'VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE',
@@ -601,20 +602,3 @@ class Banisher(object):
     def pop_input_to_queue(self, queue):
         next_input_token = self.pop_next_input_token()
         queue.append(next_input_token)
-
-
-class LexWrapper(object):
-
-    def __init__(self, file_name):
-        self.state = GlobalState()
-        self.file_name = file_name
-        self.r = Reader(file_name)
-        self.lex = Lexer(self.r, self.state)
-        self.b = Banisher(self.lex, wrapper=self)
-        self.in_recovery_mode = False
-
-    def __next__(self):
-        try:
-            return self.b.next_token
-        except EndOfFile:
-            return None
