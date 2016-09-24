@@ -46,8 +46,9 @@ class Lexer(object):
         self.global_state = global_state
 
     def peek_ahead(self, n=1):
-        # TODO: stop peeking ahead very far, because scope might change and
-        # results would be incorrect.
+        if n > 3:
+            raise ValueError('Peeking ahead so far is forbidden, as lies might'
+                             'be returned')
         char = self.reader.peek_ahead(n)
         cat = self.global_state.get_cat_code(char)
         return char, cat
