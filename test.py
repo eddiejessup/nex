@@ -3,8 +3,8 @@ import logging
 from dvi_api.dvi_document import DVIDocument
 
 from banisher import LexWrapper
-from executor import execute_commands, write_box_to_doc
-from parser import parser, CommandGrabber
+from executor import execute_commands, write_box_to_doc, CommandGrabber
+from parser import parser
 
 
 ch = logging.StreamHandler()
@@ -70,7 +70,7 @@ def test_parser():
 
     b = lex_wrapper.b
     st = lex_wrapper.state
-    command_grabber = CommandGrabber(b, lex_wrapper, parser=parser)
+    command_grabber = CommandGrabber(b, parser=parser)
     box = execute_commands(command_grabber, state=st, reader=lex_wrapper.r)
     print(box)
 

@@ -6,7 +6,7 @@ from state import GlobalState
 from common import TerminalToken
 from reader import Reader, EndOfFile
 from lexer import make_char_cat_token, Lexer
-from parser import parser, CommandGrabber
+from parser import parser
 from typer import (CatCode,
                    char_cat_lex_type, control_sequence_lex_type,
                    lex_token_to_unexpanded_terminal_token,
@@ -15,7 +15,7 @@ from typer import (CatCode,
                    explicit_box_map,
                    short_hand_def_map, def_map, if_map)
 from interpreter import Mode, Group
-from executor import execute_commands, execute_condition
+from executor import CommandGrabber, execute_commands, execute_condition
 from expander import parse_parameter_text
 from condition_parser import condition_parser
 from general_text_parser import general_text_parser
@@ -346,8 +346,7 @@ class Banisher(object):
             self.pop_context()
 
             box_parser = parser
-            command_grabber = CommandGrabber(self, self.wrapper,
-                                             parser=box_parser)
+            command_grabber = CommandGrabber(self, parser=box_parser)
 
             # Matching right brace should enable 'finish_up', then we will
             # trigger EndOfFile and return.
@@ -444,8 +443,7 @@ class Banisher(object):
             output_tokens.append(first_token)
             self.push_context(ContextMode.awaiting_balanced_text_start)
         elif type_ in if_types:
-            command_grabber = CommandGrabber(self, self.wrapper,
-                                             parser=condition_parser)
+            command_grabber = CommandGrabber(self, parser=condition_parser)
             command_grabber.buffer_queue.append(first_token)
             condition_token = command_grabber.get_command()
             outcome = execute_condition(condition_token, self.global_state)

@@ -1,6 +1,9 @@
+from collections import deque
 import operator
 
 from common import Token
+from utils import NoSuchControlSequence
+from parse_utils import ExpectedParsingError, ExhaustedTokensError
 from reader import EndOfFile
 from registers import is_register_type
 from typer import (CatCode, MathCode, GlyphCode, DelimiterCode, MathClass,
@@ -328,3 +331,86 @@ def write_box_to_doc(doc, box):
         else:
             print(type_)
             import pdb; pdb.set_trace()
+
+
+class CommandGrabber(object):
+
+    def __init__(self, banisher, parser):
+        self.banisher = banisher
+        self.parser = parser
+
+        # Processing input tokens might return many tokens, so
+        # we store them in a buffer.
+        self.buffer_queue = deque()
+
+        self.max_nr_extra_tokens = 1
+        self.finish_up_grabbing = False
+
+    def get_command(self):
+        # Want to extend the queue-to-be-parsed one token at a time,
+        # so we can break as soon as we have all we need.
+        parse_queue = deque()
+        # Get enough tokens to evaluate command. We know to stop adding tokens
+        # when we see a switch from failing because we run out of tokens
+        # (ExhaustedTokensError) to an actual syntax error
+        # (ExpectedParsingError).
+        # We keep track of if we have parsed, just for checking for weird
+        # situations.
+        have_parsed = False
+        while True:
+            try:
+                t = self.banisher.pop_or_fill_and_pop(self.buffer_queue)
+            except EndOfFile:
+                # This is the case where we might have been shown a 'fake' EndOfFile.
+                # We need to add the current command, and then return all commands.
+                if have_parsed:
+                    self.finish_up_grabbing = True
+                    break
+                # If we get an EndOfFile, and we have just started trying to
+                # get a command, we are done, so just return.
+                elif not parse_queue:
+                    raise
+                # If we get to the end of the file in the middle of a command,
+                # something is wrong.
+                else:
+                    import pdb; pdb.set_trace()
+                    pass
+            # If we get an expansion error, it might be because we need to
+            # execute this command first.
+            except NoSuchControlSequence:
+                if have_parsed:
+                    break
+                else:
+                    import pdb; pdb.set_trace()
+                    pass
+            except Exception as e:
+                import pdb; pdb.set_trace()
+                raise
+            parse_queue.append(t)
+            try:
+                result = self.parser.parse(iter(parse_queue))
+            except ExpectedParsingError:
+                if have_parsed:
+                    # We got so many tokens of fluff due to extra reads,
+                    # to make the parse queue not-parse.
+                    # Put them back on the buffer.
+                    self.buffer_queue.appendleft(parse_queue.pop())
+                    break
+                else:
+                    import pdb; pdb.set_trace()
+                    pass
+            except ExhaustedTokensError:
+                # Carry on getting more tokens, because it seems we can.
+                pass
+            else:
+                # Implemented in a modified version of rply, we annotate the
+                # output token to indicate whether the only action from the
+                # current parse state could be to end. In this case, we do not
+                # bother adding another token, and just finish the command.
+                # This is important to limit the number of cases where we
+                # expand too far, and must handle bad expansion of the post-
+                # command tokens.
+                if result._could_only_end:
+                    break
+                have_parsed = True
+        return result
