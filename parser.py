@@ -409,8 +409,7 @@ def font(p):
 @pg.production('hyphenation_assignment : PATTERNS general_text')
 def hyphenation_assignment(p):
     # TODO: Implement.
-    return Token(type_=p[0],
-                 value=p[1])
+    return Token(type_=p[0].type, value=p[1])
 
 
 # End of 'global assignment', a simple assignment.
@@ -447,21 +446,21 @@ def add_kern(p):
 @pg.production('add_glue : V_FIL_NEG')
 def add_special_glue(p):
     # TODO: Implement.
-    return Token(type_=p[0], value=None)
+    return Token(type_=p[0].type, value=None)
 
 
 @pg.production('add_glue : H_SKIP glue')
 @pg.production('add_glue : V_SKIP glue')
 def add_glue(p):
     # TODO: Implement.
-    return Token(type_=p[0], value=p[1])
+    return Token(type_=p[0].type, value=p[1])
 
 
 @pg.production('vertical_rule : V_RULE rule_specification')
 @pg.production('horizontal_rule : H_RULE rule_specification')
 def rule(p):
     # TODO: Implement.
-    return Token(type_=p[0], value=p[1])
+    return Token(type_=p[0].type, value=p[1])
 
 
 @pg.production('rule_specification : rule_dimension rule_specification')
