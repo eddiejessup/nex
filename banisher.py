@@ -15,7 +15,7 @@ from typer import (CatCode,
                    explicit_box_map,
                    short_hand_def_map, def_map, if_map)
 from interpreter import Mode, Group
-from executor import execute_commands
+from executor import execute_commands, execute_condition
 from expander import parse_parameter_text
 from condition_parser import condition_parser
 from general_text_parser import general_text_parser
@@ -455,16 +455,17 @@ class Banisher(object):
             output_tokens.append(first_token)
             self.push_context(ContextMode.awaiting_balanced_text_start)
         elif type_ in if_types:
-            grabber = CommandGrabber(self, self.wrapper,
-                                     parser=condition_parser)
+            command_grabber = CommandGrabber(self, self.wrapper,
+                                             parser=condition_parser)
             # TODO: aren't all these things actually queues, not stacks?
             # (Entails lots of renaming.)
-            grabber.buffer_stack.append(first_token)
-            outcome_token = grabber.get_command()
-            outcome = outcome_token.value
+            command_grabber.buffer_stack.append(first_token)
+            condition_token = command_grabber.get_command()
+            outcome = execute_condition(condition_token, self.global_state)
             # Pick up any left-over tokens from the condition command parsing.
-            if_stack = grabber.buffer_stack
+            if_stack = command_grabber.buffer_stack
 
+            # TODO: Move inside executor? Not sure.
             if type_ == 'IF_CASE':
                 i_block_to_pick = outcome
             else:

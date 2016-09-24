@@ -585,7 +585,7 @@ class CommandGrabber(object):
                     pass
             except Exception as e:
                 import pdb; pdb.set_trace()
-                pass
+                raise
             parse_stack.append(t)
             try:
                 result = self.parser.parse(iter(parse_stack),
