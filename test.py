@@ -67,8 +67,8 @@ logger.addHandler(ch)
 
 
 def test_parser():
-    # file_name = 'test.tex'
-    file_name = 'plain.tex'
+    file_name = 'test.tex'
+    # file_name = 'plain.tex'
 
     state = GlobalState()
     reader = Reader(file_name)

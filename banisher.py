@@ -294,6 +294,9 @@ class Banisher(object):
             # ultimate escape route is to see a primitive token.)
             self.input_tokens_queue.extendleft(reversed(expanded_first_token))
         # TODO: Maybe put these as sub-checks, inside seeing 'LEFT_BRACE'.
+        # TODO: In fact, I don't think all of these brace handling cases belong
+        # in banisher; LEFT_BRACE should be a command, and it can be handled
+        # in the executor.
         elif (self.context_mode in (ContextMode.awaiting_balanced_text_start,
                                     ContextMode.awaiting_balanced_text_or_token_variable_start)
                 and type_ == 'LEFT_BRACE'):
@@ -354,6 +357,10 @@ class Banisher(object):
             box = execute_commands(command_grabber, self.global_state,
                                    reader=self.reader)
 
+            # [After ending the group, then TeX] packages the hbox (using the
+            # size that was saved on the stack), and completes the setbox
+            # command, returning to the mode it was in at the time of the
+            # setbox.
             material_map = {
                 Mode.internal_vertical: 'VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE',
                 Mode.restricted_horizontal: 'HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE',
@@ -361,6 +368,7 @@ class Banisher(object):
             material_type = material_map[mode]
             material = TerminalToken(type_=material_type, value=box)
             output_tokens.append(material)
+            self.global_state.pop_mode()
         elif type_ == 'LEFT_BRACE':
             # We think we aren't seeing a left brace to do with defining a
             # macro, or starting a box, and for now, knowing no better, we will
@@ -374,10 +382,15 @@ class Banisher(object):
             if self.global_state.group == Group.local:
                 self.global_state.pop_group()
                 self.global_state.pop_scope()
-            # Groups where we start a sub-parser to get the command list.
+            # Groups where we started a sub-executor to get the box.
             # We need to tell the banisher to finish up so the resulting
-            # list can be made into the container token.
+            # box can be made into the container token.
             elif self.global_state.group in sub_parser_groups:
+                # "
+                # Eventually, when the matching '}' appears, TeX restores
+                # values that were changed by assignments in the group just
+                # ended.
+                # "
                 self.global_state.pop_group()
                 self.global_state.pop_scope()
                 # If we do not append the right brace, it looks to the parser
