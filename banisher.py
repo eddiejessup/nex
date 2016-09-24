@@ -100,9 +100,7 @@ class Banisher(object):
         self.wrapper = wrapper
         self.global_state = self.wrapper.state
         # Input buffer.
-        self.input_tokens_stack = deque()
-        # Output buffer.
-        # self.output_terminal_tokens_stack = deque()
+        self.input_tokens_queue = deque()
         self.context_mode_stack = []
 
         self._secret_terminal_list = []
@@ -117,39 +115,30 @@ class Banisher(object):
     def expanding_control_sequences(self):
         return self.context_mode in expanding_modes
 
-    # @property
-    # def next_token(self):
-    #     next_token = self.pop_or_fill_and_pop(self.output_terminal_tokens_stack)
-    #     logger.debug(self.output_terminal_tokens_stack)
-    #     self._secret_terminal_list.append(next_token)
-    #     # for t in self._secret_terminal_list[-20:]:
-    #     #     print(t)
-    #     return next_token
-
-    def pop_or_fill_and_pop(self, stack):
-        while not stack:
+    def pop_or_fill_and_pop(self, queue):
+        while not queue:
             if self.finish_up:
                 self.finish_up = False
                 raise EndOfFile
-            self.process_input_to_stack(stack)
-        next_token = stack.popleft()
+            self.process_input_to_queue(queue)
+        next_token = queue.popleft()
         return next_token
 
-    def pop_or_fill_and_pop_input(self, input_stack):
-        if not input_stack:
-            self.pop_input_to_stack(input_stack)
-        next_token = input_stack.popleft()
+    def pop_or_fill_and_pop_input(self, input_queue):
+        if not input_queue:
+            self.pop_input_to_queue(input_queue)
+        next_token = input_queue.popleft()
         return next_token
 
-    def populate_input_stack(self):
+    def populate_input_queue(self):
         new_lex_token = self._next_lex_token
         terminal_token = lex_token_to_unexpanded_terminal_token(new_lex_token)
-        self.input_tokens_stack.append(terminal_token)
+        self.input_tokens_queue.append(terminal_token)
 
     def pop_next_input_token(self):
-        if not self.input_tokens_stack:
-            self.populate_input_stack()
-        return self.input_tokens_stack.popleft()
+        if not self.input_tokens_queue:
+            self.populate_input_queue()
+        return self.input_tokens_queue.popleft()
 
     def get_balanced_text_token(self):
         tokens = []
@@ -198,12 +187,12 @@ class Banisher(object):
         except Exception:
             # If something goes wrong in the expansion, we *assume* that the
             # function has had no side effects, and just put the input token
-            # back on the input stack, then raise the exception. This might
+            # back on the input queue, then raise the exception. This might
             # happen if we've tried to parse tokens too far in one command, and
             # bled into another command that only makes sense once the previous
             # one has executed. For example, defining a new macro, then the
             # next command calling that macro.
-            self.input_tokens_stack.appendleft(first_token)
+            self.input_tokens_queue.appendleft(first_token)
             raise
         return output_tokens
 
@@ -302,31 +291,31 @@ class Banisher(object):
             # Now run again, hopefully now seeing a primitive token.
             # (Might not, if the expansion needs more expansion, but the
             # ultimate escape route is to see a primitive token.)
-            self.input_tokens_stack.extendleft(reversed(expanded_first_token))
+            self.input_tokens_queue.extendleft(reversed(expanded_first_token))
         # TODO: Maybe put these as sub-checks, inside seeing 'LEFT_BRACE'.
         elif (self.context_mode in (ContextMode.awaiting_balanced_text_start,
                                     ContextMode.awaiting_balanced_text_or_token_variable_start)
                 and type_ == 'LEFT_BRACE'):
-            # Put the LEFT_BRACE on the output stack.
+            # Put the LEFT_BRACE on the output queue.
             output_tokens.append(first_token)
             # Now merge all lex tokens until right brace lex token seen,
             # into a 'BALANCED_TEXT_AND_RIGHT_BRACE' terminal token, which we put on the
-            # input stack to read later.
+            # input queue to read later.
             balanced_text_token = self.get_balanced_text_token()
-            # Put it on the input stack to be read again.
+            # Put it on the input queue to be read again.
             output_tokens.append(balanced_text_token)
             # Done with getting balanced text.
             self.pop_context()
         elif (self.context_mode == ContextMode.awaiting_balanced_text_or_token_variable_start and
               type_ in token_variable_start_types):
-            # Put the token on the output stack.
+            # Put the token on the output queue.
             output_tokens.append(first_token)
             # We can handle this sort of token-list argument in the parser; we
             # only had this context in case a balanced text needed to be got.
             self.pop_context()
         elif (self.context_mode in box_context_mode_map.values() and
                 type_ == 'LEFT_BRACE'):
-            # Put the LEFT_BRACE on the output stack.
+            # Put the LEFT_BRACE on the output queue.
             output_tokens.append(first_token)
 
             # Left brace initiates a new level of grouping.
@@ -399,7 +388,7 @@ class Banisher(object):
                 import pdb; pdb.set_trace()
         elif type_ in read_unexpanded_control_sequence_types:
             # Get an unexpanded control sequence token and add it to the
-            # output stack, along with the first token.
+            # output queue, along with the first token.
             next_token = self.pop_next_input_token()
             output_tokens.append(first_token)
             output_tokens.append(next_token)
@@ -418,7 +407,7 @@ class Banisher(object):
                 # normal-def.
                 balanced_text_token = self.get_balanced_text_token()
                 # Put the parameter text, LEFT_BRACE and replacement
-                # text on the output stack.
+                # text on the output queue.
                 output_tokens.extend([parameters_token, tok,
                                       balanced_text_token])
             elif type_ == 'LET':
@@ -443,8 +432,8 @@ class Banisher(object):
         elif type_ == 'EXPAND_AFTER':
             unexpanded_token = self.pop_next_input_token()
             next_tokens = self.process_next_input_token()
-            self.input_tokens_stack.extendleft(reversed(next_tokens))
-            self.input_tokens_stack.appendleft(unexpanded_token)
+            self.input_tokens_queue.extendleft(reversed(next_tokens))
+            self.input_tokens_queue.appendleft(unexpanded_token)
         elif type_ in message_types:
             # TODO: this is all wrong, these things expect general_text.
             # do like (upper/lower)case does.
@@ -457,13 +446,11 @@ class Banisher(object):
         elif type_ in if_types:
             command_grabber = CommandGrabber(self, self.wrapper,
                                              parser=condition_parser)
-            # TODO: aren't all these things actually queues, not stacks?
-            # (Entails lots of renaming.)
-            command_grabber.buffer_stack.append(first_token)
+            command_grabber.buffer_queue.append(first_token)
             condition_token = command_grabber.get_command()
             outcome = execute_condition(condition_token, self.global_state)
             # Pick up any left-over tokens from the condition command parsing.
-            if_stack = command_grabber.buffer_stack
+            if_queue = command_grabber.buffer_queue
 
             # TODO: Move inside executor? Not sure.
             if type_ == 'IF_CASE':
@@ -502,7 +489,7 @@ class Banisher(object):
                         t.value['name'] in condition_block_delimiter_names)
 
             while True:
-                t = self.pop_or_fill_and_pop_input(if_stack)
+                t = self.pop_or_fill_and_pop_input(if_queue)
 
                 # Keep track of nested conditions.
                 nr_conditions += get_condition_sign(t)
@@ -521,7 +508,7 @@ class Banisher(object):
                 # Otherwise we are skipping tokens.
                 else:
                     pass
-            self.input_tokens_stack.extendleft(reversed(not_skipped_tokens))
+            self.input_tokens_queue.extendleft(reversed(not_skipped_tokens))
         elif type_ == 'STRING':
             next_token = self.pop_next_input_token()
             string_tokens = []
@@ -536,13 +523,13 @@ class Banisher(object):
             char_term_tokens = [make_char_cat_term_token(c, CatCode.other)
                                 for c in chars]
             string_tokens += char_term_tokens
-            self.input_tokens_stack.extendleft(reversed(string_tokens))
+            self.input_tokens_queue.extendleft(reversed(string_tokens))
         elif type_ == 'CS_NAME':
             cs_name_tokens = []
-            cs_name_stack = deque()
+            cs_name_queue = deque()
 
             while True:
-                t = self.pop_or_fill_and_pop(cs_name_stack)
+                t = self.pop_or_fill_and_pop(cs_name_queue)
                 if t.type == 'END_CS_NAME':
                     break
                 cs_name_tokens.append(t)
@@ -550,10 +537,10 @@ class Banisher(object):
             cs_name = ''.join(chars)
             cs_token = make_unexpanded_control_sequence_terminal_token(cs_name)
             # If we expanded such that we got tokens past 'endcsname',
-            # put them back on the input stack.
-            self.input_tokens_stack.extendleft(reversed(cs_name_stack))
+            # put them back on the input queue.
+            self.input_tokens_queue.extendleft(reversed(cs_name_queue))
             # But first comes our shiny new control sequence token.
-            self.input_tokens_stack.appendleft(cs_token)
+            self.input_tokens_queue.appendleft(cs_token)
         elif type_ == 'ESCAPE_CHAR':
             escape_char_token = self.get_escape_char_token()
             if escape_char_token is not None:
@@ -594,31 +581,28 @@ class Banisher(object):
 
             un_cased_toks = general_text_token.value
             cased_toks = list(map(get_cased_tok, un_cased_toks))
-            # Put cased tokens back on the stack to read again.
-            self.input_tokens_stack.extendleft(reversed(cased_toks))
+            # Put cased tokens back on the queue to read again.
+            self.input_tokens_queue.extendleft(reversed(cased_toks))
         elif type_ in explicit_box_map.values():
             # First we read until box specification is finished.
             # Then we will do actual group and scope changes and so on.
             self.push_context(box_context_mode_map[type_])
-            # Put the box token on the stack.
+            # Put the box token on the queue.
             output_tokens.append(first_token)
 
-        # Just some semantic bullshit, stick it on the output stack
+        # Just some semantic bullshit, stick it on the output queue
         # for the interpreter to deal with.
         else:
             output_tokens.append(first_token)
         return output_tokens
 
-    # def populate_output_stack(self):
-    #     self.process_input_to_stack(self.output_terminal_tokens_stack)
-
-    def process_input_to_stack(self, stack):
+    def process_input_to_queue(self, queue):
         next_output_tokens = self.process_next_input_token()
-        stack.extend(next_output_tokens)
+        queue.extend(next_output_tokens)
 
-    def pop_input_to_stack(self, stack):
+    def pop_input_to_queue(self, queue):
         next_input_token = self.pop_next_input_token()
-        stack.append(next_input_token)
+        queue.append(next_input_token)
 
 
 class LexWrapper(object):

@@ -536,15 +536,15 @@ class CommandGrabber(object):
 
         # Processing input tokens might return many tokens, so
         # we store them in a buffer.
-        self.buffer_stack = deque()
+        self.buffer_queue = deque()
 
         self.max_nr_extra_tokens = 1
         self.finish_up_grabbing = False
 
     def get_command(self):
-        # Want to extend the stack-to-be-parsed one token at a time,
+        # Want to extend the queue-to-be-parsed one token at a time,
         # so we can break as soon as we have all we need.
-        parse_stack = deque()
+        parse_queue = deque()
         # Get enough tokens to evaluate command. We know to stop adding tokens
         # when we see a switch from failing because we run out of tokens
         # (ExhaustedTokensError) to an actual syntax error
@@ -554,7 +554,7 @@ class CommandGrabber(object):
         have_parsed = False
         while True:
             try:
-                t = self.banisher.pop_or_fill_and_pop(self.buffer_stack)
+                t = self.banisher.pop_or_fill_and_pop(self.buffer_queue)
             except EndOfFile:
                 # This is the case where we might have been shown a 'fake' EndOfFile.
                 # We need to add the current command, and then return all commands.
@@ -563,7 +563,7 @@ class CommandGrabber(object):
                     break
                 # If we get an EndOfFile, and we have just started trying to
                 # get a command, we are done, so just return.
-                elif not parse_stack:
+                elif not parse_queue:
                     raise
                 # If we get to the end of the file in the middle of a command,
                 # something is wrong.
@@ -581,15 +581,15 @@ class CommandGrabber(object):
             except Exception as e:
                 import pdb; pdb.set_trace()
                 raise
-            parse_stack.append(t)
+            parse_queue.append(t)
             try:
-                result = self.parser.parse(iter(parse_stack))
+                result = self.parser.parse(iter(parse_queue))
             except ExpectedParsingError:
                 if have_parsed:
                     # We got so many tokens of fluff due to extra reads,
-                    # to make the parse stack not-parse.
+                    # to make the parse queue not-parse.
                     # Put them back on the buffer.
-                    self.buffer_stack.appendleft(parse_stack.pop())
+                    self.buffer_queue.appendleft(parse_queue.pop())
                     break
                 else:
                     import pdb; pdb.set_trace()
