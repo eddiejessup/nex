@@ -53,7 +53,14 @@ class ContextMode(Enum):
     absorbing_parameter_text = 6
 
 
-expanding_modes = (
+box_context_mode_map = {
+    'H_BOX': ContextMode.awaiting_make_h_box_start,
+    'V_BOX': ContextMode.awaiting_make_v_box_start,
+    'V_TOP': ContextMode.awaiting_make_v_top_start,
+}
+awaiting_make_box_context_modes = tuple(box_context_mode_map.values())
+
+expanding_context_modes = (
     ContextMode.normal,
     ContextMode.awaiting_balanced_text_start,
     ContextMode.awaiting_balanced_text_or_token_variable_start,
@@ -61,19 +68,7 @@ expanding_modes = (
     ContextMode.awaiting_make_v_box_start,
     ContextMode.awaiting_make_v_top_start,
 )
-
-box_context_mode_map = {
-    'H_BOX': ContextMode.awaiting_make_h_box_start,
-    'V_BOX': ContextMode.awaiting_make_v_box_start,
-    'V_TOP': ContextMode.awaiting_make_v_top_start,
-}
-
-sub_parser_groups = (
-    Group.h_box,
-    Group.adjusted_h_box,
-    Group.v_box,
-    Group.v_top,
-)
+expanding_context_modes += awaiting_make_box_context_modes
 
 
 def make_char_cat_term_token(char, cat):
@@ -106,21 +101,16 @@ class Banisher(object):
 
         self._secret_terminal_list = []
 
-        self.finish_up = False
-
     @property
     def _next_lex_token(self):
         return self.lexer.next_token
 
     @property
     def expanding_control_sequences(self):
-        return self.context_mode in expanding_modes
+        return self.context_mode in expanding_context_modes
 
     def pop_or_fill_and_pop(self, queue):
         while not queue:
-            if self.finish_up:
-                self.finish_up = False
-                raise EndOfFile
             self.process_input_to_queue(queue)
         next_token = queue.popleft()
         return next_token
@@ -352,8 +342,7 @@ class Banisher(object):
             box_parser = parser
             command_grabber = CommandGrabber(self, parser=box_parser)
 
-            # Matching right brace should enable 'finish_up', then we will
-            # trigger EndOfFile and return.
+            # Matching right brace should trigger EndOfSubExecutor and return.
             box = execute_commands(command_grabber, self.global_state,
                                    reader=self.reader)
 
@@ -377,28 +366,6 @@ class Banisher(object):
             # character token. But this isn't the same as \begingroup.
             self.global_state.push_group(Group.local)
             self.global_state.push_new_scope()
-        elif type_ == 'RIGHT_BRACE':
-            # I think roughly same comments as for LEFT_BRACE above apply.
-            if self.global_state.group == Group.local:
-                self.global_state.pop_group()
-                self.global_state.pop_scope()
-            # Groups where we started a sub-executor to get the box.
-            # We need to tell the banisher to finish up so the resulting
-            # box can be made into the container token.
-            elif self.global_state.group in sub_parser_groups:
-                # "
-                # Eventually, when the matching '}' appears, TeX restores
-                # values that were changed by assignments in the group just
-                # ended.
-                # "
-                self.global_state.pop_group()
-                self.global_state.pop_scope()
-                # If we do not append the right brace, it looks to the parser
-                # like a nice enclosed command sequence, which is exactly
-                # what we want! This is one unholy monster I'm building.
-                self.finish_up = True
-            else:
-                import pdb; pdb.set_trace()
         elif type_ in read_unexpanded_control_sequence_types:
             # Get an unexpanded control sequence token and add it to the
             # output queue, along with the first token.
@@ -601,7 +568,6 @@ class Banisher(object):
             self.push_context(box_context_mode_map[type_])
             # Put the box token on the queue.
             output_tokens.append(first_token)
-
         # Just some semantic bullshit, stick it on the output queue
         # for the interpreter to deal with.
         else:

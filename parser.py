@@ -29,6 +29,7 @@ pg = common_pg.copy_to_extend()
 @pg.production('command : vertical_rule')
 @pg.production('command : horizontal_rule')
 @pg.production('command : input')
+@pg.production('command : RIGHT_BRACE')
 @pg.production('command : END')
 def command(p):
     return p[0]

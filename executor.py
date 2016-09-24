@@ -11,7 +11,19 @@ from typer import (CatCode, MathCode, GlyphCode, DelimiterCode, MathClass,
                    )
 from tex_parameters import glue_keys
 from expander import is_parameter_type
-from interpreter import vertical_modes, horizontal_modes
+from interpreter import Mode, Group, vertical_modes, horizontal_modes
+
+
+sub_executor_groups = (
+    Group.h_box,
+    Group.adjusted_h_box,
+    Group.v_box,
+    Group.v_top,
+)
+
+
+class EndOfSubExecutor(Exception):
+    pass
 
 
 def evaluate_size(state, size_token):
@@ -329,6 +341,23 @@ def execute_command(command, state, reader):
         print(command.value)
     elif type_ == 'RELAX':
         pass
+    elif type_ == 'RIGHT_BRACE':
+        # I think roughly same comments as for LEFT_BRACE above apply.
+        if state.group == Group.local:
+            state.pop_group()
+            state.pop_scope()
+        # Groups where we started a sub-executor to get the box.
+        # We need to tell the banisher to finish up so the resulting
+        # box can be made into the container token.
+        elif state.group in sub_executor_groups:
+            # "
+            # Eventually, when the matching '}' appears, TeX restores
+            # values that were changed by assignments in the group just
+            # ended.
+            # "
+            state.pop_group()
+            state.pop_scope()
+            raise EndOfSubExecutor
         else:
             import pdb; pdb.set_trace()
     else:
@@ -351,9 +380,9 @@ def execute_commands(command_grabber, state, reader):
             box_contents = execute_command(command, state, reader)
         except EndOfFile:
             break
-        box.extend(box_contents)
-        if command_grabber.finish_up_grabbing:
+        except EndOfSubExecutor:
             break
+        box.extend(box_contents)
         # print(command)
     return box
 
@@ -392,9 +421,6 @@ class CommandGrabber(object):
         # we store them in a buffer.
         self.buffer_queue = deque()
 
-        self.max_nr_extra_tokens = 1
-        self.finish_up_grabbing = False
-
     def get_command(self):
         # Want to extend the queue-to-be-parsed one token at a time,
         # so we can break as soon as we have all we need.
@@ -410,14 +436,9 @@ class CommandGrabber(object):
             try:
                 t = self.banisher.pop_or_fill_and_pop(self.buffer_queue)
             except EndOfFile:
-                # This is the case where we might have been shown a 'fake' EndOfFile.
-                # We need to add the current command, and then return all commands.
-                if have_parsed:
-                    self.finish_up_grabbing = True
-                    break
                 # If we get an EndOfFile, and we have just started trying to
                 # get a command, we are done, so just return.
-                elif not parse_queue:
+                if not parse_queue:
                     raise
                 # If we get to the end of the file in the middle of a command,
                 # something is wrong.
