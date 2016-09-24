@@ -2,11 +2,10 @@ from collections import deque
 import logging
 
 from reader import EndOfFile
-from utils import post_mortem, NoSuchControlSequence
+from utils import NoSuchControlSequence
 from typer import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from common import Token
-from expander import parse_replacement_text, parameter_types
-from registers import is_register_type
+from expander import parse_replacement_text
 from fonts import FontRange
 from common_parsing import (pg as common_pg,
                             evaluate_number, evaluate_dimen, evaluate_glue,
@@ -159,47 +158,28 @@ def simple_assignment_variable(parser_state, p):
     return p[0]
 
 
-@pg.production('variable_assignment : optional_globals evaluated_variable_assignment')
+@pg.production('variable_assignment : optional_globals partial_variable_assignment')
 def variable_assignment(parser_state, p):
     is_global = p[0]
     variable, value = p[1]
-    if is_register_type(variable.type):
-        parser_state.state.set_register_value(is_global=is_global,
-                                              type_=variable.type,
-                                              i=variable.value,
-                                              value=value)
-    elif variable.type in parameter_types:
-        param_name = variable.value['canonical_name']
-        parser_state.state.set_parameter(is_global=is_global,
-                                         name=param_name, value=value)
     return Token(type_='variable_assignment',
-                 value={'variable': variable, 'value': value})
+                 value={'global': is_global,
+                        'variable': variable, 'value': value})
 
 
-@pg.production('evaluated_variable_assignment : token_variable equals general_text')
-def variable_assignment_tokens_explicit(parser_state, p):
+@pg.production('partial_variable_assignment : token_variable equals general_text')
+@pg.production('partial_variable_assignment : token_variable equals filler token_variable')
+def partial_variable_assignment_token_variable(parser_state, p):
+    value = Token(type_='token_list', value=p[-1])
+    return [p[0], value]
+
+
+@pg.production('partial_variable_assignment : mu_glue_variable equals mu_glue')
+@pg.production('partial_variable_assignment : glue_variable equals glue')
+@pg.production('partial_variable_assignment : dimen_variable equals dimen')
+@pg.production('partial_variable_assignment : integer_variable equals number')
+def partial_variable_assignment_quantity(parser_state, p):
     return [p[0], p[2]]
-
-
-@pg.production('evaluated_variable_assignment : token_variable equals filler token_variable')
-def variable_assignment_tokens_variable(parser_state, p):
-    return [p[0], evaluate_token_list(parser_state.state, p[3])]
-
-
-@pg.production('evaluated_variable_assignment : mu_glue_variable equals mu_glue')
-@pg.production('evaluated_variable_assignment : glue_variable equals glue')
-def variable_assignment_glue(parser_state, p):
-    return [p[0], evaluate_glue(parser_state.state, p[2])]
-
-
-@pg.production('evaluated_variable_assignment : dimen_variable equals dimen')
-def variable_assignment_dimen(parser_state, p):
-    return [p[0], evaluate_dimen(parser_state.state, p[2])]
-
-
-@pg.production('evaluated_variable_assignment : integer_variable equals number')
-def variable_assignment_integer(parser_state, p):
-    return [p[0], evaluate_number(parser_state.state, p[2])]
 
 
 # End of 'variable assignment', a simple assignment.
@@ -248,6 +228,7 @@ def split_hex_code(n, hex_length, inds):
 def code_assignment(parser_state, p):
     is_global = p[0]
     code_type, char_number, code_number = p[1], p[2], p[4]
+    # TODO: Do inside executor.
     char_size, code_size = evaluate_number(parser_state.state, char_number), evaluate_number(parser_state.state, code_number)
     char = chr(char_size)
     if code_type == 'CAT_CODE':
@@ -453,7 +434,7 @@ def global_assignment(parser_state, p):
 
 @pg.production('font_assignment : SKEW_CHAR font equals number')
 @pg.production('font_assignment : HYPHEN_CHAR font equals number')
-def font_assignment_skew(parser_state, p):
+def font_assignment(parser_state, p):
     # TODO: as for font definition, does this work for non-FONT_DEF_TOKEN font
     # productions?
     font_id = p[1].value

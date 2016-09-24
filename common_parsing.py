@@ -72,16 +72,18 @@ def evaluate_size(state, size_token):
 
 
 def evaluate_number(state, number_token):
-    size_token = number_token['size']
+    number_value = number_token.value
+    size_token = number_value['size']
     number = evaluate_size(state, size_token)
-    sign = number_token['sign']
+    sign = number_value['sign']
     if sign == '-':
         number *= -1
     return number
 
 
 def evaluate_dimen(state, dimen_token):
-    size_token, sign = dimen_token['size'], dimen_token['sign']
+    dimen_value = dimen_token.value
+    size_token, sign = dimen_value['size'], dimen_value['sign']
     if isinstance(size_token.value, int):
         return size_token.value
     number_of_units_token = size_token.value['factor']
@@ -115,19 +117,26 @@ def evaluate_dimen(state, dimen_token):
 
 
 def evaluate_glue(state, glue_token):
+    glue_value = glue_token.value
     evaluated_glue = {}
     for k in glue_keys:
-        dimen = glue_token[k]
-        if dimen is None:
+        dimen_token = glue_value[k]
+        if dimen_token is None:
             evaluated_dimen = None
         else:
-            evaluated_dimen = evaluate_dimen(state, dimen)
+            evaluated_dimen = evaluate_dimen(state, dimen_token)
         evaluated_glue[k] = evaluated_dimen
     return evaluated_glue
 
 
 def evaluate_token_list(parser_state, token_list_token):
-    raise NotImplementedError
+    token_list_value = token_list_token.value
+    if token_list_value.type == 'general_text':
+        evaluated_token_list = token_list_value.value
+    # Also could be token_register, or token parameter.
+    else:
+        raise NotImplementedError
+    return evaluated_token_list
 
 
 @pg.production('control_sequence : UNEXPANDED_CONTROL_SEQUENCE')
@@ -172,7 +181,7 @@ def quantity_variable_parameter(parser_state, p):
 @pg.production('dimen_register : DIMEN number')
 @pg.production('count_register : COUNT number')
 def register_explicit(parser_state, p):
-    return Token(type_=p[0].type, value=p[1]['size'])
+    return Token(type_=p[0].type, value=p[1].value['size'])
 
 
 @pg.production('token_register : TOKS_DEF_TOKEN')
@@ -185,11 +194,20 @@ def register_token(parser_state, p):
     return Token(type_=type_, value=p[0].value)
 
 
+def _make_maybe_mu_glue_token(type_, p):
+    # Wrap up arguments in a dict.
+    dimens = dict(zip(['dimen', 'stretch', 'shrink'], tuple(p)))
+    return Token(type_=type_, value=dimens)
+
+
 @pg.production('mu_glue : mu_dimen mu_stretch mu_shrink')
+def mu_glue(parser_state, p):
+    return _make_maybe_mu_glue_token('mu_glue', p)
+
+
 @pg.production('glue : dimen stretch shrink')
 def glue(parser_state, p):
-    # Wrap up arguments in a dict.
-    return dict(zip(['dimen', 'stretch', 'shrink'], tuple(p)))
+    return _make_maybe_mu_glue_token('glue', p)
 
 
 @pg.production('shrink : minus dimen')
@@ -216,7 +234,7 @@ def stretch_or_shrink_omitted(parser_state, p):
 def fil_dimen(parser_state, p):
     size_token = Token(type_='fil_size',
                        value={'factor': p[1], 'unit': p[2]})
-    return {'sign': p[0], 'size': size_token}
+    return Token(type_='dimen', value={'sign': p[0], 'size': size_token})
 
 
 @pg.production('fil_unit : fil_unit NON_ACTIVE_UNCASED_l')
@@ -236,15 +254,24 @@ def fil_unit(parser_state, p):
     return unit
 
 
+def _make_quantity_token(type_, p):
+    '''Small helper to avoid repetition.'''
+    return Token(type_=type_, value={'sign': p[0], 'size': p[1]})
+
+
 @pg.production('mu_dimen : optional_signs unsigned_mu_dimen')
+def mu_dimen(parser_state, p):
+    return _make_quantity_token('mu_dimen', p)
+
+
 @pg.production('dimen : optional_signs unsigned_dimen')
-def maybe_mu_dimen(parser_state, p):
-    return {'sign': p[0], 'size': p[1]}
+def dimen(parser_state, p):
+    return _make_quantity_token('dimen', p)
 
 
 @pg.production('number : optional_signs unsigned_number')
 def number(parser_state, p):
-    return {'sign': p[0], 'size': p[1]}
+    return _make_quantity_token('number', p)
 
 
 @pg.production('unsigned_mu_dimen : normal_mu_dimen')

@@ -567,8 +567,10 @@ class Banisher(object):
                     case_tokens.append(balanced_text_token)
                     break
             # Check arguments obey the rules of a 'general text'.
-            balanced_text_token = general_text_parser.parse(iter(case_tokens),
-                                                            state=self.wrapper)
+            # TODO: Can this be done better with a command grabber or
+            # something?
+            general_text_token = general_text_parser.parse(iter(case_tokens),
+                                                           state=self.wrapper)
 
             case_funcs_map = {
                 'LOWER_CASE': self.global_state.get_lower_case_code,
@@ -590,7 +592,7 @@ class Banisher(object):
                 else:
                     return un_cased_tok
 
-            un_cased_toks = balanced_text_token.value
+            un_cased_toks = general_text_token.value
             cased_toks = list(map(get_cased_tok, un_cased_toks))
             # Put cased tokens back on the stack to read again.
             self.input_tokens_stack.extendleft(reversed(cased_toks))

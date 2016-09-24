@@ -1,5 +1,6 @@
 from reader import EndOfFile
 from registers import is_register_type
+from expander import is_parameter_type
 from interpreter import vertical_modes, horizontal_modes
 from common_parsing import (evaluate_number, evaluate_dimen, evaluate_glue,
                             evaluate_token_list)
@@ -45,10 +46,33 @@ def execute_commands(command_grabber, state, reader):
                                            code_eval)
         elif type_ == 'macro_assignment':
             name = v['definition'].value['name']
-            # if name == 'if@':
-            #     import pdb; pdb.set_trace()
             state.set_macro(name, v['definition'],
                             prefixes=v['prefixes'])
+        elif type_ == 'variable_assignment':
+            variable, value = v['variable'], v['value']
+            # The value might be a variable reference or something, so we must
+            # evaluate it to its contents first before assigning a variable to
+            # it.
+            # TODO: Could we evaluate the value inside the state call?
+            # Might reduce duplication?
+            # TODO: We could actually have a 'set_variable' function in state.
+            value_evaluate_map = {
+                'number': evaluate_number,
+                'dimen': evaluate_dimen,
+                'glue': evaluate_glue,
+                'token_list': evaluate_token_list,
+            }
+            value_evaluate_func = value_evaluate_map[value.type]
+            evaled_value = value_evaluate_func(state, value)
+            if is_register_type(variable.type):
+                state.set_register_value(is_global=v['global'],
+                                         type_=variable.type,
+                                         i=variable.value,
+                                         value=evaled_value)
+            elif is_parameter_type(variable.type):
+                param_name = variable.value['canonical_name']
+                state.set_parameter(is_global=v['global'],
+                                    name=param_name, value=evaled_value)
         elif type_ == 'font_definition':
             state.define_new_font(v['global'],
                                   v['control_sequence_name'],

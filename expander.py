@@ -14,6 +14,10 @@ macro_param_types = (undelim_macro_param_type, delim_macro_param_type)
 parameter_types = default_parameters.keys()
 
 
+def is_parameter_type(type_):
+    return type_ in parameter_types
+
+
 def parse_parameter_text(tokens):
     p_nr = 1
     i = 0
