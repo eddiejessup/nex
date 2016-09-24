@@ -7,3 +7,4 @@ parsetab.py
 *.pyc
 *.pdf
 *.dvi
+*.tfm
