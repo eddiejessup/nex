@@ -48,6 +48,7 @@ def immediate_write(parser_state, p):
 
 @pg.production('write : WRITE number general_text')
 def write(parser_state, p):
+    # TODO: Implement.
     return Token(type_='write',
                  value={'stream_number': p[1], 'content': p[2], 'prefix': None})
 
@@ -55,6 +56,7 @@ def write(parser_state, p):
 @pg.production('message : ERROR_MESSAGE general_text')
 @pg.production('message : MESSAGE general_text')
 def message(parser_state, p):
+    # TODO: Implement.
     return Token(type_='message',
                  value={'content': p[1]})
 
@@ -470,6 +472,7 @@ def font(parser_state, p):
 @pg.production('hyphenation_assignment : HYPHENATION general_text')
 @pg.production('hyphenation_assignment : PATTERNS general_text')
 def hyphenation_assignment(parser_state, p):
+    # TODO: Implement.
     return Token(type_=p[0],
                  value=p[1])
 
@@ -494,6 +497,7 @@ def optional_globals(parser_state, p):
 @pg.production('add_kern : KERN dimen')
 @pg.production('add_kern : MATH_KERN mu_dimen')
 def add_kern(parser_state, p):
+    # TODO: Implement.
     return Token(type_=p[0].type, value=p[1])
 
 
@@ -506,18 +510,21 @@ def add_kern(parser_state, p):
 @pg.production('add_glue : V_STRETCH_OR_SHRINK')
 @pg.production('add_glue : V_FIL_NEG')
 def add_special_glue(parser_state, p):
+    # TODO: Implement.
     return Token(type_=p[0], value=None)
 
 
 @pg.production('add_glue : H_SKIP glue')
 @pg.production('add_glue : V_SKIP glue')
 def add_glue(parser_state, p):
+    # TODO: Implement.
     return Token(type_=p[0], value=p[1])
 
 
 @pg.production('vertical_rule : V_RULE rule_specification')
 @pg.production('horizontal_rule : H_RULE rule_specification')
 def rule(parser_state, p):
+    # TODO: Implement.
     return Token(type_=p[0], value=p[1])
 
 
