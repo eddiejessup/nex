@@ -6,10 +6,9 @@ from utils import NoSuchControlSequence
 from common import Token
 from expander import parse_replacement_text
 from fonts import FontRange
-from common_parsing import (pg as common_pg,
-                            evaluate_number, evaluate_dimen, evaluate_glue,
-                            evaluate_token_list)
-from parse_utils import ExpectedParsingError, ExhaustedTokensError, is_end_token
+from common_parsing import pg as common_pg
+from parse_utils import (ExpectedParsingError, ExhaustedTokensError,
+                         is_end_token)
 from general_text_parser import gen_txt_pg
 
 

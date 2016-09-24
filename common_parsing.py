@@ -3,14 +3,14 @@ from rply import ParserGenerator
 from common import Token
 
 from expander import parameter_types
-from typer import (literal_types, PhysicalUnit, MuUnit, InternalUnit, units_in_scaled_points,
+from typer import (literal_types, PhysicalUnit,
                    unexpanded_cs_types, unexpanded_token_type,
                    terminal_primitive_control_sequences_map,
                    short_hand_def_to_token_map, font_def_token_type,
                    composite_terminal_control_sequence_types,
                    )
-from tex_parameters import glue_keys, special_quantity_types
-from registers import is_register_type, register_token_type_to_register_type
+from tex_parameters import special_quantity_types
+from registers import register_token_type_to_register_type
 
 from character_parsing import add_character_productions
 
@@ -42,101 +42,6 @@ class DigitCollection(object):
     def __init__(self, base):
         self.base = base
         self.digits = []
-
-
-def evaluate_size(state, size_token):
-    if isinstance(size_token, Token):
-        if size_token.type == 'backtick_integer':
-            unexpanded_token = size_token.value
-            if unexpanded_token.type == 'UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE':
-                # If we have a single character control sequence in this context,
-                # it is just a way of specifying a character in a way that
-                # won't invoke its special effects.
-                char = unexpanded_token.value['name']
-            elif unexpanded_token.type == 'character':
-                char = unexpanded_token.value['char']
-            else:
-                import pdb; pdb.set_trace()
-            return ord(char)
-        elif size_token.type == 'control_sequence':
-            raise NotImplementedError
-        elif is_register_type(size_token.type):
-            v = state.get_register_value(size_token.type, i=size_token.value)
-            if size_token.type == 'SKIP':
-                import pdb; pdb.set_trace()
-            return v
-        else:
-            import pdb; pdb.set_trace()
-    else:
-        return size_token
-
-
-def evaluate_number(state, number_token):
-    number_value = number_token.value
-    size_token = number_value['size']
-    number = evaluate_size(state, size_token)
-    sign = number_value['sign']
-    if sign == '-':
-        number *= -1
-    return number
-
-
-def evaluate_dimen(state, dimen_token):
-    dimen_value = dimen_token.value
-    size_token, sign = dimen_value['size'], dimen_value['sign']
-    if isinstance(size_token.value, int):
-        return size_token.value
-    number_of_units_token = size_token.value['factor']
-    unit_token = size_token.value['unit']
-    number_of_units = evaluate_size(state, number_of_units_token)
-    unit = unit_token['unit']
-    if unit == PhysicalUnit.fil:
-        if 'number_of_fils' not in unit_token:
-            import pdb; pdb.set_trace()
-        return Token(type_='fil_dimension',
-                     value={'factor': number_of_units,
-                            'number_of_fils': unit_token['number_of_fils']})
-    # Only one unit in mu units, a mu. I don't know what a mu is though...
-    elif unit in MuUnit:
-        number_of_scaled_points = number_of_units
-    elif unit in InternalUnit:
-        if unit == InternalUnit.em:
-            number_of_scaled_points = state.current_font.em_size
-        elif unit == InternalUnit.ex:
-            number_of_scaled_points = state.current_font.ex_size
-    else:
-        is_true_unit = unit_token['true']
-        number_of_scaled_points = units_in_scaled_points[unit] * number_of_units
-        # TODO: deal with 'true' and 'not-true' scales properly
-        mag_parameter = 1000.0
-        if is_true_unit:
-            number_of_scaled_points *= 1000.0 / mag_parameter
-    if sign == '-':
-        number_of_scaled_points *= -1
-    return number_of_scaled_points
-
-
-def evaluate_glue(state, glue_token):
-    glue_value = glue_token.value
-    evaluated_glue = {}
-    for k in glue_keys:
-        dimen_token = glue_value[k]
-        if dimen_token is None:
-            evaluated_dimen = None
-        else:
-            evaluated_dimen = evaluate_dimen(state, dimen_token)
-        evaluated_glue[k] = evaluated_dimen
-    return evaluated_glue
-
-
-def evaluate_token_list(parser_state, token_list_token):
-    token_list_value = token_list_token.value
-    if token_list_value.type == 'general_text':
-        evaluated_token_list = token_list_value.value
-    # Also could be token_register, or token parameter.
-    else:
-        raise NotImplementedError
-    return evaluated_token_list
 
 
 @pg.production('control_sequence : UNEXPANDED_CONTROL_SEQUENCE')
@@ -360,7 +265,7 @@ def internal_integer_weird_short_hand_token(parser_state, p):
 @pg.production('internal_dimen : DIMEN_PARAMETER')
 @pg.production('internal_integer : INTEGER_PARAMETER')
 def internal_quantity_parameter(parser_state, p):
-    return parser_state.state.get_parameter_value(p[0].value['name'])
+    return p[0]
 
 
 @pg.production('internal_dimen : box_dimension number')
