@@ -183,6 +183,7 @@ def execute_command(command, state, reader):
     v = command.value
     if type_ == 'SPACE':
         if state.mode in vertical_modes:
+            # "Spaces have no effects in vertical modes".
             pass
         elif state.mode in horizontal_modes:
             # Spaces append glue to the current list; the exact amount of glue
@@ -344,6 +345,12 @@ def execute_command(command, state, reader):
         print(command.value)
     elif type_ == 'RELAX':
         pass
+    elif type_ == 'LEFT_BRACE':
+        # A character token of category 1, or a control sequence like \bgroup
+        # that has been \let equal to such a character token, causes TeX to
+        # start a new level of grouping.
+        state.push_group(Group.local)
+        state.push_new_scope()
     elif type_ == 'RIGHT_BRACE':
         # I think roughly same comments as for LEFT_BRACE above apply.
         if state.group == Group.local:

@@ -358,14 +358,6 @@ class Banisher(object):
             material = TerminalToken(type_=material_type, value=box)
             output_tokens.append(material)
             self.global_state.pop_mode()
-        elif type_ == 'LEFT_BRACE':
-            # We think we aren't seeing a left brace to do with defining a
-            # macro, or starting a box, and for now, knowing no better, we will
-            # assume we are starting a new level of grouping. This case should
-            # include things that have been \let equal to a begin_group-ey
-            # character token. But this isn't the same as \begingroup.
-            self.global_state.push_group(Group.local)
-            self.global_state.push_new_scope()
         elif type_ in read_unexpanded_control_sequence_types:
             # Get an unexpanded control sequence token and add it to the
             # output queue, along with the first token.
