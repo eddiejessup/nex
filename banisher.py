@@ -517,6 +517,10 @@ class Banisher(object):
             if escape_char_token is not None:
                 output_tokens.append(escape_char_token)
         elif type_ in ('UPPER_CASE', 'LOWER_CASE'):
+            # TODO: This is wrong. Need to expand tokens between this command
+            # and the left brace. Probably need to push two contexts; one to
+            # get a balanced text token; and one to indicate what to do with
+            # it when it's got.
             case_tokens = []
             while True:
                 t = self.pop_next_input_token()
