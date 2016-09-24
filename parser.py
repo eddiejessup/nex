@@ -3,7 +3,6 @@ import logging
 
 from reader import EndOfFile
 from utils import NoSuchControlSequence
-from typer import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from common import Token
 from expander import parse_replacement_text
 from fonts import FontRange
@@ -207,51 +206,11 @@ def optional_by(parser_state, p):
 # Start of 'code assignment', a simple assignment.
 
 
-def split_at(s, inds):
-    inds = [0] + list(inds) + [len(s)]
-    return [s[inds[i]:inds[i + 1]] for i in range(0, len(inds) - 1)]
-
-
-def split_hex_code(n, hex_length, inds):
-    # Get the zero-padded string representation of the number in base 16.
-    n_hex = format(n, '0{}x'.format(hex_length))
-    # Check the number is of the correct magnitude.
-    assert len(n_hex) == hex_length
-    # Split the hex string into pieces, at the given indices.
-    parts_hex = split_at(n_hex, inds)
-    # Convert each part from hex to decimal.
-    parts = [int(part, base=16) for part in parts_hex]
-    return parts
-
-
 @pg.production('code_assignment : optional_globals code_name number equals number')
 def code_assignment(parser_state, p):
-    is_global = p[0]
-    code_type, char_number, code_number = p[1], p[2], p[4]
-    # TODO: Do inside executor.
-    char_size, code_size = evaluate_number(parser_state.state, char_number), evaluate_number(parser_state.state, code_number)
-    char = chr(char_size)
-    if code_type == 'CAT_CODE':
-        code = CatCode(code_size)
-    elif code_type == 'MATH_CODE':
-        parts = split_hex_code(code_size, hex_length=4, inds=(1, 2))
-        math_class_i, family, position = parts
-        math_class = MathClass(math_class_i)
-        glyph_code = GlyphCode(family, position)
-        code = MathCode(math_class, glyph_code)
-    elif code_type in ('UPPER_CASE_CODE', 'LOWER_CASE_CODE'):
-        code = chr(code_size)
-    elif code_type == 'SPACE_FACTOR_CODE':
-        code = code_size
-    elif code_type == 'DELIMITER_CODE':
-        parts = split_hex_code(code_size, hex_length=6, inds=(1, 3, 4))
-        small_family, small_position, large_family, large_position = parts
-        small_glyph_code = GlyphCode(small_family, small_position)
-        large_glyph_code = GlyphCode(large_family, large_position)
-        code = DelimiterCode(small_glyph_code, large_glyph_code)
     return Token(type_='code_assignment',
-                 value={'global': is_global, 'code_type': code_type,
-                        'char': char, 'code': code})
+                 value={'global': p[0], 'code_type': p[1],
+                        'char': p[2], 'code': p[4]})
 
 
 @pg.production('code_name : CAT_CODE')

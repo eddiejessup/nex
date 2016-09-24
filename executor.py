@@ -1,9 +1,27 @@
 from reader import EndOfFile
 from registers import is_register_type
+from typer import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from expander import is_parameter_type
 from interpreter import vertical_modes, horizontal_modes
 from common_parsing import (evaluate_number, evaluate_dimen, evaluate_glue,
                             evaluate_token_list)
+
+
+def split_at(s, inds):
+    inds = [0] + list(inds) + [len(s)]
+    return [s[inds[i]:inds[i + 1]] for i in range(0, len(inds) - 1)]
+
+
+def split_hex_code(n, hex_length, inds):
+    # Get the zero-padded string representation of the number in base 16.
+    n_hex = format(n, '0{}x'.format(hex_length))
+    # Check the number is of the correct magnitude.
+    assert len(n_hex) == hex_length
+    # Split the hex string into pieces, at the given indices.
+    parts_hex = split_at(n_hex, inds)
+    # Convert each part from hex to decimal.
+    parts = [int(part, base=16) for part in parts_hex]
+    return parts
 
 
 def execute_commands(command_grabber, state, reader):
@@ -60,6 +78,7 @@ def execute_commands(command_grabber, state, reader):
                 'number': evaluate_number,
                 'dimen': evaluate_dimen,
                 'glue': evaluate_glue,
+                'mu_glue': evaluate_glue,
                 'token_list': evaluate_token_list,
             }
             value_evaluate_func = value_evaluate_map[value.type]
@@ -80,7 +99,31 @@ def execute_commands(command_grabber, state, reader):
                                   v['at_clause'])
             box.append(command)
         elif type_ == 'code_assignment':
-            state.set_code(v['global'], v['code_type'], v['char'], v['code'])
+            code_type = v['code_type']
+            char_size = evaluate_number(state, v['char'])
+            code_size = evaluate_number(state, v['code'])
+            char = chr(char_size)
+            # TODO: Move inside state? What exactly is the benefit?
+            # I guess separation of routing logic from execution logic.
+            if code_type == 'CAT_CODE':
+                code = CatCode(code_size)
+            elif code_type == 'MATH_CODE':
+                parts = split_hex_code(code_size, hex_length=4, inds=(1, 2))
+                math_class_i, family, position = parts
+                math_class = MathClass(math_class_i)
+                glyph_code = GlyphCode(family, position)
+                code = MathCode(math_class, glyph_code)
+            elif code_type in ('UPPER_CASE_CODE', 'LOWER_CASE_CODE'):
+                code = chr(code_size)
+            elif code_type == 'SPACE_FACTOR_CODE':
+                code = code_size
+            elif code_type == 'DELIMITER_CODE':
+                parts = split_hex_code(code_size, hex_length=6, inds=(1, 3, 4))
+                small_family, small_position, large_family, large_position = parts
+                small_glyph_code = GlyphCode(small_family, small_position)
+                large_glyph_code = GlyphCode(large_family, large_position)
+                code = DelimiterCode(small_glyph_code, large_glyph_code)
+            state.set_code(v['global'], code_type, char, code)
         elif type_ == 'advance':
             value_eval = evaluate_number(state, v['value'])
             variable = v['variable']
