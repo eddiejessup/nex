@@ -3,8 +3,7 @@ from collections import deque
 from enum import Enum
 
 from common import TerminalToken
-from reader import EndOfFile
-from lexer import make_char_cat_token
+from lexer import make_char_cat_token, is_control_sequence_call
 from parser import parser
 from typer import (CatCode,
                    char_cat_lex_type, control_sequence_lex_type,
@@ -12,8 +11,9 @@ from typer import (CatCode,
                    make_unexpanded_control_sequence_terminal_token,
                    unexpanded_cs_types, unexpanded_token_type,
                    explicit_box_map,
-                   short_hand_def_map, def_map, if_map)
-from interpreter import Mode, Group
+                   short_hand_def_map, def_map, if_map,
+                   )
+from interpreter import Mode, vertical_modes, Group
 from executor import CommandGrabber, execute_commands, execute_condition
 from expander import parse_parameter_text
 from condition_parser import condition_parser
@@ -35,12 +35,6 @@ message_types = ('MESSAGE', 'ERROR_MESSAGE', 'WRITE')
 hyphenation_types = ('HYPHENATION', 'PATTERNS')
 
 token_variable_start_types = ('TOKEN_PARAMETER', 'TOKS_DEF_TOKEN', 'TOKS')
-
-
-def is_control_sequence_call(token):
-    return (isinstance(token.value, dict) and
-            'lex_type' in token.value and
-            token.value['lex_type'] == control_sequence_lex_type)
 
 
 class ContextMode(Enum):
@@ -344,7 +338,7 @@ class Banisher(object):
 
             # Matching right brace should trigger EndOfSubExecutor and return.
             box = execute_commands(command_grabber, self.global_state,
-                                   reader=self.reader)
+                                   banisher=self, reader=self.reader)
 
             # [After ending the group, then TeX] packages the hbox (using the
             # size that was saved on the stack), and completes the setbox

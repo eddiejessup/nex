@@ -131,6 +131,18 @@ def make_control_sequence_call_token(Cls, type_, name):
                                    'lex_type': control_sequence_lex_type})
 
 
+primitive_canon_tokens = {}
+for prim_canon_name, prim_type in primitive_control_sequences_map.items():
+    # Terminals are tokens that may be passed to the parser. Non-terminals
+    # are tokens that will be consumed by the banisher before the parser
+    # sees them.
+    is_terminal = prim_canon_name in terminal_primitive_control_sequences_map
+    TokenCls = TerminalToken if is_terminal else InternalToken
+    primitive_canon_token = make_control_sequence_call_token(
+        TokenCls, prim_type, prim_canon_name)
+    primitive_canon_tokens[prim_canon_name] = primitive_canon_token
+
+
 def get_initial_expander():
     control_sequences = {}
 
@@ -155,20 +167,14 @@ def get_initial_expander():
             parameters[route_id] = param_canon_token
 
     primitives = {}
-    for prim_canon_name, prim_type in primitive_control_sequences_map.items():
+    for prim_canon_name, prim_canon_token in primitive_canon_tokens.items():
         # Add a router for the canonical name to the primitive.
         route_id = prim_canon_name
         route_token = InternalToken(type_='primitive', value=route_id)
         control_sequences[prim_canon_name] = route_token
 
-        # Terminals are tokens that may be passed to the parser. Non-terminals
-        # are tokens that will be consumed by the banisher before the parser
-        # sees them.
-        is_terminal = prim_canon_name in terminal_primitive_control_sequences_map
-        TokenCls = TerminalToken if is_terminal else InternalToken
-        primitive_canon_token = make_control_sequence_call_token(
-            TokenCls, prim_type, prim_canon_name)
-        primitives[route_id] = primitive_canon_token
+        # Make that route resolve to the primitive canonical token.
+        primitives[route_id] = prim_canon_token
 
     expander = Expander(control_sequences,
                         macros, let_chars, parameters, primitives,

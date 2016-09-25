@@ -38,6 +38,18 @@ def make_control_sequence_token(name):
     return Token(type_=control_sequence_lex_type, value=name)
 
 
+def is_char_cat(token):
+    return (isinstance(token.value, dict) and
+            'lex_type' in token.value and
+            token.value['lex_type'] == char_cat_lex_type)
+
+
+def is_control_sequence_call(token):
+    return (isinstance(token.value, dict) and
+            'lex_type' in token.value and
+            token.value['lex_type'] == control_sequence_lex_type)
+
+
 class Lexer(object):
 
     def __init__(self, reader, global_state):

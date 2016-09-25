@@ -8,9 +8,10 @@ from reader import EndOfFile
 from registers import is_register_type
 from typer import (CatCode, MathCode, GlyphCode, DelimiterCode, MathClass,
                    PhysicalUnit, MuUnit, InternalUnit, units_in_scaled_points,
+                   h_add_glue_tokens,
                    )
 from tex_parameters import glue_keys
-from expander import is_parameter_type
+from expander import is_parameter_type, primitive_canon_tokens
 from interpreter import Mode, Group, vertical_modes, horizontal_modes
 
 
@@ -177,11 +178,58 @@ def execute_condition(condition_token, state):
     return outcome
 
 
-def execute_command(command, state, reader):
+shift_to_horizontal_control_sequence_types = (
+    'char',
+    'CHAR_DEF_TOKEN',
+    'UN_H_BOX',
+    'UN_H_COPY',
+    # 'V_ALIGN',
+    'V_RULE',
+    # 'ACCENT',
+    # 'DISCRETIONARY',
+    # 'CONTROL_HYPHEN',
+    # TODO: Add control-space primitive, parsing and control sequence.
+    # 'CONTROL_SPACE',
+)
+shift_to_horizontal_control_sequence_types += tuple(h_add_glue_tokens.values())
+shift_to_horizontal_cat_codes = (CatCode.letter,
+                                 CatCode.other,
+                                 CatCode.math_shift)
+
+
+def command_shifts_to_horizontal(command):
+    if command.type in shift_to_horizontal_control_sequence_types:
+        return True
+    if (command.type == 'character' and
+            command.value['cat'] in shift_to_horizontal_cat_codes):
+        return True
+    return False
+
+
+def execute_command(command, state, banisher, reader):
     box = []
     type_ = command.type
     v = command.value
-    if type_ == 'SPACE':
+    # Note: It would be nice to do this in the banisher, so we don't have
+    # to mess about unpacking the command. But one cannot know at banisher-
+    # time how a terminal token in isolation will be used. For example, a
+    # char-cat pair might end up as part of a filename or something.
+    if (state.mode in vertical_modes and
+            command_shifts_to_horizontal(command)):
+        # "If any of these tokens occurs as a command in vertical mode or
+        # internal vertical mode, TeX automatically performs an \indent
+        # command as explained above. This leads into horizontal mode with
+        # the \everypar tokens in the input, after which TeX will see the
+        # horizontal command again."
+        # Put the terminal tokens that led to this command back on the input
+        # queue.
+        terminal_tokens = command._terminal_tokens
+        banisher.input_tokens_queue.extendleft(reversed(terminal_tokens))
+        # Get a primitive token for the indent command.
+        indent_token = primitive_canon_tokens['indent']
+        # And add it before the tokens we just read.
+        banisher.input_tokens_queue.appendleft(indent_token)
+    elif type_ == 'SPACE':
         if state.mode in vertical_modes:
             # "Spaces have no effects in vertical modes".
             pass
@@ -340,11 +388,37 @@ def execute_command(command, state, reader):
         code_eval = evaluate_number(state, v['code'])
         state.global_font_state.set_hyphen_char(v['font_id'], code_eval)
     elif type_ == 'message':
-        print(command.value)
+        # print(command.value)
+        pass
     elif type_ == 'write':
-        print(command.value)
+        # print(command.value)
+        pass
     elif type_ == 'RELAX':
         pass
+    elif type_ == 'INDENT':
+        if state.mode in vertical_modes:
+            # "The \parskip glue is appended to the current list, unless TeX is
+            # in internal vertical mode and the current list is empty. Then TeX
+            # enters unrestricted horizontal mode, starting the horizontal list
+            # with an empty hbox whose width is \parindent. The \everypar
+            # tokens are inserted into TeX's input. The page builder is
+            # exercised."
+            if not (state.mode == Mode.internal_vertical):
+                par_skip_glue = state.get_parameter_value('parskip')
+                par_skip_glue_command = Token(type_='V_SKIP',
+                                              value=par_skip_glue)
+                box.append(par_skip_glue_command)
+            par_indent_width = state.get_parameter_value('parindent')
+            par_indent_contents = Token(type_='HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE', value=[])
+            par_indent_hbox_command = Token(type_='h_box',
+                                            value={'specification': par_indent_width,
+                                                   'contents': par_indent_contents})
+            box.append(par_indent_hbox_command)
+            state.push_mode(Mode.horizontal)
+        # An empty box of width \parindent is appended to the current list, and
+        # the space factor is set to 1000.
+        elif state.mode in horizontal_modes:
+            import pdb; pdb.set_trace()
     elif type_ == 'LEFT_BRACE':
         # A character token of category 1, or a control sequence like \bgroup
         # that has been \let equal to such a character token, causes TeX to
@@ -377,7 +451,7 @@ def execute_command(command, state, reader):
     return box
 
 
-def execute_commands(command_grabber, state, reader):
+def execute_commands(command_grabber, state, banisher, reader):
     box = []
     _cs = []
     while True:
@@ -387,7 +461,7 @@ def execute_commands(command_grabber, state, reader):
             break
         _cs.append(command)
         try:
-            box_contents = execute_command(command, state, reader)
+            box_contents = execute_command(command, state, banisher, reader)
         except EndOfFile:
             break
         except EndOfSubExecutor:
@@ -493,4 +567,5 @@ class CommandGrabber(object):
                 if result._could_only_end:
                     break
                 have_parsed = True
+        result._terminal_tokens = parse_queue
         return result

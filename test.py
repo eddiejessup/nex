@@ -76,7 +76,8 @@ def test_parser():
     banisher = Banisher(lexer, state=state, reader=reader)
 
     command_grabber = CommandGrabber(banisher, parser=parser)
-    box = execute_commands(command_grabber, state=state, reader=reader)
+    box = execute_commands(command_grabber, state=state, banisher=banisher,
+                           reader=reader)
     print(box)
 
     magnification = state.get_parameter_value('mag')
