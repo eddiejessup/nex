@@ -281,6 +281,11 @@ terminal_primitive_control_sequences_map = {
     # This one does not.
     'copy': 'COPY',
 
+    'unhbox': 'UN_H_BOX',
+    'unhcopy': 'UN_H_COPY',
+    'unvbox': 'UN_V_BOX',
+    'unvcopy': 'UN_V_COPY',
+
     # Remove and return (pop) the most recent h- or v-box, if any.
     'lastbox': 'LAST_BOX',
     # Make a vbox by splitting off a certain amount of material from a box
@@ -303,6 +308,9 @@ terminal_primitive_control_sequences_map = {
     'patterns': 'PATTERNS',
 
     'end': 'END',
+
+    'char': 'CHAR',
+    'indent': 'INDENT',
 }
 
 add_glue_stems = {
@@ -312,10 +320,12 @@ add_glue_stems = {
     'ss': 'STRETCH_OR_SHRINK',
     'filneg': 'FIL_NEG',
 }
-add_glue_tokens = {'{}{}'.format(c, cs_stem): '{}_{}'.format(c.upper(), tok_stem)
-                   for c in ('h, v')
-                   for cs_stem, tok_stem in add_glue_stems.items()
-                   }
+f = lambda c: {'{}{}'.format(c, cs_stem): '{}_{}'.format(c.upper(), tok_stem)
+               for cs_stem, tok_stem in add_glue_stems.items()
+               }
+h_add_glue_tokens = f('h')
+v_add_glue_tokens = f('v')
+add_glue_tokens = dict(**h_add_glue_tokens, **v_add_glue_tokens)
 terminal_primitive_control_sequences_map.update(add_glue_tokens)
 
 explicit_box_map = {

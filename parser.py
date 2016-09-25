@@ -26,12 +26,16 @@ pg = common_pg.copy_to_extend()
 @pg.production('command : write')
 @pg.production('command : RELAX')
 @pg.production('command : box')
+@pg.production('command : un_box')
 @pg.production('command : vertical_rule')
 @pg.production('command : horizontal_rule')
 @pg.production('command : input')
 @pg.production('command : RIGHT_BRACE')
 @pg.production('command : LEFT_BRACE')
 @pg.production('command : END')
+@pg.production('command : char')
+@pg.production('command : CHAR_DEF_TOKEN')
+@pg.production('command : INDENT')
 def command(p):
     return p[0]
 
@@ -490,6 +494,26 @@ def file_name(p):
         return p[0] + p[1].value['char']
     else:
         return p[0].value['char']
+
+
+@pg.production('char : CHAR number')
+def char(p):
+    return Token(type_='char', value={'code': p[1]})
+
+
+# TODO: I wonder if I could make a decorator to make a token of the correct
+# type based on the production rule. Then I just have to return a dict.
+@pg.production('un_box : un_box_type number')
+def un_box(p):
+    return Token(type_=p[0], value={'nr': p[1]})
+
+
+@pg.production('un_box_type : UN_H_BOX')
+@pg.production('un_box_type : UN_H_COPY')
+@pg.production('un_box_type : UN_V_BOX')
+@pg.production('un_box_type : UN_V_COPY')
+def un_box_type(p):
+    return p[0].type.lower()
 
 
 @pg.error
