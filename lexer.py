@@ -201,18 +201,21 @@ class Lexer(object):
                 # the end-of-line character is converted to the control
                 # sequence token 'par' (end of paragraph).
                 token = make_control_sequence_token('par')
-                return token
             # if TeX is in state M (mid-line),
             elif self.reading_state == ReadingState.line_middle:
                 # the end-of-line character is converted to a token for
                 # character 32 (' ') of category 10 (space).
                 token = make_char_cat_token(' ', CatCode.space)
-                return token
             # and if TeX is in state S (skipping blanks),
             elif self.reading_state == ReadingState.skipping_blanks:
                 # the end-of-line character is simply dropped.
-                pass
+                token = None
 
+            # "At the beginning of every line [TeX is] in state N".
+            self.reading_state = ReadingState.line_begin
+
+            if token is not None:
+                return token
             # 2.
             # TeX deletes any <space> characters (number 32) that occur at the
             # right end of an input line.
