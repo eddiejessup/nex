@@ -139,7 +139,7 @@ class GlobalState(object):
     def __init__(self):
         self.global_font_state = GlobalFontState()
         # At the beginning, TeX is in vertical mode, ready to construct pages.
-        self.modes = [Mode.vertical]
+        self.modes = [(Mode.vertical, [])]
         self.groups = [Group.outside]
         self.scopes = []
         initial_scope = get_initial_scope(self.global_font_state)
@@ -149,13 +149,21 @@ class GlobalState(object):
 
     @property
     def mode(self):
-        return self.modes[-1]
+        return self.modes[-1][0]
+
+    @property
+    def _layout_list(self):
+        return self.modes[-1][1]
 
     def push_mode(self, mode):
-        self.modes.append(mode)
+        self.modes.append((mode, []))
 
     def pop_mode(self):
-        return self.modes.pop()
+        mode, layout_list = self.modes.pop()
+        return layout_list
+
+    def append_to_list(self, item):
+        self._layout_list.append(item)
 
     # Group.
 

@@ -76,13 +76,13 @@ def test_parser():
     banisher = Banisher(lexer, state=state, reader=reader)
 
     command_grabber = CommandGrabber(banisher, parser=parser)
-    box = execute_commands(command_grabber, state=state, banisher=banisher,
-                           reader=reader)
-    print(box)
+    execute_commands(command_grabber, state=state, banisher=banisher,
+                     reader=reader)
 
     magnification = state.get_parameter_value('mag')
     doc = DVIDocument(magnification)
-    write_box_to_doc(doc, box)
+    total_layout_list = state.pop_mode()
+    write_box_to_doc(doc, total_layout_list)
     doc.write('oot.dvi')
 
 if __name__ == '__main__':

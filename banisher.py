@@ -202,6 +202,7 @@ class Banisher(object):
                 first_token.type in unexpanded_cs_types):
             first_token = self.global_state.resolve_control_sequence_to_token(first_token.value['name'])
         type_ = first_token.type
+
         if type_ == 'MACRO':
             macro_definition = first_token.value['definition']
             name = macro_definition.value['name']
@@ -337,21 +338,21 @@ class Banisher(object):
             command_grabber = CommandGrabber(self, parser=box_parser)
 
             # Matching right brace should trigger EndOfSubExecutor and return.
-            box = execute_commands(command_grabber, self.global_state,
-                                   banisher=self, reader=self.reader)
+            execute_commands(command_grabber, self.global_state,
+                             banisher=self, reader=self.reader)
 
             # [After ending the group, then TeX] packages the hbox (using the
             # size that was saved on the stack), and completes the setbox
             # command, returning to the mode it was in at the time of the
             # setbox.
+            layout_list = self.global_state.pop_mode()
             material_map = {
                 Mode.internal_vertical: 'VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE',
                 Mode.restricted_horizontal: 'HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE',
             }
             material_type = material_map[mode]
-            material = TerminalToken(type_=material_type, value=box)
+            material = TerminalToken(type_=material_type, value=layout_list)
             output_tokens.append(material)
-            self.global_state.pop_mode()
         elif type_ in read_unexpanded_control_sequence_types:
             # Get an unexpanded control sequence token and add it to the
             # output queue, along with the first token.

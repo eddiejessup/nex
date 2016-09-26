@@ -207,7 +207,6 @@ def command_shifts_to_horizontal(command):
 
 
 def execute_command(command, state, banisher, reader):
-    box = []
     type_ = command.type
     v = command.value
     # Note: It would be nice to do this in the banisher, so we don't have
@@ -237,7 +236,7 @@ def execute_command(command, state, banisher, reader):
             # Spaces append glue to the current list; the exact amount of glue
             # depends on \spacefactor, the current font, and the \spaceskip and
             # \xspaceskip parameters, as described in Chapter 12.
-            box.append(command)
+            state.append_to_list(command)
         else:
             import pdb; pdb.set_trace()
     elif type_ == 'PAR':
@@ -252,7 +251,7 @@ def execute_command(command, state, banisher, reader):
             # does nothing in restricted horizontal mode.
             pass
         elif state.mode == Mode.horizontal:
-            # But it terminates horizontal mode: The current list is finished
+            # "But it terminates horizontal mode: The current list is finished
             # off by doing,
             #   '\unskip \penalty10000 \parfillskip \hskip\parfillskip'
             # then it is broken into lines as explained in Chapter 14, and TeX
@@ -260,30 +259,42 @@ def execute_command(command, state, banisher, reader):
             # lines of the paragraph are appended to the enclosing vertical
             # list, interspersed with interline glue and interline penalties,
             # and with the migration of vertical material that was in the
-            # horizontal list. Then TeX exercises the page builder.
-            state.pop_mode()
-            box.append(command)
+            # horizontal list. Then TeX exercises the page builder."
+            # TODO: Actually, the above stuff should be done. Not sure whether
+            # as a direct internal call, or whether the calls should be
+            # inserted.
+            # Get that horizontal list
+            horizontal_list = state.pop_mode()
+            material_tok = Token(type_='HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE',
+                                 value=horizontal_list)
+            h_box_token = Token(type_='h_box',
+                                value={'specification': None,
+                                       'contents': material_tok})
+            # Add it to the enclosing vertical list.
+            state.append_to_list(h_box_token)
+            # Add \par call just as a command for now, to move down.
+            state.append_to_list(command)
         else:
             import pdb; pdb.set_trace()
     elif type_ == 'character':
-        box.append(command)
+        state.append_to_list(command)
     elif type_ == 'V_RULE':
-        box.append(command)
+        state.append_to_list(command)
     # The box already has its contents in the correct way, built using this
     # very method. Recursion still amazes me sometimes.
     elif type_ == 'h_box':
-        box.append(command)
+        state.append_to_list(command)
     # Commands like font commands aren't exactly boxes, but they go through
     # as DVI commands. Just put them in the box for now to deal with later.
     elif type_ == 'font_selection':
         state.set_current_font(v['global'], v['font_id'])
-        box.append(command)
+        state.append_to_list(command)
     elif type_ == 'font_definition':
         state.define_new_font(v['global'],
                               v['control_sequence_name'],
                               v['file_name'],
                               v['at_clause'])
-        box.append(command)
+        state.append_to_list(command)
     elif type_ == 'family_assignment':
         family_nr = v['family_nr']
         family_nr_eval = evaluate_number(state, family_nr)
@@ -407,13 +418,13 @@ def execute_command(command, state, banisher, reader):
                 par_skip_glue = state.get_parameter_value('parskip')
                 par_skip_glue_command = Token(type_='V_SKIP',
                                               value=par_skip_glue)
-                box.append(par_skip_glue_command)
+                state.append_to_list(par_skip_glue_command)
             par_indent_width = state.get_parameter_value('parindent')
             par_indent_contents = Token(type_='HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE', value=[])
             par_indent_hbox_command = Token(type_='h_box',
                                             value={'specification': par_indent_width,
                                                    'contents': par_indent_contents})
-            box.append(par_indent_hbox_command)
+            state.append_to_list(par_indent_hbox_command)
             state.push_mode(Mode.horizontal)
         # An empty box of width \parindent is appended to the current list, and
         # the space factor is set to 1000.
@@ -448,11 +459,9 @@ def execute_command(command, state, banisher, reader):
         # print(type_)
         # pass
         import pdb; pdb.set_trace()
-    return box
 
 
 def execute_commands(command_grabber, state, banisher, reader):
-    box = []
     _cs = []
     while True:
         try:
@@ -461,23 +470,20 @@ def execute_commands(command_grabber, state, banisher, reader):
             break
         _cs.append(command)
         try:
-            box_contents = execute_command(command, state, banisher, reader)
+            execute_command(command, state, banisher, reader)
         except EndOfFile:
             break
         except EndOfSubExecutor:
             break
-        box.extend(box_contents)
-        # print(command)
-    return box
 
 
-def write_box_to_doc(doc, box):
+def write_box_to_doc(doc, layout_list):
     font_nr = 0
-    for tok in box:
-        type_ = tok.type
-        v = tok.value
+    for item in layout_list:
+        type_ = item.type
+        v = item.value
         if type_ == 'h_box':
-            contents = tok.value['contents'].value
+            contents = item.value['contents'].value
             write_box_to_doc(doc, contents)
         elif type_ == 'font_definition':
             doc.define_font(font_nr, v['file_name'],
@@ -490,6 +496,10 @@ def write_box_to_doc(doc, box):
             doc.set_char(ord(v['char']))
         elif type_ == 'SPACE':
             doc.right(200000)
+        elif type_ == 'V_SKIP':
+            pass
+        elif type_ == 'PAR':
+            doc.down(400000)
         else:
             print(type_)
             import pdb; pdb.set_trace()
