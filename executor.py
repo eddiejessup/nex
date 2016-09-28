@@ -13,6 +13,7 @@ from typer import (CatCode, MathCode, GlyphCode, DelimiterCode, MathClass,
 from tex_parameters import glue_keys
 from expander import is_parameter_type, primitive_canon_tokens
 from interpreter import Mode, Group, vertical_modes, horizontal_modes
+from box import HBox, Rule, Glue, Character, FontDefinition, FontSelection
 
 
 sub_executor_groups = (
@@ -236,7 +237,8 @@ def execute_command(command, state, banisher, reader):
             # Spaces append glue to the current list; the exact amount of glue
             # depends on \spacefactor, the current font, and the \spaceskip and
             # \xspaceskip parameters, as described in Chapter 12.
-            state.append_to_list(command)
+            space_glue_item = Glue(dimen=200000)
+            state.append_to_list(space_glue_item)
         else:
             import pdb; pdb.set_trace()
     elif type_ == 'PAR':
@@ -265,36 +267,43 @@ def execute_command(command, state, banisher, reader):
             # inserted.
             # Get that horizontal list
             horizontal_list = state.pop_mode()
-            material_tok = Token(type_='HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE',
-                                 value=horizontal_list)
-            h_box_token = Token(type_='h_box',
-                                value={'specification': None,
-                                       'contents': material_tok})
+            h_box_item = HBox(specification=None, contents=horizontal_list)
             # Add it to the enclosing vertical list.
-            state.append_to_list(h_box_token)
-            # Add \par call just as a command for now, to move down.
-            state.append_to_list(command)
+            state.append_to_list(h_box_item)
+            par_glue_item = Glue(dimen=1600000)
+            state.append_to_list(par_glue_item)
         else:
             import pdb; pdb.set_trace()
     elif type_ == 'character':
-        state.append_to_list(command)
+        character_item = Character(command.value['char'])
+        state.append_to_list(character_item)
     elif type_ == 'V_RULE':
-        state.append_to_list(command)
+        e_spec = {k: (None if d is None else evaluate_dimen(state, d))
+                  for k, d in v.items()}
+        rule_item = Rule(**e_spec)
+        state.append_to_list(rule_item)
     # The box already has its contents in the correct way, built using this
     # very method. Recursion still amazes me sometimes.
     elif type_ == 'h_box':
-        state.append_to_list(command)
+        h_box_item = HBox(specification=v['specification'],
+                          contents=v['contents'].value)
+        state.append_to_list(h_box_item)
     # Commands like font commands aren't exactly boxes, but they go through
     # as DVI commands. Just put them in the box for now to deal with later.
     elif type_ == 'font_selection':
         state.set_current_font(v['global'], v['font_id'])
-        state.append_to_list(command)
+        font_select_item = FontSelection(font_nr=v['font_id'])
+        state.append_to_list(font_select_item)
     elif type_ == 'font_definition':
-        state.define_new_font(v['global'],
-                              v['control_sequence_name'],
-                              v['file_name'],
-                              v['at_clause'])
-        state.append_to_list(command)
+        new_font_id = state.define_new_font(v['global'],
+                                            v['control_sequence_name'],
+                                            v['file_name'],
+                                            v['at_clause'])
+        font_define_item = FontDefinition(font_nr=new_font_id,
+                                          font_name=v['file_name'],
+                                          file_name=v['file_name'] + '.tfm',
+                                          at_clause=v['at_clause'])
+        state.append_to_list(font_define_item)
     elif type_ == 'family_assignment':
         family_nr = v['family_nr']
         family_nr_eval = evaluate_number(state, family_nr)
@@ -416,16 +425,13 @@ def execute_command(command, state, banisher, reader):
             # exercised."
             if not (state.mode == Mode.internal_vertical):
                 par_skip_glue = state.get_parameter_value('parskip')
-                par_skip_glue_command = Token(type_='V_SKIP',
-                                              value=par_skip_glue)
-                state.append_to_list(par_skip_glue_command)
-            par_indent_width = state.get_parameter_value('parindent')
-            par_indent_contents = Token(type_='HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE', value=[])
-            par_indent_hbox_command = Token(type_='h_box',
-                                            value={'specification': par_indent_width,
-                                                   'contents': par_indent_contents})
-            state.append_to_list(par_indent_hbox_command)
+                par_skip_glue_item = Glue(**par_skip_glue)
+                state.append_to_list(par_skip_glue_item)
             state.push_mode(Mode.horizontal)
+            par_indent_width = state.get_parameter_value('parindent')
+            par_indent_hbox_item = HBox(specification=par_indent_width,
+                                        contents=[])
+            state.append_to_list(par_indent_hbox_item)
         # An empty box of width \parindent is appended to the current list, and
         # the space factor is set to 1000.
         elif state.mode in horizontal_modes:
@@ -477,31 +483,28 @@ def execute_commands(command_grabber, state, banisher, reader):
             break
 
 
-def write_box_to_doc(doc, layout_list):
-    font_nr = 0
+def write_box_to_doc(doc, layout_list, horizontal=False):
+    print(layout_list)
     for item in layout_list:
-        type_ = item.type
-        v = item.value
-        if type_ == 'h_box':
-            contents = item.value['contents'].value
-            write_box_to_doc(doc, contents)
-        elif type_ == 'font_definition':
-            doc.define_font(font_nr, v['file_name'],
-                            font_path=v['file_name'] + '.tfm')
-            font_nr += 1
-        elif type_ == 'font_selection':
-            # TODO: Fix font number getting.
-            doc.select_font(0)
-        elif type_ == 'character':
-            doc.set_char(ord(v['char']))
-        elif type_ == 'SPACE':
-            doc.right(200000)
-        elif type_ == 'V_SKIP':
-            pass
-        elif type_ == 'PAR':
-            doc.down(400000)
+        if isinstance(item, FontDefinition):
+            doc.define_font(item.font_nr, item.font_name,
+                            font_path=item.file_name)
+        elif isinstance(item, FontSelection):
+            doc.select_font(item.font_nr)
+        elif isinstance(item, HBox):
+            doc.push()
+            write_box_to_doc(doc, item.contents, horizontal=True)
+            doc.pop()
+        elif isinstance(item, Character):
+            doc.set_char(item.code)
+        elif isinstance(item, Glue):
+            amount = item.dimen if item.dimen else item.stretch
+            amount = int(amount)
+            if horizontal:
+                doc.right(amount)
+            else:
+                doc.down(amount)
         else:
-            print(type_)
             import pdb; pdb.set_trace()
 
 

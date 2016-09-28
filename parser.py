@@ -452,7 +452,7 @@ def add_glue(p):
 @pg.production('horizontal_rule : H_RULE rule_specification')
 def rule(p):
     # TODO: Implement.
-    return Token(type_=p[0].type, value=p[1])
+    return Token(type_=p[0].type, value=p[1].value)
 
 
 @pg.production('rule_specification : rule_dimension rule_specification')

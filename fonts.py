@@ -109,7 +109,7 @@ class GlobalFontState(object):
     def define_new_font(self, file_name, at_clause):
         # TODO: do this properly.
         font_info = FontInfo(file_name, at_clause)
-        font_id = get_unique_id()
+        font_id = max(self.fonts.keys()) + 1
         self.fonts[font_id] = font_info
         # Return new font id.
         return font_id

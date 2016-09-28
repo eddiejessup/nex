@@ -318,7 +318,6 @@ class Expander(object):
                                                         [primitive_token])
         # TODO: Set directly as font token, not as a macro.
         self.set_macro(name, definition_token, prefixes=None)
-        return definition_token
 
     def get_parameter_value(self, name):
         parameter_token = self.resolve_control_sequence_to_token(name)

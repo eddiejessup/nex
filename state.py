@@ -345,5 +345,5 @@ class GlobalState(object):
         new_font_id = self.global_font_state.define_new_font(file_name,
                                                              at_clause)
         for scope in self.get_scopes(is_global):
-            definition_token = scope.expander.define_new_font_control_sequence(name, new_font_id)
-        return definition_token
+            scope.expander.define_new_font_control_sequence(name, new_font_id)
+        return new_font_id
