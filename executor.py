@@ -266,16 +266,39 @@ def execute_command(command, state, banisher, reader):
             # as a direct internal call, or whether the calls should be
             # inserted.
             # Get that horizontal list
-            horizontal_list = state.pop_mode()
-            h_box_item = HBox(specification=None, contents=horizontal_list)
-            # Add it to the enclosing vertical list.
-            state.append_to_list(h_box_item)
+            horizontal_list = deque(state.pop_mode())
+            # import pdb; pdb.set_trace()
+            # h_box_item = HBox(specification=None, contents=horizontal_list)
+            wm = state.get_parameter_value('hsize')
+            while horizontal_list:
+                line_list = []
+                while horizontal_list:
+                    line_list.append(horizontal_list.popleft())
+                    w = sum(e.natural_width for e in line_list)
+                    # If there was only one element in the horizontal list left,
+                    # just break and be done.
+                    if not horizontal_list:
+                        break
+                    # If we have got a line bigger than the desired width.
+                    if w > wm:
+                        # Then put the thing that made it be too big back on
+                        # the queue, and break to make a line.
+                        horizontal_list.appendleft(line_list.pop())
+                        break
+                h_box_item = HBox(specification=None,
+                                  contents=line_list)
+                # Add it to the enclosing vertical list.
+                state.append_to_list(h_box_item)
+                import pdb; pdb.set_trace()
+                line_glue_item = Glue(**state.get_parameter_value('baselineskip'))
+                state.append_to_list(line_glue_item)
             par_glue_item = Glue(dimen=1600000)
             state.append_to_list(par_glue_item)
         else:
             import pdb; pdb.set_trace()
     elif type_ == 'character':
-        character_item = Character(command.value['char'])
+        character_item = Character(command.value['char'],
+                                   state.current_font)
         state.append_to_list(character_item)
     elif type_ == 'V_RULE':
         e_spec = {k: (None if d is None else evaluate_dimen(state, d))
@@ -285,8 +308,9 @@ def execute_command(command, state, banisher, reader):
     # The box already has its contents in the correct way, built using this
     # very method. Recursion still amazes me sometimes.
     elif type_ == 'h_box':
+        conts = v['contents'].value
         h_box_item = HBox(specification=v['specification'],
-                          contents=v['contents'].value)
+                          contents=conts)
         state.append_to_list(h_box_item)
     # Commands like font commands aren't exactly boxes, but they go through
     # as DVI commands. Just put them in the box for now to deal with later.
@@ -484,7 +508,6 @@ def execute_commands(command_grabber, state, banisher, reader):
 
 
 def write_box_to_doc(doc, layout_list, horizontal=False):
-    print(layout_list)
     for item in layout_list:
         if isinstance(item, FontDefinition):
             doc.define_font(item.font_nr, item.font_name,

@@ -1,26 +1,80 @@
 from enum import Enum
 
-from utils import get_unique_id
+from pydvi.TeXUnit import pt2sp
+
+from dvi_api.dvi_document import get_font_info
+
 from typer import terminal_primitive_control_sequences_map
 
 
 class FontInfo(object):
 
     def __init__(self, file_name, at_clause):
-        # Hacky short-term.
-        self.file_name = file_name
+        if file_name is None:
+            self.font_info = None
+        else:
+            self.font_info = get_font_info(font_name=file_name,
+                                           font_path=file_name + '.tfm')
+
         self.at_clause = at_clause
 
         self.at_size = None
-        self.design_size = None
         self.name = None
         self.area = None
         self.glue = None
         self.hyphen_char = None
         self.skew_char = None
 
+    @property
+    def file_name(self):
+        return self.font_info.file_name
+
+    @property
+    def design_size(self):
+        return self.font_info.design_font_size
+
+    def scale(self, d):
+        return int(round(pt2sp(d * self.design_size)))
+
+    @property
+    def extra_space(self):
+        return pt2sp(self.font_info.extra_space)
+
+    @property
+    def quad(self):
+        return self.font_info.quad
+
+    @property
+    def slant(self):
+        return self.font_info.slant
+
+    @property
+    def space_shrink(self):
+        return self.font_info.space_shrink
+
+    @property
+    def space_stretch(self):
+        return self.font_info.space_stretch
+
+    @property
+    def spacing(self):
+        return self.font_info.spacing
+
+    @property
+    def x_height(self):
+        return self.font_info.x_height
+
+    def char_info(self, code):
+        return self.font_info[code]
+
+    def width(self, code):
+        return self.scale(self.char_info(code).width)
+
+    def height(self, code):
+        return self.scale(self.char_info(code).height)
+
     def __repr__(self):
-        fields = ('file_name', 'at_clause')
+        fields = ('font_info',)
         field_args = ((f, self.__dict__[f]) for f in fields)
         args = (','.join('{}={}'.format(k, v) for k, v in field_args))
         return '{}<{}>'.format(self.__class__.__name__, args)

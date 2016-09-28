@@ -15,17 +15,43 @@ class ListElement(object):
 #     Boxes.
 
 
-class HBox(ListElement):
+class AbstractBox(ListElement):
+
     discardable = False
 
     def __init__(self, specification, contents):
         self.specification = specification
         self.contents = contents
 
+    @property
+    def widths(self):
+        return [e.natural_width for e in self.contents]
 
-class VBox(ListElement):
-    discardable = False
-    pass
+    @property
+    def heights(self):
+        return [e.natural_height for e in self.contents]
+
+
+class HBox(AbstractBox):
+
+    @property
+    def natural_width(self):
+        return sum(self.widths)
+
+    @property
+    def natural_height(self):
+        return max(self.heights)
+
+
+class VBox(AbstractBox):
+
+    @property
+    def natural_width(self):
+        return max(self.widths)
+
+    @property
+    def natural_height(self):
+        return sum(self.heights)
 
 
 class Rule(ListElement):
@@ -36,13 +62,28 @@ class Rule(ListElement):
         self.height = height
         self.depth = depth
 
+    @property
+    def natural_width(self):
+        return self.width
+
+    @property
+    def natural_height(self):
+        return self.height
+
 
 #     /Boxes.
 #     Miscellanea.
 
 class WhatsIt(ListElement):
     discardable = False
-    pass
+
+    @property
+    def natural_width(self):
+        return 0
+
+    @property
+    def natural_height(self):
+        return 0
 
 
 class Glue(ListElement):
@@ -52,6 +93,14 @@ class Glue(ListElement):
         self.dimen = dimen
         self.stretch = stretch
         self.shrink = shrink
+
+    @property
+    def natural_width(self):
+        if self.dimen is None:
+            import pdb; pdb.set_trace()
+        return self.dimen
+
+    natural_height = natural_width
 
 
 class Leaders(ListElement):
@@ -94,12 +143,21 @@ class Insertion(ListElement):
 class Character(ListElement):
     discardable = False
 
-    def __init__(self, char):
+    def __init__(self, char, font):
         self.char = char
+        self.font = font
 
     @property
     def code(self):
         return ord(self.char)
+
+    @property
+    def natural_width(self):
+        return self.font.width(self.code)
+
+    @property
+    def natural_height(self):
+        return self.font.height(self.code)
 
 
 class Ligature(ListElement):
@@ -113,17 +171,14 @@ class Ligature(ListElement):
 
 class DiscretionaryBreak(ListElement):
     discardable = False
-    pass
 
 
 class MathOn(ListElement):
     discardable = True
-    pass
 
 
 class MathOff(ListElement):
     discardable = True
-    pass
 
 
 #     /Miscellanea.
@@ -132,7 +187,6 @@ class MathOff(ListElement):
 
 class VAdjust(ListElement):
     discardable = False
-    pass
 
 
 #     /Vertical material.
@@ -149,9 +203,25 @@ class FontDefinition(ListElement):
         self.file_name = file_name
         self.at_clause = at_clause
 
+    @property
+    def natural_width(self):
+        return 0
+
+    @property
+    def natural_height(self):
+        return 0
+
 
 class FontSelection(ListElement):
     discardable = False
 
     def __init__(self, font_nr):
         self.font_nr = font_nr
+
+    @property
+    def natural_width(self):
+        return 0
+
+    @property
+    def natural_height(self):
+        return 0
