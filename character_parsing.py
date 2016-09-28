@@ -30,6 +30,7 @@ normal_char_types = (
     'DOUBLE_QUOTE',
     'BACKTICK',
     'COMMA',
+    'POINT',
 )
 normal_char_types += tuple(letter_to_non_active_uncased_type_map.values())
 
