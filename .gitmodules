@@ -1,3 +1,6 @@
 [submodule "rply"]
 	path = rply
 	url = git@github.com:eddiejessup/rply.git
+[submodule "dampf"]
+	path = dampf
+	url = git@github.com:eddiejessup/dampf.git
