@@ -1,6 +1,6 @@
 import logging
 
-from dvi_api.dvi_document import DVIDocument
+from dampf.dvi_document import DVIDocument
 
 from state import GlobalState
 from reader import Reader

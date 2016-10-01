@@ -289,7 +289,6 @@ def execute_command(command, state, banisher, reader):
                                   contents=line_list)
                 # Add it to the enclosing vertical list.
                 state.append_to_list(h_box_item)
-                import pdb; pdb.set_trace()
                 line_glue_item = Glue(**state.get_parameter_value('baselineskip'))
                 state.append_to_list(line_glue_item)
             par_glue_item = Glue(dimen=1600000)
