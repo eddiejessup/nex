@@ -24,9 +24,30 @@ sub_executor_groups = (
 )
 
 
-def badness(h_box):
-    r = actual_change / max_change
-    return 100 * r ** 3
+def h_list_to_h_boxes(horizontal_list, h_size):
+    h_boxes = []
+    # Loop making a paragraph.
+    while horizontal_list:
+        tentative_h_box = HBox(specification=None,
+                               contents=[])
+        tent_contents = tentative_h_box.contents
+        # Loop making a line.
+        while horizontal_list:
+            word_list = []
+            # Loop making a word.
+            while True:
+                word_list.append(horizontal_list.popleft())
+                if isinstance(word_list[-1], Glue):
+                    break_glue = word_list.pop()
+                    break
+            tent_contents.extend(word_list)
+            badness = tentative_h_box.badness(h_size)
+            if badness < 200:
+                break
+            # If we are not breaking, put the break glue on the list.
+            tent_contents.append(break_glue)
+        h_boxes.append(tentative_h_box)
+    return h_boxes
 
 
 class EndOfSubExecutor(Exception):
@@ -271,11 +292,11 @@ def execute_command(command, state, banisher, reader):
             # list, interspersed with interline glue and interline penalties,
             # and with the migration of vertical material that was in the
             # horizontal list. Then TeX exercises the page builder."
-            # TODO: Actually, the above stuff should be done. Not sure whether
-            # as a direct internal call, or whether the calls should be
-            # inserted.
 
-            # Get that horizontal list
+            # TODO: Not sure whether to do the above things as internal calls,
+            # or whether the tokens should be inserted.
+
+            # Get the horizontal list
             horizontal_list = deque(state.pop_mode())
             # Do \unskip.
             if isinstance(horizontal_list[-1], Glue):
@@ -285,52 +306,12 @@ def execute_command(command, state, banisher, reader):
             horizontal_list.append(Glue(**par_fill_glue))
 
             h_size = state.get_parameter_value('hsize')
-            # Loop making a paragraph.
-            while horizontal_list:
-                tentative_h_box = HBox(specification=None,
-                                       contents=[])
-                tent_contents = tentative_h_box.contents
-                # Loop making a line.
-                while horizontal_list:
-                    word_list = []
-                    # Loop making a word.
-                    while True:
-                        word_list.append(horizontal_list.popleft())
-                        if isinstance(word_list[-1], Glue):
-                            break_glue = word_list.pop()
-                            break
-                    tent_contents.extend(word_list)
-                    natural_width = tentative_h_box.natural_width
-                    badness = tentative_h_box.badness(h_size)
-                    # print(badness)
-                    # # If there was only one element in the horizontal list left,
-                    # # just break and be done.
-                    # if not horizontal_list:
-                    #     break
-                    # If we have got a line bigger than the desired width.
-                    # print(badness)
-                    # if natural_width > h_size:
-                    #     print('break due to longness')
-                    #     # Then put the thing that made it be too big back on
-                    #     # the queue, and break to make a line.
-                    #     for c in word_list:
-                    #         tent_contents.pop()
-                    #     # Also had a space before the word we should remove.
-                    #     tent_contents.pop()
-                    #     horizontal_list.extendleft(reversed(word_list + [break_glue]))
-                    #     break
-                    if badness < 200:
-                        print('break due to badness')
-                        break
-                    # If we are not breaking, put the break glue on the list.
-                    tent_contents.append(break_glue)
-                h_box_item = tentative_h_box
+            h_box_items = h_list_to_h_boxes(horizontal_list, h_size)
+
+            for h_box_item in h_box_items:
                 h_box_item.scale_and_set(h_size)
-                # print(horizontal_list[:5])
-                print()
                 # Add it to the enclosing vertical list.
                 state.append_to_list(h_box_item)
-                # print(h_box_item.natural_width, h_box_item.width)
                 line_glue_item = Glue(**state.get_parameter_value('baselineskip'))
                 state.append_to_list(line_glue_item)
             par_glue_item = Glue(dimen=1600000)
