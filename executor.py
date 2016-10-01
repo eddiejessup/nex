@@ -13,7 +13,7 @@ from typer import (CatCode, MathCode, GlyphCode, DelimiterCode, MathClass,
 from tex_parameters import glue_keys
 from expander import is_parameter_type, primitive_canon_tokens
 from interpreter import Mode, Group, vertical_modes, horizontal_modes
-from box import HBox, Rule, Glue, Character, FontDefinition, FontSelection
+from box import HBox, Rule, Glue, Character, FontDefinition, FontSelection, GlueNotSet
 
 
 sub_executor_groups = (
@@ -22,6 +22,11 @@ sub_executor_groups = (
     Group.v_box,
     Group.v_top,
 )
+
+
+def badness(h_box):
+    r = actual_change / max_change
+    return 100 * r ** 3
 
 
 class EndOfSubExecutor(Exception):
@@ -237,7 +242,11 @@ def execute_command(command, state, banisher, reader):
             # Spaces append glue to the current list; the exact amount of glue
             # depends on \spacefactor, the current font, and the \spaceskip and
             # \xspaceskip parameters, as described in Chapter 12.
-            space_glue_item = Glue(dimen=200000)
+            font = state.current_font
+            # import pdb; pdb.set_trace()
+            space_glue_item = Glue(dimen=font.spacing,
+                                   stretch=font.space_stretch,
+                                   shrink=font.space_shrink)
             state.append_to_list(space_glue_item)
         else:
             import pdb; pdb.set_trace()
@@ -267,28 +276,29 @@ def execute_command(command, state, banisher, reader):
             # inserted.
             # Get that horizontal list
             horizontal_list = deque(state.pop_mode())
-            # import pdb; pdb.set_trace()
-            # h_box_item = HBox(specification=None, contents=horizontal_list)
-            wm = state.get_parameter_value('hsize')
+            h_size = state.get_parameter_value('hsize')
             while horizontal_list:
-                line_list = []
+                tentative_h_box = HBox(specification=None,
+                                       contents=[])
+                tent_contents = tentative_h_box.contents
                 while horizontal_list:
-                    line_list.append(horizontal_list.popleft())
-                    w = sum(e.natural_width for e in line_list)
+                    tent_contents.append(horizontal_list.popleft())
+                    natural_width = tentative_h_box.natural_width
                     # If there was only one element in the horizontal list left,
                     # just break and be done.
                     if not horizontal_list:
                         break
                     # If we have got a line bigger than the desired width.
-                    if w > wm:
+                    if natural_width > h_size:
                         # Then put the thing that made it be too big back on
                         # the queue, and break to make a line.
-                        horizontal_list.appendleft(line_list.pop())
+                        horizontal_list.appendleft(tent_contents.pop())
                         break
-                h_box_item = HBox(specification=None,
-                                  contents=line_list)
+                h_box_item = tentative_h_box
+                h_box_item.scale_and_set(h_size)
                 # Add it to the enclosing vertical list.
                 state.append_to_list(h_box_item)
+                print(h_box_item.natural_width, h_box_item.width)
                 line_glue_item = Glue(**state.get_parameter_value('baselineskip'))
                 state.append_to_list(line_glue_item)
             par_glue_item = Glue(dimen=1600000)
@@ -520,8 +530,12 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
         elif isinstance(item, Character):
             doc.set_char(item.code)
         elif isinstance(item, Glue):
-            amount = item.dimen if item.dimen else item.stretch
-            amount = int(amount)
+            if not horizontal:
+                item.set(item.natural_dimen)
+            try:
+                amount = item.dimen
+            except GlueNotSet:
+                import pdb; pdb.set_trace()
             if horizontal:
                 doc.right(amount)
             else:

@@ -15,7 +15,6 @@ class FontInfo(object):
         else:
             self.font_info = get_font_info(font_name=file_name,
                                            font_path=file_name + '.tfm')
-
         self.at_clause = at_clause
 
         self.at_size = None
@@ -50,15 +49,15 @@ class FontInfo(object):
 
     @property
     def space_shrink(self):
-        return self.font_info.space_shrink
+        return self.scale(self.font_info.space_shrink)
 
     @property
     def space_stretch(self):
-        return self.font_info.space_stretch
+        return self.scale(self.font_info.space_stretch)
 
     @property
     def spacing(self):
-        return self.font_info.spacing
+        return self.scale(self.font_info.spacing)
 
     @property
     def x_height(self):
