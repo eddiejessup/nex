@@ -1,7 +1,6 @@
 from enum import Enum
 
 from dampf.pydvi.TeXUnit import pt2sp
-
 from dampf.dvi_document import get_font_info
 
 from typer import terminal_primitive_control_sequences_map

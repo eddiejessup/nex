@@ -132,7 +132,8 @@ def stretch_or_shrink_non_stated(p):
 @pg.production('mu_stretch : optional_spaces')
 @pg.production('mu_shrink : optional_spaces')
 def stretch_or_shrink_omitted(p):
-    return None
+    return Token(type_='dimen',
+                 value={'sign': '+', 'size': Token(type_='size', value=0)})
 
 
 @pg.production('fil_dimen : optional_signs factor fil_unit optional_spaces')

@@ -13,7 +13,8 @@ from typer import (CatCode, MathCode, GlyphCode, DelimiterCode, MathClass,
 from tex_parameters import glue_keys
 from expander import is_parameter_type, primitive_canon_tokens
 from interpreter import Mode, Group, vertical_modes, horizontal_modes
-from box import HBox, Rule, Glue, Character, FontDefinition, FontSelection, GlueNotSet
+from box import HBox, Rule, Glue, Character, FontDefinition, FontSelection
+from paragraphs import h_list_to_best_h_boxes
 
 
 sub_executor_groups = (
@@ -22,36 +23,6 @@ sub_executor_groups = (
     Group.v_box,
     Group.v_top,
 )
-
-
-def grab_h_box(h_list, h_size):
-    h_box = HBox(specification=None, contents=[])
-    tent_contents = h_box.contents
-    # Loop making a line.
-    while h_list:
-        word_list = []
-        # Loop making a word.
-        while True:
-            word_list.append(h_list.popleft())
-            if isinstance(word_list[-1], Glue):
-                break_glue = word_list.pop()
-                break
-        tent_contents.extend(word_list)
-        badness = h_box.badness(h_size)
-        if badness < 200:
-            break
-        # If we are not breaking, put the break glue on the list.
-        tent_contents.append(break_glue)
-    return h_box
-
-
-def h_list_to_h_boxes(h_list, h_size):
-    h_boxes = []
-    # Loop making a paragraph.
-    while h_list:
-        h_box = grab_h_box(h_list, h_size)
-        h_boxes.append(h_box)
-    return h_boxes
 
 
 class EndOfSubExecutor(Exception):
@@ -310,14 +281,18 @@ def execute_command(command, state, banisher, reader):
             horizontal_list.append(Glue(**par_fill_glue))
 
             h_size = state.get_parameter_value('hsize')
-            h_box_items = h_list_to_h_boxes(horizontal_list, h_size)
 
-            for h_box_item in h_box_items:
-                h_box_item.scale_and_set(h_size)
+            h_boxes = h_list_to_best_h_boxes(horizontal_list, h_size)
+            # all_routes = get_all_routes(root_node, h_box_tree, h_size, outer=True)
+
+            # for best_route in all_routes:
+            for h_box in h_boxes:
+                h_box.scale_and_set(h_size)
                 # Add it to the enclosing vertical list.
-                state.append_to_list(h_box_item)
+                state.append_to_list(h_box)
                 line_glue_item = Glue(**state.get_parameter_value('baselineskip'))
                 state.append_to_list(line_glue_item)
+
             par_glue_item = Glue(dimen=1600000)
             state.append_to_list(par_glue_item)
         else:
@@ -548,11 +523,8 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
             doc.set_char(item.code)
         elif isinstance(item, Glue):
             if not horizontal:
-                item.set(item.natural_dimen)
-            try:
-                amount = item.dimen
-            except GlueNotSet:
-                import pdb; pdb.set_trace()
+                item = item.set(item.natural_dimen)
+            amount = item.dimen
             if horizontal:
                 # doc.put_rule(height=1000, width=amount)
                 doc.right(amount)

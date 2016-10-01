@@ -1,5 +1,7 @@
 from enum import Enum
 
+from dampf.pydvi.TeXUnit import sp2pt
+
 from utils import sum_infinities
 
 
@@ -12,14 +14,6 @@ class LineState(Enum):
 class GlueRatio(Enum):
     no_stretchability = 2
     no_shrinkability = 3
-
-
-class SettingSetGlue(Exception):
-    pass
-
-
-class GlueNotSet(Exception):
-    pass
 
 
 class LayoutList(object):
@@ -45,7 +39,10 @@ class AbstractBox(ListElement):
 
     def __init__(self, specification, contents):
         self.specification = specification
-        self.contents = contents
+        self.contents = list(contents)
+
+    def __repr__(self):
+        return '{}({})'.format(self.__class__.__name__, self.contents)
 
     @property
     def natural_widths(self):
@@ -99,11 +96,15 @@ class HBox(AbstractBox):
 
     def badness(self, desired_width):
         line_state, glue_ratio, glue_order = self.glue_set_ratio(desired_width)
-        if glue_ratio in (GlueRatio.no_stretchability,
-                          GlueRatio.no_shrinkability):
+        if glue_order > 0:
+            b = 0
+        elif glue_ratio in (GlueRatio.no_stretchability,
+                            GlueRatio.no_shrinkability):
             b = 10000
         else:
             b = int(round(100 * glue_ratio ** 3))
+            if glue_ratio == 1.0:
+                b = 10000
         return min(b, 10000)
 
     def glue_set_ratio(self, desired_width):
@@ -181,7 +182,11 @@ class HBox(AbstractBox):
         # modified. Suppose the glue has natural width u, stretchability y, and
         # shrinkability z, where y is a jth order infinity and z is a kth order
         # infinity.
-        for g in self.glues:
+        # for g in self.glues:
+        for i, item in enumerate(self.contents):
+            if not isinstance(item, Glue):
+                continue
+            g = item
             if line_state == LineState.naturally_good:
                 glue_diff = 0
             elif line_state == LineState.should_stretch:
@@ -206,7 +211,7 @@ class HBox(AbstractBox):
                     glue_diff = 0
             # Notice that stretching or shrinking occurs only when the glue
             # has the highest order of infinity that doesn't cancel out.
-            g.set(int(round(g.natural_width + glue_diff)))
+            self.contents[i] = g.set(int(round(g.natural_width + glue_diff)))
 
 
 class VBox(AbstractBox):
@@ -261,7 +266,18 @@ class Glue(ListElement):
         self.natural_dimen = dimen
         self.stretch = stretch
         self.shrink = shrink
-        self.set_dimen = None
+
+    def repr_dimen(self, d):
+        if isinstance(d, int):
+            return '{:.1f}pt'.format(sp2pt(d))
+        else:
+            return d
+
+    def __repr__(self):
+        return 'G({} +{} -{})'.format(*[self.repr_dimen(d)
+                                        for d in (self.natural_dimen,
+                                                  self.stretch,
+                                                  self.shrink)])
 
     @property
     def natural_width(self):
@@ -269,16 +285,16 @@ class Glue(ListElement):
     natural_height = natural_width
 
     def set(self, dimen):
-        if self.set_dimen is not None:
-            raise SettingSetGlue
-        self.set_dimen = dimen
+        return SetGlue(dimen)
 
-    @property
-    def dimen(self):
-        if self.set_dimen is None:
-            raise GlueNotSet
-        return self.set_dimen
-    height = width = dimen
+
+class SetGlue(Glue):
+
+    def __init__(self, dimen):
+        self.dimen = dimen
+
+    def __repr__(self):
+        return '|G|({})'.format(self.repr_dimen(self.dimen))
 
 
 class Leaders(ListElement):
@@ -324,6 +340,10 @@ class Character(ListElement):
     def __init__(self, char, font):
         self.char = char
         self.font = font
+
+    def __repr__(self):
+        return self.char
+        # return '{}({})'.format(self.__class__.__name__, self.char)
 
     @property
     def code(self):
