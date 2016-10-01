@@ -24,29 +24,33 @@ sub_executor_groups = (
 )
 
 
-def h_list_to_h_boxes(horizontal_list, h_size):
+def grab_h_box(h_list, h_size):
+    h_box = HBox(specification=None, contents=[])
+    tent_contents = h_box.contents
+    # Loop making a line.
+    while h_list:
+        word_list = []
+        # Loop making a word.
+        while True:
+            word_list.append(h_list.popleft())
+            if isinstance(word_list[-1], Glue):
+                break_glue = word_list.pop()
+                break
+        tent_contents.extend(word_list)
+        badness = h_box.badness(h_size)
+        if badness < 200:
+            break
+        # If we are not breaking, put the break glue on the list.
+        tent_contents.append(break_glue)
+    return h_box
+
+
+def h_list_to_h_boxes(h_list, h_size):
     h_boxes = []
     # Loop making a paragraph.
-    while horizontal_list:
-        tentative_h_box = HBox(specification=None,
-                               contents=[])
-        tent_contents = tentative_h_box.contents
-        # Loop making a line.
-        while horizontal_list:
-            word_list = []
-            # Loop making a word.
-            while True:
-                word_list.append(horizontal_list.popleft())
-                if isinstance(word_list[-1], Glue):
-                    break_glue = word_list.pop()
-                    break
-            tent_contents.extend(word_list)
-            badness = tentative_h_box.badness(h_size)
-            if badness < 200:
-                break
-            # If we are not breaking, put the break glue on the list.
-            tent_contents.append(break_glue)
-        h_boxes.append(tentative_h_box)
+    while h_list:
+        h_box = grab_h_box(h_list, h_size)
+        h_boxes.append(h_box)
     return h_boxes
 
 
