@@ -138,7 +138,7 @@ class FontState(object):
         # we know to do when a KeyError is raised.
         if self._current_font_id is not None:
             return self._current_font_id
-        raise KeyError
+        raise AttributeError
 
 
 class GlobalFontState(object):

@@ -1,3 +1,18 @@
+from enum import Enum
+
+
+class LineState(Enum):
+    naturally_good = 1
+    should_stretch = 2
+    should_shrink = 3
+
+
+class GlueRatio(Enum):
+    naturally_good = 1
+    no_stretchability = 2
+    no_shrinkability = 3
+
+
 class SettingSetGlue(Exception):
     pass
 
@@ -82,68 +97,84 @@ class HBox(AbstractBox):
         return sum(g.shrink for g in self.glues)
 
     def badness(self, desired_width):
-        b = int(round(100 * self.glue_set_ratio(desired_width) ** 3))
+        line_state, glue_ratio = self.glue_set_ratio(desired_width)
+        if glue_ratio in (GlueRatio.no_stretchability,
+                          GlueRatio.no_shrinkability):
+            b = 10000
+        else:
+            b = int(round(100 * glue_ratio ** 3))
         return min(b, 10000)
 
     def glue_set_ratio(self, desired_width):
+        excess_width = self.natural_width - desired_width
+        if excess_width == 0:
+            line_state = LineState.naturally_good
+        elif excess_width > 0:
+            line_state = LineState.should_shrink
+        else:
+            line_state = LineState.should_stretch
+
         # The total amount of glue stretchability and shrinkability
         # in the box is computed; let's say that there's a total of
         #     y_0 + y_1 fil + y_2 fill + y_3 filll
         # available for stretching and
         #     z_0 + z_1 fil + z_2 fill + z_3 filll
         # available for  shrinking.
-        excess_width = self.natural_width - desired_width
 
         # If x = w, all glue gets its natural width.
-        if excess_width == 0:
-            return 0.0, None
+        if line_state == LineState.naturally_good:
+            glue_ratio = 0.0
 
         # Otherwise the glue will be modified, by computing a 'glue set ratio',
         # r and a 'glue set order', i, in the following way:
-
-        stretching = excess_width < 0
 
         # If x < w, TeX attempts to stretch the contents of the box; the
         # glue order is the highest subscript i such that y_i is nonzero, and
         # the glue ratio is r = (w - x) / y_i. (If y_0 = y_1 = y_2 = y_3 = 0,
         # there's no stretchability; both i and r are set to zero.)
-        if stretching:
+        elif line_state == LineState.should_stretch:
             if self.stretch > 0:
                 glue_ratio = -excess_width / self.stretch
             else:
-                glue_ratio = 0.0
-
+                glue_ratio = GlueRatio.no_stretchability
         # If x > w, the glue order is the highest subscript i such that z_i
         # != 0, and the glue ratio is normally r = (x - w) / z_i. However, r is
         # set to 1.0 in the case i=0 and x - w > z_0, because the maximum
         # shrinkability must not be exceeded.
-        else:
-            if self.stretch > 0:
+        elif line_state == LineState.should_shrink:
+            if self.shrink > 0:
                 glue_ratio = excess_width / self.shrink
                 glue_ratio = min(glue_ratio, 1.0)
+            # I assume that the rule when stretch = 0 also applies for
+            # shrink = 0, though I can't see it stated anywhere.
             else:
-                glue_ratio = 0.0
-        return glue_ratio, stretching
+                glue_ratio = GlueRatio.no_shrinkability
+        return line_state, glue_ratio
 
     def scale_and_set(self, desired_width):
-        glue_ratio, stretching = self.glue_set_ratio(desired_width)
+        line_state, glue_ratio = self.glue_set_ratio(desired_width)
 
-        # (c) Finally, every glob of glue in the horizontal list being boxed is
+        # Every glob of glue in the horizontal list being boxed is
         # modified. Suppose the glue has natural width u, stretchability y, and
         # shrinkability z, where y is a jth order infinity and z is a kth order
         # infinity.
         for g in self.glues:
-            if glue_ratio == 0.0:
-                g.set(g.natural_dimen)
-                continue
-            elif stretching:
-                # [Each] glue takes the new width u + ry if j=i;
-                # it keeps its natural width u if j != i.
-                f = g.stretch
+            if line_state == LineState.naturally_good:
+                f = 0.0
+            elif line_state == LineState.should_stretch:
+                if glue_ratio == GlueRatio.no_stretchability:
+                    f = 0.0
+                else:
+                    # [Each] glue takes the new width u + ry if j=i;
+                    # it keeps its natural width u if j != i.
+                    f = g.stretch
             else:
-                # [Each] glue takes the new width u-rz if k = i; it
-                # keeps its natural width u if k != i.
-                f = -g.shrink
+                if glue_ratio == GlueRatio.no_shrinkability:
+                    f = 0.0
+                else:
+                    # [Each] glue takes the new width u-rz if k = i; it
+                    # keeps its natural width u if k != i.
+                    f = -g.shrink
             # Notice that stretching or shrinnking occurs only when the glue
             # has the highest order of infinity that doesn't cancel out.
             g.set(int(round(g.natural_width + glue_ratio * f)))
