@@ -264,7 +264,7 @@ def execute_command(command, state, banisher, reader):
         elif state.mode == Mode.horizontal:
             # "But it terminates horizontal mode: The current list is finished
             # off by doing,
-            #   '\unskip \penalty10000 \parfillskip \hskip\parfillskip'
+            #   '\unskip \penalty10000 \hskip\parfillskip'
             # then it is broken into lines as explained in Chapter 14, and TeX
             # returns to the enclosing vertical or internal vertical mode. The
             # lines of the paragraph are appended to the enclosing vertical
@@ -274,8 +274,16 @@ def execute_command(command, state, banisher, reader):
             # TODO: Actually, the above stuff should be done. Not sure whether
             # as a direct internal call, or whether the calls should be
             # inserted.
+
             # Get that horizontal list
             horizontal_list = deque(state.pop_mode())
+            # Do \unskip.
+            if isinstance(horizontal_list[-1], Glue):
+                horizontal_list.pop()
+            # Do \hskip\parfillskip.
+            par_fill_glue = state.get_parameter_value('parfillskip')
+            horizontal_list.append(Glue(**par_fill_glue))
+
             h_size = state.get_parameter_value('hsize')
             # Loop making a paragraph.
             while horizontal_list:
@@ -300,17 +308,18 @@ def execute_command(command, state, banisher, reader):
                     # if not horizontal_list:
                     #     break
                     # If we have got a line bigger than the desired width.
-                    if natural_width > h_size:
-                        print('break due to longness')
-                        # Then put the thing that made it be too big back on
-                        # the queue, and break to make a line.
-                        for c in word_list:
-                            tent_contents.pop()
-                        # Also had a space before the word we should remove.
-                        tent_contents.pop()
-                        horizontal_list.extendleft(reversed(word_list + [break_glue]))
-                        break
-                    if badness < 100:
+                    # print(badness)
+                    # if natural_width > h_size:
+                    #     print('break due to longness')
+                    #     # Then put the thing that made it be too big back on
+                    #     # the queue, and break to make a line.
+                    #     for c in word_list:
+                    #         tent_contents.pop()
+                    #     # Also had a space before the word we should remove.
+                    #     tent_contents.pop()
+                    #     horizontal_list.extendleft(reversed(word_list + [break_glue]))
+                    #     break
+                    if badness < 200:
                         print('break due to badness')
                         break
                     # If we are not breaking, put the break glue on the list.
@@ -560,7 +569,7 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
             except GlueNotSet:
                 import pdb; pdb.set_trace()
             if horizontal:
-                doc.put_rule(height=1000, width=amount)
+                # doc.put_rule(height=1000, width=amount)
                 doc.right(amount)
             else:
                 doc.down(amount)
