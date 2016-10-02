@@ -63,6 +63,16 @@ class AbstractBox(ListElement):
         return [e for e in self.contents if isinstance(e, UnSetGlue)]
 
 
+def extract_dimen(d):
+    if isinstance(d, int):
+        order = 0
+        factor = d
+    else:
+        order = d.value['number_of_fils']
+        factor = d.value['factor']
+    return order, factor
+
+
 class HBox(AbstractBox):
 
     @property
@@ -174,15 +184,6 @@ class HBox(AbstractBox):
 
     def scale_and_set(self):
         line_state, glue_ratio, glue_set_order = self.glue_set_ratio()
-
-        def extract_dimen(d):
-            if isinstance(d, int):
-                order = 0
-                factor = d
-            else:
-                order = d.value['number_of_fils']
-                factor = d.value['factor']
-            return order, factor
 
         # Every glob of glue in the horizontal list being boxed is
         # modified. Suppose the glue has natural width u, stretchability y, and
