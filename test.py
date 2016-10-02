@@ -67,6 +67,7 @@ logger.addHandler(ch)
 
 
 def test_parser():
+    # file_name = 'texbook.tex'
     file_name = 'test.tex'
     # file_name = 'plain.tex'
 

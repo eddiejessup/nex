@@ -230,7 +230,7 @@ class Expander(object):
             route_token = self.enclosing_scope.expander.resolve_name_to_route_token(name)
         # If we are the outermost scope, the control sequence is unknown.
         else:
-            raise NoSuchControlSequence
+            raise NoSuchControlSequence(name)
         return route_token
 
     def _resolve_route_token_to_raw_value(self, r):

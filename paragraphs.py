@@ -1,4 +1,4 @@
-from box import HBox, Glue
+from box import HBox, UnSetGlue
 
 
 def grab_word(h_list):
@@ -6,28 +6,27 @@ def grab_word(h_list):
     # Loop making a word.
     while True:
         chars.append(h_list.popleft())
-        if isinstance(chars[-1], Glue):
+        if isinstance(chars[-1], UnSetGlue):
             break_glue = chars.pop()
             break
     return chars, break_glue
 
 
-def h_list_to_h_box_tree(hl, w):
-    tr = {}
-    hb = HBox(specification=None, contents=[])
-    cs = hb.contents
-    while hl:
-        chrs, break_glue = grab_word(hl)
-        cs.extend(chrs)
-        if hb.badness(w) < 200:
-            k = (tuple(hb.contents[:]), len(cs), hb.badness(w))
-            tr[k] = h_list_to_h_box_tree(hl.copy(), w)
+def h_list_to_h_box_tree(h_list, w):
+    tree = {}
+    h_box = HBox(contents=[], to=w, set_glue=False)
+    conts = h_box.contents
+    while h_list:
+        chars, break_glue = grab_word(h_list)
+        conts.extend(chars)
+        if h_box.badness() < 1000:
+            key = (tuple(h_box.contents[:]), len(conts), h_box.badness())
+            tree[key] = h_list_to_h_box_tree(h_list.copy(), w)
         # If we are not breaking, put the break glue on the list.
-        cs.append(break_glue)
-    if hb.badness(w) < 200:
-        k = (tuple(hb.contents[:]), len(cs), hb.badness(w))
-        tr[k] = None
-    return tr
+        conts.append(break_glue)
+    key = (tuple(h_box.contents[:]), len(conts), h_box.badness())
+    tree[key] = None
+    return tree
 
 
 def pp(tree, l=1):
@@ -76,5 +75,6 @@ def h_list_to_best_h_boxes(h_list, h_size):
     best_route = get_best_route(root_node, h_box_tree, h_size)
     # Ignore root node.
     contents = best_route[1:]
-    h_boxes = [HBox(specification=None, contents=c[0]) for c in contents]
+    h_boxes = [HBox(contents=c[0], to=h_size, set_glue=True)
+               for c in contents]
     return h_boxes

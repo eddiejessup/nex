@@ -13,7 +13,7 @@ from typer import (CatCode, MathCode, GlyphCode, DelimiterCode, MathClass,
 from tex_parameters import glue_keys
 from expander import is_parameter_type, primitive_canon_tokens
 from interpreter import Mode, Group, vertical_modes, horizontal_modes
-from box import HBox, Rule, Glue, Character, FontDefinition, FontSelection
+from box import HBox, Rule, UnSetGlue, SetGlue, Character, FontDefinition, FontSelection
 from paragraphs import h_list_to_best_h_boxes
 
 
@@ -75,6 +75,8 @@ def evaluate_dimen(state, dimen_token):
     size_token, sign = dimen_value['size'], dimen_value['sign']
     if isinstance(size_token.value, int):
         return size_token.value
+    if 'factor' not in size_token.value:
+        import pdb; pdb.set_trace()
     number_of_units_token = size_token.value['factor']
     unit_token = size_token.value['unit']
     number_of_units = evaluate_size(state, number_of_units_token)
@@ -240,7 +242,7 @@ def execute_command(command, state, banisher, reader):
             # \xspaceskip parameters, as described in Chapter 12.
             font = state.current_font
             # import pdb; pdb.set_trace()
-            space_glue_item = Glue(dimen=font.spacing,
+            space_glue_item = UnSetGlue(dimen=font.spacing,
                                    stretch=font.space_stretch,
                                    shrink=font.space_shrink)
             state.append_to_list(space_glue_item)
@@ -270,31 +272,29 @@ def execute_command(command, state, banisher, reader):
 
             # TODO: Not sure whether to do the above things as internal calls,
             # or whether the tokens should be inserted.
-
+            # TODO: Do these commands before we pop, using a proper interface
+            # to state.
             # Get the horizontal list
             horizontal_list = deque(state.pop_mode())
             # Do \unskip.
-            if isinstance(horizontal_list[-1], Glue):
+            if isinstance(horizontal_list[-1], UnSetGlue):
                 horizontal_list.pop()
             # Do \hskip\parfillskip.
             par_fill_glue = state.get_parameter_value('parfillskip')
-            horizontal_list.append(Glue(**par_fill_glue))
-
+            horizontal_list.append(UnSetGlue(**par_fill_glue))
             h_size = state.get_parameter_value('hsize')
-
             h_boxes = h_list_to_best_h_boxes(horizontal_list, h_size)
             # all_routes = get_all_routes(root_node, h_box_tree, h_size, outer=True)
 
             # for best_route in all_routes:
             for h_box in h_boxes:
-                h_box.scale_and_set(h_size)
                 # Add it to the enclosing vertical list.
                 state.append_to_list(h_box)
-                line_glue_item = Glue(**state.get_parameter_value('baselineskip'))
+                line_glue_item = UnSetGlue(**state.get_parameter_value('baselineskip'))
                 state.append_to_list(line_glue_item)
 
-            par_glue_item = Glue(dimen=1600000)
-            state.append_to_list(par_glue_item)
+            # par_glue_item = UnSetGlue(dimen=200000)
+            # state.append_to_list(par_glue_item)
         else:
             import pdb; pdb.set_trace()
     elif type_ == 'character':
@@ -310,8 +310,18 @@ def execute_command(command, state, banisher, reader):
     # very method. Recursion still amazes me sometimes.
     elif type_ == 'h_box':
         conts = v['contents'].value
-        h_box_item = HBox(specification=v['specification'],
-                          contents=conts)
+        spec = v['specification']
+        to = None
+        spread = None
+        if spec is not None:
+            d = evaluate_dimen(state, spec.value)
+            if spec.type == 'to':
+                to = d
+            elif spec.type == 'spread':
+                spread = d
+            else:
+                import pdb; pdb.set_trace()
+        h_box_item = HBox(contents=conts, to=to, spread=spread)
         state.append_to_list(h_box_item)
     # Commands like font commands aren't exactly boxes, but they go through
     # as DVI commands. Just put them in the box for now to deal with later.
@@ -450,15 +460,14 @@ def execute_command(command, state, banisher, reader):
             # exercised."
             if not (state.mode == Mode.internal_vertical):
                 par_skip_glue = state.get_parameter_value('parskip')
-                par_skip_glue_item = Glue(**par_skip_glue)
+                par_skip_glue_item = UnSetGlue(**par_skip_glue)
                 state.append_to_list(par_skip_glue_item)
             state.push_mode(Mode.horizontal)
+            # An empty box of width \parindent is appended to the current list, and
+            # the space factor is set to 1000.
             par_indent_width = state.get_parameter_value('parindent')
-            par_indent_hbox_item = HBox(specification=par_indent_width,
-                                        contents=[])
+            par_indent_hbox_item = HBox(contents=[], to=par_indent_width)
             state.append_to_list(par_indent_hbox_item)
-        # An empty box of width \parindent is appended to the current list, and
-        # the space factor is set to 1000.
         elif state.mode in horizontal_modes:
             import pdb; pdb.set_trace()
     elif type_ == 'LEFT_BRACE':
@@ -519,11 +528,20 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
             doc.push()
             write_box_to_doc(doc, item.contents, horizontal=True)
             doc.pop()
+            if horizontal:
+                doc.right(item.width)
         elif isinstance(item, Character):
             doc.set_char(item.code)
-        elif isinstance(item, Glue):
+        elif isinstance(item, UnSetGlue):
             if not horizontal:
                 item = item.set(item.natural_dimen)
+            amount = item.dimen
+            if horizontal:
+                # doc.put_rule(height=1000, width=amount)
+                doc.right(amount)
+            else:
+                doc.down(amount)
+        elif isinstance(item, SetGlue):
             amount = item.dimen
             if horizontal:
                 # doc.put_rule(height=1000, width=amount)
@@ -570,7 +588,7 @@ class CommandGrabber(object):
                     pass
             # If we get an expansion error, it might be because we need to
             # execute this command first.
-            except NoSuchControlSequence:
+            except NoSuchControlSequence as e:
                 if have_parsed:
                     break
                 else:

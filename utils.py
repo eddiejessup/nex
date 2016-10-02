@@ -15,7 +15,9 @@ def get_unique_id():
 
 
 class NoSuchControlSequence(Exception):
-    pass
+
+    def __init__(self, name):
+        self.name = name
 
 
 def sum_infinities(ds):
