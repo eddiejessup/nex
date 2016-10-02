@@ -27,11 +27,15 @@ class Reader(object):
 
     @property
     def next_char(self):
-        c = self.peek_ahead(n=0)
-        self.i += 1
-        return c
+        return self.advance_loc()
 
     def peek_ahead(self, n=1):
+        i_peek = self.i + n
+        if i_peek < 0 or n < 0:
+            raise ValueError('Cannot peek before file start')
+        if n > 3:
+            raise ValueError('Peeking ahead so far is forbidden, as lies might'
+                             'be returned')
         try:
             char = self.chars[self.i + n]
         except IndexError:
@@ -39,4 +43,10 @@ class Reader(object):
         return char
 
     def advance_loc(self, n=1):
+        if n > 2:
+            raise ValueError('Advancing so far is forbidden')
+        if n <= 0:
+            raise ValueError('Cannot advance backwards or not at all')
         self.i += n
+        # Check position is valid.
+        return self.peek_ahead(0)
