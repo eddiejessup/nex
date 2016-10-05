@@ -8,3 +8,6 @@ parsetab.py
 *.pdf
 *.dvi
 *.tfm
+.cache/
+manmac.tex
+tex.web

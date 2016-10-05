@@ -1,14 +1,9 @@
 from enum import Enum
-# import logging
 
 from reader import EndOfFile
 from common import Token
 # TODO: Make lex types into an enum. Love an enum, makes me feel so safe.
 from typer import CatCode, char_cat_lex_type, control_sequence_lex_type
-
-# logger = logging.getLogger(__name__)
-# logger.setLevel('DEBUG')
-
 
 tokenise_cats = [
     CatCode.begin_group,

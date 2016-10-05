@@ -2,10 +2,10 @@ from common import Token, TerminalToken, InternalToken
 from utils import get_unique_id, NoSuchControlSequence
 from tex_parameters import default_parameters
 from typer import (control_sequence_lex_type, char_cat_lex_type,
-                   short_hand_def_to_token_map, font_def_token_type,
-                   unexpanded_cs_types,
-                   primitive_control_sequences_map, terminal_primitive_control_sequences_map,
-                   )
+                       short_hand_def_to_token_map, font_def_token_type,
+                       unexpanded_cs_types,
+                       primitive_control_sequences_map, terminal_primitive_control_sequences_map,
+                       )
 
 undelim_macro_param_type = 'UNDELIMITED_PARAM'
 delim_macro_param_type = 'DELIMITED_PARAM'
@@ -97,10 +97,6 @@ def parse_replacement_text(tokens):
         tokens_processed.append(t)
         i += 1
     return tokens_processed
-
-
-def get_nr_params(param_text):
-    return sum(t.type in macro_param_types for t in param_text)
 
 
 def substitute_params_with_args(replace_text, arguments):
@@ -218,16 +214,16 @@ class Expander(object):
         finished_text = substitute_params_with_args(replace_text, arguments)
         return finished_text
 
-    def set_route_token(self, name, route_token):
+    def _set_route_token(self, name, route_token):
         self.control_sequences[name] = route_token
 
-    def resolve_name_to_route_token(self, name):
+    def _resolve_control_sequence_to_route_token(self, name):
         # If the route token exists in this scope, return it.
         if name in self.control_sequences:
             route_token = self.control_sequences[name]
         # Otherwise, if there's an enclosing scope, ask it for it.
         elif self.enclosing_scope is not None:
-            route_token = self.enclosing_scope.expander.resolve_name_to_route_token(name)
+            route_token = self.enclosing_scope.expander._resolve_control_sequence_to_route_token(name)
         # If we are the outermost scope, the control sequence is unknown.
         else:
             raise NoSuchControlSequence(name)
@@ -250,7 +246,7 @@ class Expander(object):
         return v
 
     def resolve_control_sequence_to_token(self, name):
-        route_token = self.resolve_name_to_route_token(name)
+        route_token = self._resolve_control_sequence_to_route_token(name)
         type_ = route_token.type
         token = self._resolve_route_token_to_raw_value(route_token)
         # Amend canonical tokens to give them the proper control sequence
@@ -264,16 +260,21 @@ class Expander(object):
         # Maybe need to do something like for canonical tokens above.
         return token
 
-    def copy_control_sequence(self, target_name, new_name):
+    def get_parameter_value(self, name):
+        parameter_token = self.resolve_control_sequence_to_token(name)
+        parameter_value = parameter_token.value['value']
+        return parameter_value
+
+    def _copy_control_sequence(self, target_name, new_name):
         # Make a new control sequence that is routed to the same spot as the
         # current one.
-        target_route_token = self.resolve_name_to_route_token(target_name)
-        self.set_route_token(new_name, target_route_token)
+        target_route_token = self._resolve_control_sequence_to_route_token(target_name)
+        self._set_route_token(new_name, target_route_token)
 
     def do_let_assignment(self, new_name, target_token):
         if target_token.value['lex_type'] == control_sequence_lex_type:
             target_name = target_token.value['name']
-            self.copy_control_sequence(target_name, new_name)
+            self._copy_control_sequence(target_name, new_name)
         elif target_token.value['lex_type'] == char_cat_lex_type:
             self.set_let_character(new_name, target_token)
         else:
@@ -282,7 +283,7 @@ class Expander(object):
     def set_macro(self, name, definition_token, prefixes=None):
         route_id = get_unique_id()
         route_token = InternalToken(type_='macro', value=route_id)
-        self.set_route_token(name, route_token)
+        self._set_route_token(name, route_token)
 
         if prefixes is None:
             prefixes = set()
@@ -304,7 +305,7 @@ class Expander(object):
         route_id = get_unique_id()
         route_token = InternalToken(type_='let_character',
                                     value=route_id)
-        self.set_route_token(name, route_token)
+        self._set_route_token(name, route_token)
         self.let_chars[route_id] = char_cat_token
 
     def define_new_font_control_sequence(self, name, font_id):
@@ -318,11 +319,6 @@ class Expander(object):
                                                         [primitive_token])
         # TODO: Set directly as font token, not as a macro.
         self.set_macro(name, definition_token, prefixes=None)
-
-    def get_parameter_value(self, name):
-        parameter_token = self.resolve_control_sequence_to_token(name)
-        parameter_value = parameter_token.value['value']
-        return parameter_value
 
     def set_parameter(self, name, value):
         parameter_token = self.resolve_control_sequence_to_token(name)
