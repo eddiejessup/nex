@@ -1,12 +1,12 @@
 import logging
 
-from common import Token
-from expander import parse_replacement_text
-from fonts import FontRange
-from common_parsing import pg as common_pg
-from parse_utils import (ExpectedParsingError, ExhaustedTokensError,
-                         is_end_token)
-from general_text_parser import gen_txt_pg
+from .common import Token
+from .expander import parse_replacement_text
+from .fonts import FontRange
+from .common_parsing import pg as common_pg
+from .parse_utils import (ExpectedParsingError, ExhaustedTokensError,
+                          is_end_token)
+from .general_text_parser import gen_txt_pg
 
 
 logger = logging.getLogger(__name__)

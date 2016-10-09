@@ -2,7 +2,7 @@ from collections import namedtuple
 from string import ascii_letters
 from enum import Enum
 
-from common import TerminalToken, InternalToken
+from .common import TerminalToken, InternalToken
 
 
 cat_codes = [

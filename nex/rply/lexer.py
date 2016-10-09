@@ -1,5 +1,5 @@
-from rply.errors import LexingError
-from rply.token import SourcePosition, Token
+from .errors import LexingError
+from .token import SourcePosition, Token
 
 
 class Lexer(object):

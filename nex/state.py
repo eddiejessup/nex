@@ -1,8 +1,9 @@
-from interpreter import Mode, Group
-from codes import get_initial_codes, get_local_codes
-from registers import get_initial_registers, get_local_registers
-from fonts import GlobalFontState, get_initial_font_state, get_local_font_state
-from expander import get_initial_expander, get_local_expander
+from .interpreter import Mode, Group
+from .codes import get_initial_codes, get_local_codes
+from .registers import get_initial_registers, get_local_registers
+from .fonts import (GlobalFontState, get_initial_font_state,
+                    get_local_font_state)
+from .expander import get_initial_expander, get_local_expander
 
 
 class NotInScopeError(Exception):

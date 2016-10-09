@@ -7,10 +7,10 @@ import warnings
 
 from appdirs import AppDirs
 
-from rply.errors import ParserGeneratorError, ParserGeneratorWarning
-from rply.grammar import Grammar
-from rply.parser import LRParser
-from rply.utils import Counter, IdentityDict, iteritems, itervalues
+from .errors import ParserGeneratorError, ParserGeneratorWarning
+from .grammar import Grammar
+from .parser import LRParser
+from .utils import Counter, IdentityDict, iteritems, itervalues
 
 
 LARGE_VALUE = sys.maxsize

@@ -2,22 +2,22 @@ import logging
 from collections import deque
 from enum import Enum
 
-from common import TerminalToken
-from lexer import make_char_cat_token, is_control_sequence_call
-from parser import parser
-from typer import (CatCode,
-                   char_cat_lex_type, control_sequence_lex_type,
-                   lex_token_to_unexpanded_terminal_token,
-                   make_unexpanded_control_sequence_terminal_token,
-                   unexpanded_cs_types, unexpanded_token_type,
-                   explicit_box_map,
-                   short_hand_def_map, def_map, if_map,
-                   )
-from interpreter import Mode, vertical_modes, Group
-from executor import CommandGrabber, execute_commands, execute_condition
-from expander import parse_parameter_text
-from condition_parser import condition_parser
-from general_text_parser import general_text_parser
+from .common import TerminalToken
+from .lexer import make_char_cat_token, is_control_sequence_call
+from .parser import parser
+from .typer import (CatCode,
+                    char_cat_lex_type, control_sequence_lex_type,
+                    lex_token_to_unexpanded_terminal_token,
+                    make_unexpanded_control_sequence_terminal_token,
+                    unexpanded_cs_types, unexpanded_token_type,
+                    explicit_box_map,
+                    short_hand_def_map, def_map, if_map,
+                    )
+from .interpreter import Mode, vertical_modes, Group
+from .executor import CommandGrabber, execute_commands, execute_condition
+from .expander import parse_parameter_text
+from .condition_parser import condition_parser
+from .general_text_parser import general_text_parser
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')

@@ -1,7 +1,8 @@
 from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
-from common import ascii_characters
-from typer import (CatCode, WeirdChar, MathClass, GlyphCode, MathCode,
-                   not_a_delimiter_code, ignored_delimiter_code)
+
+from .common import ascii_characters
+from .typer import (CatCode, WeirdChar, MathClass, GlyphCode, MathCode,
+                    not_a_delimiter_code, ignored_delimiter_code)
 
 
 def get_initial_char_cats():

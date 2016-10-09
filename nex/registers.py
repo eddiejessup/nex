@@ -1,4 +1,4 @@
-from typer import register_tokens, short_hand_def_to_token_map
+from .typer import register_tokens, short_hand_def_to_token_map
 
 
 def is_register_type(type_):

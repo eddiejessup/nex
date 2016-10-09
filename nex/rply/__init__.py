@@ -1,7 +1,7 @@
-from rply.errors import ParsingError
-from rply.lexergenerator import LexerGenerator
-from rply.parsergenerator import ParserGenerator
-from rply.token import Token
+from .errors import ParsingError
+from .lexergenerator import LexerGenerator
+from .parsergenerator import ParserGenerator
+from .token import Token
 
 __version__ = '0.7.4'
 

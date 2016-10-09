@@ -1,13 +1,13 @@
 import logging
 
-from dampf.dvi_document import DVIDocument
+from nex.dampf.dvi_document import DVIDocument
 
-from state import GlobalState
-from reader import Reader
-from lexer import Lexer
-from banisher import Banisher
-from executor import execute_commands, write_box_to_doc, CommandGrabber
-from parser import parser
+from nex.state import GlobalState
+from nex.reader import Reader
+from nex.lexer import Lexer
+from nex.banisher import Banisher
+from nex.executor import execute_commands, write_box_to_doc, CommandGrabber
+from nex.parser import parser
 
 
 ch = logging.StreamHandler()

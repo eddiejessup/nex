@@ -1,4 +1,4 @@
-from box import HBox, UnSetGlue
+from .box import HBox, UnSetGlue
 
 
 def grab_word(h_list):

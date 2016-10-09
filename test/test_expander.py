@@ -2,7 +2,9 @@ import os
 
 import pytest
 
-from ..expander import Expander, NoSuchControlSequence
+from nex.expander import Expander, NoSuchControlSequence
+from nex.common import Token
+from nex.typer import control_sequence_lex_type
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 test_file_dir_path = os.path.join(dir_path, 'test_files')
@@ -24,7 +26,10 @@ def test_expander():
         e.expand_macro_to_token_list(name='test', arguments=[])
     with pytest.raises(NoSuchControlSequence):
         # Let.
-        e.do_let_assignment(target_name='test', new_name='test_2')
+        dummy_token = Token(type_='dummy',
+                            value={'lex_type': control_sequence_lex_type,
+                                   'name': 'test'})
+        e.do_let_assignment(target_token=dummy_token, new_name='test_2')
     with pytest.raises(NoSuchControlSequence):
         # Parameter.
-        e.get_parameter_value(target_name='test', new_name='test_2')
+        e.get_parameter_value(name='test')

@@ -1,8 +1,8 @@
 from enum import Enum
 
-from dampf.pydvi.TeXUnit import sp2pt
+from .pydvi.TeXUnit import sp2pt
 
-from utils import sum_infinities
+from .utils import sum_infinities
 
 
 class LineState(Enum):

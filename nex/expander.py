@@ -1,11 +1,12 @@
-from common import Token, TerminalToken, InternalToken
-from utils import get_unique_id, NoSuchControlSequence
-from tex_parameters import default_parameters
-from typer import (control_sequence_lex_type, char_cat_lex_type,
-                       short_hand_def_to_token_map, font_def_token_type,
-                       unexpanded_cs_types,
-                       primitive_control_sequences_map, terminal_primitive_control_sequences_map,
-                       )
+from .common import Token, TerminalToken, InternalToken
+from .utils import get_unique_id, NoSuchControlSequence
+from .tex_parameters import default_parameters
+from .typer import (control_sequence_lex_type, char_cat_lex_type,
+                    short_hand_def_to_token_map, font_def_token_type,
+                    unexpanded_cs_types,
+                    primitive_control_sequences_map,
+                    terminal_primitive_control_sequences_map,
+                    )
 
 undelim_macro_param_type = 'UNDELIMITED_PARAM'
 delim_macro_param_type = 'DELIMITED_PARAM'

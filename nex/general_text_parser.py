@@ -1,5 +1,5 @@
-from common import Token
-from common_parsing import pg as common_pg
+from .common import Token
+from .common_parsing import pg as common_pg
 
 
 gen_txt_pg = common_pg.copy_to_extend()

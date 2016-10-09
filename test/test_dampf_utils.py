@@ -1,6 +1,6 @@
 import pytest
 
-from ..utils import get_bytes_needed, is_signed_nr_expressible_in_n_bits
+from nex.dampf.utils import get_bytes_needed, is_signed_nr_expressible_in_n_bits
 
 
 max_bits_we_can_use = 4 * 8

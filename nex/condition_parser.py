@@ -1,7 +1,8 @@
-from typer import if_map
-from common import Token
-from common_parsing import pg as common_pg
-from parse_utils import ExpectedParsingError, ExhaustedTokensError, is_end_token
+from .typer import if_map
+from .common import Token
+from .common_parsing import pg as common_pg
+from .parse_utils import (ExpectedParsingError, ExhaustedTokensError,
+                          is_end_token)
 
 
 pg = common_pg.copy_to_extend()

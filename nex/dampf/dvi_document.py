@@ -1,5 +1,5 @@
-from .pydvi.Font.TfmParser import TfmParser
-from .pydvi.TeXUnit import pt2sp
+from ..pydvi.Font.TfmParser import TfmParser
+from ..pydvi.TeXUnit import pt2sp
 
 from .dvi_spec import (get_set_char_instruction,
                        get_set_rule_instruction,

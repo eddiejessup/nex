@@ -1,20 +1,21 @@
 from collections import deque
 import operator
 
-from common import Token
-from utils import NoSuchControlSequence
-from parse_utils import ExpectedParsingError, ExhaustedTokensError
-from reader import EndOfFile
-from registers import is_register_type
-from typer import (CatCode, MathCode, GlyphCode, DelimiterCode, MathClass,
-                   PhysicalUnit, MuUnit, InternalUnit, units_in_scaled_points,
-                   h_add_glue_tokens,
-                   )
-from tex_parameters import glue_keys
-from expander import is_parameter_type, primitive_canon_tokens
-from interpreter import Mode, Group, vertical_modes, horizontal_modes
-from box import HBox, Rule, UnSetGlue, SetGlue, Character, FontDefinition, FontSelection
-from paragraphs import h_list_to_best_h_boxes
+from .common import Token
+from .utils import NoSuchControlSequence
+from .parse_utils import ExpectedParsingError, ExhaustedTokensError
+from .reader import EndOfFile
+from .registers import is_register_type
+from .typer import (CatCode, MathCode, GlyphCode, DelimiterCode, MathClass,
+                    PhysicalUnit, MuUnit, InternalUnit, units_in_scaled_points,
+                    h_add_glue_tokens,
+                    )
+from .tex_parameters import glue_keys
+from .expander import is_parameter_type, primitive_canon_tokens
+from .interpreter import Mode, Group, vertical_modes, horizontal_modes
+from .box import (HBox, Rule, UnSetGlue, SetGlue, Character, FontDefinition,
+                  FontSelection)
+from .paragraphs import h_list_to_best_h_boxes
 
 
 sub_executor_groups = (

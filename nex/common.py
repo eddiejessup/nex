@@ -1,4 +1,4 @@
-from rply.token import Token as RToken
+from .rply.token import Token as RToken
 
 
 ascii_characters = ''.join(chr(i) for i in range(128))

@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from ..reader import Reader, EndOfFile, tex_file_to_chars
+from nex.reader import Reader, EndOfFile, tex_file_to_chars
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 test_file_dir_path = os.path.join(dir_path, 'test_files')

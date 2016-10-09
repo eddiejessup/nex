@@ -6,8 +6,9 @@ class EndOfFile(Exception):
 
 
 def tex_file_to_chars(file_name):
-    if not path.isfile(file_name):
-        file_name += path.extsep + 'tex'
+    end = path.extsep + 'tex'
+    if not file_name.endswith(end):
+        file_name += end
     with open(file_name, 'rb') as f:
         return [chr(b) for b in f.read()]
 
