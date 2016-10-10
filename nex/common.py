@@ -24,6 +24,23 @@ class Token(RToken):
     def __str__(self):
         return self.__repr__()
 
+    def copy(self):
+        return self.__class__(self.type, self.value.copy())
+
+    def equal_contents_to(self, other):
+        if self.type != other.type:
+            return False
+        if self.value.keys() != other.value.keys():
+            return False
+        for k in self.value:
+            # Tokens with different *call* names are still considered to be the
+            # same.
+            if k == 'name':
+                continue
+            if self.value[k] != other.value[k]:
+                return False
+        return True
+
 
 class TerminalToken(Token):
 

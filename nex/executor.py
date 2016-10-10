@@ -10,8 +10,8 @@ from .typer import (CatCode, MathCode, GlyphCode, DelimiterCode, MathClass,
                     PhysicalUnit, MuUnit, InternalUnit, units_in_scaled_points,
                     h_add_glue_tokens,
                     )
-from .tex_parameters import glue_keys
-from .expander import is_parameter_type, primitive_canon_tokens
+from .tex_parameters import glue_keys, is_parameter_type
+from .expander import primitive_canon_tokens
 from .interpreter import Mode, Group, vertical_modes, horizontal_modes
 from .box import (HBox, Rule, UnSetGlue, SetGlue, Character, FontDefinition,
                   FontSelection)

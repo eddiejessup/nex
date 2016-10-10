@@ -1,6 +1,7 @@
 from .interpreter import Mode, Group
 from .codes import get_initial_codes, get_local_codes
 from .registers import get_initial_registers, get_local_registers
+from .tex_parameters import get_initial_parameters, get_local_parameters
 from .fonts import (GlobalFontState, get_initial_font_state,
                     get_local_font_state)
 from .expander import get_initial_expander, get_local_expander
@@ -12,9 +13,10 @@ class NotInScopeError(Exception):
 
 class Scope(object):
 
-    def __init__(self, codes, registers, font_state, expander):
+    def __init__(self, codes, registers, parameters, font_state, expander):
         self.codes = codes
         self.registers = registers
+        self.parameters = parameters
         self.font_state = font_state
         self.expander = expander
 
@@ -76,6 +78,19 @@ class Scope(object):
     def get_advanced_register_value(self, *args, **kwargs):
         return self.defer_to_registers('get_advanced_register_value', *args, **kwargs)
 
+    # Parameter interface.
+
+    # TODO: maybe just have outside things address .parameters directly.
+    def defer_to_parameters(self, func_name, *args, **kwargs):
+        f = getattr(self.parameters, func_name)
+        return f(*args, **kwargs)
+
+    def get_parameter_value(self, *args, **kwargs):
+        return self.defer_to_parameters('get_parameter_value', *args, **kwargs)
+
+    def set_parameter_value(self, *args, **kwargs):
+        return self.defer_to_parameters('set_parameter_value', *args, **kwargs)
+
     # Font interface.
     def defer_to_font_state(self, func_name, *args, **kwargs):
         f = getattr(self.font_state, func_name)
@@ -110,28 +125,24 @@ class Scope(object):
     def define_new_font_control_sequence(self, *args, **kwargs):
         return self.defer_to_expander('define_new_font_control_sequence', *args, **kwargs)
 
-    def get_parameter_value(self, *args, **kwargs):
-        return self.defer_to_expander('get_parameter_value', *args, **kwargs)
-
-    def set_parameter(self, *args, **kwargs):
-        return self.defer_to_expander('set_parameter', *args, **kwargs)
-
 
 def get_initial_scope(global_font_state):
     codes = get_initial_codes()
+    parameters = get_initial_parameters()
     registers = get_initial_registers()
     font_state = get_initial_font_state(global_font_state)
     expander = get_initial_expander()
-    initial_scope = Scope(codes, registers, font_state, expander)
+    initial_scope = Scope(codes, registers, parameters, font_state, expander)
     return initial_scope
 
 
 def get_local_scope(enclosing_scope):
     codes = get_local_codes()
     registers = get_local_registers()
+    parameters = get_local_parameters()
     font_state = get_local_font_state()
     expander = get_local_expander(enclosing_scope)
-    local_scope = Scope(codes, registers, font_state, expander)
+    local_scope = Scope(codes, registers, parameters, font_state, expander)
     return local_scope
 
 
@@ -284,6 +295,15 @@ class GlobalState(object):
         result = self.get_advanced_register_value(type_, i, value)
         self.set_register_value(is_global, type_, i, result)
 
+    # Parameters.
+
+    def get_parameter_value(self, *args, **kwargs):
+        return self.try_scope_func_until_success('get_parameter_value', *args, **kwargs)
+
+    def set_parameter(self, is_global, *args, **kwargs):
+        for scope in self.get_scopes(is_global):
+            scope.set_parameter_value(*args, **kwargs)
+
     # Fonts.
 
     @property
@@ -332,13 +352,6 @@ class GlobalState(object):
     def do_let_assignment(self, is_global, *args, **kwargs):
         for scope in self.get_scopes(is_global):
             scope.do_let_assignment(*args, **kwargs)
-
-    def get_parameter_value(self, *args, **kwargs):
-        return self.try_scope_func_until_success('get_parameter_value', *args, **kwargs)
-
-    def set_parameter(self, is_global, *args, **kwargs):
-        for scope in self.get_scopes(is_global):
-            scope.set_parameter(*args, **kwargs)
 
     # Hybrid, expander and global fonts.
 

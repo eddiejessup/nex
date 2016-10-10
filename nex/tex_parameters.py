@@ -2,13 +2,6 @@ from datetime import datetime
 
 from .common import TerminalToken
 
-now = datetime.now()
-midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
-seconds_since_midnight = (now - midnight).total_seconds()
-minutes_since_midnight = int(seconds_since_midnight // 60)
-
-glue_keys = ('dimen', 'stretch', 'shrink')
-
 
 integer_parameters = {
     'pretolerance': 0,
@@ -59,10 +52,11 @@ integer_parameters = {
     'endlinechar': ord('\r'),
     'newlinechar': 0,
     'delimiterfactor': 0,
-    'time': minutes_since_midnight,
-    'day': now.day,
-    'month': now.month,
-    'year': now.year,
+    # These time ones will be set in get_initial_parameters.
+    'time': None,
+    'day': None,
+    'month': None,
+    'year': None,
     'showboxbreadth': 0,
     'showboxdepth': 0,
     'errorcontextlines': 0,
@@ -91,6 +85,7 @@ dimen_parameters = {
     'voffset': 0,
 }
 
+glue_keys = ('dimen', 'stretch', 'shrink')
 get_zero_glue = lambda: {k: 0 for k in glue_keys}
 glue_parameter_names = (
     'baselineskip',
@@ -141,6 +136,13 @@ default_parameters = {
     'TOKEN_PARAMETER': token_parameters,
 }
 
+parameter_types = default_parameters.keys()
+
+
+def is_parameter_type(type_):
+    return type_ in parameter_types
+
+
 special_integer_names = (
     'spacefactor',
     'prevgraf',
@@ -164,3 +166,50 @@ special_quantity_types = (
     'SPECIAL_INTEGER',
     'SPECIAL_DIMEN',
 )
+
+
+def get_initial_parameters():
+    now = datetime.now()
+    midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    seconds_since_midnight = (now - midnight).total_seconds()
+    minutes_since_midnight = int(seconds_since_midnight // 60)
+    integer_parameters_ = integer_parameters.copy()
+    integer_parameters_['time'] = minutes_since_midnight
+    integer_parameters_['day'] = now.day
+    integer_parameters_['month'] = now.month
+    integer_parameters_['year'] = now.year
+    return Parameters(integer_parameters_,
+                      dimen_parameters,
+                      glue_parameters,
+                      mu_glue_parameters,
+                      token_parameters)
+
+
+def get_local_parameters():
+    return Parameters(integers={}, dimens={}, glues={}, mu_glues={}, tokens={})
+
+
+class Parameters(object):
+
+    def __init__(self, integers, dimens, glues, mu_glues, tokens):
+        self.parameter_maps = {
+            'integer': integers,
+            'dimen': dimens,
+            'glue': glues,
+            'mu_glue': mu_glues,
+            'token': tokens,
+        }
+
+    def _get_parameter_map_by_name(self, name):
+        for parameter_map in self.parameter_maps.values():
+            if name in parameter_map:
+                return parameter_map
+        raise KeyError
+
+    def get_parameter_value(self, name):
+        parameter_map = self._get_parameter_map_by_name(name)
+        return parameter_map[name]
+
+    def set_parameter_value(self, name, value):
+        parameter_map = self._get_parameter_map_by_name(name)
+        parameter_map[name] = value

@@ -2,14 +2,13 @@ from .rply import ParserGenerator
 
 from .common import Token
 
-from .expander import parameter_types
 from .typer import (literal_types, PhysicalUnit,
                     unexpanded_cs_types, unexpanded_token_type,
                     terminal_primitive_control_sequences_map,
                     short_hand_def_to_token_map, font_def_token_type,
                     composite_terminal_control_sequence_types,
                     )
-from .tex_parameters import special_quantity_types
+from .tex_parameters import special_quantity_types, parameter_types
 from .registers import register_token_type_to_register_type
 
 from .character_parsing import add_character_productions

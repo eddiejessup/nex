@@ -3,7 +3,6 @@ from .utils import get_unique_id, NoSuchControlSequence
 from .tex_parameters import default_parameters
 from .typer import (control_sequence_lex_type, char_cat_lex_type,
                     short_hand_def_to_token_map, font_def_token_type,
-                    unexpanded_cs_types,
                     primitive_control_sequences_map,
                     terminal_primitive_control_sequences_map,
                     )
@@ -11,12 +10,6 @@ from .typer import (control_sequence_lex_type, char_cat_lex_type,
 undelim_macro_param_type = 'UNDELIMITED_PARAM'
 delim_macro_param_type = 'DELIMITED_PARAM'
 macro_param_types = (undelim_macro_param_type, delim_macro_param_type)
-
-parameter_types = default_parameters.keys()
-
-
-def is_parameter_type(type_):
-    return type_ in parameter_types
 
 
 def parse_parameter_text(tokens):
@@ -148,7 +141,7 @@ def get_initial_expander():
 
     parameters = {}
     for param_type, param_map in default_parameters.items():
-        for param_canon_name, param_value in param_map.items():
+        for param_canon_name in param_map:
             # Add a router for the canonical name to the primitive.
             route_id = param_canon_name
             route_token = InternalToken(type_='parameter',
@@ -158,8 +151,7 @@ def get_initial_expander():
             param_canon_token = TerminalToken(
                 type_=param_type,
                 value={'canonical_name': param_canon_name,
-                       'name': param_canon_name,
-                       'value': param_value}
+                       'name': param_canon_name}
             )
             parameters[route_id] = param_canon_token
 
@@ -248,23 +240,14 @@ class Expander(object):
 
     def resolve_control_sequence_to_token(self, name):
         route_token = self._resolve_control_sequence_to_route_token(name)
-        type_ = route_token.type
         token = self._resolve_route_token_to_raw_value(route_token)
         # Amend canonical tokens to give them the proper control sequence
         # 'name'.
-        if type_ in ('primitive',) + tuple(parameter_types):
+        if 'name' in token.value:
             TokenCls = token.__class__
             token = TokenCls(type_=token.type, value=token.value.copy())
             token.value['name'] = name
-        # TODO: check what happens if we \let something to a macro,
-        # then call \csname on it. Do we get the original macro name?
-        # Maybe need to do something like for canonical tokens above.
         return token
-
-    def get_parameter_value(self, name):
-        parameter_token = self.resolve_control_sequence_to_token(name)
-        parameter_value = parameter_token.value['value']
-        return parameter_value
 
     def _copy_control_sequence(self, target_name, new_name):
         # Make a new control sequence that is routed to the same spot as the
@@ -277,7 +260,7 @@ class Expander(object):
             target_name = target_token.value['name']
             self._copy_control_sequence(target_name, new_name)
         elif target_token.value['lex_type'] == char_cat_lex_type:
-            self.set_let_character(new_name, target_token)
+            self._set_let_character(new_name, target_token)
         else:
             import pdb; pdb.set_trace()
 
@@ -302,7 +285,7 @@ class Expander(object):
         macro_token = self.set_macro(name, definition_token, prefixes=None)
         return macro_token
 
-    def set_let_character(self, name, char_cat_token):
+    def _set_let_character(self, name, char_cat_token):
         route_id = get_unique_id()
         route_token = InternalToken(type_='let_character',
                                     value=route_id)
@@ -320,7 +303,3 @@ class Expander(object):
                                                         [primitive_token])
         # TODO: Set directly as font token, not as a macro.
         self.set_macro(name, definition_token, prefixes=None)
-
-    def set_parameter(self, name, value):
-        parameter_token = self.resolve_control_sequence_to_token(name)
-        parameter_token.value['value'] = value
