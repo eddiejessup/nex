@@ -4,7 +4,8 @@ from .registers import get_initial_registers, get_local_registers
 from .tex_parameters import get_initial_parameters, get_local_parameters
 from .fonts import (GlobalFontState, get_initial_font_state,
                     get_local_font_state)
-from .expander import get_initial_expander, get_local_expander
+from .router import get_initial_router, get_local_router
+from .expander import expand_macro_to_token_list
 
 
 class NotInScopeError(Exception):
@@ -13,12 +14,12 @@ class NotInScopeError(Exception):
 
 class Scope(object):
 
-    def __init__(self, codes, registers, parameters, font_state, expander):
+    def __init__(self, codes, registers, parameters, font_state, cs_router):
         self.codes = codes
         self.registers = registers
         self.parameters = parameters
         self.font_state = font_state
-        self.expander = expander
+        self.cs_router = cs_router
 
     # Codes interface.
 
@@ -100,30 +101,33 @@ class Scope(object):
     def current_font_id(self):
         return self.font_state.current_font_id
 
-    # Expander interface.
+    # Router interface.
 
-    # TODO: maybe just have outside things address .expander directly.
-    def defer_to_expander(self, func_name, *args, **kwargs):
-        f = getattr(self.expander, func_name)
+    def expand_macro_to_token_list(self, name, *args, **kwargs):
+        macro_token = self.resolve_control_sequence_to_token(name)
+        return expand_macro_to_token_list(macro_token,
+                                          *args, **kwargs)
+
+    # TODO: maybe just have outside things address .router directly.
+    def defer_to_router(self, func_name, *args, **kwargs):
+        f = getattr(self.cs_router, func_name)
         return f(*args, **kwargs)
 
-    def expand_macro_to_token_list(self, *args, **kwargs):
-        return self.defer_to_expander('expand_macro_to_token_list', *args, **kwargs)
-
     def resolve_control_sequence_to_token(self, *args, **kwargs):
-        return self.defer_to_expander('resolve_control_sequence_to_token', *args, **kwargs)
+        return self.defer_to_router('resolve_control_sequence_to_token',
+                                    *args, **kwargs)
 
     def set_macro(self, *args, **kwargs):
-        return self.defer_to_expander('set_macro', *args, **kwargs)
+        return self.defer_to_router('set_macro', *args, **kwargs)
 
     def do_short_hand_definition(self, *args, **kwargs):
-        return self.defer_to_expander('do_short_hand_definition', *args, **kwargs)
+        return self.defer_to_router('do_short_hand_definition', *args, **kwargs)
 
     def do_let_assignment(self, *args, **kwargs):
-        return self.defer_to_expander('do_let_assignment', *args, **kwargs)
+        return self.defer_to_router('do_let_assignment', *args, **kwargs)
 
     def define_new_font_control_sequence(self, *args, **kwargs):
-        return self.defer_to_expander('define_new_font_control_sequence', *args, **kwargs)
+        return self.defer_to_router('define_new_font_control_sequence', *args, **kwargs)
 
 
 def get_initial_scope(global_font_state):
@@ -131,8 +135,8 @@ def get_initial_scope(global_font_state):
     parameters = get_initial_parameters()
     registers = get_initial_registers()
     font_state = get_initial_font_state(global_font_state)
-    expander = get_initial_expander()
-    initial_scope = Scope(codes, registers, parameters, font_state, expander)
+    router = get_initial_router()
+    initial_scope = Scope(codes, registers, parameters, font_state, router)
     return initial_scope
 
 
@@ -141,8 +145,8 @@ def get_local_scope(enclosing_scope):
     registers = get_local_registers()
     parameters = get_local_parameters()
     font_state = get_local_font_state()
-    expander = get_local_expander(enclosing_scope)
-    local_scope = Scope(codes, registers, parameters, font_state, expander)
+    router = get_local_router(enclosing_scope)
+    local_scope = Scope(codes, registers, parameters, font_state, router)
     return local_scope
 
 
@@ -322,7 +326,7 @@ class GlobalState(object):
         for scope in scopes:
             scope.font_state.set_font_family(*args, **kwargs)
 
-    # Expander.
+    # Router.
 
     def expand_macro_to_token_list(self, *args, **kwargs):
         return self.try_scope_func_until_success('expand_macro_to_token_list', *args, **kwargs)
@@ -353,11 +357,11 @@ class GlobalState(object):
         for scope in self.get_scopes(is_global):
             scope.do_let_assignment(*args, **kwargs)
 
-    # Hybrid, expander and global fonts.
+    # Hybrid, router and global fonts.
 
     def define_new_font(self, is_global, name, file_name, at_clause):
         new_font_id = self.global_font_state.define_new_font(file_name,
                                                              at_clause)
         for scope in self.get_scopes(is_global):
-            scope.expander.define_new_font_control_sequence(name, new_font_id)
+            scope.cs_router.define_new_font_control_sequence(name, new_font_id)
         return new_font_id

@@ -11,7 +11,7 @@ from .typer import (CatCode, MathCode, GlyphCode, DelimiterCode, MathClass,
                     h_add_glue_tokens,
                     )
 from .tex_parameters import glue_keys, is_parameter_type
-from .expander import primitive_canon_tokens
+from .router import primitive_canon_tokens
 from .interpreter import Mode, Group, vertical_modes, horizontal_modes
 from .box import (HBox, Rule, UnSetGlue, SetGlue, Character, FontDefinition,
                   FontSelection)

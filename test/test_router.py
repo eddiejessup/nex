@@ -2,7 +2,8 @@ import os
 
 import pytest
 
-from nex.expander import Expander, NoSuchControlSequence
+from nex.router import CSRouter
+from nex.utils import NoSuchControlSequence
 from nex.common import Token
 from nex.typer import control_sequence_lex_type
 
@@ -22,25 +23,20 @@ def get_call_token(name):
                                       'lex_type': control_sequence_lex_type})
 
 
-def test_expander_non_exist():
-    e = Expander(control_sequences={},
+def test_router_non_exist():
+    e = CSRouter(control_sequences={},
                  macros={},
                  let_chars={},
                  parameters={},
                  primitives={},
                  enclosing_scope=None)
     with pytest.raises(NoSuchControlSequence):
-        # General.
         e.resolve_control_sequence_to_token(name='test')
     with pytest.raises(NoSuchControlSequence):
-        # Macro.
-        e.expand_macro_to_token_list(name='test', arguments=[])
-    with pytest.raises(NoSuchControlSequence):
-        # Let.
         e.do_let_assignment(target_token=dummy_token, new_name='test_2')
 
 
-def test_expander_resolution():
+def test_router_resolution():
     route_id = 1
     route_token_macro = Token(type_='macro', value=route_id)
     route_token_parameter = Token(type_='parameter', value=route_id)
@@ -52,7 +48,7 @@ def test_expander_resolution():
     macros = {route_id: dummy_token}
     parameters = {route_id: dummy_token}
     primitives = {route_id: dummy_token}
-    e = Expander(control_sequences=control_sequences,
+    e = CSRouter(control_sequences=control_sequences,
                  macros=macros,
                  let_chars={},
                  parameters=parameters,
@@ -64,7 +60,7 @@ def test_expander_resolution():
         assert d.type == 'dummy'
 
 
-def test_expander_let_control_sequence():
+def test_router_let_control_sequence():
     route_id = 1
     control_sequences = {}
     macros, parameters, primitives = {}, {}, {}
@@ -81,7 +77,7 @@ def test_expander_let_control_sequence():
         tok = dummy_token.copy()
         tok.value['attribute'] = attr_value
         t_map[route_id] = tok
-    e = Expander(control_sequences=control_sequences,
+    e = CSRouter(control_sequences=control_sequences,
                  macros=macros,
                  let_chars={},
                  parameters=parameters,

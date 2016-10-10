@@ -35,22 +35,21 @@ class Registers(object):
             'muskip': mu_skip,
             'toks': tokens,
         }
-
         self.register_map = {register_tokens[c]: r for
                              c, r in cmd_register_map.items()}
 
-    def get_register(self, type_):
+    def _get_register_map(self, type_):
         return self.register_map[type_]
 
     def get_register_value(self, type_, i):
-        register = self.get_register(type_)
+        register = self._get_register_map(type_)
         return register[i]
 
     def set_register_value(self, type_, i, value):
-        register = self.get_register(type_)
+        register = self._get_register_map(type_)
         register[i] = value
 
     def get_advanced_register_value(self, type_, i, value):
-        register = self.get_register(type_)
+        register = self._get_register_map(type_)
         result = register[i] + value
         return result
