@@ -35,6 +35,10 @@ for prim_canon_name, prim_type in primitive_control_sequences_map.items():
     primitive_canon_tokens[prim_canon_name] = primitive_canon_token
 
 
+def make_route_token(type_, route_id):
+    return InternalToken(type_=type_, value=route_id)
+
+
 def get_initial_router():
     control_sequences = {}
 
@@ -46,8 +50,7 @@ def get_initial_router():
         for param_canon_name in param_map:
             # Add a router for the canonical name to the primitive.
             route_id = param_canon_name
-            route_token = InternalToken(type_='parameter',
-                                        value=route_id)
+            route_token = make_route_token('parameter', route_id)
             control_sequences[param_canon_name] = route_token
 
             param_canon_token = TerminalToken(
@@ -61,7 +64,7 @@ def get_initial_router():
     for prim_canon_name, prim_canon_token in primitive_canon_tokens.items():
         # Add a router for the canonical name to the primitive.
         route_id = prim_canon_name
-        route_token = InternalToken(type_='primitive', value=route_id)
+        route_token = make_route_token('primitive', route_id)
         control_sequences[prim_canon_name] = route_token
 
         # Make that route resolve to the primitive canonical token.
@@ -160,7 +163,7 @@ class CSRouter(object):
 
     def set_macro(self, name, definition_token, prefixes=None):
         route_id = get_unique_id()
-        route_token = InternalToken(type_='macro', value=route_id)
+        route_token = make_route_token('macro', route_id)
         self._set_route_token(name, route_token)
 
         if prefixes is None:
@@ -181,8 +184,7 @@ class CSRouter(object):
 
     def _set_let_character(self, name, char_cat_token):
         route_id = get_unique_id()
-        route_token = InternalToken(type_='let_character',
-                                    value=route_id)
+        route_token = make_route_token('let_character', route_id)
         self._set_route_token(name, route_token)
         self.let_chars[route_id] = char_cat_token
 
