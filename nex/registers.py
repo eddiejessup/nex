@@ -1,3 +1,4 @@
+from .common import Token
 from .typer import register_tokens, short_hand_def_to_token_map
 
 
@@ -11,29 +12,24 @@ def register_token_type_to_register_type(type_):
 
 
 def get_initial_registers():
-    count = {i: None for i in range(256)}
-    dimen = {i: None for i in range(256)}
-    skip = {i: None for i in range(256)}
-    mu_skip = {i: None for i in range(256)}
-    tokens = {i: None for i in range(256)}
-    registers = Registers(count, dimen, skip, mu_skip, tokens)
-    return registers
+    register_sizes = [256 for _ in range(5)]
+    return Registers(*register_sizes)
 
 
-def get_local_registers():
-    registers = Registers(count={}, dimen={}, skip={}, mu_skip={}, tokens={})
-    return registers
+get_local_registers = get_initial_registers
 
 
 class Registers(object):
 
-    def __init__(self, count, dimen, skip, mu_skip, tokens):
+    def __init__(self, nr_counts, nr_dimens,
+                 nr_skips, nr_mu_skips, nr_token_lists):
+        init_register = lambda n: {i: None for i in range(n)}
         cmd_register_map = {
-            'count': count,
-            'dimen': dimen,
-            'skip': skip,
-            'muskip': mu_skip,
-            'toks': tokens,
+            'count': init_register(nr_counts),
+            'dimen': init_register(nr_dimens),
+            'skip': init_register(nr_skips),
+            'muskip': init_register(nr_mu_skips),
+            'toks': init_register(nr_token_lists),
         }
         self.register_map = {register_tokens[c]: r for
                              c, r in cmd_register_map.items()}
@@ -43,13 +39,28 @@ class Registers(object):
 
     def get_register_value(self, type_, i):
         register = self._get_register_map(type_)
-        return register[i]
+        try:
+            r = register[i]
+        except KeyError:
+            raise ValueError('No register number {} of type {}'
+                             .format(i, type_))
+        if r is None:
+            raise ValueError('No value in register number {} of type {}'
+                             .format(i, type_))
+        return r
 
     def set_register_value(self, type_, i, value):
+        # TODO: Make type checking more strict, and do in more places.
+        if type_ in ('COUNT', 'DIMEN'):
+            expected_type = int
+        elif type_ in ('SKIP', 'MU_SKIP'):
+            expected_type = dict
+        elif type_ == 'TOKS':
+            expected_type = list
+        if not isinstance(value, expected_type):
+            raise TypeError('Setting register to wrong type')
         register = self._get_register_map(type_)
+        if i not in register:
+            raise ValueError('No register number {} of type {}'
+                             .format(i, type_))
         register[i] = value
-
-    def get_advanced_register_value(self, type_, i, value):
-        register = self._get_register_map(type_)
-        result = register[i] + value
-        return result

@@ -1,6 +1,6 @@
 from .common import Token, TerminalToken, InternalToken
 from .utils import get_unique_id, NoSuchControlSequence
-from .tex_parameters import default_parameters
+from .tex_parameters import parameter_type_to_names
 from .typer import (control_sequence_lex_type, char_cat_lex_type,
                     short_hand_def_to_token_map, font_def_token_type,
                     primitive_control_sequences_map,
@@ -46,17 +46,17 @@ def get_initial_router():
     let_chars = {}
 
     parameters = {}
-    for param_type, param_map in default_parameters.items():
-        for param_canon_name in param_map:
+    for param_type, param_canonical_names in parameter_type_to_names.items():
+        for param_canonical_name in param_canonical_names:
             # Add a router for the canonical name to the primitive.
-            route_id = param_canon_name
+            route_id = param_canonical_name
             route_token = make_route_token('parameter', route_id)
-            control_sequences[param_canon_name] = route_token
+            control_sequences[param_canonical_name] = route_token
 
             param_canon_token = TerminalToken(
                 type_=param_type,
-                value={'canonical_name': param_canon_name,
-                       'name': param_canon_name}
+                value={'canonical_name': param_canonical_name,
+                       'name': param_canonical_name}
             )
             parameters[route_id] = param_canon_token
 

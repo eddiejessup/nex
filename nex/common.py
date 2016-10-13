@@ -6,17 +6,17 @@ ascii_characters = ''.join(chr(i) for i in range(128))
 
 class Token(RToken):
 
-    def __init__(self, type_, value):
+    def __init__(self, type_, value, line_nr=None, col_nr=None):
         self.type = type_
         self.value = value
-        self.lineno = None
-        self.lexpos = None
+        self.lineno = line_nr
+        self.lexpos = col_nr
 
     def gettokentype(self):
         return self.type
 
-    def getsourcepos(self):
-        return None
+    # def getsourcepos(self):
+    #     return None
 
     def __repr__(self):
         return "<%s: %r %r>" % (self.__class__.__name__, self.type, self.value)

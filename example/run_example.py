@@ -43,8 +43,8 @@ def write_to_file(state, out_path):
 
 
 if __name__ == '__main__':
-    # in_path = os.path.join(dir_path, 'test.tex')
-    in_path = os.path.join(dir_path, 'plain.tex')
+    in_path = os.path.join(dir_path, 'test.tex')
+    # in_path = os.path.join(dir_path, 'plain.tex')
     state = run_file(in_path)
     out_path = in_path[:-4] + '.dvi'
     write_to_file(state, out_path)

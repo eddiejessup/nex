@@ -20,6 +20,13 @@ class NoSuchControlSequence(Exception):
         self.name = name
 
 
+class ExecuteCommandError(Exception):
+
+    def __init__(self, command, exception):
+        self.command = command
+        self.exception = exception
+
+
 def sum_infinities(ds):
     order_sums = [0]
     for d in ds:

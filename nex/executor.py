@@ -2,7 +2,7 @@ from collections import deque
 import operator
 
 from .common import Token
-from .utils import NoSuchControlSequence
+from .utils import NoSuchControlSequence, ExecuteCommandError
 from .parse_utils import ExpectedParsingError, ExhaustedTokensError
 from .reader import EndOfFile
 from .registers import is_register_type
@@ -12,6 +12,7 @@ from .typer import (CatCode, MathCode, GlyphCode, DelimiterCode, MathClass,
                     )
 from .tex_parameters import glue_keys, is_parameter_type
 from .router import primitive_canon_tokens
+from .state import Operation
 from .interpreter import Mode, Group, vertical_modes, horizontal_modes
 from .box import (HBox, Rule, UnSetGlue, SetGlue, Character, FontDefinition,
                   FontSelection)
@@ -52,7 +53,7 @@ def evaluate_size(state, size_token):
                 import pdb; pdb.set_trace()
             return v
         elif is_parameter_type(size_token.type):
-            state.get_parameter_value(size_token.value['name'])
+            return state.get_parameter_value(size_token.value['name'])
         else:
             import pdb; pdb.set_trace()
     else:
@@ -105,10 +106,9 @@ def evaluate_dimen(state, dimen_token):
         # `\vskip 0.25 cm' if you have previously said `\magnification=2000'.
         if is_true_unit:
             number_of_scaled_points *= 1000.0 / magnification
-            number_of_scaled_points = int(number_of_scaled_points)
     if sign == '-':
         number_of_scaled_points *= -1
-    return number_of_scaled_points
+    return int(round(number_of_scaled_points))
 
 
 def evaluate_glue(state, glue_token):
@@ -425,11 +425,17 @@ def execute_command(command, state, banisher, reader):
     elif type_ == 'advance':
         value_eval = evaluate_number(state, v['value'])
         variable = v['variable']
+        kwargs = {'is_global': v['global'],
+                  'by_operand': value_eval,
+                  'operation': Operation.advance}
         if is_register_type(variable.type):
-            state.advance_register_value(is_global=v['global'],
-                                         type_=variable.type,
-                                         i=variable.value,
-                                         value=value_eval)
+            state.modify_register_value(type_=variable.type, i=variable.value,
+                                        **kwargs)
+        elif is_parameter_type(variable.type):
+            state.modify_parameter_value(name=variable.value['canonical_name'],
+                                         **kwargs)
+        else:
+            import pdb; pdb.set_trace()
     elif type_ == 'let_assignment':
         state.do_let_assignment(v['global'], new_name=v['name'],
                                 target_token=v['target_token'])
@@ -516,6 +522,8 @@ def execute_commands(command_grabber, state, banisher, reader):
             break
         except EndOfSubExecutor:
             break
+        except Exception as e:
+            raise ExecuteCommandError(command, e)
 
 
 def write_box_to_doc(doc, layout_list, horizontal=False):

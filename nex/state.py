@@ -1,3 +1,5 @@
+from enum import Enum
+
 from .interpreter import Mode, Group
 from .codes import get_initial_codes, get_local_codes
 from .registers import get_initial_registers, get_local_registers
@@ -6,6 +8,18 @@ from .fonts import (GlobalFontState, get_initial_font_state,
                     get_local_font_state)
 from .router import get_initial_router, get_local_router
 from .expander import expand_macro_to_token_list
+
+
+class Operation(Enum):
+    advance = 1
+
+
+def operate(object_operand, by_operand, operation):
+    if operation == Operation.advance:
+        result = object_operand + by_operand
+    else:
+        raise NotImplementedError
+    return result
 
 
 class NotInScopeError(Exception):
@@ -76,9 +90,6 @@ class Scope(object):
     def set_register_value(self, *args, **kwargs):
         return self.defer_to_registers('set_register_value', *args, **kwargs)
 
-    def get_advanced_register_value(self, *args, **kwargs):
-        return self.defer_to_registers('get_advanced_register_value', *args, **kwargs)
-
     # Parameter interface.
 
     # TODO: maybe just have outside things address .parameters directly.
@@ -93,6 +104,7 @@ class Scope(object):
         return self.defer_to_parameters('set_parameter_value', *args, **kwargs)
 
     # Font interface.
+
     def defer_to_font_state(self, func_name, *args, **kwargs):
         f = getattr(self.font_state, func_name)
         return f(*args, **kwargs)
@@ -280,23 +292,23 @@ class GlobalState(object):
     def get_register_value(self, *args, **kwargs):
         return self.try_scope_func_until_success('get_register_value', *args, **kwargs)
 
-    def get_advanced_register_value(self, *args, **kwargs):
-        return self.try_scope_func_until_success('get_advanced_register_value', *args, **kwargs)
-
     def set_register_value(self, is_global, *args, **kwargs):
         for scope in self.get_scopes(is_global):
             scope.set_register_value(*args, **kwargs)
 
-    def advance_register_value(self, is_global, type_, i, value):
+    def modify_register_value(self, is_global, type_, i, by_operand,
+                              operation):
         # The in-place arithmetic is a bit strange.
-        # The operand is defined as normal: the most-locally defined register.
-        # But the result should create/update the register in
-        # the strictly local scope.
+        # The register operand is defined as normal: the most-locally defined
+        # register.
+        # But the result should create/update the register in the strictly
+        # local scope.
         # If the operation is \global, the operation is done as above,
         # on the most-local register value; then the strictly-local register
         # value becomes the value for all scopes.
         # That is to say, the \global bit is acted on last.
-        result = self.get_advanced_register_value(type_, i, value)
+        object_operand = self.get_register_value(type_, i)
+        result = operate(object_operand, by_operand, operation)
         self.set_register_value(is_global, type_, i, result)
 
     # Parameters.
@@ -307,6 +319,14 @@ class GlobalState(object):
     def set_parameter(self, is_global, *args, **kwargs):
         for scope in self.get_scopes(is_global):
             scope.set_parameter_value(*args, **kwargs)
+
+    def modify_parameter_value(self, is_global, name, by_operand,
+                               operation):
+        # We assume the same applies for parameters as for registers in
+        # `modify_register_value`.
+        object_operand = self.get_parameter_value(name)
+        result = operate(object_operand, by_operand, operation)
+        self.set_parameter(is_global, name, result)
 
     # Fonts.
 

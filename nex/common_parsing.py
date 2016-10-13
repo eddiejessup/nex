@@ -8,7 +8,8 @@ from .typer import (literal_types, PhysicalUnit,
                     short_hand_def_to_token_map, font_def_token_type,
                     composite_terminal_control_sequence_types,
                     )
-from .tex_parameters import special_quantity_types, parameter_types
+from .special_quantities import special_quantity_types
+from .tex_parameters import parameter_types, glue_keys
 from .registers import register_token_type_to_register_type
 
 from .character_parsing import add_character_productions
@@ -100,7 +101,7 @@ def register_token(p):
 
 def _make_maybe_mu_glue_token(type_, p):
     # Wrap up arguments in a dict.
-    dimens = dict(zip(['dimen', 'stretch', 'shrink'], tuple(p)))
+    dimens = dict(zip(glue_keys, tuple(p)))
     return Token(type_=type_, value=dimens)
 
 
