@@ -125,7 +125,7 @@ class Lexer(object):
         pos_info = {
             'line_nr': self.reader.line_nr,
             'col_nr': self.reader.col_nr,
-            'char_nr': self.reader.i,
+            'char_nr': self.reader.char_nr,
         }
         # logger.debug('Chomped {}_{}'.format(char, cat))
         if cat == CatCode.comment:

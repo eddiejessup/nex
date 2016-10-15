@@ -57,7 +57,7 @@ class PositionToken(BaseToken):
         self.set_position(token.line_nr, token.col_nr, token.char_nr)
 
     def get_position_str(self, reader):
-        cs = reader.chars
+        cs = reader.current_chars
         ci = self.char_nr
 
         bi = max(ci - 10, 0)
@@ -66,6 +66,8 @@ class PositionToken(BaseToken):
         here = cs[ci]
         if here == ' ':
             here = '[_]'
+        if here == '\n':
+            here = '\\n'
         here = colorama.Fore.RED + here + colorama.Style.RESET_ALL
 
         ei = min(ci + 10, len(cs))
@@ -76,7 +78,7 @@ class PositionToken(BaseToken):
             bit = bit.replace('\n', colorama.Fore.GREEN + '\\n' + colorama.Style.RESET_ALL)
             bit = bit.replace('\t', colorama.Fore.GREEN + '\\t' + colorama.Style.RESET_ALL)
             bits[i] = bit
-        intro = 'L {} C {}:'.format(self.line_nr, self.col_nr)
+        intro = 'L:{:04d}C:{:03d}: '.format(self.line_nr, self.col_nr)
         s = intro + bits[0] + here + bits[1]
         return s
 
