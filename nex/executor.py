@@ -618,9 +618,8 @@ class CommandGrabber(object):
                 result = self.parser.parse(iter(parse_queue))
             except ExpectedParsingError:
                 if have_parsed:
-                    # We got so many tokens of fluff due to extra reads,
-                    # to make the parse queue not-parse.
-                    # Put them back on the buffer.
+                    # We got one token of fluff due to extra read, to make the
+                    # parse queue not-parse. So put it back on the buffer.
                     self.buffer_queue.appendleft(parse_queue.pop())
                     break
                 else:
@@ -630,7 +629,7 @@ class CommandGrabber(object):
                 # Carry on getting more tokens, because it seems we can.
                 pass
             else:
-                # Implemented in a modified version of rply, we annotate the
+                # Implemented in our modified version of rply, we annotate the
                 # output token to indicate whether the only action from the
                 # current parse state could be to end. In this case, we do not
                 # bother adding another token, and just finish the command.
@@ -640,5 +639,7 @@ class CommandGrabber(object):
                 if result._could_only_end:
                     break
                 have_parsed = True
+        # We might want to reverse the composition we just did in the parser,
+        # so save the bits in a special place.
         result._terminal_tokens = parse_queue
         return result

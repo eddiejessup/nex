@@ -557,7 +557,7 @@ class Banisher(object):
             # Put the box token on the queue.
             output_tokens.append(first_token)
         # Just some semantic bullshit, stick it on the output queue
-        # for the interpreter to deal with.
+        # for the parser to deal with.
         else:
             output_tokens.append(first_token)
         return output_tokens
