@@ -130,7 +130,7 @@ parameter_type_to_names = {
     'MU_GLUE_PARAMETER': mu_glue_parameter_names,
     'TOKEN_PARAMETER': token_parameter_names,
 }
-parameter_types = parameter_type_to_names.keys()
+parameter_types = tuple(parameter_type_to_names.keys())
 
 
 def is_parameter_type(type_):

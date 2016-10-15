@@ -1,4 +1,4 @@
-from .common import Token, TerminalToken, InternalToken
+from .common import Token, TerminalToken, NonTerminalToken, InternalToken
 from .utils import get_unique_id, NoSuchControlSequence
 from .tex_parameters import parameter_type_to_names
 from .typer import (control_sequence_lex_type, char_cat_lex_type,
@@ -29,7 +29,7 @@ for prim_canon_name, prim_type in primitive_control_sequences_map.items():
     # are tokens that will be consumed by the banisher before the parser
     # sees them.
     is_terminal = prim_canon_name in terminal_primitive_control_sequences_map
-    TokenCls = TerminalToken if is_terminal else InternalToken
+    TokenCls = TerminalToken if is_terminal else NonTerminalToken
     primitive_canon_token = make_control_sequence_call_token(
         TokenCls, prim_type, prim_canon_name)
     primitive_canon_tokens[prim_canon_name] = primitive_canon_token
@@ -168,9 +168,9 @@ class CSRouter(object):
 
         if prefixes is None:
             prefixes = set()
-        macro_token = InternalToken(type_='MACRO',
-                                    value={'prefixes': prefixes,
-                                           'definition': definition_token})
+        macro_token = NonTerminalToken(type_='MACRO',
+                                       value={'prefixes': prefixes,
+                                              'definition': definition_token})
         self.macros[route_id] = macro_token
         return macro_token
 

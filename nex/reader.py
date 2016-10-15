@@ -17,6 +17,10 @@ class Reader(object):
 
     def __init__(self, file_name):
         self.i = -1
+
+        self.line_nr = 0
+        self.col_nr = 0
+
         self.chars = []
         self.append_file(file_name)
 
@@ -48,6 +52,13 @@ class Reader(object):
             raise ValueError('Advancing so far is forbidden')
         if n <= 0:
             raise ValueError('Cannot advance backwards or not at all')
-        self.i += n
+        for _ in range(n):
+            self.i += 1
+            c = self.peek_ahead(0)
+            if c == '\n':
+                self.line_nr += 1
+                self.col_nr = 0
+            else:
+                self.col_nr += 1
         # Check position is valid.
         return self.peek_ahead(0)

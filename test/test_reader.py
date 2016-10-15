@@ -92,3 +92,5 @@ def test_advance():
         r.advance_loc()
         cs.append(r.peek_ahead(0))
     assert cs == test_chars
+
+# TODO: test line and column numbering.

@@ -2,7 +2,7 @@ from collections import namedtuple
 from string import ascii_letters
 from enum import Enum
 
-from .common import TerminalToken, InternalToken
+from .common import UnexpandedToken, InternalToken
 
 
 cat_codes = [
@@ -202,34 +202,33 @@ def get_char_cat_pair_terminal_type(char_cat_pair_token):
     return terminal_token_type
 
 
-def make_char_cat_pair_terminal_token(char_cat_pair_token):
+def make_char_cat_pair_unexpanded_token(char_cat_pair_token):
     terminal_token_type = get_char_cat_pair_terminal_type(char_cat_pair_token)
     value = char_cat_pair_token.value
     value['lex_type'] = char_cat_pair_token.type
-    terminal_token = TerminalToken(type_=terminal_token_type,
-                                   value=value)
-    return terminal_token
+    token = UnexpandedToken(type_=terminal_token_type, value=value)
+    return token
 
 
-def make_unexpanded_control_sequence_terminal_token(name):
+def make_control_sequence_unexpanded_token(name):
     type_ = (unexpanded_one_char_cs_type if len(name) == 1
              else unexpanded_cs_type)
     # Convert to a primitive unexpanded control sequence.
     value = {'name': name, 'lex_type': control_sequence_lex_type}
-    terminal_token = TerminalToken(type_=type_, value=value)
-    return terminal_token
+    token = UnexpandedToken(type_=type_, value=value)
+    return token
 
 
-def lex_token_to_unexpanded_terminal_token(lex_token):
+def lex_token_to_unexpanded_token(lex_token):
     # If we have a char-cat pair, we must type it to its terminal version,
     if lex_token.type == char_cat_lex_type:
-        terminal_token = make_char_cat_pair_terminal_token(lex_token)
+        unexpanded_token = make_char_cat_pair_unexpanded_token(lex_token)
     elif lex_token.type == control_sequence_lex_type:
         name = lex_token.value
-        terminal_token = make_unexpanded_control_sequence_terminal_token(name)
+        unexpanded_token = make_control_sequence_unexpanded_token(name)
     elif isinstance(lex_token, InternalToken):
-        terminal_token = lex_token
-    return terminal_token
+        unexpanded_token = lex_token
+    return unexpanded_token
 
 
 terminal_primitive_control_sequences_map = {
@@ -408,3 +407,15 @@ composite_terminal_control_sequence_types = (
     'HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE',
     'VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE',
 )
+terminal_primitive_control_sequences_map
+
+
+# TODO: Move some tokens to only be in main parser
+terminal_token_types = tuple(terminal_primitive_control_sequences_map.values())
+terminal_token_types += tuple(short_hand_def_to_token_map.values())
+terminal_token_types += (font_def_token_type,)
+terminal_token_types += tuple(literal_types)
+terminal_token_types += (unexpanded_token_type,)
+terminal_token_types += tuple(unexpanded_cs_types)
+terminal_token_types += tuple(composite_terminal_control_sequence_types)
+terminal_token_types = tuple(set(terminal_token_types))

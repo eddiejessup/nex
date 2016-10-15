@@ -2,13 +2,13 @@ import logging
 from collections import deque
 from enum import Enum
 
-from .common import TerminalToken
-from .lexer import make_char_cat_token, is_control_sequence_call
+from .common import TerminalToken, NonTerminalToken, UnexpandedToken
+from .lexer import make_char_cat_lex_token, is_control_sequence_call
 from .parser import parser
 from .typer import (CatCode,
                     char_cat_lex_type, control_sequence_lex_type,
-                    lex_token_to_unexpanded_terminal_token,
-                    make_unexpanded_control_sequence_terminal_token,
+                    lex_token_to_unexpanded_token,
+                    make_control_sequence_unexpanded_token,
                     unexpanded_cs_types, unexpanded_token_type,
                     explicit_box_map,
                     short_hand_def_map, def_map, if_map,
@@ -65,10 +65,10 @@ expanding_context_modes = (
 expanding_context_modes += awaiting_make_box_context_modes
 
 
-def make_char_cat_term_token(char, cat):
-    char_lex_token = make_char_cat_token(char, cat)
-    char_term_token = lex_token_to_unexpanded_terminal_token(char_lex_token)
-    return char_term_token
+def make_char_cat_unexpanded_token(char, cat):
+    char_lex_token = make_char_cat_lex_token(char, cat)
+    char_unexpanded_token = lex_token_to_unexpanded_token(char_lex_token)
+    return char_unexpanded_token
 
 
 def get_brace_sign(token):
@@ -117,8 +117,8 @@ class Banisher(object):
 
     def populate_input_queue(self):
         new_lex_token = self._next_lex_token
-        terminal_token = lex_token_to_unexpanded_terminal_token(new_lex_token)
-        self.input_tokens_queue.append(terminal_token)
+        unexpanded_token = lex_token_to_unexpanded_token(new_lex_token)
+        self.input_tokens_queue.append(unexpanded_token)
 
     def pop_next_input_token(self):
         if not self.input_tokens_queue:
@@ -157,8 +157,8 @@ class Banisher(object):
         escape_char_code = self.global_state.get_parameter_value('escapechar')
         if escape_char_code >= 0:
             escape_char = chr(escape_char_code)
-            escape_char_token = make_char_cat_term_token(escape_char,
-                                                         CatCode.other)
+            escape_char_token = make_char_cat_unexpanded_token(escape_char,
+                                                               CatCode.other)
             return escape_char_token
         else:
             return None
@@ -184,25 +184,15 @@ class Banisher(object):
     def _process_input_token(self, first_token):
         output_tokens = deque()
 
-        # To reduce my own confusion:
-        # a primitive token is one that is not a lex token. But it might not be
-        # a terminal token either, if it needs combining with other tokens
-        # to make a terminal token. For instance, a primitive token might be a
-        # \def that needs combining with the rest of its bits to make a
-        # DEFINITION terminal token.
-        # But I might blur the line between these two sometimes.
-
-        # If the token is a control sequence call, then we must check if it is
-        # a user control sequence. If it is, then we expand it. If it isn't, we
-        # will 'type' it into a primitive sequence. NOT like macro expansion,
-        # because it happens in the same call. This is important, because sometimes
-        # we are only expanding once, not recursively, so it is important what
-        # one expansion call does.
+        # If the token is an unexpanded control sequence call, then we must
+        # normalize it.
+        # - A user control sequence will become a (non-terminal) macro token.
+        # - A \let character will become the (terminal) character token.
+        # - A primitive control sequence will become a terminal token.
         if (self.expanding_control_sequences and
                 first_token.type in unexpanded_cs_types):
             first_token = self.global_state.resolve_control_sequence_to_token(first_token.value['name'])
         type_ = first_token.type
-
         if type_ == 'MACRO':
             macro_definition = first_token.value['definition']
             name = macro_definition.value['name']
@@ -486,9 +476,11 @@ class Banisher(object):
             else:
                 char = next_token.value['char']
                 chars = [char]
-            char_term_tokens = [make_char_cat_term_token(c, CatCode.other)
-                                for c in chars]
-            string_tokens += char_term_tokens
+            char_unexpanded_tokens = [
+                make_char_cat_unexpanded_token(c, CatCode.other)
+                for c in chars
+            ]
+            string_tokens += char_unexpanded_tokens
             self.input_tokens_queue.extendleft(reversed(string_tokens))
         elif type_ == 'CS_NAME':
             cs_name_tokens = []
@@ -501,7 +493,7 @@ class Banisher(object):
                 cs_name_tokens.append(t)
             chars = [tok.value['char'] for tok in cs_name_tokens]
             cs_name = ''.join(chars)
-            cs_token = make_unexpanded_control_sequence_terminal_token(cs_name)
+            cs_token = make_control_sequence_unexpanded_token(cs_name)
             # If we expanded such that we got tokens past 'endcsname',
             # put them back on the input queue.
             self.input_tokens_queue.extendleft(reversed(cs_name_queue))
@@ -513,9 +505,8 @@ class Banisher(object):
                 output_tokens.append(escape_char_token)
         elif type_ in ('UPPER_CASE', 'LOWER_CASE'):
             # TODO: This is wrong. Need to expand tokens between this command
-            # and the left brace. Probably need to push two contexts; one to
-            # get a balanced text token; and one to indicate what to do with
-            # it when it's got.
+            # and the left brace. Parse filler manually so we don't need the
+            # general_text_parser.
             case_tokens = []
             while True:
                 t = self.pop_next_input_token()
@@ -542,10 +533,8 @@ class Banisher(object):
                     if cased_char == chr(0):
                         cased_char = un_cased_char
                     # Note that the category code is not changed.
-                    cased_lex_tok = make_char_cat_token(char=cased_char,
-                                                        cat=un_cased_tok.value['cat'])
-                    cased_tok = lex_token_to_unexpanded_terminal_token(cased_lex_tok)
-                    return cased_tok
+                    cat = un_cased_tok.value['cat']
+                    return make_char_cat_unexpanded_token(cased_char, cat)
                 else:
                     return un_cased_tok
 

@@ -1,38 +1,23 @@
 from .rply import ParserGenerator
 
 from .common import Token
-
-from .typer import (literal_types, PhysicalUnit,
-                    unexpanded_cs_types, unexpanded_token_type,
-                    terminal_primitive_control_sequences_map,
-                    short_hand_def_to_token_map, font_def_token_type,
-                    composite_terminal_control_sequence_types,
-                    )
+from .typer import PhysicalUnit, terminal_token_types
 from .special_quantities import special_quantity_types
 from .tex_parameters import parameter_types, glue_keys
 from .registers import register_token_type_to_register_type
 
 from .character_parsing import add_character_productions
 
-tokens = ()
-tokens += tuple(terminal_primitive_control_sequences_map.values())
-tokens += tuple(short_hand_def_to_token_map.values())
-tokens += (font_def_token_type,)
-tokens += tuple(parameter_types)
-tokens += special_quantity_types
-tokens += tuple(literal_types)
-tokens += (unexpanded_token_type,)
-tokens += tuple(unexpanded_cs_types)
-tokens += tuple(composite_terminal_control_sequence_types)
-tokens = tuple(set(tokens))
+
+terminal_token_types += parameter_types
+terminal_token_types += special_quantity_types
 
 prec = (
     ('left', 'SPACE'),
-    # ('left', 'UNEXPANDED_CONTROL_SEQUENCE'),
 )
 
 
-pg = ParserGenerator(tokens,
+pg = ParserGenerator(terminal_token_types,
                      precedence=prec,
                      cache_id="changeme")
 

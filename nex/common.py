@@ -10,13 +10,14 @@ class Token(RToken):
         self.type = type_
         self.value = value
         self.lineno = line_nr
-        self.lexpos = col_nr
+        self.col_nr = col_nr
+        self.lexpos = None
 
     def gettokentype(self):
         return self.type
 
-    # def getsourcepos(self):
-    #     return None
+    def getsourcepos(self):
+        return None
 
     def __repr__(self):
         return "<%s: %r %r>" % (self.__class__.__name__, self.type, self.value)
@@ -40,6 +41,21 @@ class Token(RToken):
             if self.value[k] != other.value[k]:
                 return False
         return True
+
+
+class LexToken(Token):
+
+    pass
+
+
+class UnexpandedToken(Token):
+
+    pass
+
+
+class NonTerminalToken(Token):
+
+    pass
 
 
 class TerminalToken(Token):
