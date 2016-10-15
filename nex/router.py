@@ -1,4 +1,4 @@
-from .common import Token, TerminalToken, NonTerminalToken, InternalToken
+from .common import BuiltToken, TerminalToken, NonTerminalToken, InternalToken
 from .utils import get_unique_id, NoSuchControlSequence
 from .tex_parameters import parameter_type_to_names
 from .typer import (control_sequence_lex_type, char_cat_lex_type,
@@ -9,12 +9,12 @@ from .typer import (control_sequence_lex_type, char_cat_lex_type,
 
 
 def make_simple_definition_token(name, tokens):
-    def_text_token = Token(type_='definition_text',
-                           value={'parameter_text': [],
-                                  'replacement_text': tokens})
-    def_token = Token(type_='definition',
-                      value={'name': name,
-                             'text': def_text_token})
+    def_text_token = BuiltToken(type_='definition_text',
+                                value={'parameter_text': [],
+                                       'replacement_text': tokens})
+    def_token = BuiltToken(type_='definition',
+                           value={'name': name,
+                                  'text': def_text_token})
     return def_token
 
 

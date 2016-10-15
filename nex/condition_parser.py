@@ -1,5 +1,5 @@
 from .typer import if_map
-from .common import Token
+from .common import BuiltToken
 from .common_parsing import pg as common_pg
 from .parse_utils import (ExpectedParsingError, ExhaustedTokensError,
                           is_end_token)
@@ -12,31 +12,31 @@ pg.tokens += tuple(if_map.values())
 
 @pg.production('condition_wrap : condition')
 def condition_wrap(p):
-    return Token(type_='condition', value=p[0])
+    return BuiltToken(type_='condition', value=p[0])
 
 
 @pg.production('condition : IF_TRUE')
 def condition_if_true(p):
-    return Token(type_='if_true', value=None)
+    return BuiltToken(type_='if_true', value=None)
 
 
 @pg.production('condition : IF_FALSE')
 def condition_if_false(p):
-    return Token(type_='if_false', value=None)
+    return BuiltToken(type_='if_false', value=None)
 
 
 @pg.production('condition : IF_NUM number relation number')
 def condition_if_num(p):
-    return Token(type_='if_num',
-                 value={'left_number': p[1],
-                        'right_number': p[3],
-                        'relation': p[2]})
+    return BuiltToken(type_='if_num',
+                      value={'left_number': p[1],
+                             'right_number': p[3],
+                             'relation': p[2]})
 
 
 @pg.production('condition : IF_CASE number')
 def condition_if_case(p):
-    return Token(type_='if_case',
-                 value={'number': p[1]})
+    return BuiltToken(type_='if_case',
+                      value={'number': p[1]})
 
 
 @pg.production('relation : LESS_THAN')

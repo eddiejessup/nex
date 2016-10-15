@@ -1,4 +1,4 @@
-from .common import Token
+from .common import BuiltToken
 from .typer import (PhysicalUnit, MuUnit, InternalUnit,
                     non_active_literals_map, hex_letters_map)
 
@@ -52,7 +52,7 @@ def wrap(pg, func, rule):
 def add_character_productions(pg):
 
     def character(p):
-        return Token(type_='character', value=p[0].value)
+        return BuiltToken(type_='character', value=p[0].value)
     for char_type in normal_char_types:
         rule = 'character : {}'.format(char_type)
         character = wrap(pg, character, rule)

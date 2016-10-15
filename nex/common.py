@@ -59,6 +59,11 @@ class Token(object):
         return True
 
 
+class BuiltToken(Token):
+
+    pass
+
+
 class LexToken(Token):
 
     def __init__(self, type_, value, line_nr=None, col_nr=None):

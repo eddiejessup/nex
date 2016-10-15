@@ -1,6 +1,6 @@
 import logging
 
-from .common import Token
+from .common import BuiltToken
 from .expander import parse_replacement_text
 from .fonts import FontRange
 from .common_parsing import pg as common_pg
@@ -49,16 +49,17 @@ def immediate_write(p):
 @pg.production('write : WRITE number general_text')
 def write(p):
     # TODO: Implement.
-    return Token(type_='write',
-                 value={'stream_number': p[1], 'content': p[2], 'prefix': None})
+    return BuiltToken(type_='write',
+                      value={'stream_number': p[1], 'content': p[2],
+                             'prefix': None})
 
 
 @pg.production('message : ERROR_MESSAGE general_text')
 @pg.production('message : MESSAGE general_text')
 def message(p):
     # TODO: Implement.
-    return Token(type_='message',
-                 value={'content': p[1]})
+    return BuiltToken(type_='message',
+                      value={'content': p[1]})
 
 
 pg.add_recent_productions(gen_txt_pg)
@@ -91,18 +92,18 @@ def prefix(p):
 
 @pg.production('macro_assignment : definition')
 def macro_assignment(p):
-    macro_token = Token(type_='macro_assignment',
-                        value={'prefixes': set(),
-                               'definition': p[0]})
+    macro_token = BuiltToken(type_='macro_assignment',
+                             value={'prefixes': set(),
+                                    'definition': p[0]})
     return macro_token
 
 
 @pg.production('definition : def control_sequence definition_text')
 def definition(p):
-    def_token = Token(type_='definition',
-                      value={'def_type': p[0],
-                             'name': p[1].value['name'],
-                             'text': p[2]})
+    def_token = BuiltToken(type_='definition',
+                           value={'def_type': p[0],
+                                  'name': p[1].value['name'],
+                                  'text': p[2]})
     return def_token
 
 
@@ -119,9 +120,9 @@ def def_(p):
 def definition_text(p):
     # TODO: maybe move this parsing logic to inside the Expander.
     replacement_text = parse_replacement_text(p[2].value)
-    def_text_token = Token(type_='definition_text',
-                           value={'parameter_text': p[0].value,
-                                  'replacement_text': replacement_text})
+    def_text_token = BuiltToken(type_='definition_text',
+                                value={'parameter_text': p[0].value,
+                                       'replacement_text': replacement_text})
     return def_text_token
 
 
@@ -169,8 +170,8 @@ def simple_assignment(p):
 
 @pg.production('font_selection : FONT_DEF_TOKEN')
 def simple_assignment_font_selection(p):
-    return Token(type_='font_selection',
-                 value={'font_id': p[0].value})
+    return BuiltToken(type_='font_selection',
+                      value={'font_id': p[0].value})
 
 
 # Start of 'variable assignment', a simple assignment.
@@ -178,14 +179,14 @@ def simple_assignment_font_selection(p):
 @pg.production('variable_assignment : partial_variable_assignment')
 def variable_assignment(p):
     variable, value = p[0]
-    return Token(type_='variable_assignment',
-                 value={'variable': variable, 'value': value})
+    return BuiltToken(type_='variable_assignment',
+                      value={'variable': variable, 'value': value})
 
 
 @pg.production('partial_variable_assignment : token_variable equals general_text')
 @pg.production('partial_variable_assignment : token_variable equals filler token_variable')
 def partial_variable_assignment_token_variable(p):
-    value = Token(type_='token_list', value=p[-1])
+    value = BuiltToken(type_='token_list', value=p[-1])
     return [p[0], value]
 
 
@@ -207,8 +208,8 @@ def arithmetic_integer_variable(p):
     # TODO: Allow arithmetic on parameters.
     # TODO: Allow multiply and divide operations.
     # TODO: Allow arithmetic on dimen, glue and muglue.
-    return Token(type_='advance',
-                 value={'variable': p[1], 'value': p[3]})
+    return BuiltToken(type_='advance',
+                      value={'variable': p[1], 'value': p[3]})
 
 
 @pg.production('optional_by : by')
@@ -224,8 +225,8 @@ def optional_by(p):
 
 @pg.production('code_assignment : code_name number equals number')
 def code_assignment(p):
-    return Token(type_='code_assignment',
-                 value={'code_type': p[0], 'char': p[1], 'code': p[3]})
+    return BuiltToken(type_='code_assignment',
+                      value={'code_type': p[0], 'char': p[1], 'code': p[3]})
 
 
 @pg.production('code_name : CAT_CODE')
@@ -247,8 +248,8 @@ def code_name_cat(p):
 def let_assignment_control_sequence(p):
     target_token = p[4].value
     new_name = p[1].value['name']
-    return Token(type_='let_assignment',
-                 value={'name': new_name, 'target_token': target_token})
+    return BuiltToken(type_='let_assignment',
+                      value={'name': new_name, 'target_token': target_token})
 
 
 # End of 'let assignment', a simple assignment.
@@ -261,9 +262,9 @@ def short_hand_definition(p):
     code = p[3]
     def_type = p[0].type
     control_sequence_name = p[1].value['name']
-    return Token(type_='short_hand_definition',
-                 value={'code': code, 'def_type': def_type,
-                        'control_sequence_name': control_sequence_name})
+    return BuiltToken(type_='short_hand_definition',
+                      value={'code': code, 'def_type': def_type,
+                             'control_sequence_name': control_sequence_name})
 
 
 @pg.production('short_hand_def : CHAR_DEF')
@@ -288,14 +289,14 @@ def family_assignment(p):
     font_id = p[2].value
     font_range = p[0].type
     family_nr = p[0].value
-    return Token(type_='family_assignment',
-                 value={'family_nr': family_nr, 'font_range': font_range,
-                        'font_id': font_id})
+    return BuiltToken(type_='family_assignment',
+                      value={'family_nr': family_nr, 'font_range': font_range,
+                             'font_id': font_id})
 
 
 @pg.production('family_member : font_range number')
 def family_member(p):
-    return Token(type_=p[0], value=p[1])
+    return BuiltToken(type_=p[0], value=p[1])
 
 
 @pg.production('font_range : TEXT_FONT')
@@ -312,8 +313,8 @@ def font_range(p):
 
 @pg.production('set_box_assignment : SET_BOX number equals filler box')
 def set_box_assignment(p):
-    return Token(type_='set_box_assignment',
-                 value={'nr': p[1], 'contents': p[4]})
+    return BuiltToken(type_='set_box_assignment',
+                      value={'nr': p[1], 'contents': p[4]})
 
 
 # @pg.production('box : BOX number')
@@ -324,18 +325,18 @@ def set_box_assignment(p):
 # @pg.production('box : V_BOX box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
 # @pg.production('box : V_TOP box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
 def box(p):
-    return Token(type_='h_box',
+    return BuiltToken(type_='h_box',
                  value={'specification': p[1], 'contents': p[3]})
 
 
 @pg.production('box_specification : to dimen filler')
 def box_specification_to(p):
-    return Token(type_='to', value=p[1])
+    return BuiltToken(type_='to', value=p[1])
 
 
 @pg.production('box_specification : spread dimen filler')
 def box_specification_spread(p):
-    return Token(type_='spread', value=p[1])
+    return BuiltToken(type_='spread', value=p[1])
 
 
 @pg.production('box_specification : filler')
@@ -351,19 +352,19 @@ def box_specification_empty(p):
 @pg.production('font_definition : FONT control_sequence equals optional_spaces file_name filler at_clause')
 def font_definition(p):
     control_sequence_name = p[1].value['name']
-    return Token(type_='font_definition',
-                 value={'file_name': p[4], 'at_clause': p[6],
-                        'control_sequence_name': control_sequence_name})
+    return BuiltToken(type_='font_definition',
+                      value={'file_name': p[4], 'at_clause': p[6],
+                             'control_sequence_name': control_sequence_name})
 
 
 @pg.production('at_clause : at dimen')
 def at_clause_dimen(p):
-    return Token(type_='at_dimen', value=p[1])
+    return BuiltToken(type_='at_dimen', value=p[1])
 
 
 @pg.production('at_clause : scaled number')
 def at_clause_scaled(p):
-    return Token(type_='scaled_number', value=p[1])
+    return BuiltToken(type_='scaled_number', value=p[1])
 
 
 @pg.production('at_clause : optional_spaces')
@@ -395,8 +396,8 @@ def font_assignment(p):
     # productions?
     font_id = p[1].value
     type_ = '{}_assignment'.format(p[0].type.lower())
-    return Token(type_=type_,
-                 value={'font_id': font_id, 'code': p[3]})
+    return BuiltToken(type_=type_,
+                      value={'font_id': font_id, 'code': p[3]})
 
 
 @pg.production('font : FONT_DEF_TOKEN')
@@ -409,7 +410,7 @@ def font(p):
 @pg.production('hyphenation_assignment : HYPHENATION general_text')
 @pg.production('hyphenation_assignment : PATTERNS general_text')
 def hyphenation_assignment(p):
-    return Token(type_=p[0].type, value={'content': p[1]})
+    return BuiltToken(type_=p[0].type, value={'content': p[1]})
 
 
 # End of 'global assignment', a simple assignment.
@@ -425,7 +426,7 @@ def hyphenation_assignment(p):
 @pg.production('add_kern : MATH_KERN mu_dimen')
 def add_kern(p):
     # TODO: Implement.
-    return Token(type_=p[0].type, value=p[1])
+    return BuiltToken(type_=p[0].type, value=p[1])
 
 
 @pg.production('add_glue : H_FIL')
@@ -438,21 +439,21 @@ def add_kern(p):
 @pg.production('add_glue : V_FIL_NEG')
 def add_special_glue(p):
     # TODO: Implement.
-    return Token(type_=p[0].type, value=None)
+    return BuiltToken(type_=p[0].type, value=None)
 
 
 @pg.production('add_glue : H_SKIP glue')
 @pg.production('add_glue : V_SKIP glue')
 def add_glue(p):
     # TODO: Implement.
-    return Token(type_=p[0].type, value=p[1])
+    return BuiltToken(type_=p[0].type, value=p[1])
 
 
 @pg.production('vertical_rule : V_RULE rule_specification')
 @pg.production('horizontal_rule : H_RULE rule_specification')
 def rule(p):
     # TODO: Implement.
-    return Token(type_=p[0].type, value=p[1].value)
+    return BuiltToken(type_=p[0].type, value=p[1].value)
 
 
 @pg.production('rule_specification : rule_dimension rule_specification')
@@ -468,7 +469,7 @@ def rule_specification(p):
 @pg.production('rule_specification : optional_spaces')
 def rule_specification_empty(p):
     dims = {'width': None, 'height': None, 'depth': None}
-    return Token(type_='rule_specification', value=dims)
+    return BuiltToken(type_='rule_specification', value=dims)
 
 
 # TODO: these literals are getting unclear. Introduce some convention to make
@@ -477,14 +478,14 @@ def rule_specification_empty(p):
 @pg.production('rule_dimension : height dimen')
 @pg.production('rule_dimension : depth dimen')
 def rule_dimension(p):
-    return Token(type_='rule_dimension',
-                 value={'axis': p[0], 'dimen': p[1]})
+    return BuiltToken(type_='rule_dimension',
+                      value={'axis': p[0], 'dimen': p[1]})
 
 
 @pg.production('input : INPUT file_name')
 def input_file(p):
-    return Token(type_='input',
-                 value={'file_name': p[1]})
+    return BuiltToken(type_='input',
+                      value={'file_name': p[1]})
 
 
 @pg.production('file_name : character')
@@ -498,14 +499,14 @@ def file_name(p):
 
 @pg.production('char : CHAR number')
 def char(p):
-    return Token(type_='char', value={'code': p[1]})
+    return BuiltToken(type_='char', value={'code': p[1]})
 
 
 # TODO: I wonder if I could make a decorator to make a token of the correct
 # type based on the production rule. Then I just have to return a dict.
 @pg.production('un_box : un_box_type number')
 def un_box(p):
-    return Token(type_=p[0], value={'nr': p[1]})
+    return BuiltToken(type_=p[0], value={'nr': p[1]})
 
 
 @pg.production('un_box_type : UN_H_BOX')

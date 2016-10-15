@@ -1,6 +1,6 @@
 from .rply import ParserGenerator
 
-from .common import Token
+from .common import BuiltToken
 from .typer import PhysicalUnit, terminal_token_types
 from .special_quantities import special_quantity_types
 from .tex_parameters import parameter_types, glue_keys
@@ -71,7 +71,7 @@ def quantity_variable_parameter(p):
 @pg.production('dimen_register : DIMEN number')
 @pg.production('count_register : COUNT number')
 def register_explicit(p):
-    return Token(type_=p[0].type, value=p[1].value['size'])
+    return BuiltToken(type_=p[0].type, value=p[1].value['size'])
 
 
 @pg.production('token_register : TOKS_DEF_TOKEN')
@@ -81,13 +81,13 @@ def register_explicit(p):
 @pg.production('count_register : COUNT_DEF_TOKEN')
 def register_token(p):
     type_ = register_token_type_to_register_type(p[0].type)
-    return Token(type_=type_, value=p[0].value)
+    return BuiltToken(type_=type_, value=p[0].value)
 
 
 def _make_maybe_mu_glue_token(type_, p):
     # Wrap up arguments in a dict.
     dimens = dict(zip(glue_keys, tuple(p)))
-    return Token(type_=type_, value=dimens)
+    return BuiltToken(type_=type_, value=dimens)
 
 
 @pg.production('mu_glue : mu_dimen mu_stretch mu_shrink')
@@ -117,15 +117,16 @@ def stretch_or_shrink_non_stated(p):
 @pg.production('mu_stretch : optional_spaces')
 @pg.production('mu_shrink : optional_spaces')
 def stretch_or_shrink_omitted(p):
-    return Token(type_='dimen',
-                 value={'sign': '+', 'size': Token(type_='size', value=0)})
+    return BuiltToken(type_='dimen',
+                      value={'sign': '+',
+                             'size': BuiltToken(type_='size', value=0)})
 
 
 @pg.production('fil_dimen : optional_signs factor fil_unit optional_spaces')
 def fil_dimen(p):
-    size_token = Token(type_='fil_size',
-                       value={'factor': p[1], 'unit': p[2]})
-    return Token(type_='dimen', value={'sign': p[0], 'size': size_token})
+    size_token = BuiltToken(type_='fil_size',
+                            value={'factor': p[1], 'unit': p[2]})
+    return BuiltToken(type_='dimen', value={'sign': p[0], 'size': size_token})
 
 
 @pg.production('fil_unit : fil_unit NON_ACTIVE_UNCASED_l')
@@ -147,7 +148,7 @@ def fil_unit(p):
 
 def _make_quantity_token(type_, p):
     '''Small helper to avoid repetition.'''
-    return Token(type_=type_, value={'sign': p[0], 'size': p[1]})
+    return BuiltToken(type_=type_, value={'sign': p[0], 'size': p[1]})
 
 
 @pg.production('mu_dimen : optional_signs unsigned_mu_dimen')
@@ -257,7 +258,7 @@ def internal_quantity_parameter(p):
 @pg.production('internal_dimen : box_dimension number')
 def internal_dimen_box_dimension(p):
     # TODO: Implement this.
-    return Token(type_='box_dimen', value=1)
+    return BuiltToken(type_='box_dimen', value=1)
 
 
 @pg.production('box_dimension : BOX_DIMEN_HEIGHT')
@@ -274,14 +275,14 @@ def normal_integer_integer(p):
 
 @pg.production('normal_mu_dimen : factor mu_unit')
 def normal_mu_dimen_explicit(p):
-    return Token(type_='normal_mu_dimen',
-                 value={'factor': p[0], 'unit': p[1]})
+    return BuiltToken(type_='normal_mu_dimen',
+                      value={'factor': p[0], 'unit': p[1]})
 
 
 @pg.production('normal_dimen : factor unit_of_measure')
 def normal_dimen_explicit(p):
-    return Token(type_='normal_dimen',
-                 value={'factor': p[0], 'unit': p[1]})
+    return BuiltToken(type_='normal_dimen',
+                      value={'factor': p[0], 'unit': p[1]})
 
 
 @pg.production('factor : normal_integer')
@@ -353,7 +354,7 @@ def normal_integer_weird_base(p):
 
 @pg.production('normal_integer : BACKTICK character_token one_optional_space')
 def normal_integer_character(p):
-    return Token(type_='backtick_integer', value=p[1])
+    return BuiltToken(type_='backtick_integer', value=p[1])
 
 
 @pg.production('character_token : UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE')

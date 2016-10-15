@@ -1,7 +1,7 @@
 from collections import deque
 import operator
 
-from .common import Token, TerminalToken
+from .common import BuiltToken, TerminalToken
 from .utils import NoSuchControlSequence, ExecuteCommandError
 from .parse_utils import ExpectedParsingError, ExhaustedTokensError
 from .reader import EndOfFile
@@ -37,7 +37,7 @@ def evaluate_size(state, size_token):
             return state.get_parameter_value(size_token.value['name'])
         else:
             import pdb; pdb.set_trace()
-    elif isinstance(size_token, Token):
+    elif isinstance(size_token, BuiltToken):
         if size_token.type == 'backtick_integer':
             unexpanded_token = size_token.value
             if unexpanded_token.type == 'UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE':
@@ -89,9 +89,11 @@ def evaluate_dimen(state, dimen_token):
     if unit == PhysicalUnit.fil:
         if 'number_of_fils' not in unit_token:
             import pdb; pdb.set_trace()
-        return Token(type_='fil_dimension',
-                     value={'factor': number_of_units,
-                            'number_of_fils': unit_token['number_of_fils']})
+        return BuiltToken(
+            type_='fil_dimension',
+            value={'factor': number_of_units,
+                   'number_of_fils': unit_token['number_of_fils']}
+        )
     # Only one unit in mu units, a mu. I don't know what a mu is though...
     elif unit in MuUnit:
         number_of_scaled_points = number_of_units
@@ -247,8 +249,8 @@ def execute_command(command, state, banisher, reader):
             font = state.current_font
             # import pdb; pdb.set_trace()
             space_glue_item = UnSetGlue(dimen=font.spacing,
-                                   stretch=font.space_stretch,
-                                   shrink=font.space_shrink)
+                                        stretch=font.space_stretch,
+                                        shrink=font.space_shrink)
             state.append_to_list(space_glue_item)
         else:
             import pdb; pdb.set_trace()
