@@ -2,7 +2,7 @@ from collections import namedtuple
 from string import ascii_letters
 from enum import Enum
 
-from .common import UnexpandedToken, InternalToken
+from .common import UnexpandedToken, InternalToken, TerminalToken
 
 
 cat_codes = [
@@ -206,7 +206,7 @@ def make_char_cat_pair_unexpanded_token(char_cat_pair_token):
     terminal_token_type = get_char_cat_pair_terminal_type(char_cat_pair_token)
     value = char_cat_pair_token.value
     value['lex_type'] = char_cat_pair_token.type
-    token = UnexpandedToken(type_=terminal_token_type, value=value)
+    token = TerminalToken(type_=terminal_token_type, value=value)
     return token
 
 
@@ -395,7 +395,9 @@ if_map = {
     'iffalse': 'IF_FALSE',
     'ifcase': 'IF_CASE',
 }
-non_terminal_primitive_control_sequences_map.update(if_map)
+# Complicated, because to a condition_parser they are terminal, but not to any
+# other.
+terminal_primitive_control_sequences_map.update(if_map)
 
 primitive_control_sequences_map = dict(**terminal_primitive_control_sequences_map,
                                        **non_terminal_primitive_control_sequences_map)

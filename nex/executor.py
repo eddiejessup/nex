@@ -1,7 +1,7 @@
 from collections import deque
 import operator
 
-from .common import Token
+from .common import Token, TerminalToken
 from .utils import NoSuchControlSequence, ExecuteCommandError
 from .parse_utils import ExpectedParsingError, ExhaustedTokensError
 from .reader import EndOfFile
@@ -32,7 +32,12 @@ class EndOfSubExecutor(Exception):
 
 
 def evaluate_size(state, size_token):
-    if isinstance(size_token, Token):
+    if isinstance(size_token, TerminalToken):
+        if is_parameter_type(size_token.type):
+            return state.get_parameter_value(size_token.value['name'])
+        else:
+            import pdb; pdb.set_trace()
+    elif isinstance(size_token, Token):
         if size_token.type == 'backtick_integer':
             unexpanded_token = size_token.value
             if unexpanded_token.type == 'UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE':
@@ -52,8 +57,6 @@ def evaluate_size(state, size_token):
             if size_token.type == 'SKIP':
                 import pdb; pdb.set_trace()
             return v
-        elif is_parameter_type(size_token.type):
-            return state.get_parameter_value(size_token.value['name'])
         else:
             import pdb; pdb.set_trace()
     else:
@@ -606,6 +609,8 @@ class CommandGrabber(object):
             except Exception as e:
                 import pdb; pdb.set_trace()
                 raise
+            if not isinstance(t, TerminalToken):
+                import pdb; pdb.set_trace()
             parse_queue.append(t)
             try:
                 result = self.parser.parse(iter(parse_queue))

@@ -71,6 +71,10 @@ def make_char_cat_unexpanded_token(char, cat):
     return char_unexpanded_token
 
 
+def terminise_unexpanded_cs_token(unexpanded_tok):
+    return TerminalToken(type_=unexpanded_tok.type, value=unexpanded_tok.value)
+
+
 def get_brace_sign(token):
     if token.type == 'LEFT_BRACE':
         return 1
@@ -125,6 +129,9 @@ class Banisher(object):
             self.populate_input_queue()
         return self.input_tokens_queue.popleft()
 
+    def pop_next_input_token_as_term_cs(self):
+        return terminise_unexpanded_cs_token(self.pop_next_input_token())
+
     def get_balanced_text_token(self):
         tokens = []
         brace_level = 1
@@ -164,8 +171,6 @@ class Banisher(object):
             return None
 
     def process_next_input_token(self):
-        # A terminal token is simply a token that is accepted by the parser.
-        # Might be a lex token, a primitive token or a terminal token.
         first_token = self.pop_next_input_token()
         try:
             output_tokens = self._process_input_token(first_token)
@@ -344,16 +349,19 @@ class Banisher(object):
             material = TerminalToken(type_=material_type, value=layout_list)
             output_tokens.append(material)
         elif type_ in read_unexpanded_control_sequence_types:
-            # Get an unexpanded control sequence token and add it to the
-            # output queue, along with the first token.
-            next_token = self.pop_next_input_token()
-            output_tokens.append(first_token)
-            output_tokens.append(next_token)
+            # Get an unexpanded control sequence terminal token and add it to the
+            # output queue.
+            next_term_token = self.pop_next_input_token_as_term_cs()
+            # Along with the first token, turned into a terminal token.
+            term_first_token = terminise_unexpanded_cs_token(first_token)
+            output_tokens.append(term_first_token)
+            output_tokens.append(next_term_token)
             if type_ in def_map.values():
                 parameter_text_tokens = []
                 while True:
                     tok = self.pop_next_input_token()
                     if tok.type == 'LEFT_BRACE':
+                        left_brace_tok = tok
                         break
                     parameter_text_tokens.append(tok)
                 parameters = parse_parameter_text(parameter_text_tokens)
@@ -365,7 +373,7 @@ class Banisher(object):
                 balanced_text_token = self.get_balanced_text_token()
                 # Put the parameter text, LEFT_BRACE and replacement
                 # text on the output queue.
-                output_tokens.extend([parameters_token, tok,
+                output_tokens.extend([parameters_token, left_brace_tok,
                                       balanced_text_token])
             elif type_ == 'LET':
                 # We are going to parse the arguments of LET ourselves,
