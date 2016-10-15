@@ -174,9 +174,9 @@ category_map = {
 
 
 unexpanded_token_type = 'UNEXPANDED_TOKEN'
-unexpanded_cs_type = 'UNEXPANDED_CONTROL_SEQUENCE'
+unexpanded_many_char_cs_type = 'UNEXPANDED_MANY_CHAR_CONTROL_SEQUENCE'
 unexpanded_one_char_cs_type = 'UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE'
-unexpanded_cs_types = (unexpanded_cs_type, unexpanded_one_char_cs_type)
+unexpanded_cs_types = (unexpanded_many_char_cs_type, unexpanded_one_char_cs_type)
 
 
 literal_types = tuple(literals_map.values())
@@ -202,30 +202,30 @@ def get_char_cat_pair_terminal_type(char_cat_pair_token):
     return terminal_token_type
 
 
-def make_char_cat_pair_unexpanded_token(char_cat_pair_token):
+def make_char_cat_pair_terminal_token(char_cat_pair_token):
     terminal_token_type = get_char_cat_pair_terminal_type(char_cat_pair_token)
     value = char_cat_pair_token.value
     value['lex_type'] = char_cat_pair_token.type
-    token = TerminalToken(type_=terminal_token_type, value=value)
+    token = TerminalToken(type_=terminal_token_type, value=value,
+                          position_like=char_cat_pair_token)
     return token
 
 
-def make_control_sequence_unexpanded_token(name):
-    type_ = (unexpanded_one_char_cs_type if len(name) == 1
-             else unexpanded_cs_type)
-    # Convert to a primitive unexpanded control sequence.
-    value = {'name': name, 'lex_type': control_sequence_lex_type}
-    token = UnexpandedToken(type_=type_, value=value)
-    return token
+def make_control_sequence_unexpanded_token(name, position_like=None):
+    return UnexpandedToken(type_=unexpanded_token_type,
+                           value={'name': name,
+                                  'lex_type': control_sequence_lex_type},
+                           position_like=position_like)
 
 
 def lex_token_to_unexpanded_token(lex_token):
     # If we have a char-cat pair, we must type it to its terminal version,
     if lex_token.type == char_cat_lex_type:
-        unexpanded_token = make_char_cat_pair_unexpanded_token(lex_token)
+        unexpanded_token = make_char_cat_pair_terminal_token(lex_token)
     elif lex_token.type == control_sequence_lex_type:
         name = lex_token.value
-        unexpanded_token = make_control_sequence_unexpanded_token(name)
+        unexpanded_token = make_control_sequence_unexpanded_token(
+            name, position_like=lex_token)
     elif isinstance(lex_token, InternalToken):
         unexpanded_token = lex_token
     return unexpanded_token

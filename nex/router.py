@@ -18,11 +18,6 @@ def make_simple_definition_token(name, tokens):
     return def_token
 
 
-def make_control_sequence_call_token(Cls, type_, name):
-    return Cls(type_=type_, value={'name': name,
-                                   'lex_type': control_sequence_lex_type})
-
-
 primitive_canon_tokens = {}
 for prim_canon_name, prim_type in primitive_control_sequences_map.items():
     # Terminals are tokens that may be passed to the parser. Non-terminals
@@ -30,8 +25,12 @@ for prim_canon_name, prim_type in primitive_control_sequences_map.items():
     # sees them.
     is_terminal = prim_canon_name in terminal_primitive_control_sequences_map
     TokenCls = TerminalToken if is_terminal else NonTerminalToken
-    primitive_canon_token = make_control_sequence_call_token(
-        TokenCls, prim_type, prim_canon_name)
+    primitive_canon_token = TokenCls(
+        type_=prim_type,
+        value={'canonical_name': prim_canon_name,
+               'name': prim_canon_name,
+               'lex_type': control_sequence_lex_type},
+        line_nr='scratch')
     primitive_canon_tokens[prim_canon_name] = primitive_canon_token
 
 
@@ -56,7 +55,8 @@ def get_initial_router():
             param_canon_token = TerminalToken(
                 type_=param_type,
                 value={'canonical_name': param_canonical_name,
-                       'name': param_canonical_name}
+                       'name': param_canonical_name},
+                line_nr='scratch',
             )
             parameters[route_id] = param_canon_token
 
@@ -135,14 +135,15 @@ class CSRouter(object):
             v = self.enclosing_scope.cs_router._resolve_route_token_to_raw_value(r)
         return v
 
-    def resolve_control_sequence_to_token(self, name):
+    def resolve_control_sequence_to_token(self, name, position_like=None):
         route_token = self._resolve_control_sequence_to_route_token(name)
         token = self._resolve_route_token_to_raw_value(route_token)
         # Amend canonical tokens to give them the proper control sequence
         # 'name'.
         if 'name' in token.value:
             TokenCls = token.__class__
-            token = TokenCls(type_=token.type, value=token.value.copy())
+            token = TokenCls(type_=token.type, value=token.value.copy(),
+                             position_like=position_like)
             token.value['name'] = name
         return token
 
@@ -170,17 +171,18 @@ class CSRouter(object):
             prefixes = set()
         macro_token = NonTerminalToken(type_='MACRO',
                                        value={'prefixes': prefixes,
-                                              'definition': definition_token})
+                                              'definition': definition_token},
+                                       line_nr='scratch',
+                                       )
         self.macros[route_id] = macro_token
-        return macro_token
 
     def do_short_hand_definition(self, name, def_type, code):
         def_token_type = short_hand_def_to_token_map[def_type]
-        primitive_token = TerminalToken(type_=def_token_type, value=code)
+        terminal_token = TerminalToken(type_=def_token_type, value=code,
+                                       line_nr='scratch')
         definition_token = make_simple_definition_token(name,
-                                                        [primitive_token])
-        macro_token = self.set_macro(name, definition_token, prefixes=None)
-        return macro_token
+                                                        [terminal_token])
+        self.set_macro(name, definition_token, prefixes=None)
 
     def _set_let_character(self, name, char_cat_token):
         route_id = get_unique_id()
@@ -193,9 +195,10 @@ class CSRouter(object):
         # is stored in the global font state, because it has internal
         # state that might be modified later; we need to know where to get
         # at it.
-        primitive_token = TerminalToken(type_=font_def_token_type,
-                                        value=font_id)
+        terminal_token = TerminalToken(type_=font_def_token_type,
+                                       value=font_id,
+                                       line_nr='scratch')
         definition_token = make_simple_definition_token(name,
-                                                        [primitive_token])
+                                                        [terminal_token])
         # TODO: Set directly as font token, not as a macro.
         self.set_macro(name, definition_token, prefixes=None)

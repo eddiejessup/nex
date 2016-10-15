@@ -164,7 +164,8 @@ def get_initial_parameters():
 
     get_empty_token_list = lambda: TerminalToken(
         type_='BALANCED_TEXT_AND_RIGHT_BRACE',
-        value=[]
+        value=[],
+        line_nr='scratch',
     )
     token_parameters = {p: get_empty_token_list()
                         for p in token_parameter_names}

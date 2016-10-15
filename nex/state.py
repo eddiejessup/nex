@@ -130,16 +130,16 @@ class Scope(object):
                                     *args, **kwargs)
 
     def set_macro(self, *args, **kwargs):
-        return self.defer_to_router('set_macro', *args, **kwargs)
+        self.defer_to_router('set_macro', *args, **kwargs)
 
     def do_short_hand_definition(self, *args, **kwargs):
-        return self.defer_to_router('do_short_hand_definition', *args, **kwargs)
+        self.defer_to_router('do_short_hand_definition', *args, **kwargs)
 
     def do_let_assignment(self, *args, **kwargs):
-        return self.defer_to_router('do_let_assignment', *args, **kwargs)
+        self.defer_to_router('do_let_assignment', *args, **kwargs)
 
     def define_new_font_control_sequence(self, *args, **kwargs):
-        return self.defer_to_router('define_new_font_control_sequence', *args, **kwargs)
+        self.defer_to_router('define_new_font_control_sequence', *args, **kwargs)
 
 
 def get_initial_scope(global_font_state):

@@ -29,7 +29,7 @@ class DigitCollection(object):
         self.digits = []
 
 
-@pg.production('control_sequence : UNEXPANDED_CONTROL_SEQUENCE')
+@pg.production('control_sequence : UNEXPANDED_MANY_CHAR_CONTROL_SEQUENCE')
 @pg.production('control_sequence : UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE')
 def control_sequence(p):
     return p[0]

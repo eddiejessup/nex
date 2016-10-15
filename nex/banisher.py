@@ -2,14 +2,16 @@ import logging
 from collections import deque
 from enum import Enum
 
-from .common import TerminalToken, NonTerminalToken, UnexpandedToken
-from .lexer import make_char_cat_lex_token, is_control_sequence_call
+from .common import TerminalToken
+from .lexer import is_control_sequence_call, make_char_cat_lex_token
 from .parser import parser
 from .typer import (CatCode,
                     char_cat_lex_type, control_sequence_lex_type,
                     lex_token_to_unexpanded_token,
                     make_control_sequence_unexpanded_token,
-                    unexpanded_cs_types, unexpanded_token_type,
+                    make_char_cat_pair_terminal_token,
+                    unexpanded_one_char_cs_type, unexpanded_many_char_cs_type,
+                    unexpanded_token_type,
                     explicit_box_map,
                     short_hand_def_map, def_map, if_map,
                     )
@@ -18,6 +20,7 @@ from .executor import CommandGrabber, execute_commands, execute_condition
 from .expander import parse_parameter_text
 from .condition_parser import condition_parser
 from .general_text_parser import general_text_parser
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
@@ -65,14 +68,24 @@ expanding_context_modes = (
 expanding_context_modes += awaiting_make_box_context_modes
 
 
-def make_char_cat_unexpanded_token(char, cat):
-    char_lex_token = make_char_cat_lex_token(char, cat)
-    char_unexpanded_token = lex_token_to_unexpanded_token(char_lex_token)
-    return char_unexpanded_token
+def make_char_cat_terminal_token(char, cat, *pos_args, **pos_kwargs):
+    """Utility function to make a terminal char-cat token straight from a pair.
+    """
+    lex_token = make_char_cat_lex_token(char, cat, *pos_args, **pos_kwargs)
+    terminal_token = make_char_cat_pair_terminal_token(lex_token)
+    return terminal_token
 
 
 def terminise_unexpanded_cs_token(unexpanded_tok):
-    return TerminalToken(type_=unexpanded_tok.type, value=unexpanded_tok.value)
+    if isinstance(unexpanded_tok, TerminalToken):
+        term_token = unexpanded_tok
+    else:
+        name = unexpanded_tok.value['name']
+        type_ = (unexpanded_one_char_cs_type if len(name) == 1
+                 else unexpanded_many_char_cs_type)
+        term_token = TerminalToken(type_=type_, value=unexpanded_tok.value,
+                                   position_like=unexpanded_tok)
+    return term_token
 
 
 def get_brace_sign(token):
@@ -141,7 +154,9 @@ class Banisher(object):
             brace_level += get_brace_sign(token)
             if brace_level == 0:
                 break
-        balanced_text = TerminalToken(type_='BALANCED_TEXT_AND_RIGHT_BRACE', value=tokens[:-1])
+        balanced_text = TerminalToken(type_='BALANCED_TEXT_AND_RIGHT_BRACE',
+                                      value=tokens[:-1],
+                                      position_like=tokens[0])
         return balanced_text
 
     def push_context(self, mode):
@@ -160,12 +175,12 @@ class Banisher(object):
         else:
             return ContextMode.normal
 
-    def get_escape_char_token(self):
+    def get_escape_char_terminal_token(self, position_like=None):
         escape_char_code = self.global_state.get_parameter_value('escapechar')
         if escape_char_code >= 0:
             escape_char = chr(escape_char_code)
-            escape_char_token = make_char_cat_unexpanded_token(escape_char,
-                                                               CatCode.other)
+            escape_char_token = make_char_cat_terminal_token(
+                escape_char, CatCode.other, position_like=position_like)
             return escape_char_token
         else:
             return None
@@ -187,6 +202,8 @@ class Banisher(object):
         return output_tokens
 
     def _process_input_token(self, first_token):
+        if first_token.char_nr is not None:
+            print(first_token.get_position_str(self.reader))
         output_tokens = deque()
 
         # If the token is an unexpanded control sequence call, then we must
@@ -195,8 +212,9 @@ class Banisher(object):
         # - A \let character will become the (terminal) character token.
         # - A primitive control sequence will become a terminal token.
         if (self.expanding_control_sequences and
-                first_token.type in unexpanded_cs_types):
-            first_token = self.global_state.resolve_control_sequence_to_token(first_token.value['name'])
+                first_token.type == unexpanded_token_type):
+            first_token = self.global_state.resolve_control_sequence_to_token(
+                first_token.value['name'], position_like=first_token)
         type_ = first_token.type
         if type_ == 'MACRO':
             macro_definition = first_token.value['definition']
@@ -346,13 +364,15 @@ class Banisher(object):
                 Mode.restricted_horizontal: 'HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE',
             }
             material_type = material_map[mode]
-            material = TerminalToken(type_=material_type, value=layout_list)
+            material = TerminalToken(type_=material_type, value=layout_list,
+                                     position_like=first_token)
             output_tokens.append(material)
         elif type_ in read_unexpanded_control_sequence_types:
-            # Get an unexpanded control sequence terminal token and add it to the
-            # output queue.
+            # Get an unexpanded control sequence terminal token and add it to
+            # the output queue.
             next_term_token = self.pop_next_input_token_as_term_cs()
-            # Along with the first token, turned into a terminal token.
+            # Along with the first token, turned into a terminal token if
+            # necessary.
             term_first_token = terminise_unexpanded_cs_token(first_token)
             output_tokens.append(term_first_token)
             output_tokens.append(next_term_token)
@@ -366,7 +386,8 @@ class Banisher(object):
                     parameter_text_tokens.append(tok)
                 parameters = parse_parameter_text(parameter_text_tokens)
                 parameters_token = TerminalToken(type_='PARAMETER_TEXT',
-                                                 value=parameters)
+                                                 value=parameters,
+                                                 position_like=first_token)
                 # Now get the replacement text.
                 # TODO: this is where expanded-def will be differentiated from
                 # normal-def.
@@ -388,7 +409,8 @@ class Banisher(object):
                     let_arguments.append(self.pop_next_input_token())
                 # Make the target argument into a special 'any' token.
                 let_arguments[-1] = TerminalToken(type_=unexpanded_token_type,
-                                                  value=let_arguments[-1])
+                                                  value=let_arguments[-1],
+                                                  position_like=first_token)
                 output_tokens.extend(let_arguments)
         elif type_ in token_variable_start_types:
             # Watch for a balanced text starting.
@@ -474,21 +496,25 @@ class Banisher(object):
                     pass
             self.input_tokens_queue.extendleft(reversed(not_skipped_tokens))
         elif type_ == 'STRING':
-            next_token = self.pop_next_input_token()
+            target_token = self.pop_next_input_token()
             string_tokens = []
-            if next_token.type in unexpanded_cs_types:
-                chars = list(next_token.value['name'])
-                escape_char_token = self.get_escape_char_token()
+            # If the target token is a control sequence, then get the chars of
+            # its name.
+            if target_token.type == unexpanded_token_type:
+                chars = list(target_token.value['name'])
+                escape_char_token = self.get_escape_char_terminal_token(
+                    position_like=target_token)
                 if escape_char_token is not None:
                     string_tokens += [escape_char_token]
             else:
-                char = next_token.value['char']
+                char = target_token.value['char']
                 chars = [char]
-            char_unexpanded_tokens = [
-                make_char_cat_unexpanded_token(c, CatCode.other)
+            char_terminal_tokens = [
+                make_char_cat_terminal_token(c, CatCode.other,
+                                             position_like=target_token)
                 for c in chars
             ]
-            string_tokens += char_unexpanded_tokens
+            string_tokens += char_terminal_tokens
             self.input_tokens_queue.extendleft(reversed(string_tokens))
         elif type_ == 'CS_NAME':
             cs_name_tokens = []
@@ -501,14 +527,16 @@ class Banisher(object):
                 cs_name_tokens.append(t)
             chars = [tok.value['char'] for tok in cs_name_tokens]
             cs_name = ''.join(chars)
-            cs_token = make_control_sequence_unexpanded_token(cs_name)
+            cs_token = make_control_sequence_unexpanded_token(
+                cs_name, position_like=first_token)
             # If we expanded such that we got tokens past 'endcsname',
             # put them back on the input queue.
             self.input_tokens_queue.extendleft(reversed(cs_name_queue))
             # But first comes our shiny new control sequence token.
             self.input_tokens_queue.appendleft(cs_token)
         elif type_ == 'ESCAPE_CHAR':
-            escape_char_token = self.get_escape_char_token()
+            escape_char_token = self.get_escape_char_terminal_token(
+                position_like=first_token)
             if escape_char_token is not None:
                 output_tokens.append(escape_char_token)
         elif type_ in ('UPPER_CASE', 'LOWER_CASE'):
@@ -542,7 +570,8 @@ class Banisher(object):
                         cased_char = un_cased_char
                     # Note that the category code is not changed.
                     cat = un_cased_tok.value['cat']
-                    return make_char_cat_unexpanded_token(cased_char, cat)
+                    return make_char_cat_terminal_token(
+                        cased_char, cat, position_like=un_cased_tok)
                 else:
                     return un_cased_tok
 

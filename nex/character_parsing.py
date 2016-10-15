@@ -52,7 +52,8 @@ def wrap(pg, func, rule):
 def add_character_productions(pg):
 
     def character(p):
-        return BuiltToken(type_='character', value=p[0].value)
+        return BuiltToken(type_='character', value=p[0].value,
+                          position_like=p[0])
     for char_type in normal_char_types:
         rule = 'character : {}'.format(char_type)
         character = wrap(pg, character, rule)

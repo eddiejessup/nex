@@ -25,13 +25,14 @@ class ReadingState(Enum):
     skipping_blanks = 'S'
 
 
-def make_char_cat_lex_token(char, cat, line_nr=None, col_nr=None):
+def make_char_cat_lex_token(char, cat, *pos_args, **pos_kwargs):
     return LexToken(type_=char_cat_lex_type, value={'char': char, 'cat': cat},
-                    line_nr=line_nr, col_nr=col_nr)
+                    *pos_args, **pos_kwargs)
 
 
-def make_control_sequence_lex_token(name):
-    return LexToken(type_=control_sequence_lex_type, value=name)
+def make_control_sequence_lex_token(name, *pos_args, **pos_kwargs):
+    return LexToken(type_=control_sequence_lex_type, value=name,
+                    *pos_args, **pos_kwargs)
 
 
 def is_char_cat(token):
@@ -121,6 +122,11 @@ class Lexer(object):
 
     def process_next_character(self):
         char, cat = self.chomp_next_char_with_trio()
+        pos_info = {
+            'line_nr': self.reader.line_nr,
+            'col_nr': self.reader.col_nr,
+            'char_nr': self.reader.i,
+        }
         # logger.debug('Chomped {}_{}'.format(char, cat))
         if cat == CatCode.comment:
             # logger.info('Comment')
@@ -158,10 +164,11 @@ class Lexer(object):
                         break
                 self.reading_state = ReadingState.skipping_blanks
             control_sequence_name = ''.join(control_sequence_chars)
-            return make_control_sequence_lex_token(control_sequence_name)
+            return make_control_sequence_lex_token(control_sequence_name,
+                                                   **pos_info)
             # logger.debug('Got control sequence {}'.format(control_sequence_name))
         elif cat in tokenise_cats:
-            token = make_char_cat_lex_token(char, cat)
+            token = make_char_cat_lex_token(char, cat, **pos_info)
             self.reading_state = ReadingState.line_middle
             return token
         # If TeX sees a character of category 10 (space), the action
@@ -178,7 +185,7 @@ class Lexer(object):
                 # the character is converted to a token of category 10 whose
                 # character code is 32, and TeX enters state S. The character
                 # code in a space token is always 32.
-                token = make_char_cat_lex_token(' ', cat)
+                token = make_char_cat_lex_token(' ', cat, **pos_info)
                 self.reading_state = ReadingState.skipping_blanks
                 return token
         elif cat == CatCode.end_of_line:
@@ -196,12 +203,12 @@ class Lexer(object):
             if self.reading_state == ReadingState.line_begin:
                 # the end-of-line character is converted to the control
                 # sequence token 'par' (end of paragraph).
-                token = make_control_sequence_lex_token('par')
+                token = make_control_sequence_lex_token('par', **pos_info)
             # if TeX is in state M (mid-line),
             elif self.reading_state == ReadingState.line_middle:
                 # the end-of-line character is converted to a token for
                 # character 32 (' ') of category 10 (space).
-                token = make_char_cat_lex_token(' ', CatCode.space)
+                token = make_char_cat_lex_token(' ', CatCode.space, **pos_info)
             # and if TeX is in state S (skipping blanks),
             elif self.reading_state == ReadingState.skipping_blanks:
                 # the end-of-line character is simply dropped.
