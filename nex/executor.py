@@ -31,10 +31,26 @@ class EndOfSubExecutor(Exception):
     pass
 
 
+def get_real_decimal_constant(collection):
+    # Our function assumes the digits are in base 10.
+    assert collection.base == 10
+    chars = [t.value['char'] for t in collection.digits]
+    s = ''.join(chars)
+    return float(s)
+
+
+def get_integer_constant(collection):
+    chars = [t.value['char'] for t in collection.digits]
+    s = ''.join(chars)
+    return int(s, base=collection.base)
+
+
 def evaluate_size(state, size_token):
     if isinstance(size_token, TerminalToken):
         if is_parameter_type(size_token.type):
             return state.get_parameter_value(size_token.value['name'])
+        elif size_token.type in ('CHAR_DEF_TOKEN', 'MATH_CHAR_DEF_TOKEN'):
+            return size_token.value
         else:
             import pdb; pdb.set_trace()
     elif isinstance(size_token, BuiltToken):
@@ -53,10 +69,17 @@ def evaluate_size(state, size_token):
         elif size_token.type == 'control_sequence':
             raise NotImplementedError
         elif is_register_type(size_token.type):
-            v = state.get_register_value(size_token.type, i=size_token.value)
+            evaled_i = evaluate_size(state, size_token.value)
+            v = state.get_register_value(size_token.type, i=evaled_i)
             if size_token.type == 'SKIP':
                 import pdb; pdb.set_trace()
             return v
+        elif size_token.type == 'integer_constant':
+            collection = size_token.value
+            return get_integer_constant(collection)
+        elif size_token.type == 'decimal_constant':
+            collection = size_token.value
+            return get_real_decimal_constant(collection)
         else:
             import pdb; pdb.set_trace()
     else:
@@ -80,8 +103,6 @@ def evaluate_dimen(state, dimen_token):
     size_token, sign = dimen_value['size'], dimen_value['sign']
     if isinstance(size_token.value, int):
         return size_token.value
-    if 'factor' not in size_token.value:
-        import pdb; pdb.set_trace()
     number_of_units_token = size_token.value['factor']
     unit_token = size_token.value['unit']
     number_of_units = evaluate_size(state, number_of_units_token)
@@ -383,10 +404,11 @@ def execute_command(command, state, banisher, reader):
         }
         value_evaluate_func = value_evaluate_map[value.type]
         evaled_value = value_evaluate_func(state, value)
+        evaled_i = evaluate_size(state, variable.value)
         if is_register_type(variable.type):
             state.set_register_value(is_global=v['global'],
                                      type_=variable.type,
-                                     i=variable.value,
+                                     i=evaled_i,
                                      value=evaled_value)
         elif is_parameter_type(variable.type):
             param_name = variable.value['canonical_name']
@@ -434,7 +456,8 @@ def execute_command(command, state, banisher, reader):
                   'by_operand': value_eval,
                   'operation': Operation.advance}
         if is_register_type(variable.type):
-            state.modify_register_value(type_=variable.type, i=variable.value,
+            evaled_i = evaluate_size(state, variable.value)
+            state.modify_register_value(type_=variable.type, i=evaled_i,
                                         **kwargs)
         elif is_parameter_type(variable.type):
             state.modify_parameter_value(name=variable.value['canonical_name'],
