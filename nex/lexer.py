@@ -87,20 +87,21 @@ class Lexer(object):
             else:
                 peek_offset = 0
         char, cat = start_char, start_cat
+        char_len = 1
         if start_cat == CatCode.superscript:
             # If the next character from the start is end-of-file, then
             # no trio-ing is going on.
             try:
                 next_char, next_cat = self.peek_ahead(n=peek_offset + 1)
             except EndOfFile:
-                return char, cat
+                return char, cat, char_len
             if (next_char == start_char) and (next_cat == start_cat):
                 # If the next-but-one character from the start is end-of-file,
                 # then no trio-ing is going on.
                 try:
                     triod_char, triod_cat = self.peek_ahead(n=peek_offset + 2)
                 except EndOfFile:
-                    return char, cat
+                    return char, cat, char_len
                 if triod_cat != CatCode.end_of_line:
                     triod_ascii_code = ord(triod_char)
                     if triod_ascii_code >= 64:
@@ -109,23 +110,26 @@ class Lexer(object):
                         triod_ascii_code += 64
                     char = chr(triod_ascii_code)
                     cat = self.global_state.get_cat_code(char)
+                    char_len = 3
                     if not peek:
                         self.reader.advance_loc(n=2)
-        return char, cat
+        return char, cat, char_len
 
     @property
     def next_token(self):
         while True:
             token = self.process_next_character()
             if token is not None:
+                print(token.get_position_str(self.reader))
                 return token
 
     def process_next_character(self):
-        char, cat = self.chomp_next_char_with_trio()
+        char, cat, total_char_len = self.chomp_next_char_with_trio()
         pos_info = {
             'line_nr': self.reader.line_nr,
             'col_nr': self.reader.col_nr,
             'char_nr': self.reader.char_nr,
+            'char_len': total_char_len,
         }
         # logger.debug('Chomped {}_{}'.format(char, cat))
         if cat == CatCode.comment:
@@ -137,11 +141,12 @@ class Lexer(object):
             self.reading_state = ReadingState.line_begin
         elif cat == CatCode.escape:
             # logger.debug('Chomped escape character {}_{}'.format(char, cat))
-            char, cat = self.chomp_next_char_with_trio()
-            control_sequence_chars = [char]
+            first_char, first_cat, first_char_len = self.chomp_next_char_with_trio()
+            pos_info['char_len'] += first_char_len
+            control_sequence_chars = [first_char]
             # If non-letter, have a control sequence of that single character.
-            if cat != CatCode.letter:
-                if cat == CatCode.space:
+            if first_cat != CatCode.letter:
+                if first_cat == CatCode.space:
                     self.reading_state = ReadingState.skipping_blanks
                 else:
                     self.reading_state = ReadingState.line_middle
@@ -152,7 +157,7 @@ class Lexer(object):
                     # If it is, chomp it and add it to the list of control sequence
                     # characters.
                     try:
-                        next_char, next_cat = self.chomp_next_char_with_trio(peek=True)
+                        next_char, next_cat, next_char_len = self.chomp_next_char_with_trio(peek=True)
                     # If the next 'character' is end-of-file, then finish
                     # control sequence.
                     except EndOfFile:
@@ -160,6 +165,7 @@ class Lexer(object):
                     if next_cat == CatCode.letter:
                         self.chomp_next_char_with_trio(peek=False)
                         control_sequence_chars.append(next_char)
+                        pos_info['char_len'] += next_char_len
                     else:
                         break
                 self.reading_state = ReadingState.skipping_blanks

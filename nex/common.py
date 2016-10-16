@@ -43,48 +43,52 @@ class BaseToken(object):
 
 class PositionToken(BaseToken):
 
-    def __init__(self, line_nr=None, col_nr=None, char_nr=None,
+    def __init__(self,
+                 line_nr=None, col_nr=None, char_nr=None, char_len=None,
                  position_like=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if position_like is not None:
             self._copy_position_from_token(position_like)
         else:
-            self.set_position(line_nr, col_nr, char_nr)
+            self.set_position(line_nr, col_nr, char_nr, char_len)
         # if self.line_nr is None and self.__class__ != BuiltToken:
         #     import pdb; pdb.set_trace()
 
-    def set_position(self, line_nr, col_nr, char_nr):
+    def set_position(self, line_nr, col_nr, char_nr, char_len):
         self.line_nr = line_nr
         self.col_nr = col_nr
         self.char_nr = char_nr
+        self.char_len = char_len
 
     def _copy_position_from_token(self, token):
-        self.set_position(token.line_nr, token.col_nr, token.char_nr)
+        self.set_position(token.line_nr, token.col_nr, token.char_nr,
+                          token.char_len)
 
     def get_position_str(self, reader):
         cs = reader.current_chars
-        ci = self.char_nr
+        here_i = self.char_nr
+        context_len = 20
 
-        bi = max(ci - 10, 0)
-        pre_context = ''.join(cs[bi:ci])
+        before_i = max(here_i - context_len, 0)
+        pre_context = ''.join(cs[before_i:here_i])
 
-        here = cs[ci]
-        if here == ' ':
-            here = '[_]'
-        if here == '\n':
-            here = '\\n'
+        here_i_end = here_i
+        if self.char_len is None:
+            here_len = 1
+        else:
+            here_len = self.char_len
+        here_i_end = here_i + here_len
+        here = ''.join(cs[here_i:here_i_end])
+        here = here.replace(' ', '␣')
         here = colorama.Fore.RED + here + colorama.Style.RESET_ALL
 
-        ei = min(ci + 10, len(cs))
-        post_context = ''.join(cs[ci + 1:ei])
+        end_i = min(here_i_end + context_len, len(cs))
+        post_context = ''.join(cs[here_i_end:end_i])
 
-        bits = [pre_context, post_context]
-        for i, bit in enumerate(bits):
-            bit = bit.replace('\n', colorama.Fore.GREEN + '\\n' + colorama.Style.RESET_ALL)
-            bit = bit.replace('\t', colorama.Fore.GREEN + '\\t' + colorama.Style.RESET_ALL)
-            bits[i] = bit
         intro = 'L:{:04d}C:{:03d}: '.format(self.line_nr, self.col_nr)
-        s = intro + bits[0] + here + bits[1]
+        s = intro + '…' + pre_context + here + post_context + '…'
+        s = s.replace('\n', '⏎ ')
+        s = s.replace('\t', '⇥')
         return s
 
 
