@@ -49,6 +49,12 @@ def wrap(pg, func, rule):
     return func
 
 
+def make_literal_token(p):
+    s = ''.join(t.value['char'] for t in p)
+    return BuiltToken(type_='literal', value=s,
+                      position_like=p[0])
+
+
 def add_character_productions(pg):
 
     def character(p):
@@ -60,51 +66,51 @@ def add_character_productions(pg):
 
     @pg.production(word_to_pr('by'))
     def by(p):
-        return None
+        return make_literal_token(p)
 
     @pg.production(word_to_pr('true'))
     def true(p):
-        return True
+        return make_literal_token(p)
 
     @pg.production(word_to_pr('minus'))
     def minus(p):
-        return None
+        return make_literal_token(p)
 
     @pg.production(word_to_pr('plus'))
     def plus(p):
-        return None
+        return make_literal_token(p)
 
     # Font related.
 
     @pg.production(word_to_pr('at'))
     def at(p):
-        return None
+        return make_literal_token(p)
 
     @pg.production(word_to_pr('scaled'))
     def scaled(p):
-        return None
+        return make_literal_token(p)
 
     # Box related.
 
     @pg.production(word_to_pr('to'))
     def to(p):
-        return None
+        return make_literal_token(p)
 
     @pg.production(word_to_pr('spread'))
     def spread(p):
-        return None
+        return make_literal_token(p)
 
     @pg.production(word_to_pr('width'))
     def width(p):
-        return 'width'
+        return make_literal_token(p)
 
     @pg.production(word_to_pr('height'))
     def height(p):
-        return 'height'
+        return make_literal_token(p)
 
     @pg.production(word_to_pr('depth'))
     def depth(p):
-        return 'depth'
+        return make_literal_token(p)
 
     # Unit related.
 

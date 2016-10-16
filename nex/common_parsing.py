@@ -335,7 +335,10 @@ def internal_unit(p):
 
 @pg.production('unit_of_measure : optional_true physical_unit one_optional_space')
 def unit_of_measure(p):
-    return {'unit': p[1], 'true': bool(p[0])}
+    is_true = p[0] is not None
+    if is_true:
+        assert p[0].value == 'true'
+    return {'unit': p[1], 'true': is_true}
 
 
 @pg.production('optional_true : true')

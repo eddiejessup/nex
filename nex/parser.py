@@ -469,7 +469,8 @@ def rule_specification(p):
 @pg.production('rule_specification : optional_spaces')
 def rule_specification_empty(p):
     dims = {'width': None, 'height': None, 'depth': None}
-    return BuiltToken(type_='rule_specification', value=dims)
+    return BuiltToken(type_='rule_specification', value=dims,
+                      position_like=p[0])
 
 
 # TODO: these literals are getting unclear. Introduce some convention to make
@@ -478,14 +479,17 @@ def rule_specification_empty(p):
 @pg.production('rule_dimension : height dimen')
 @pg.production('rule_dimension : depth dimen')
 def rule_dimension(p):
+    print(p[0])
     return BuiltToken(type_='rule_dimension',
-                      value={'axis': p[0], 'dimen': p[1]})
+                      value={'axis': p[0].value, 'dimen': p[1]},
+                      position_like=p[0])
 
 
 @pg.production('input : INPUT file_name')
 def input_file(p):
     return BuiltToken(type_='input',
-                      value={'file_name': p[1]})
+                      value={'file_name': p[1]},
+                      position_like=p[0])
 
 
 @pg.production('file_name : character')
@@ -499,14 +503,17 @@ def file_name(p):
 
 @pg.production('char : CHAR number')
 def char(p):
-    return BuiltToken(type_='char', value={'code': p[1]})
+    return BuiltToken(type_='char', value={'code': p[1]},
+                      position_like=p[0])
 
 
 # TODO: I wonder if I could make a decorator to make a token of the correct
 # type based on the production rule. Then I just have to return a dict.
 @pg.production('un_box : un_box_type number')
 def un_box(p):
-    return BuiltToken(type_=p[0], value={'nr': p[1]})
+    un_box_type = p[0].type.lower()
+    return BuiltToken(type_=un_box_type, value={'nr': p[1]},
+                      position_like=p[0])
 
 
 @pg.production('un_box_type : UN_H_BOX')
@@ -514,7 +521,7 @@ def un_box(p):
 @pg.production('un_box_type : UN_V_BOX')
 @pg.production('un_box_type : UN_V_COPY')
 def un_box_type(p):
-    return p[0].type.lower()
+    return p[0]
 
 
 @pg.error

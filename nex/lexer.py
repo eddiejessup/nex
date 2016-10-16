@@ -120,7 +120,7 @@ class Lexer(object):
         while True:
             token = self.process_next_character()
             if token is not None:
-                print(token.get_position_str(self.reader))
+                # print(token.get_position_str(self.reader))
                 return token
 
     def process_next_character(self):
