@@ -43,6 +43,7 @@ def get_initial_router():
 
     macros = {}
     let_chars = {}
+    font_ids = {}
 
     parameters = {}
     for param_type, param_canonical_names in parameter_type_to_names.items():
@@ -71,7 +72,7 @@ def get_initial_router():
         primitives[route_id] = prim_canon_token
 
     router = CSRouter(control_sequences,
-                      macros, let_chars, parameters, primitives,
+                      macros, let_chars, parameters, primitives, font_ids,
                       enclosing_scope=None)
     return router
 
@@ -83,9 +84,10 @@ def get_local_router(enclosing_scope):
     let_chars = {}
     parameters = {}
     primitives = {}
+    font_ids = {}
 
     router = CSRouter(control_sequences,
-                      macros, let_chars, parameters, primitives,
+                      macros, let_chars, parameters, primitives, font_ids,
                       enclosing_scope)
     return router
 
@@ -93,7 +95,7 @@ def get_local_router(enclosing_scope):
 class CSRouter(object):
 
     def __init__(self, control_sequences,
-                 macros, let_chars, parameters, primitives,
+                 macros, let_chars, parameters, primitives, font_ids,
                  enclosing_scope=None):
         self.control_sequences = control_sequences
 
@@ -101,6 +103,7 @@ class CSRouter(object):
         self.let_chars = let_chars
         self.parameters = parameters
         self.primitives = primitives
+        self.font_ids = font_ids
 
         self.enclosing_scope = enclosing_scope
 
@@ -127,6 +130,7 @@ class CSRouter(object):
             'primitive': self.primitives,
             'macro': self.macros,
             'let_character': self.let_chars,
+            'font': self.font_ids,
         }
         value_map = value_maps_map[type_]
         try:
@@ -137,13 +141,11 @@ class CSRouter(object):
 
     def resolve_control_sequence_to_token(self, name, position_like=None):
         route_token = self._resolve_control_sequence_to_route_token(name)
-        token = self._resolve_route_token_to_raw_value(route_token)
+        canon_token = self._resolve_route_token_to_raw_value(route_token)
+        token = canon_token.copy(position_like=position_like)
         # Amend canonical tokens to give them the proper control sequence
         # 'name'.
-        if 'name' in token.value:
-            TokenCls = token.__class__
-            token = TokenCls(type_=token.type, value=token.value.copy(),
-                             position_like=position_like)
+        if isinstance(token.value, dict) and 'name' in token.value:
             token.value['name'] = name
         return token
 
@@ -191,14 +193,15 @@ class CSRouter(object):
         self.let_chars[route_id] = char_cat_token
 
     def define_new_font_control_sequence(self, name, font_id):
+        route_id = get_unique_id()
+        route_token = make_route_token('font', route_id)
+        self._set_route_token(name, route_token)
+
         # Note, this token just records the font id; the information
         # is stored in the global font state, because it has internal
         # state that might be modified later; we need to know where to get
         # at it.
-        terminal_token = TerminalToken(type_=font_def_token_type,
-                                       value=font_id,
-                                       line_nr='scratch')
-        definition_token = make_simple_definition_token(name,
-                                                        [terminal_token])
-        # TODO: Set directly as font token, not as a macro.
-        self.set_macro(name, definition_token, prefixes=None)
+        font_id_token = TerminalToken(type_=font_def_token_type,
+                                      value=font_id,
+                                      line_nr='scratch')
+        self.font_ids[route_id] = font_id_token

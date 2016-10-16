@@ -18,8 +18,13 @@ class BaseToken(object):
     def __str__(self):
         return self.__repr__()
 
-    def copy(self):
-        return self.__class__(self.type, self.value.copy())
+    def copy(self, *args, **kwargs):
+        v = self.value
+        if isinstance(v, dict):
+            v_copy = v.copy()
+        elif isinstance(v, int):
+            v_copy = v
+        return self.__class__(type_=self.type, value=v_copy, *args, **kwargs)
 
     def equal_contents_to(self, other):
         if self.type != other.type:
@@ -45,8 +50,8 @@ class PositionToken(BaseToken):
             self._copy_position_from_token(position_like)
         else:
             self.set_position(line_nr, col_nr, char_nr)
-        if self.line_nr is None and self.__class__ != BuiltToken:
-            import pdb; pdb.set_trace()
+        # if self.line_nr is None and self.__class__ != BuiltToken:
+        #     import pdb; pdb.set_trace()
 
     def set_position(self, line_nr, col_nr, char_nr):
         self.line_nr = line_nr
