@@ -21,15 +21,15 @@ def tex_file_to_chars(file_name):
 # TODO: Would be nice to support non-file buffer interfaces, like stdin and
 # network things. \input{http://mysite.com/tex_preamble.tex} would be nice.
 class ReaderBuffer:
-    """Abstraction around a file, which tracks line and column numbers.
-    Note that the buffer's position begins at '-1', not '0',
-    so that viewing each value from 'increment_loc` will not skip the first
-    character. The alternative might be less error-prone, but I'm sticking
-    with this for now."""
+    """Abstraction around a list of characters, which tracks line and column
+    numbers. Note that the buffer's position begins at '-1', not '0', so that
+    viewing each value from 'increment_loc` will not skip the first character.
+    The alternative might be less error-prone, but I'm sticking with this for
+    now."""
 
-    def __init__(self, file_name):
+    def __init__(self, chars):
         self.i = -1
-        self.chars = tex_file_to_chars(file_name)
+        self.chars = chars
 
         self.line_nr = 1
         self.col_nr = 1
@@ -90,7 +90,7 @@ class Reader:
     previous buffer will be read from, and so on.
     """
 
-    def __init__(self, file_name):
+    def __init__(self):
         # This implementation is a bit lazy: there's a big map of hashes to
         # reader buffers, and a stack to hold hashes representing the active
         # buffers. I think the true structure is an ordered tree, but I can't
@@ -98,23 +98,25 @@ class Reader:
         # debugging purposes.
         self.active_buffer_hash_stack = []
         self.buffer_map = {}
-        self.insert_file(file_name)
 
-    def make_new_buffer(self, file_name):
-        """Make a new buffer, assign it a unique key, and return this so it can
-        be accessed again later. The key is a combination of the file name and
-        a unique hash, so that duplicate file names do not collide"""
-        new_hash = (file_name, get_unique_id())
-        self.buffer_map[new_hash] = ReaderBuffer(file_name)
-        return new_hash
-
-    def get_buffer(self, file_hash):
+    def _get_buffer(self, buffer_hash):
         """Access a buffer by its hash."""
-        return self.buffer_map[file_hash]
+        return self.buffer_map[buffer_hash]
+
+    def insert_buffer(self, chars, name=''):
+        """Make a new buffer, and add it to the active stack. An optional name
+        can be given to the buffer, for debugging information."""
+        # The buffer's hash key is a combination of the buffer name and
+        # a unique hash, so that duplicate names do not collide.
+        new_hash = (name, get_unique_id())
+        self.buffer_map[new_hash] = ReaderBuffer(chars)
+        self.active_buffer_hash_stack.append(new_hash)
 
     def insert_file(self, file_name):
-        """Make a new buffer, and add it to the active stack."""
-        self.active_buffer_hash_stack.append(self.make_new_buffer(file_name))
+        """Make a new buffer from a file name, and add it to the active
+        stack."""
+        chars = tex_file_to_chars(file_name)
+        self.insert_buffer(chars, name=file_name)
 
     @property
     def current_hash(self):
@@ -154,7 +156,7 @@ class Reader:
         """An iterator over the buffers either being read, or still to be fully
         read, in order from current to last to be read."""
         for buffer_hash in reversed(self.active_buffer_hash_stack):
-            yield self.get_buffer(buffer_hash)
+            yield self._get_buffer(buffer_hash)
 
     @property
     def current_char(self):
