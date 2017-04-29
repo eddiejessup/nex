@@ -23,21 +23,25 @@ def test_file_to_chars():
     assert cs_with_ext == cs_without_ext == test_chars
 
 
-def test_init():
+def test_buffer_init():
+    """Check buffer works sensibly."""
     r = ReaderBuffer(test_file_name)
     assert r.i == -1
-    assert r.chars == ['a', 'b', 'c', '\n']
+    assert r.chars == test_chars
 
 
 def test_next_char():
+    """Check advancing through a file returns the correct characters."""
     r = Reader(test_file_name)
     cs = [r.advance_loc() for _ in range(4)]
-    assert cs == ['a', 'b', 'c', '\n']
+    assert cs == test_chars
     with pytest.raises(EndOfFile):
         r.advance_loc()
 
 
 def test_init_missing_file():
+    """Check making either a buffer or reader with a non-existent file raises
+    an error."""
     with pytest.raises(IOError):
         ReaderBuffer(test_not_here_file_name)
     with pytest.raises(IOError):
@@ -45,12 +49,16 @@ def test_init_missing_file():
 
 
 def test_insert_start():
+    """Check inserting a new file at the start reads from the second, then the
+    first."""
     r = Reader(test_file_name)
     r.insert_file(test_2_file_name)
     assert list(r.advance_to_end()) == test_2_chars + test_chars
 
 
 def test_insert_middle():
+    """Check inserting a new file halfway through reading a first, reads part
+    of one, then the second, then the rest of the first."""
     r = Reader(test_file_name)
     cs = [r.advance_loc()]
     r.insert_file(test_2_file_name)
@@ -59,14 +67,16 @@ def test_insert_middle():
 
 
 def test_insert_end():
+    """Check inserting a new file after reading a first, reads the first then the second."""
     r = Reader(test_file_name)
     cs = list(r.advance_to_end())
     r.insert_file(test_2_file_name)
     cs.extend(list(r.advance_to_end()))
-    assert cs == ['a', 'b', 'c', '\n', 'd', 'e', 'f', '\n']
+    assert cs == test_chars + test_2_chars
 
 
 def test_peek():
+    """Test various errors and constraints on peeking."""
     r = Reader(test_file_name)
     # Can't peek at start of file
     with pytest.raises(ValueError):
@@ -89,6 +99,7 @@ def test_peek():
 
 
 def test_advance():
+    """Test advancing through the reader on one file."""
     r = Reader(test_file_name)
     cs = []
     for _ in range(4):
@@ -96,4 +107,5 @@ def test_advance():
         cs.append(r.peek_ahead(0))
     assert cs == test_chars
 
-# TODO: test line and column numbering.
+# TODO: Line and column numbering.
+# TODO: Peeking and advancing on buffers.

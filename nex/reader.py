@@ -1,4 +1,3 @@
-from collections import deque
 from os import path
 
 from .utils import get_unique_id
@@ -9,6 +8,8 @@ class EndOfFile(Exception):
 
 
 def tex_file_to_chars(file_name):
+    """Return the characters in the file indicated by the input file-name, with
+    the "tex" file extension added if it is not already present."""
     end = path.extsep + 'tex'
     if not file_name.endswith(end):
         file_name += end
@@ -16,7 +17,15 @@ def tex_file_to_chars(file_name):
         return [chr(b) for b in f.read()]
 
 
-class ReaderBuffer(object):
+# TODO: Would it be good to extend some built-in class, like a file class?
+# TODO: Would be nice to support non-file buffer interfaces, like stdin and
+# network things. \input{http://mysite.com/tex_preamble.tex} would be nice.
+class ReaderBuffer:
+    """Abstraction around a file, which tracks line and column numbers.
+    Note that the buffer's position begins at '-1', not '0',
+    so that viewing each value from 'increment_loc` will not skip the first
+    character. The alternative might be less error-prone, but I'm sticking
+    with this for now."""
 
     def __init__(self, file_name):
         self.i = -1
@@ -27,9 +36,28 @@ class ReaderBuffer(object):
 
     @property
     def at_last_char(self):
+        """Whether the buffer is at its final character."""
         return self.i == len(self.chars) - 1
 
+    @property
+    def current_char(self):
+        return self.peek_ahead(0)
+
     def peek_ahead(self, n):
+        """Get a character `n` places from the current position, without
+        changing the buffer's current position.
+        `n < 0` is not allowed because in a TeX context it is not meaningful:
+        many characters may have been read between the current character
+        and one five places back, from other buffers.
+        `n > 3` is not allowed, because peeking too far is dangerous: beyond
+        a point, the characters' meanings might change the correct buffers to
+        point, the characters' meanings might change the correct buffers to
+        read from.
+        `n = 0` returns the current position.
+        If the buffer's position has not been advanced, so it is not 'on' any
+        character, ValueError is raised.
+        If the offset would spill past the end of the buffer, EndOfFile is
+        raised."""
         if n < 0:
             raise ValueError('Cannot peek backwards')
         if n > 3:
@@ -44,6 +72,7 @@ class ReaderBuffer(object):
             raise EndOfFile
 
     def increment_loc(self):
+        """Advance the current position in the buffer by one character."""
         self.i += 1
         c = self.peek_ahead(0)
         if c == '\n':
@@ -51,9 +80,10 @@ class ReaderBuffer(object):
             self.col_nr = 0
         else:
             self.col_nr += 1
+        return c
 
 
-class Reader(object):
+class Reader:
     """Provides an abstract interface to a stack of buffers (at the moment
     always files). A new buffer can be added to the stack, from where
     characters will be read off until it is exhausted, at which point the
@@ -126,12 +156,17 @@ class Reader(object):
         for buffer_hash in reversed(self.active_buffer_hash_stack):
             yield self.get_buffer(buffer_hash)
 
+    @property
+    def current_char(self):
+        return self.peek_ahead(0)
+
     def peek_ahead(self, n=1):
         """Get a character `n` places from the current position, without
         changing the reader's current position.
         `n < 0` is not possible, because read history is not kept.
-        `n > 3` is not allowed, because peeking too far is dangerous: beyond
-        a point, the characters' meanings might change the correct buffers to
+        `n > 3` is not allowed, because peeking too far is dangerous: beyond a
+        point, the characters' meanings might change the correct buffers to
+        read from.
         `n = 0` returns the current position.
         This function will peek between buffer boundaries if necessary."""
         if n < 0:
@@ -170,7 +205,7 @@ class Reader(object):
         # If that was the last buffer, we are done.
         if not self.active_buffer_hash_stack:
             raise EndOfFile
-        self.current_buffer.increment_loc()
+        return self.current_buffer.increment_loc()
 
     def advance_loc(self, n=1):
         """Advance the reader's position by `n` places, changing the current
