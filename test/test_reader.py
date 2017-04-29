@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from nex.reader import Reader, EndOfFile, tex_file_to_chars
+from nex.reader import Reader, ReaderBuffer, EndOfFile, tex_file_to_chars
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 test_file_dir_path = os.path.join(dir_path, 'test_files')
@@ -15,54 +15,55 @@ test_2_chars = ['d', 'e', 'f', '\n']
 
 
 def test_file_to_chars():
+    """
+    Test utility to add an extension to TeX file names if it is not supplied.
+    """
     cs_with_ext = tex_file_to_chars(test_file_name)
     cs_without_ext = tex_file_to_chars(test_file_name[:-4])
     assert cs_with_ext == cs_without_ext == test_chars
 
 
 def test_init():
-    r = Reader(test_file_name)
+    r = ReaderBuffer(test_file_name)
     assert r.i == -1
     assert r.chars == ['a', 'b', 'c', '\n']
 
 
 def test_next_char():
     r = Reader(test_file_name)
-    cs = [r.next_char for _ in range(4)]
+    cs = [r.advance_loc() for _ in range(4)]
     assert cs == ['a', 'b', 'c', '\n']
     with pytest.raises(EndOfFile):
-        r.next_char
+        r.advance_loc()
 
 
 def test_init_missing_file():
     with pytest.raises(IOError):
+        ReaderBuffer(test_not_here_file_name)
+    with pytest.raises(IOError):
         Reader(test_not_here_file_name)
-
-
-def test_append():
-    r = Reader(test_file_name)
-    r.append_file(test_2_file_name)
-    assert r.chars == test_chars + test_2_chars
 
 
 def test_insert_start():
     r = Reader(test_file_name)
     r.insert_file(test_2_file_name)
-    assert r.chars == test_2_chars + test_chars
+    assert list(r.advance_to_end()) == test_2_chars + test_chars
 
 
 def test_insert_middle():
     r = Reader(test_file_name)
-    r.next_char
+    cs = [r.advance_loc()]
     r.insert_file(test_2_file_name)
-    assert r.chars == ['a', 'd', 'e', 'f', '\n', 'b', 'c', '\n', ]
+    cs.extend(list(r.advance_to_end()))
+    assert cs == ['a', 'd', 'e', 'f', '\n', 'b', 'c', '\n']
 
 
 def test_insert_end():
     r = Reader(test_file_name)
-    [r.next_char for _ in range(4)]
+    cs = list(r.advance_to_end())
     r.insert_file(test_2_file_name)
-    assert r.chars == ['a', 'b', 'c', '\n', 'd', 'e', 'f', '\n']
+    cs.extend(list(r.advance_to_end()))
+    assert cs == ['a', 'b', 'c', '\n', 'd', 'e', 'f', '\n']
 
 
 def test_peek():
@@ -70,8 +71,9 @@ def test_peek():
     # Can't peek at start of file
     with pytest.raises(ValueError):
         r.peek_ahead(n=0)
-    r.next_char
-    # Can't peek backwards
+    # After this we should be on 'a'.
+    r.advance_loc()
+    # Can't peek backwards, (especially because this would be end of file).
     with pytest.raises(ValueError):
         r.peek_ahead(n=-1)
     # Valid peeks.
@@ -79,7 +81,8 @@ def test_peek():
     # Can't peek too far ahead.
     with pytest.raises(ValueError):
         r.peek_ahead(n=4)
-    r.next_char
+    # After this we should be on 'b'.
+    r.advance_loc()
     # Can't peek past end of file.
     with pytest.raises(EndOfFile):
         r.peek_ahead(n=3)
