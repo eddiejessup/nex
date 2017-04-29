@@ -1,7 +1,7 @@
 from enum import Enum
 import logging
 
-from .reader import EndOfFile
+from .reader import Reader, EndOfFile
 from .common import LexToken
 # TODO: Make lex types into an enum. Love an enum, makes me feel so safe.
 from .typer import CatCode, char_cat_lex_type, control_sequence_lex_type
@@ -54,10 +54,16 @@ def is_control_sequence_call(token):
 
 class Lexer:
 
-    def __init__(self, reader, global_state):
+    def __init__(self, reader, get_cat_code_func):
         self.reader = reader
         self.reading_state = ReadingState.line_begin
-        self.global_state = global_state
+        self.get_cat_code_func = get_cat_code_func
+
+    @classmethod
+    def from_string(cls, s, *args, **kwargs):
+        reader = Reader()
+        reader.insert_string(s)
+        return cls(reader, *args, **kwargs)
 
     # TODO: Change into a function, I think it changes too much state to be a
     # property.
@@ -69,12 +75,22 @@ class Lexer:
                 # print(token.get_position_str(self.reader))
                 return token
 
+    def advance_to_end(self):
+        """Return an iterator over the lexer's tokens until end-of-file. Use
+        with care, as the tokens' meanings, when acted on, may change the input
+        that should be read."""
+        while True:
+            try:
+                yield self.next_token
+            except EndOfFile:
+                break
+
     def _peek_ahead(self, n=1):
         if n > 3:
             raise ValueError('Peeking ahead so far is forbidden, as lies might'
                              'be returned')
         char = self.reader.peek_ahead(n)
-        cat = self.global_state.get_cat_code(char)
+        cat = self.get_cat_code_func(char)
         return char, cat
 
     @property
@@ -121,7 +137,7 @@ class Lexer:
                     else:
                         triod_ascii_code += 64
                     char = chr(triod_ascii_code)
-                    cat = self.global_state.get_cat_code(char)
+                    cat = self.get_cat_code_func(char)
                     char_len = 3
                     if not peek:
                         self.reader.advance_loc(n=2)
@@ -208,9 +224,9 @@ class Lexer:
             # I am going to implement a sort of mishmash of these two
             # explanations below.
 
-            # 1. [This bit of explanation is mixed in with the code, for
-            #    clarity]
-            # [I do not know what this bit really means]
+            # 1. This bit of explanation is mixed in with the code, for
+            #    clarity. I do not know what this bit really means.
+
             # If TeX sees an end-of-line character (category 5), it throws away
             # any other information that might remain on the current line.
 
@@ -228,16 +244,13 @@ class Lexer:
             elif self.reading_state == ReadingState.skipping_blanks:
                 # the end-of-line character is simply dropped.
                 token = None
-
             # "At the beginning of every line [TeX is] in state N".
             self.reading_state = ReadingState.line_begin
-
             if token is not None:
                 return token
             # 2.
             # TeX deletes any <space> characters (number 32) that occur at the
             # right end of an input line.
-
             # Then it inserts a <return> character
             # (number 13) at the right end of the line, except that it places
             # nothing additional at the end of a line that you inserted with

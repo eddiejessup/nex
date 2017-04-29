@@ -25,7 +25,7 @@ logger.addHandler(ch)
 def run_file(in_path):
     state = GlobalState()
     reader = Reader(in_path)
-    lexer = Lexer(reader, state)
+    lexer = Lexer(reader, get_cat_code_func=state.get_cat_code)
     banisher = Banisher(lexer, state=state, reader=reader)
 
     command_grabber = CommandGrabber(banisher, parser=parser)
