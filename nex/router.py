@@ -30,7 +30,7 @@ for prim_canon_name, prim_type in primitive_control_sequences_map.items():
         value={'canonical_name': prim_canon_name,
                'name': prim_canon_name,
                'lex_type': control_sequence_lex_type},
-        line_nr='scratch')
+        line_nr='abstract')
     primitive_canon_tokens[prim_canon_name] = primitive_canon_token
 
 
@@ -57,7 +57,7 @@ def get_initial_router():
                 type_=param_type,
                 value={'canonical_name': param_canonical_name,
                        'name': param_canonical_name},
-                line_nr='scratch',
+                line_nr='abstract',
             )
             parameters[route_id] = param_canon_token
 
@@ -174,14 +174,14 @@ class CSRouter(object):
         macro_token = NonTerminalToken(type_='MACRO',
                                        value={'prefixes': prefixes,
                                               'definition': definition_token},
-                                       line_nr='scratch',
+                                       line_nr='abstract',
                                        )
         self.macros[route_id] = macro_token
 
     def do_short_hand_definition(self, name, def_type, code):
         def_token_type = short_hand_def_to_token_map[def_type]
         terminal_token = TerminalToken(type_=def_token_type, value=code,
-                                       line_nr='scratch')
+                                       line_nr='abstract')
         definition_token = make_simple_definition_token(name,
                                                         [terminal_token])
         self.set_macro(name, definition_token, prefixes=None)
@@ -203,5 +203,5 @@ class CSRouter(object):
         # at it.
         font_id_token = TerminalToken(type_=font_def_token_type,
                                       value=font_id,
-                                      line_nr='scratch')
+                                      line_nr='abstract')
         self.font_ids[route_id] = font_id_token
