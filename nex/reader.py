@@ -34,6 +34,10 @@ class ReaderBuffer:
         self.line_nr = 1
         self.col_nr = 1
 
+    @classmethod
+    def from_string(cls, s):
+        return cls(list(s))
+
     @property
     def at_last_char(self):
         """Whether the buffer is at its final character."""
@@ -103,20 +107,30 @@ class Reader:
         """Access a buffer by its hash."""
         return self.buffer_map[buffer_hash]
 
-    def insert_buffer(self, chars, name=''):
+    def _insert_buffer(self, buff, name=''):
         """Make a new buffer, and add it to the active stack. An optional name
         can be given to the buffer, for debugging information."""
         # The buffer's hash key is a combination of the buffer name and
         # a unique hash, so that duplicate names do not collide.
         new_hash = (name, get_unique_id())
-        self.buffer_map[new_hash] = ReaderBuffer(chars)
+        self.buffer_map[new_hash] = buff
         self.active_buffer_hash_stack.append(new_hash)
 
+    def insert_chars(self, chars, name=''):
+        """Add a list of characters to the reading stack. An optional name can
+        be given to the buffer, for debugging information."""
+        self._insert_buffer(ReaderBuffer(chars), name=name)
+
+    def insert_string(self, s, name=''):
+        """Add a string of characters to the reading stack. An optional name
+        can be given to the buffer, for debugging information."""
+        self._insert_buffer(ReaderBuffer.from_string(s), name=name)
+
     def insert_file(self, file_name):
-        """Make a new buffer from a file name, and add it to the active
-        stack."""
+        """Add the contents of a file to the reading stack. An optional name
+        can be given to the buffer, for debugging information."""
         chars = tex_file_to_chars(file_name)
-        self.insert_buffer(chars, name=file_name)
+        self.insert_chars(chars, name=file_name)
 
     @property
     def current_hash(self):
