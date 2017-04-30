@@ -1,6 +1,6 @@
-from .common import BuiltToken
-from .typer import (PhysicalUnit, MuUnit, InternalUnit,
-                    non_active_literals_map, hex_letters_map)
+from ..common import BuiltToken
+from ..typer import (PhysicalUnit, MuUnit, InternalUnit,
+                     non_active_literals_map, hex_letters_map)
 
 
 letter_to_non_active_uncased_type_map = {}

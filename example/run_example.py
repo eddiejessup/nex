@@ -7,8 +7,8 @@ from nex.lexer import Lexer
 from nex.banisher import Banisher
 from nex.executor import execute_commands
 from nex.box_writer import write_to_file
-from nex.parser import parser
-from nex.parse_utils import ChunkGrabber
+from nex.parsing.command_parser import command_parser
+from nex.parsing.utils import ChunkGrabber
 
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -29,7 +29,7 @@ def run_file(in_path, font_search_paths):
     lexer = Lexer(reader, get_cat_code_func=state.get_cat_code)
     banisher = Banisher(lexer, state=state, reader=reader)
 
-    command_grabber = ChunkGrabber(banisher, parser=parser)
+    command_grabber = ChunkGrabber(banisher, parser=command_parser)
     execute_commands(command_grabber, state=state, banisher=banisher,
                      reader=reader)
     return state

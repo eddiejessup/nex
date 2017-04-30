@@ -1,4 +1,5 @@
-from .common import BuiltToken
+from ..common import BuiltToken
+
 from .common_parsing import pg as common_pg
 
 

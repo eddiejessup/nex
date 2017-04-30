@@ -1,11 +1,11 @@
 import logging
 
-from .common import BuiltToken
-from .expander import parse_replacement_text
-from .fonts import FontRange
+from ..common import BuiltToken
+from ..expander import parse_replacement_text
+from ..fonts import FontRange
 from .common_parsing import pg as common_pg
-from .parse_utils import (ExpectedParsingError, ExhaustedTokensError,
-                          is_end_token)
+from .utils import (ExpectedParsingError, ExhaustedTokensError,
+                    is_end_token)
 from .general_text_parser import gen_txt_pg
 
 
@@ -574,4 +574,4 @@ def error(look_ahead):
         import pdb; pdb.set_trace()
 
 # Build the parser
-parser = pg.build()
+command_parser = pg.build()

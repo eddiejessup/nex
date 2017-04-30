@@ -1,10 +1,10 @@
-from .rply import ParserGenerator
+from ..rply import ParserGenerator
 
-from .common import BuiltToken
-from .typer import PhysicalUnit, terminal_token_types
-from .special_quantities import special_quantity_types
-from .tex_parameters import parameter_types, glue_keys
-from .registers import register_token_type_to_register_type
+from ..common import BuiltToken
+from ..typer import PhysicalUnit, terminal_token_types
+from ..special_quantities import special_quantity_types
+from ..tex_parameters import parameter_types, glue_keys
+from ..registers import register_token_type_to_register_type
 
 from .character_parsing import add_character_productions
 

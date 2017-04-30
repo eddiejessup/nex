@@ -4,7 +4,6 @@ from enum import Enum
 
 from .common import TerminalToken
 from .lexer import is_control_sequence_call, make_char_cat_lex_token
-from .parser import parser
 from .typer import (CatCode,
                     char_cat_lex_type, control_sequence_lex_type,
                     lex_token_to_unexpanded_token,
@@ -17,10 +16,11 @@ from .typer import (CatCode,
                     )
 from .interpreter import Mode, vertical_modes, Group
 from .executor import execute_commands, execute_condition
-from .parse_utils import ChunkGrabber
 from .expander import parse_parameter_text
-from .condition_parser import condition_parser
-from .general_text_parser import general_text_parser
+from .parsing.utils import ChunkGrabber
+from .parsing.command_parser import command_parser
+from .parsing.condition_parser import condition_parser
+from .parsing.general_text_parser import general_text_parser
 
 
 logger = logging.getLogger(__name__)
@@ -348,7 +348,7 @@ class Banisher(object):
             # Done with the context.
             self.pop_context()
 
-            box_parser = parser
+            box_parser = command_parser
             chunk_grabber = ChunkGrabber(self, parser=box_parser)
 
             # Matching right brace should trigger EndOfSubExecutor and return.
