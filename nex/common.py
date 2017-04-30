@@ -53,6 +53,40 @@ class PositionToken(BaseToken):
         else:
             self.set_position(line_nr, col_nr, char_nr, char_len, file_hash)
 
+    def pos_summary(self, verbose=False):
+        s = ''
+        if self.line_nr is not None:
+            s_line = '{:d}'.format(self.line_nr)
+        else:
+            s_line = '?'
+
+        if self.col_nr is not None:
+            s_col = '{:d}'.format(self.col_nr)
+        else:
+            s_col = '?'
+
+        if self.char_nr is not None:
+            s_pos = '{:d}'.format(self.char_nr)
+        else:
+            s_pos = '?'
+
+        if self.char_len is not None:
+            s_len = '{:d}'.format(self.char_len)
+        else:
+            s_len = '?'
+
+        if verbose:
+            f = 'Line {}, Col {}, Index {}, Length {}'
+        else:
+            f = '{}:{},{}+{}'
+        s = f.format(s_line, s_col, s_pos, s_len)
+        return s
+
+    def __repr__(self):
+        return "<{}({}): {!r} {!r}>".format(self.__class__.__name__,
+                                            self.pos_summary(),
+                                            self.type, self.value)
+
     def set_position(self, line_nr, col_nr, char_nr, char_len, file_hash):
         self.line_nr = line_nr
         self.col_nr = col_nr
