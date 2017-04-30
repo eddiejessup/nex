@@ -51,7 +51,8 @@ def write(p):
     # TODO: Implement.
     return BuiltToken(type_='write',
                       value={'stream_number': p[1], 'content': p[2],
-                             'prefix': None})
+                             'prefix': None},
+                      position_like=p)
 
 
 @pg.production('message : ERROR_MESSAGE general_text')
@@ -59,7 +60,8 @@ def write(p):
 def message(p):
     # TODO: Implement.
     return BuiltToken(type_='message',
-                      value={'content': p[1]})
+                      value={'content': p[1]},
+                      position_like=p)
 
 
 pg.add_recent_productions(gen_txt_pg)
@@ -94,7 +96,8 @@ def prefix(p):
 def macro_assignment(p):
     macro_token = BuiltToken(type_='macro_assignment',
                              value={'prefixes': set(),
-                                    'definition': p[0]})
+                                    'definition': p[0]},
+                             position_like=p)
     return macro_token
 
 
@@ -103,7 +106,8 @@ def definition(p):
     def_token = BuiltToken(type_='definition',
                            value={'def_type': p[0],
                                   'name': p[1].value['name'],
-                                  'text': p[2]})
+                                  'text': p[2]},
+                           position_like=p)
     return def_token
 
 
@@ -122,7 +126,8 @@ def definition_text(p):
     replacement_text = parse_replacement_text(p[2].value)
     def_text_token = BuiltToken(type_='definition_text',
                                 value={'parameter_text': p[0].value,
-                                       'replacement_text': replacement_text})
+                                       'replacement_text': replacement_text},
+                                position_like=p)
     return def_text_token
 
 
@@ -171,7 +176,8 @@ def simple_assignment(p):
 @pg.production('font_selection : FONT_DEF_TOKEN')
 def simple_assignment_font_selection(p):
     return BuiltToken(type_='font_selection',
-                      value={'font_id': p[0].value})
+                      value={'font_id': p[0].value},
+                      position_like=p)
 
 
 # Start of 'variable assignment', a simple assignment.
@@ -180,13 +186,15 @@ def simple_assignment_font_selection(p):
 def variable_assignment(p):
     variable, value = p[0]
     return BuiltToken(type_='variable_assignment',
-                      value={'variable': variable, 'value': value})
+                      value={'variable': variable, 'value': value},
+                      position_like=p[0])
 
 
 @pg.production('partial_variable_assignment : token_variable equals general_text')
 @pg.production('partial_variable_assignment : token_variable equals filler token_variable')
 def partial_variable_assignment_token_variable(p):
-    value = BuiltToken(type_='token_list', value=p[-1])
+    value = BuiltToken(type_='token_list', value=p[-1],
+                       position_like=p)
     return [p[0], value]
 
 
@@ -209,7 +217,8 @@ def arithmetic_integer_variable(p):
     # TODO: Allow multiply and divide operations.
     # TODO: Allow arithmetic on dimen, glue and muglue.
     return BuiltToken(type_='advance',
-                      value={'variable': p[1], 'value': p[3]})
+                      value={'variable': p[1], 'value': p[3]},
+                      position_like=p)
 
 
 @pg.production('optional_by : by')
@@ -226,7 +235,8 @@ def optional_by(p):
 @pg.production('code_assignment : code_name number equals number')
 def code_assignment(p):
     return BuiltToken(type_='code_assignment',
-                      value={'code_type': p[0], 'char': p[1], 'code': p[3]})
+                      value={'code_type': p[0].type, 'char': p[1], 'code': p[3]},
+                      position_like=p)
 
 
 @pg.production('code_name : CAT_CODE')
@@ -235,8 +245,8 @@ def code_assignment(p):
 @pg.production('code_name : LOWER_CASE_CODE')
 @pg.production('code_name : SPACE_FACTOR_CODE')
 @pg.production('code_name : DELIMITER_CODE')
-def code_name_cat(p):
-    return p[0].type
+def code_name(p):
+    return p[0]
 
 
 # End of 'code assignment', a simple assignment.
@@ -249,7 +259,8 @@ def let_assignment_control_sequence(p):
     target_token = p[4].value
     new_name = p[1].value['name']
     return BuiltToken(type_='let_assignment',
-                      value={'name': new_name, 'target_token': target_token})
+                      value={'name': new_name, 'target_token': target_token},
+                      position_like=p)
 
 
 # End of 'let assignment', a simple assignment.
@@ -264,7 +275,8 @@ def short_hand_definition(p):
     control_sequence_name = p[1].value['name']
     return BuiltToken(type_='short_hand_definition',
                       value={'code': code, 'def_type': def_type,
-                             'control_sequence_name': control_sequence_name})
+                             'control_sequence_name': control_sequence_name},
+                      position_like=p)
 
 
 @pg.production('short_hand_def : CHAR_DEF')
@@ -291,19 +303,23 @@ def family_assignment(p):
     family_nr = p[0].value
     return BuiltToken(type_='family_assignment',
                       value={'family_nr': family_nr, 'font_range': font_range,
-                             'font_id': font_id})
+                             'font_id': font_id},
+                      position_like=p)
 
 
 @pg.production('family_member : font_range number')
 def family_member(p):
-    return BuiltToken(type_=p[0], value=p[1])
+    return BuiltToken(type_=p[0].value, value=p[1],
+                      position_like=p)
 
 
 @pg.production('font_range : TEXT_FONT')
 @pg.production('font_range : SCRIPT_FONT')
 @pg.production('font_range : SCRIPT_SCRIPT_FONT')
 def font_range(p):
-    return FontRange(p[0].type)
+    return BuiltToken(type_='font_range',
+                      value=FontRange(p[0].type),
+                      position_like=p)
 
 
 # End of 'family assignment', a simple assignment.
@@ -314,7 +330,8 @@ def font_range(p):
 @pg.production('set_box_assignment : SET_BOX number equals filler box')
 def set_box_assignment(p):
     return BuiltToken(type_='set_box_assignment',
-                      value={'nr': p[1], 'contents': p[4]})
+                      value={'nr': p[1], 'contents': p[4]},
+                      position_like=p)
 
 
 # @pg.production('box : BOX number')
@@ -326,17 +343,20 @@ def set_box_assignment(p):
 # @pg.production('box : V_TOP box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
 def box(p):
     return BuiltToken(type_='h_box',
-                 value={'specification': p[1], 'contents': p[3]})
+                      value={'specification': p[1], 'contents': p[3]},
+                      position_like=p)
 
 
 @pg.production('box_specification : to dimen filler')
 def box_specification_to(p):
-    return BuiltToken(type_='to', value=p[1])
+    return BuiltToken(type_='to', value=p[1],
+                      position_like=p)
 
 
 @pg.production('box_specification : spread dimen filler')
 def box_specification_spread(p):
-    return BuiltToken(type_='spread', value=p[1])
+    return BuiltToken(type_='spread', value=p[1],
+                      position_like=p)
 
 
 @pg.production('box_specification : filler')
@@ -354,17 +374,20 @@ def font_definition(p):
     control_sequence_name = p[1].value['name']
     return BuiltToken(type_='font_definition',
                       value={'file_name': p[4], 'at_clause': p[6],
-                             'control_sequence_name': control_sequence_name})
+                             'control_sequence_name': control_sequence_name},
+                      position_like=p)
 
 
 @pg.production('at_clause : at dimen')
 def at_clause_dimen(p):
-    return BuiltToken(type_='at_dimen', value=p[1])
+    return BuiltToken(type_='at_dimen', value=p[1],
+                      position_like=p)
 
 
 @pg.production('at_clause : scaled number')
 def at_clause_scaled(p):
-    return BuiltToken(type_='scaled_number', value=p[1])
+    return BuiltToken(type_='scaled_number', value=p[1],
+                      position_like=p)
 
 
 @pg.production('at_clause : optional_spaces')
@@ -397,7 +420,8 @@ def font_assignment(p):
     font_id = p[1].value
     type_ = '{}_assignment'.format(p[0].type.lower())
     return BuiltToken(type_=type_,
-                      value={'font_id': font_id, 'code': p[3]})
+                      value={'font_id': font_id, 'code': p[3]},
+                      position_like=p)
 
 
 @pg.production('font : FONT_DEF_TOKEN')
@@ -410,7 +434,8 @@ def font(p):
 @pg.production('hyphenation_assignment : HYPHENATION general_text')
 @pg.production('hyphenation_assignment : PATTERNS general_text')
 def hyphenation_assignment(p):
-    return BuiltToken(type_=p[0].type, value={'content': p[1]})
+    return BuiltToken(type_=p[0].type, value={'content': p[1]},
+                      position_like=p)
 
 
 # End of 'global assignment', a simple assignment.
@@ -426,7 +451,8 @@ def hyphenation_assignment(p):
 @pg.production('add_kern : MATH_KERN mu_dimen')
 def add_kern(p):
     # TODO: Implement.
-    return BuiltToken(type_=p[0].type, value=p[1])
+    return BuiltToken(type_=p[0].type, value=p[1],
+                      position_like=p)
 
 
 @pg.production('add_glue : H_FIL')
@@ -439,21 +465,24 @@ def add_kern(p):
 @pg.production('add_glue : V_FIL_NEG')
 def add_special_glue(p):
     # TODO: Implement.
-    return BuiltToken(type_=p[0].type, value=None)
+    return BuiltToken(type_=p[0].type, value=None,
+                      position_like=p)
 
 
 @pg.production('add_glue : H_SKIP glue')
 @pg.production('add_glue : V_SKIP glue')
 def add_glue(p):
     # TODO: Implement.
-    return BuiltToken(type_=p[0].type, value=p[1])
+    return BuiltToken(type_=p[0].type, value=p[1],
+                      position_like=p)
 
 
 @pg.production('vertical_rule : V_RULE rule_specification')
 @pg.production('horizontal_rule : H_RULE rule_specification')
 def rule(p):
     # TODO: Implement.
-    return BuiltToken(type_=p[0].type, value=p[1].value)
+    return BuiltToken(type_=p[0].type, value=p[1].value,
+                      position_like=p)
 
 
 @pg.production('rule_specification : rule_dimension rule_specification')
@@ -470,7 +499,7 @@ def rule_specification(p):
 def rule_specification_empty(p):
     dims = {'width': None, 'height': None, 'depth': None}
     return BuiltToken(type_='rule_specification', value=dims,
-                      position_like=p[0])
+                      position_like=p)
 
 
 # TODO: these literals are getting unclear. Introduce some convention to make
@@ -482,29 +511,33 @@ def rule_dimension(p):
     print(p[0])
     return BuiltToken(type_='rule_dimension',
                       value={'axis': p[0].value, 'dimen': p[1]},
-                      position_like=p[0])
+                      position_like=p)
 
 
 @pg.production('input : INPUT file_name')
 def input_file(p):
     return BuiltToken(type_='input',
-                      value={'file_name': p[1]},
-                      position_like=p[0])
+                      value={'file_name': p[1].value},
+                      position_like=p)
 
 
 @pg.production('file_name : character')
 @pg.production('file_name : file_name character')
 def file_name(p):
     if len(p) > 1:
-        return p[0] + p[1].value['char']
+        s = p[0].value + p[1].value['char']
     else:
-        return p[0].value['char']
+        s = p[0].value['char']
+    return BuiltToken(type_='file_name',
+                      value=s,
+                      position_like=p)
 
 
 @pg.production('char : CHAR number')
 def char(p):
-    return BuiltToken(type_='char', value={'code': p[1]},
-                      position_like=p[0])
+    return BuiltToken(type_='char',
+                      value={'code': p[1]},
+                      position_like=p)
 
 
 # TODO: I wonder if I could make a decorator to make a token of the correct
@@ -512,8 +545,9 @@ def char(p):
 @pg.production('un_box : un_box_type number')
 def un_box(p):
     un_box_type = p[0].type.lower()
-    return BuiltToken(type_=un_box_type, value={'nr': p[1]},
-                      position_like=p[0])
+    return BuiltToken(type_=un_box_type,
+                      value={'nr': p[1]},
+                      position_like=p)
 
 
 @pg.production('un_box_type : UN_H_BOX')

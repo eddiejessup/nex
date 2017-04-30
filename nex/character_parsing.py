@@ -52,14 +52,14 @@ def wrap(pg, func, rule):
 def make_literal_token(p):
     s = ''.join(t.value['char'] for t in p)
     return BuiltToken(type_='literal', value=s,
-                      position_like=p[0])
+                      position_like=p)
 
 
 def add_character_productions(pg):
 
     def character(p):
         return BuiltToken(type_='character', value=p[0].value,
-                          position_like=p[0])
+                          position_like=p)
     for char_type in normal_char_types:
         rule = 'character : {}'.format(char_type)
         character = wrap(pg, character, rule)
@@ -124,18 +124,22 @@ def add_character_productions(pg):
 
     @pg.production(word_to_pr('mu', target='mu_unit') + ' one_optional_space')
     def unit_of_mu_measure(p):
-        return {'unit': MuUnit.mu}
+        return BuiltToken(type_='unit_of_measure',
+                          value={'unit': MuUnit.mu},
+                          position_like=p)
 
     @pg.production(word_to_pr('fil'))
     def fil(p):
         # Represents the number of infinities.
         # Obviously that's a sentence that should appear in a program
         # about type-setting...
-        return 1
+        return make_literal_token(p)
 
     def physical_unit(p):
         string = ''.join([t.value['char'] for t in p])
-        return PhysicalUnit(string)
+        return BuiltToken(type_='physical_unit',
+                          value=PhysicalUnit(string),
+                          position_like=p)
     for unit in PhysicalUnit:
         if unit == PhysicalUnit.fil:
             continue

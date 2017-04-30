@@ -90,7 +90,7 @@ def evaluate_number(state, number_token):
     number_value = number_token.value
     size_token = number_value['size']
     number = evaluate_size(state, size_token)
-    sign = number_value['sign']
+    sign = number_value['sign'].value
     if sign == '-':
         number *= -1
     return number
@@ -619,6 +619,8 @@ class CommandGrabber(object):
                 # get a command, we are done, so just return.
                 if not parse_queue:
                     raise
+                elif have_parsed:
+                    break
                 # If we get to the end of the file in the middle of a command,
                 # something is wrong.
                 else:

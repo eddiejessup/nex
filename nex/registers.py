@@ -1,4 +1,3 @@
-from .common import Token
 from .typer import register_tokens, short_hand_def_to_token_map
 
 

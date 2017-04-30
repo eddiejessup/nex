@@ -41,6 +41,11 @@ class BaseToken(object):
         return True
 
 
+class InternalToken(BaseToken):
+
+    pass
+
+
 class PositionToken(BaseToken):
 
     def __init__(self,
@@ -94,6 +99,10 @@ class PositionToken(BaseToken):
         self.char_len = char_len
         self.file_hash = file_hash
 
+    @property
+    def char_nr_end(self):
+        return self.char_nr + self.char_len - 1
+
     def _copy_position_from_token(self, token):
         self.set_position(token.line_nr, token.col_nr, token.char_nr,
                           token.char_len, token.file_hash)
@@ -122,7 +131,60 @@ class PositionToken(BaseToken):
         s = intro + '…' + pre_context + here + post_context + '…'
         s = s.replace('\n', '⏎ ')
         s = s.replace('\t', '⇥')
+        s = self.pos_summary() + '\t' + s
         return s
+
+
+class BuiltToken(PositionToken):
+
+    def _copy_position_from_token(self, tokens):
+        self.constituent_tokens = tokens
+        # If a single token is passed, make it into a list.
+        try:
+            iter(tokens)
+        except TypeError:
+            tokens = [tokens]
+        if not tokens:
+            self.set_position(None, None, None, None, None)
+        # Ignore tokens that aren't really concrete tokens, like the output
+        # of empty productions (None), or internal tokens.
+        tokens = [t for t in tokens if isinstance(t, PositionToken)]
+        tagged_ts = [t for t in tokens if t.char_nr is not None]
+        if not tagged_ts:
+            self.set_position(None, None, None, None, None)
+        else:
+            # All but char_len are the same as the first tagged token.
+            super()._copy_position_from_token(tagged_ts[0])
+            # Now we just need to amend the length.
+            # First check the tokens are in order.
+            char_starts = [t.char_nr for t in tagged_ts]
+            # if sorted(char_starts) != char_starts:
+            #     import pdb; pdb.set_trace()
+            # And check the tokens do not overlap.
+            char_ends = [t.char_nr_end for t in tagged_ts]
+            char_offsets = [s - e for s, e in zip(char_starts[1:], char_ends[:-1])]
+            # Can be 'on top of each other' (zero) if they are from an expanded
+            # macro.
+            # if not all(off >= 0 for off in char_offsets):
+            #     import pdb; pdb.set_trace()
+            # Now do the actual amendment.
+            char_len = sum(t.char_len for t in tagged_ts)
+            self.char_len = char_len
+
+
+class NonTerminalToken(PositionToken):
+
+    pass
+
+
+class LexToken(PositionToken):
+
+    pass
+
+
+class UnexpandedToken(NonTerminalToken):
+
+    pass
 
 
 class TerminalToken(PositionToken):
@@ -147,31 +209,6 @@ class TerminalToken(PositionToken):
         return None
 
 
-class Token(PositionToken):
-
-    pass
-
-
-class BuiltToken(Token):
-
-    pass
-
-
-class LexToken(Token):
-
-    pass
-
-
-class UnexpandedToken(Token):
-
-    pass
-
-
-class NonTerminalToken(Token):
-
-    pass
-
-
-class InternalToken(BaseToken):
+class BuiltTerminalToken(TerminalToken, BuiltToken):
 
     pass
