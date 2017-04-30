@@ -1,6 +1,5 @@
 import logging
 from collections import deque
-from enum import Enum
 
 from .common import TerminalToken
 from .lexer import is_control_sequence_call
@@ -14,7 +13,7 @@ from .typer import (CatCode,
 from .lex_typer import (make_control_sequence_unexpanded_token,
                         make_char_cat_pair_terminal_token,
                         make_char_cat_terminal_token)
-from .state import Mode, Group
+from .state import Mode, Group, ContextMode
 from .executor import execute_commands, execute_condition
 from .expander import parse_parameter_text
 from .parsing.utils import ChunkGrabber
@@ -39,16 +38,6 @@ message_types = ('MESSAGE', 'ERROR_MESSAGE', 'WRITE')
 hyphenation_types = ('HYPHENATION', 'PATTERNS')
 
 token_variable_start_types = ('TOKEN_PARAMETER', 'TOKS_DEF_TOKEN', 'TOKS')
-
-
-class ContextMode(Enum):
-    normal = 1
-    awaiting_balanced_text_start = 2
-    awaiting_balanced_text_or_token_variable_start = 7
-    awaiting_make_h_box_start = 3
-    awaiting_make_v_box_start = 4
-    awaiting_make_v_top_start = 5
-    absorbing_parameter_text = 6
 
 
 box_context_mode_map = {
@@ -101,7 +90,6 @@ class Banisher:
         self.reader = reader
         # Input buffer.
         self.input_tokens_queue = deque()
-        self.context_mode_stack = []
 
     @property
     def expanding_control_sequences(self):
@@ -137,21 +125,15 @@ class Banisher:
                                       position_like=tokens[0])
         return balanced_text
 
-    def _push_context(self, mode):
-        self.context_mode_stack.append(mode)
+    def _push_context(self, *args, **kwargs):
+        return self.global_state._push_context(*args, **kwargs)
 
-    def _pop_context(self):
-        if self.context_mode_stack:
-            return self.context_mode_stack.pop()
-        else:
-            return self.context_mode_stack
+    def _pop_context(self, *args, **kwargs):
+        return self.global_state._pop_context(*args, **kwargs)
 
     @property
     def context_mode(self):
-        if self.context_mode_stack:
-            return self.context_mode_stack[-1]
-        else:
-            return ContextMode.normal
+        return self.global_state.context_mode
 
     def get_escape_char_terminal_token(self, position_like=None):
         escape_char_code = self.global_state.get_parameter_value('escapechar')
