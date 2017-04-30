@@ -45,34 +45,33 @@ class PositionToken(BaseToken):
 
     def __init__(self,
                  line_nr=None, col_nr=None, char_nr=None, char_len=None,
+                 file_hash=None,
                  position_like=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if position_like is not None:
             self._copy_position_from_token(position_like)
         else:
-            self.set_position(line_nr, col_nr, char_nr, char_len)
-        # if self.line_nr is None and self.__class__ != BuiltToken:
-        #     import pdb; pdb.set_trace()
+            self.set_position(line_nr, col_nr, char_nr, char_len, file_hash)
 
-    def set_position(self, line_nr, col_nr, char_nr, char_len):
+    def set_position(self, line_nr, col_nr, char_nr, char_len, file_hash):
         self.line_nr = line_nr
         self.col_nr = col_nr
         self.char_nr = char_nr
         self.char_len = char_len
+        self.file_hash = file_hash
 
     def _copy_position_from_token(self, token):
         self.set_position(token.line_nr, token.col_nr, token.char_nr,
-                          token.char_len)
+                          token.char_len, token.file_hash)
 
     def get_position_str(self, reader):
-        cs = reader.current_chars
+        cs = reader.get_buffer(self.file_hash).chars
         here_i = self.char_nr
         context_len = 20
 
         before_i = max(here_i - context_len, 0)
         pre_context = ''.join(cs[before_i:here_i])
 
-        here_i_end = here_i
         if self.char_len is None:
             here_len = 1
         else:
