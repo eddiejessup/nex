@@ -16,7 +16,8 @@ from .typer import (CatCode,
                     short_hand_def_map, def_map, if_map,
                     )
 from .interpreter import Mode, vertical_modes, Group
-from .executor import CommandGrabber, execute_commands, execute_condition
+from .executor import execute_commands, execute_condition
+from .parse_utils import ChunkGrabber
 from .expander import parse_parameter_text
 from .condition_parser import condition_parser
 from .general_text_parser import general_text_parser
@@ -348,10 +349,10 @@ class Banisher(object):
             self.pop_context()
 
             box_parser = parser
-            command_grabber = CommandGrabber(self, parser=box_parser)
+            chunk_grabber = ChunkGrabber(self, parser=box_parser)
 
             # Matching right brace should trigger EndOfSubExecutor and return.
-            execute_commands(command_grabber, self.global_state,
+            execute_commands(chunk_grabber, self.global_state,
                              banisher=self, reader=self.reader)
 
             # [After ending the group, then TeX] packages the hbox (using the
@@ -431,12 +432,12 @@ class Banisher(object):
             output_tokens.append(first_token)
             self.push_context(ContextMode.awaiting_balanced_text_start)
         elif type_ in if_types:
-            command_grabber = CommandGrabber(self, parser=condition_parser)
-            command_grabber.buffer_token_queue.append(first_token)
-            condition_token = command_grabber.get_command()
+            chunk_grabber = ChunkGrabber(self, parser=condition_parser)
+            chunk_grabber.buffer_token_queue.append(first_token)
+            condition_token = chunk_grabber.get_chunk()
             outcome = execute_condition(condition_token, self.global_state)
             # Pick up any left-over tokens from the condition command parsing.
-            if_queue = command_grabber.buffer_token_queue
+            if_queue = chunk_grabber.buffer_token_queue
 
             # TODO: Move inside executor? Not sure.
             if type_ == 'IF_CASE':

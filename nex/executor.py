@@ -2,8 +2,7 @@ from collections import deque
 import operator
 
 from .common import BuiltToken, TerminalToken
-from .utils import NoSuchControlSequence, ExecuteCommandError
-from .parse_utils import ExpectedParsingError, ExhaustedTokensError
+from .utils import ExecuteCommandError
 from .reader import EndOfFile
 from .registers import is_register_type
 from .typer import (CatCode, MathCode, GlyphCode, DelimiterCode, MathClass,
@@ -14,7 +13,7 @@ from .tex_parameters import glue_keys, is_parameter_type
 from .router import primitive_canon_tokens
 from .state import Operation
 from .interpreter import Mode, Group, vertical_modes, horizontal_modes
-from .box import (HBox, Rule, UnSetGlue, SetGlue, Character, FontDefinition,
+from .box import (HBox, Rule, UnSetGlue, Character, FontDefinition,
                   FontSelection)
 from .paragraphs import h_list_to_best_h_boxes
 
@@ -537,11 +536,11 @@ def execute_command(command, state, banisher, reader):
         import pdb; pdb.set_trace()
 
 
-def execute_commands(command_grabber, state, banisher, reader):
+def execute_commands(chunk_grabber, state, banisher, reader):
     _cs = []
     while True:
         try:
-            command = command_grabber.get_command()
+            command = chunk_grabber.get_chunk()
         except EndOfFile:
             break
         _cs.append(command)
@@ -553,90 +552,3 @@ def execute_commands(command_grabber, state, banisher, reader):
             break
         except Exception as e:
             raise ExecuteCommandError(command, e)
-
-
-class CommandGrabber(object):
-
-    def __init__(self, banisher, parser):
-        self.banisher = banisher
-        self.parser = parser
-
-        # Processing input tokens might return many tokens, so
-        # we store them in a buffer.
-        self.buffer_token_queue = deque()
-
-    def get_command(self):
-        # Want to extend the queue-to-be-parsed one token at a time,
-        # so we can break as soon as we have all we need.
-        chunk_token_queue = deque()
-        # Get enough tokens to grab a parse-chunk. We know to stop adding tokens
-        # when we see a switch from failing because we run out of tokens
-        # (ExhaustedTokensError) to an actual syntax error
-        # (ExpectedParsingError).
-        # We keep track of if we have parsed, just for checking for weird
-        # situations.
-        have_parsed = False
-        while True:
-            try:
-                t = self.banisher.pop_or_fill_and_pop(self.buffer_token_queue)
-            except EndOfFile:
-                # If we get an EndOfFile, and we have just started trying to
-                # get a parse-chunk, we are done, so just propagate the
-                # exception to wrap things up.
-                if not chunk_token_queue:
-                    raise
-                # If we get an EndOfFile and we have already parsed, we need to
-                # return this parse-chunk, then next time round we will be
-                # done.
-                elif have_parsed:
-                    break
-                # If we get to the end of the file and we have a chunk queue
-                # that can't be parsed, something is wrong.
-                else:
-                    import pdb; pdb.set_trace()
-                    pass
-            # If we get an expansion error, it might be because we need to
-            # act on the chunk we have so far first.
-            except NoSuchControlSequence as e:
-                # This is only possible if we have already parsed the chunk-so-
-                # far.
-                if have_parsed:
-                    break
-                # Otherwise, indeed something is wrong.
-                else:
-                    raise
-            except Exception as e:
-                import pdb; pdb.set_trace()
-                raise
-            if not isinstance(t, TerminalToken):
-                import pdb; pdb.set_trace()
-            chunk_token_queue.append(t)
-            try:
-                result = self.parser.parse(iter(chunk_token_queue))
-            except ExpectedParsingError:
-                if have_parsed:
-                    # We got one token of fluff due to extra read, to make the
-                    # parse queue not-parse. So put it back on the buffer.
-                    self.buffer_token_queue.appendleft(chunk_token_queue.pop())
-                    break
-                else:
-                    import pdb; pdb.set_trace()
-                    pass
-            except ExhaustedTokensError:
-                # Carry on getting more tokens, because it seems we can.
-                pass
-            else:
-                # Implemented in our modified version of rply, we annotate the
-                # output token to indicate whether the only action from the
-                # current parse state could be to end. In this case, we do not
-                # bother adding another token, and just finish the command.
-                # This is important to limit the number of cases where we
-                # expand too far, and must handle bad expansion of the post-
-                # command tokens.
-                if result._could_only_end:
-                    break
-                have_parsed = True
-        # We might want to reverse the composition we just did in the parser,
-        # so save the bits in a special place.
-        result._terminal_tokens = chunk_token_queue
-        return result
