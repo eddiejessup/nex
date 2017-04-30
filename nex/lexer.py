@@ -65,10 +65,7 @@ class Lexer:
         reader.insert_string(s)
         return cls(reader, *args, **kwargs)
 
-    # TODO: Change into a function, I think it changes too much state to be a
-    # property.
-    @property
-    def next_token(self):
+    def get_next_token(self):
         while True:
             token = self._process_next_character()
             if token is not None:
@@ -81,7 +78,7 @@ class Lexer:
         that should be read."""
         while True:
             try:
-                yield self.next_token
+                yield self.get_next_token()
             except EndOfFile:
                 break
 
