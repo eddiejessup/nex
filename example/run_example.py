@@ -1,13 +1,12 @@
 import logging
 import os
 
-from nex.dampf.dvi_document import DVIDocument
-
 from nex.state import GlobalState
 from nex.reader import Reader
 from nex.lexer import Lexer
 from nex.banisher import Banisher
-from nex.executor import execute_commands, write_box_to_doc, CommandGrabber
+from nex.executor import execute_commands, CommandGrabber
+from nex.box_writer import write_to_file
 from nex.parser import parser
 
 
@@ -33,14 +32,6 @@ def run_file(in_path, font_search_paths):
     execute_commands(command_grabber, state=state, banisher=banisher,
                      reader=reader)
     return state
-
-
-def write_to_file(state, out_path):
-    magnification = state.get_parameter_value('mag')
-    doc = DVIDocument(magnification)
-    total_layout_list = state.pop_mode()
-    write_box_to_doc(doc, total_layout_list)
-    doc.write(out_path)
 
 
 if __name__ == '__main__':

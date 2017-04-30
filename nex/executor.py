@@ -555,41 +555,6 @@ def execute_commands(command_grabber, state, banisher, reader):
             raise ExecuteCommandError(command, e)
 
 
-def write_box_to_doc(doc, layout_list, horizontal=False):
-    for item in layout_list:
-        if isinstance(item, FontDefinition):
-            doc.define_font(item.font_nr, item.font_name,
-                            font_path=item.file_name)
-        elif isinstance(item, FontSelection):
-            doc.select_font(item.font_nr)
-        elif isinstance(item, HBox):
-            doc.push()
-            write_box_to_doc(doc, item.contents, horizontal=True)
-            doc.pop()
-            if horizontal:
-                doc.right(item.width)
-        elif isinstance(item, Character):
-            doc.set_char(item.code)
-        elif isinstance(item, UnSetGlue):
-            if not horizontal:
-                item = item.set(item.natural_dimen)
-            amount = item.dimen
-            if horizontal:
-                # doc.put_rule(height=1000, width=amount)
-                doc.right(amount)
-            else:
-                doc.down(amount)
-        elif isinstance(item, SetGlue):
-            amount = item.dimen
-            if horizontal:
-                # doc.put_rule(height=1000, width=amount)
-                doc.right(amount)
-            else:
-                doc.down(amount)
-        else:
-            import pdb; pdb.set_trace()
-
-
 class CommandGrabber(object):
 
     def __init__(self, banisher, parser):
@@ -598,13 +563,13 @@ class CommandGrabber(object):
 
         # Processing input tokens might return many tokens, so
         # we store them in a buffer.
-        self.buffer_queue = deque()
+        self.buffer_token_queue = deque()
 
     def get_command(self):
         # Want to extend the queue-to-be-parsed one token at a time,
         # so we can break as soon as we have all we need.
-        parse_queue = deque()
-        # Get enough tokens to evaluate command. We know to stop adding tokens
+        chunk_token_queue = deque()
+        # Get enough tokens to grab a parse-chunk. We know to stop adding tokens
         # when we see a switch from failing because we run out of tokens
         # (ExhaustedTokensError) to an actual syntax error
         # (ExpectedParsingError).
@@ -613,40 +578,46 @@ class CommandGrabber(object):
         have_parsed = False
         while True:
             try:
-                t = self.banisher.pop_or_fill_and_pop(self.buffer_queue)
+                t = self.banisher.pop_or_fill_and_pop(self.buffer_token_queue)
             except EndOfFile:
                 # If we get an EndOfFile, and we have just started trying to
-                # get a command, we are done, so just return.
-                if not parse_queue:
+                # get a parse-chunk, we are done, so just propagate the
+                # exception to wrap things up.
+                if not chunk_token_queue:
                     raise
+                # If we get an EndOfFile and we have already parsed, we need to
+                # return this parse-chunk, then next time round we will be
+                # done.
                 elif have_parsed:
                     break
-                # If we get to the end of the file in the middle of a command,
-                # something is wrong.
+                # If we get to the end of the file and we have a chunk queue
+                # that can't be parsed, something is wrong.
                 else:
                     import pdb; pdb.set_trace()
                     pass
             # If we get an expansion error, it might be because we need to
-            # execute this command first.
+            # act on the chunk we have so far first.
             except NoSuchControlSequence as e:
+                # This is only possible if we have already parsed the chunk-so-
+                # far.
                 if have_parsed:
                     break
+                # Otherwise, indeed something is wrong.
                 else:
-                    import pdb; pdb.set_trace()
-                    pass
+                    raise
             except Exception as e:
                 import pdb; pdb.set_trace()
                 raise
             if not isinstance(t, TerminalToken):
                 import pdb; pdb.set_trace()
-            parse_queue.append(t)
+            chunk_token_queue.append(t)
             try:
-                result = self.parser.parse(iter(parse_queue))
+                result = self.parser.parse(iter(chunk_token_queue))
             except ExpectedParsingError:
                 if have_parsed:
                     # We got one token of fluff due to extra read, to make the
                     # parse queue not-parse. So put it back on the buffer.
-                    self.buffer_queue.appendleft(parse_queue.pop())
+                    self.buffer_token_queue.appendleft(chunk_token_queue.pop())
                     break
                 else:
                     import pdb; pdb.set_trace()
@@ -667,5 +638,5 @@ class CommandGrabber(object):
                 have_parsed = True
         # We might want to reverse the composition we just did in the parser,
         # so save the bits in a special place.
-        result._terminal_tokens = parse_queue
+        result._terminal_tokens = chunk_token_queue
         return result

@@ -432,11 +432,11 @@ class Banisher(object):
             self.push_context(ContextMode.awaiting_balanced_text_start)
         elif type_ in if_types:
             command_grabber = CommandGrabber(self, parser=condition_parser)
-            command_grabber.buffer_queue.append(first_token)
+            command_grabber.buffer_token_queue.append(first_token)
             condition_token = command_grabber.get_command()
             outcome = execute_condition(condition_token, self.global_state)
             # Pick up any left-over tokens from the condition command parsing.
-            if_queue = command_grabber.buffer_queue
+            if_queue = command_grabber.buffer_token_queue
 
             # TODO: Move inside executor? Not sure.
             if type_ == 'IF_CASE':
