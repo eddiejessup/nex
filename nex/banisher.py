@@ -14,7 +14,7 @@ from .typer import (CatCode,
                     explicit_box_map,
                     short_hand_def_map, def_map, if_map,
                     )
-from .interpreter import Mode, vertical_modes, Group
+from .state import Mode, Group
 from .executor import execute_commands, execute_condition
 from .expander import parse_parameter_text
 from .parsing.utils import ChunkGrabber
