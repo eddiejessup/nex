@@ -85,7 +85,5 @@ class TyperPipe:
 
     def _get_new_output_tokens(self):
         first_input_token = self._pop_next_input_token()
-
         unexpanded_token = lex_token_to_unexpanded_token(first_input_token)
-
         return deque([unexpanded_token])

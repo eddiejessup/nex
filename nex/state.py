@@ -16,7 +16,23 @@ class ContextMode(Enum):
     awaiting_make_h_box_start = 3
     awaiting_make_v_box_start = 4
     awaiting_make_v_top_start = 5
-    absorbing_parameter_text = 6
+    # Inhibited expansion contexts. I have listed the corresponding entry in
+    # the list of cases where expansion is suppressed, in the TeXbook, page
+    # 215.
+    # Entry 2.
+    absorbing_conditional_text = 12
+    # Entry 3.
+    absorbing_macro_arguments = 13
+    # Entry 4.
+    absorbing_new_control_sequence_name = 14
+    # Entry 5, and the latter part of entry 7.
+    absorbing_misc_unexpanded_arguments = 15
+    # Entry 6.
+    absorbing_macro_parameter_text = 16
+    # First part of entry 7.
+    absorbing_macro_replacement_text = 17
+    # Entry 10.
+    absorbing_backtick_argument = 20
 
 
 class Mode(Enum):

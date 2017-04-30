@@ -1,5 +1,6 @@
 import logging
 from collections import deque
+from contextlib import contextmanager
 
 from .common import TerminalToken
 from .lexer import is_control_sequence_call
@@ -11,7 +12,6 @@ from .typer import (CatCode,
                     short_hand_def_map, def_map, if_map,
                     )
 from .lex_typer import (make_control_sequence_unexpanded_token,
-                        make_char_cat_pair_terminal_token,
                         make_char_cat_terminal_token)
 from .state import Mode, Group, ContextMode
 from .executor import execute_commands, execute_condition
@@ -27,7 +27,6 @@ logger.setLevel('DEBUG')
 
 read_unexpanded_control_sequence_types = (
     'LET',
-    'BACKTICK',
     'FONT',
 )
 read_unexpanded_control_sequence_types += tuple(set(def_map.values()))
@@ -45,7 +44,6 @@ box_context_mode_map = {
     'V_BOX': ContextMode.awaiting_make_v_box_start,
     'V_TOP': ContextMode.awaiting_make_v_top_start,
 }
-awaiting_make_box_context_modes = tuple(box_context_mode_map.values())
 
 expanding_context_modes = (
     ContextMode.normal,
@@ -55,19 +53,16 @@ expanding_context_modes = (
     ContextMode.awaiting_make_v_box_start,
     ContextMode.awaiting_make_v_top_start,
 )
-expanding_context_modes += awaiting_make_box_context_modes
 
 
-def terminise_unexpanded_cs_token(unexpanded_tok):
-    if isinstance(unexpanded_tok, TerminalToken):
-        term_token = unexpanded_tok
+def terminalize_token(token):
+    if isinstance(token, TerminalToken):
+        return token
+    if len(token.value['name']) == 1:
+        type_ = unexpanded_one_char_cs_type
     else:
-        name = unexpanded_tok.value['name']
-        type_ = (unexpanded_one_char_cs_type if len(name) == 1
-                 else unexpanded_many_char_cs_type)
-        term_token = TerminalToken(type_=type_, value=unexpanded_tok.value,
-                                   position_like=unexpanded_tok)
-    return term_token
+        type_ = unexpanded_many_char_cs_type
+    return TerminalToken(type_=type_, value=token.value, position_like=token)
 
 
 def get_brace_sign(token):
@@ -77,6 +72,13 @@ def get_brace_sign(token):
         return -1
     else:
         return 0
+
+
+@contextmanager
+def context_mode(state, context_mode):
+    state._push_context(context_mode)
+    yield
+    state._pop_context()
 
 
 class Banisher:
@@ -166,15 +168,17 @@ class Banisher:
             print(first_token.get_position_str(self.reader))
         output_tokens = deque()
 
-        # If the token is an unexpanded control sequence call, then we must
-        # normalize it.
+        # If the token is an unexpanded control sequence call, and expansion is
+        # not suppressed, then we must normalize it:
         # - A user control sequence will become a (non-terminal) macro token.
         # - A \let character will become the (terminal) character token.
         # - A primitive control sequence will become a terminal token.
         if (self.expanding_control_sequences and
                 first_token.type == unexpanded_token_type):
+            name = first_token.value['name']
             first_token = self.global_state.resolve_control_sequence_to_token(
-                first_token.value['name'], position_like=first_token)
+                name, position_like=first_token)
+
         type_ = first_token.type
         if type_ == 'MACRO':
             macro_definition = first_token.value['definition']
@@ -196,54 +200,58 @@ class Banisher:
                 except:
                     import pdb; pdb.set_trace()
 
-            arguments = []
-            i_param = 0
-            for i_param in range(len(params)):
-                arg_toks = []
-                p_t = params[i_param]
-                if p_t.type not in ('UNDELIMITED_PARAM', 'DELIMITED_PARAM'):
-                    # We should only see non-parameters in the parameter list,
-                    # if they are text preceding the parameters proper. See
-                    # the comments in `parse_parameter_text` for further
-                    # details.
-                    # We just swallow up these tokens.
-                    assert not arguments
-                    next_token = self._get_next_input_token()
-                    if not tokens_equal(p_t, next_token):
-                        raise Exception
-                    continue
-                delim_toks = p_t.value['delim_tokens']
-                if p_t.type == 'UNDELIMITED_PARAM':
-                    assert not delim_toks
-                    next_token = self._get_next_input_token()
-                    if next_token.type == 'LEFT_BRACE':
-                        b_tok = self.get_balanced_text_token()
-                        arg_toks.extend(b_tok.value)
-                    else:
-                        arg_toks.append(next_token)
-                elif p_t.type == 'DELIMITED_PARAM':
-                    # To be finished, we must be balanced brace-wise.
-                    brace_level = 0
-                    while True:
+            # Get macro arguments.
+            # Set context to inhibit expansion.
+            with context_mode(self.global_state,
+                              ContextMode.absorbing_macro_arguments):
+                arguments = []
+                i_param = 0
+                for i_param in range(len(params)):
+                    arg_toks = []
+                    p_t = params[i_param]
+                    if p_t.type not in ('UNDELIMITED_PARAM', 'DELIMITED_PARAM'):
+                        # We should only see non-parameters in the parameter list,
+                        # if they are text preceding the parameters proper. See
+                        # the comments in `parse_parameter_text` for further
+                        # details.
+                        # We just swallow up these tokens.
+                        assert not arguments
                         next_token = self._get_next_input_token()
-                        brace_level += get_brace_sign(next_token)
-                        arg_toks.append(next_token)
-                        # If we are balanced, and we could possibly
-                        # have got the delimiter tokens.
-                        if brace_level == 0 and len(arg_toks) >= len(delim_toks):
-                            # Check if the recent argument tokens match the
-                            # delimiter tokens, and if so, we are done.
-                            to_compare = zip(reversed(arg_toks),
-                                             reversed(delim_toks))
-                            if all(tokens_equal(*ts) for ts in to_compare):
-                                break
-                    # Remove the delimiter tokens as they are not part of
-                    # the argument
-                    arg_toks = arg_toks[:-len(delim_toks)]
-                    # We remove exactly one set of braces, if present.
-                    if arg_toks[0].type == 'LEFT_BRACE' and arg_toks[-1].type == 'RIGHT_BRACE':
-                        arg_toks = arg_toks[1:-1]
-                arguments.append(arg_toks)
+                        if not tokens_equal(p_t, next_token):
+                            raise Exception
+                        continue
+                    delim_toks = p_t.value['delim_tokens']
+                    if p_t.type == 'UNDELIMITED_PARAM':
+                        assert not delim_toks
+                        next_token = self._get_next_input_token()
+                        if next_token.type == 'LEFT_BRACE':
+                            b_tok = self.get_balanced_text_token()
+                            arg_toks.extend(b_tok.value)
+                        else:
+                            arg_toks.append(next_token)
+                    elif p_t.type == 'DELIMITED_PARAM':
+                        # To be finished, we must be balanced brace-wise.
+                        brace_level = 0
+                        while True:
+                            next_token = self._get_next_input_token()
+                            brace_level += get_brace_sign(next_token)
+                            arg_toks.append(next_token)
+                            # If we are balanced, and we could possibly
+                            # have got the delimiter tokens.
+                            if brace_level == 0 and len(arg_toks) >= len(delim_toks):
+                                # Check if the recent argument tokens match the
+                                # delimiter tokens, and if so, we are done.
+                                to_compare = zip(reversed(arg_toks),
+                                                 reversed(delim_toks))
+                                if all(tokens_equal(*ts) for ts in to_compare):
+                                    break
+                        # Remove the delimiter tokens as they are not part of
+                        # the argument
+                        arg_toks = arg_toks[:-len(delim_toks)]
+                        # We remove exactly one set of braces, if present.
+                        if arg_toks[0].type == 'LEFT_BRACE' and arg_toks[-1].type == 'RIGHT_BRACE':
+                            arg_toks = arg_toks[1:-1]
+                    arguments.append(arg_toks)
 
             expanded_first_token = self.global_state.expand_macro_to_token_list(name, arguments)
 
@@ -328,22 +336,25 @@ class Banisher:
                                      position_like=first_token)
             output_tokens.append(material)
         elif type_ in read_unexpanded_control_sequence_types:
-            # Add the first token to the output, turned into a terminal token
-            # if necessary.
-            output_tokens.append(terminise_unexpanded_cs_token(first_token))
+            # Add the first token to the output.
+            output_tokens.append(first_token)
             # Then get an unexpanded control sequence as a terminal token and
             # add it to the output.
-            next_token = self._get_next_input_token()
-            output_tokens.append(terminise_unexpanded_cs_token(next_token))
+            with context_mode(self.global_state,
+                              ContextMode.absorbing_new_control_sequence_name):
+                cs_name_token = self._get_next_input_token()
+            output_tokens.append(terminalize_token(cs_name_token))
 
             if type_ in def_map.values():
                 parameter_text_tokens = []
-                while True:
-                    tok = self._get_next_input_token()
-                    if tok.type == 'LEFT_BRACE':
-                        left_brace_tok = tok
-                        break
-                    parameter_text_tokens.append(tok)
+                with context_mode(self.global_state,
+                                  ContextMode.absorbing_macro_parameter_text):
+                    while True:
+                        tok = self._get_next_input_token()
+                        if tok.type == 'LEFT_BRACE':
+                            left_brace_token = tok
+                            break
+                        parameter_text_tokens.append(tok)
                 parameters = parse_parameter_text(parameter_text_tokens)
                 parameters_token = TerminalToken(type_='PARAMETER_TEXT',
                                                  value=parameters,
@@ -351,33 +362,47 @@ class Banisher:
                 # Now get the replacement text.
                 # TODO: this is where expanded-def will be differentiated from
                 # normal-def.
-                balanced_text_token = self.get_balanced_text_token()
+                with context_mode(self.global_state,
+                                  ContextMode.absorbing_macro_replacement_text):
+                    replacement_text_token = self.get_balanced_text_token()
                 # Put the parameter text, LEFT_BRACE and replacement
                 # text on the output queue.
-                output_tokens.extend([parameters_token, left_brace_tok,
-                                      balanced_text_token])
+                output_tokens.extend([parameters_token, left_brace_token,
+                                      replacement_text_token])
             elif type_ == 'LET':
                 # We are going to parse the arguments of LET ourselves,
                 # because we want to allow the target token be basically
                 # anything, and this would be a pain to tell the parser.
                 let_arguments = []
-                let_arguments.append(self._get_next_input_token())
-                # If we have found an equals, ignore that and read again.
-                if let_arguments[-1].type == 'EQUALS':
+                with context_mode(self.global_state,
+                                  ContextMode.absorbing_misc_unexpanded_arguments):
                     let_arguments.append(self._get_next_input_token())
-                if let_arguments[-1].type == 'SPACE':
-                    let_arguments.append(self._get_next_input_token())
+                    # If we have found an equals, ignore that and read again.
+                    if let_arguments[-1].type == 'EQUALS':
+                        let_arguments.append(self._get_next_input_token())
+                    if let_arguments[-1].type == 'SPACE':
+                        let_arguments.append(self._get_next_input_token())
                 # Make the target argument into a special 'any' token.
                 let_arguments[-1] = TerminalToken(type_=unexpanded_token_type,
                                                   value=let_arguments[-1],
                                                   position_like=first_token)
                 output_tokens.extend(let_arguments)
-        elif type_ in token_variable_start_types:
-            # Watch for a balanced text starting.
+        elif type_ == 'BACKTICK':
+            # Add the first token to the output.
             output_tokens.append(first_token)
+            # Then get an unexpanded control sequence as a terminal token and
+            # add it to the output.
+            with context_mode(self.global_state, ContextMode.absorbing_backtick_argument):
+                arg_token = self._get_next_input_token()
+            output_tokens.append(terminalize_token(arg_token))
+        elif type_ in token_variable_start_types:
+            output_tokens.append(first_token)
+            # Watch for a balanced text starting.
             self._push_context(ContextMode.awaiting_balanced_text_or_token_variable_start)
         elif type_ == 'EXPAND_AFTER':
-            unexpanded_token = self._get_next_input_token()
+            with context_mode(self.global_state,
+                              ContextMode.absorbing_misc_unexpanded_arguments):
+                unexpanded_token = self._get_next_input_token()
             next_tokens = self._process_next_input_token()
             self.replace_on_input_queue(next_tokens)
             self.input_tokens_queue.appendleft(unexpanded_token)
@@ -434,31 +459,35 @@ class Banisher:
                 return (is_control_sequence_call(token) and
                         t.value['name'] in condition_block_delimiter_names)
 
-            while True:
-                if not if_queue:
-                    if_queue.append(self._get_next_input_token())
-                t = if_queue.popleft()
+            with context_mode(self.global_state,
+                              ContextMode.absorbing_conditional_text):
+                while True:
+                    if not if_queue:
+                        if_queue.append(self._get_next_input_token())
+                    t = if_queue.popleft()
 
-                # Keep track of nested conditions.
-                nr_conditions += get_condition_sign(t)
+                    # Keep track of nested conditions.
+                    nr_conditions += get_condition_sign(t)
 
-                # If we get the terminal \fi, break
-                if nr_conditions == 0:
-                    break
-                # If we are at the pertinent if-nesting level, then
-                # a condition block delimiter should be kept track of.
-                elif nr_conditions == 1 and is_condition_delimiter(t):
-                    i_block += 1
-                # if we're in the block the condition says we should pick,
-                # include token.
-                elif i_block == i_block_to_pick:
-                    not_skipped_tokens.append(t)
-                # Otherwise we are skipping tokens.
-                else:
-                    pass
+                    # If we get the terminal \fi, break
+                    if nr_conditions == 0:
+                        break
+                    # If we are at the pertinent if-nesting level, then
+                    # a condition block delimiter should be kept track of.
+                    elif nr_conditions == 1 and is_condition_delimiter(t):
+                        i_block += 1
+                    # if we're in the block the condition says we should pick,
+                    # include token.
+                    elif i_block == i_block_to_pick:
+                        not_skipped_tokens.append(t)
+                    # Otherwise we are skipping tokens.
+                    else:
+                        pass
             self.replace_on_input_queue(not_skipped_tokens)
         elif type_ == 'STRING':
-            target_token = self._get_next_input_token()
+            with context_mode(self.global_state,
+                              ContextMode.absorbing_misc_unexpanded_arguments):
+                target_token = self._get_next_input_token()
             string_tokens = []
             # If the target token is a control sequence, then get the chars of
             # its name.
@@ -502,19 +531,18 @@ class Banisher:
             if escape_char_token is not None:
                 output_tokens.append(escape_char_token)
         elif type_ in ('UPPER_CASE', 'LOWER_CASE'):
-            # TODO: This is wrong. Need to expand tokens between this command
-            # and the left brace. Parse filler manually so we don't need the
-            # general_text_parser.
             case_tokens = []
             while True:
                 t = self._get_next_input_token()
                 case_tokens.append(t)
                 if t.type == 'LEFT_BRACE':
-                    balanced_text_token = self.get_balanced_text_token()
+                    with context_mode(self.global_state,
+                                      ContextMode.absorbing_misc_unexpanded_arguments):
+                        balanced_text_token = self.get_balanced_text_token()
                     case_tokens.append(balanced_text_token)
                     break
             # Check arguments obey the rules of a 'general text'.
-            # TODO: Can this be done better with a command grabber or
+            # TODO: Can this be done better with a chunk grabber or
             # something?
             general_text_token = general_text_parser.parse(iter(case_tokens))
 
