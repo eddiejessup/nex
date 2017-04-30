@@ -164,8 +164,8 @@ def get_local_scope(enclosing_scope):
 
 class GlobalState(object):
 
-    def __init__(self):
-        self.global_font_state = GlobalFontState()
+    def __init__(self, font_search_paths):
+        self.global_font_state = GlobalFontState(font_search_paths)
         # At the beginning, TeX is in vertical mode, ready to construct pages.
         self.modes = [(Mode.vertical, [])]
         self.groups = [Group.outside]

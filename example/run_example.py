@@ -22,9 +22,10 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(ch)
 
 
-def run_file(in_path):
-    state = GlobalState()
-    reader = Reader(in_path)
+def run_file(in_path, font_search_paths):
+    state = GlobalState(font_search_paths)
+    reader = Reader()
+    reader.insert_file(in_path)
     lexer = Lexer(reader, get_cat_code_func=state.get_cat_code)
     banisher = Banisher(lexer, state=state, reader=reader)
 
@@ -45,6 +46,7 @@ def write_to_file(state, out_path):
 if __name__ == '__main__':
     in_path = os.path.join(dir_path, 'test.tex')
     # in_path = os.path.join(dir_path, 'plain.tex')
-    state = run_file(in_path)
+    font_search_paths = [os.path.join(dir_path, 'fonts')]
+    state = run_file(in_path, font_search_paths)
     out_path = in_path[:-4] + '.dvi'
     write_to_file(state, out_path)

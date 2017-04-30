@@ -1,25 +1,9 @@
-import os
-
 import pytest
 
-from nex.reader import Reader, ReaderBuffer, EndOfFile, tex_file_to_chars
+from nex.reader import Reader, ReaderBuffer, EndOfFile
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-test_file_dir_path = os.path.join(dir_path, 'test_files')
-test_file_name = os.path.join(test_file_dir_path, 'test.tex')
-test_not_here_file_name = os.path.join(test_file_dir_path, 'not_here.tex')
-
-test_chars = list('abc\n')
-test_2_chars = list('def\n')
-
-
-def test_file_to_chars():
-    """
-    Test utility to add an extension to TeX file names if it is not supplied.
-    """
-    cs_with_ext = tex_file_to_chars(test_file_name)
-    cs_without_ext = tex_file_to_chars(test_file_name[:-4])
-    assert cs_with_ext == cs_without_ext == test_chars
+from common import (test_not_here_file_name, test_file_name, test_chars,
+                    test_2_chars)
 
 
 def test_buffer_init():

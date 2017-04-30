@@ -1,3 +1,4 @@
+from os import path as opath
 import base64
 import uuid
 
@@ -39,3 +40,34 @@ def sum_infinities(ds):
             order_sums.extend(0 for _ in range(new_length_needed))
             order_sums[order] += d.value['factor']
     return order_sums
+
+
+def ensure_extension(path, extension):
+    """Add a file extension if it is not already present."""
+    end = opath.extsep + extension
+    if not path.endswith(end):
+        path += end
+    return path
+
+
+def find_file(file_name, search_paths=None):
+    """Resolve a file name or path to an absolute path, optionally searching a
+    sequence of directories."""
+    # If file_name is already a full path, just use that.
+    supplied_dirname = opath.dirname(file_name)
+    if supplied_dirname != '':
+        return file_name
+    # Otherwise, search some directories for the file name.
+    if search_paths is None:
+        search_paths = []
+    for search_path in search_paths:
+        test_path = opath.join(search_path, file_name)
+        if opath.exists(test_path):
+            return opath.abspath(test_path)
+    raise FileNotFoundError
+
+
+def file_path_to_chars(file_path):
+    """Return the characters in a file at the given path."""
+    with open(file_path, 'rb') as f:
+        return [chr(b) for b in f.read()]

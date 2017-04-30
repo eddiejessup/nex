@@ -1,20 +1,12 @@
-from os import path
+import os
+from os import path as opath
 
-from .utils import get_unique_id
+from .utils import (get_unique_id,
+                    ensure_extension, find_file, file_path_to_chars)
 
 
 class EndOfFile(Exception):
     pass
-
-
-def tex_file_to_chars(file_name):
-    """Return the characters in the file indicated by the input file-name, with
-    the "tex" file extension added if it is not already present."""
-    end = path.extsep + 'tex'
-    if not file_name.endswith(end):
-        file_name += end
-    with open(file_name, 'rb') as f:
-        return [chr(b) for b in f.read()]
 
 
 # TODO: Would it be good to extend some built-in class, like a file class?
@@ -94,7 +86,7 @@ class Reader:
     previous buffer will be read from, and so on.
     """
 
-    def __init__(self):
+    def __init__(self, search_paths=None):
         # This implementation is a bit lazy: there's a big map of hashes to
         # reader buffers, and a stack to hold hashes representing the active
         # buffers. I think the true structure is an ordered tree, but I can't
@@ -102,8 +94,12 @@ class Reader:
         # debugging purposes.
         self.active_buffer_hash_stack = []
         self.buffer_map = {}
+        # TODO: Avoid multiple entries.
+        self.search_paths = [os.getcwd()]
+        if search_paths is not None:
+            self.search_paths.extend(search_paths)
 
-    def _get_buffer(self, buffer_hash):
+    def get_buffer(self, buffer_hash):
         """Access a buffer by its hash."""
         return self.buffer_map[buffer_hash]
 
@@ -129,7 +125,14 @@ class Reader:
     def insert_file(self, file_name):
         """Add the contents of a file to the reading stack. An optional name
         can be given to the buffer, for debugging information."""
-        chars = tex_file_to_chars(file_name)
+        # Add '.tex' part if necessary.
+        file_name = ensure_extension(file_name, 'tex')
+        # TODO: This probably doesn't search in the correct path order.
+        file_path = find_file(file_name, search_paths=self.search_paths)
+        file_dir_path = opath.dirname(file_path)
+        if file_dir_path not in self.search_paths:
+            self.search_paths.append(file_dir_path)
+        chars = file_path_to_chars(file_path)
         self.insert_chars(chars, name=file_name)
 
     @property
@@ -170,7 +173,7 @@ class Reader:
         """An iterator over the buffers either being read, or still to be fully
         read, in order from current to last to be read."""
         for buffer_hash in reversed(self.active_buffer_hash_stack):
-            yield self._get_buffer(buffer_hash)
+            yield self.get_buffer(buffer_hash)
 
     @property
     def current_char(self):

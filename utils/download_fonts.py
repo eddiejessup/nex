@@ -1,18 +1,16 @@
-from requests import get  # to make GET request
+import os.path as opath
+from requests import get
 
 
-def download(url, file_name):
-    # open in binary mode
-    with open(file_name, "wb") as file:
-        # get request
-        response = get(url)
-        # write to file
-        file.write(response.content)
-
-a = open('font_names.txt').readlines()
 url = 'https://www.ctan.org/tex-archive/fonts/cm/tfm'
-for li in a:
-    li = li.strip()
-    path = '{}/{}'.format(url, li)
-    print(li)
-    download(path, li)
+
+
+font_names = open('font_names.txt').readlines()
+for font_name in font_names:
+    font_name = font_name.strip()
+    source_url = '{}/{}'.format(url, font_name)
+    print(font_name)
+    destination_path = opath.join('fonts', font_name)
+    with open(destination_path, 'wb') as file:
+        response = get(source_url)
+        file.write(response.content)

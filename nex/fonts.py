@@ -1,19 +1,21 @@
+import os
 from enum import Enum
 
 from .pydvi.TeXUnit import pt2sp
 from .dampf.dvi_document import get_font_info
 
 from .typer import terminal_primitive_control_sequences_map
+from .utils import ensure_extension, find_file
 
 
 class FontInfo(object):
 
-    def __init__(self, file_name, at_clause):
+    def __init__(self, file_name, file_path, at_clause):
         if file_name is None:
             self.font_info = None
         else:
             self.font_info = get_font_info(font_name=file_name,
-                                           font_path=file_name + '.tfm')
+                                           font_path=file_path)
         self.at_clause = at_clause
 
         self.at_size = None
@@ -25,7 +27,11 @@ class FontInfo(object):
 
     @property
     def file_name(self):
-        return self.font_info.file_name
+        return self.font_info.filename
+
+    @property
+    def font_name(self):
+        return self.font_info.font_name
 
     @property
     def design_size(self):
@@ -144,9 +150,13 @@ class GlobalFontState(object):
 
     null_font_id = 0
 
-    def __init__(self):
-        null_font = FontInfo(file_name=None, at_clause=None)
+    def __init__(self, search_paths=None):
+        null_font = FontInfo(file_name=None, file_path=None, at_clause=None)
         self.fonts = {self.null_font_id: null_font}
+        # TODO: Avoid multiple entries.
+        self.search_paths = [os.getcwd()]
+        if search_paths is not None:
+            self.search_paths.extend(search_paths)
 
     def set_skew_char(self, font_id, number):
         self.fonts[font_id].skew_char = number
@@ -159,8 +169,10 @@ class GlobalFontState(object):
         return self.fonts[self.null_font_id]
 
     def define_new_font(self, file_name, at_clause):
+        file_path = find_file(ensure_extension(file_name, 'tfm'),
+                              search_paths=self.search_paths)
         # TODO: do this properly.
-        font_info = FontInfo(file_name, at_clause)
+        font_info = FontInfo(file_name, file_path, at_clause)
         font_id = max(self.fonts.keys()) + 1
         self.fonts[font_id] = font_info
         # Return new font id.

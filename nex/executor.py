@@ -359,12 +359,13 @@ def execute_command(command, state, banisher, reader):
     elif type_ == 'font_definition':
         new_font_id = state.define_new_font(v['global'],
                                             v['control_sequence_name'],
-                                            v['file_name'],
+                                            v['file_name'].value,
                                             v['at_clause'])
+        font_info = state.global_font_state.fonts[new_font_id]
         font_define_item = FontDefinition(font_nr=new_font_id,
-                                          font_name=v['file_name'],
-                                          file_name=v['file_name'] + '.tfm',
-                                          at_clause=v['at_clause'])
+                                          font_name=font_info.font_name,
+                                          file_name=font_info.file_name,
+                                          at_clause=font_info.at_clause)
         state.append_to_list(font_define_item)
     elif type_ == 'family_assignment':
         family_nr = v['family_nr']
