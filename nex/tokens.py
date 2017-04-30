@@ -3,8 +3,6 @@ import colorama
 
 colorama.init()
 
-ascii_characters = ''.join(chr(i) for i in range(128))
-
 
 class BaseToken(object):
 
@@ -182,11 +180,6 @@ class LexToken(PositionToken):
     pass
 
 
-class UnexpandedToken(NonTerminalToken):
-
-    pass
-
-
 class TerminalToken(PositionToken):
 
     # Token interface.
@@ -207,8 +200,3 @@ class TerminalToken(PositionToken):
     @property
     def lexpos(self):
         return None
-
-
-class BuiltTerminalToken(TerminalToken, BuiltToken):
-
-    pass

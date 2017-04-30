@@ -1,6 +1,6 @@
 import logging
 
-from ..common import BuiltToken
+from ..tokens import BuiltToken
 from ..expander import parse_replacement_text
 from ..fonts import FontRange
 from .common_parsing import pg as common_pg

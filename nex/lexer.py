@@ -2,7 +2,7 @@ from enum import Enum
 import logging
 
 from .reader import Reader, EndOfFile
-from .common import LexToken
+from .tokens import LexToken
 from .codes import CatCode
 
 logger = logging.getLogger(__name__)

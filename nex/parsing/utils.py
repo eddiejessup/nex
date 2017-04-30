@@ -2,7 +2,7 @@ from collections import deque
 
 from ..reader import EndOfFile
 from ..utils import NoSuchControlSequence
-from ..common import TerminalToken
+from ..tokens import TerminalToken
 
 
 class ExpectedParsingError(Exception):

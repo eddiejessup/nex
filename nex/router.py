@@ -1,4 +1,4 @@
-from .common import BuiltToken, TerminalToken, NonTerminalToken, InternalToken
+from .tokens import BuiltToken, TerminalToken, NonTerminalToken, InternalToken
 from .utils import get_unique_id, NoSuchControlSequence
 from .tex_parameters import parameter_type_to_names
 from .lexer import control_sequence_lex_type, char_cat_lex_type

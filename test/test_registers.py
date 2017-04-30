@@ -1,6 +1,6 @@
 import pytest
 
-from nex.common import Token
+from nex.tokens import BaseToken
 from nex.registers import Registers
 
 
@@ -34,7 +34,7 @@ def test_registers_uninitialized():
 
 def test_register_types():
     r = Registers(*[1 for _ in range(5)])
-    tokens = [Token(type_='whocares', value=4)]
+    tokens = [BaseToken(type_='whocares', value=4)]
     dct = {'hihi': 3}
     int_val = 5
     for type_ in ('COUNT', 'DIMEN'):

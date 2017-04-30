@@ -3,6 +3,9 @@ import base64
 import uuid
 
 
+ascii_characters = ''.join(chr(i) for i in range(128))
+
+
 def increasing_window(a):
     for i_max in range(len(a) + 1):
         yield a[:i_max]

@@ -1,6 +1,6 @@
 from collections import deque
 
-from .common import UnexpandedToken, TerminalToken
+from .tokens import TerminalToken
 from .lexer import (make_char_cat_lex_token,
                     control_sequence_lex_type, char_cat_lex_type)
 from .codes import CatCode

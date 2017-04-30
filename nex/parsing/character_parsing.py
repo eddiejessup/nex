@@ -1,4 +1,4 @@
-from ..common import BuiltToken
+from ..tokens import BuiltToken
 from ..constants.units import PhysicalUnit, MuUnit, InternalUnit
 from ..constants.literals import non_active_literals_map, hex_letters_map
 

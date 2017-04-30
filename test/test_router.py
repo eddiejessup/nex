@@ -4,7 +4,7 @@ import pytest
 
 from nex.router import CSRouter, make_route_token
 from nex.utils import NoSuchControlSequence
-from nex.common import Token
+from nex.common import BaseToken
 from nex.lexer import control_sequence_lex_type
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -12,15 +12,16 @@ test_file_dir_path = os.path.join(dir_path, 'test_files')
 test_file_name = os.path.join(test_file_dir_path, 'test.tex')
 
 
-dummy_token = Token(type_='dummy',
-                    value={'lex_type': control_sequence_lex_type,
-                           'name': 'test',
-                           'attribute': 'attribute_value'})
+dummy_token = BaseToken(type_='dummy',
+                        value={'lex_type': control_sequence_lex_type,
+                               'name': 'test',
+                               'attribute': 'attribute_value'})
 
 
 def get_call_token(name):
-    return Token(type_='call', value={'name': name,
-                                      'lex_type': control_sequence_lex_type})
+    return BaseToken(type_='call',
+                     value={'name': name,
+                            'lex_type': control_sequence_lex_type})
 
 
 def test_router_non_exist():

@@ -2,7 +2,7 @@ import logging
 from collections import deque
 from contextlib import contextmanager
 
-from .common import TerminalToken
+from .tokens import TerminalToken
 from .lexer import (is_control_sequence_call,
                     char_cat_lex_type, control_sequence_lex_type)
 from .codes import CatCode

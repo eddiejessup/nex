@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from .common import TerminalToken
+from .tokens import TerminalToken
 
 
 integer_parameter_names = (

@@ -1,4 +1,4 @@
-from .common import InternalToken
+from .tokens import InternalToken
 
 undelim_macro_param_type = 'UNDELIMITED_PARAM'
 delim_macro_param_type = 'DELIMITED_PARAM'

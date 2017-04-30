@@ -1,6 +1,6 @@
 from ..rply import ParserGenerator
 
-from ..common import BuiltToken
+from ..tokens import BuiltToken
 from ..constants.units import PhysicalUnit
 from ..tex_parameters import glue_keys
 from ..registers import register_token_type_to_register_type

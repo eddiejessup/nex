@@ -2,7 +2,7 @@ from collections import namedtuple
 from enum import Enum
 from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
 
-from .common import ascii_characters
+from .utils import ascii_characters
 
 
 cat_codes = [

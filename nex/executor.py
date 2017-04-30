@@ -1,7 +1,7 @@
 from collections import deque
 import operator
 
-from .common import BuiltToken, TerminalToken
+from .tokens import BuiltToken, TerminalToken
 from .utils import ExecuteCommandError
 from .reader import EndOfFile
 from .registers import is_register_type
