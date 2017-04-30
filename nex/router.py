@@ -1,11 +1,11 @@
 from .common import BuiltToken, TerminalToken, NonTerminalToken, InternalToken
 from .utils import get_unique_id, NoSuchControlSequence
 from .tex_parameters import parameter_type_to_names
-from .typer import (control_sequence_lex_type, char_cat_lex_type,
-                    short_hand_def_to_token_map, font_def_token_type,
-                    primitive_control_sequences_map,
-                    terminal_primitive_control_sequences_map,
-                    )
+from .lexer import control_sequence_lex_type, char_cat_lex_type
+from .constants.primitive_control_sequences import (short_hand_def_to_def_token_map,
+                                                    font_def_token_type,
+                                                    primitive_control_sequences_map,
+                                                    terminal_primitive_control_sequences_map)
 
 
 def make_simple_definition_token(name, tokens):
@@ -179,7 +179,7 @@ class CSRouter(object):
         self.macros[route_id] = macro_token
 
     def do_short_hand_definition(self, name, def_type, code):
-        def_token_type = short_hand_def_to_token_map[def_type]
+        def_token_type = short_hand_def_to_def_token_map[def_type]
         terminal_token = TerminalToken(type_=def_token_type, value=code,
                                        line_nr='abstract')
         definition_token = make_simple_definition_token(name,

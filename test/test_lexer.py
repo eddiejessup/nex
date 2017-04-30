@@ -1,16 +1,5 @@
-import os
-
-import pytest
-
-from nex.codes import get_initial_char_cats
+from nex.codes import get_initial_char_cats, CatCode
 from nex.lexer import Lexer
-from nex.typer import CatCode
-
-dir_path = os.path.dirname(os.path.realpath(__file__))
-test_file_dir_path = os.path.join(dir_path, 'test_files')
-test_file_name = os.path.join(test_file_dir_path, 'test.tex')
-test_2_file_name = os.path.join(test_file_dir_path, 'test_2.tex')
-test_not_here_file_name = os.path.join(test_file_dir_path, 'not_here.tex')
 
 
 class DummyCatCodeGetter:

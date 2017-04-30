@@ -3,14 +3,14 @@ from collections import deque
 from contextlib import contextmanager
 
 from .common import TerminalToken
-from .lexer import is_control_sequence_call
-from .typer import (CatCode,
-                    char_cat_lex_type, control_sequence_lex_type,
-                    unexpanded_one_char_cs_type, unexpanded_many_char_cs_type,
-                    unexpanded_token_type,
-                    explicit_box_map,
-                    short_hand_def_map, def_map, if_map,
-                    )
+from .lexer import (is_control_sequence_call,
+                    char_cat_lex_type, control_sequence_lex_type)
+from .codes import CatCode
+from .constants.strange_types import unexpanded_cs_types, let_target_type
+from .constants.primitive_control_sequences import (explicit_box_map,
+                                                    short_hand_def_map,
+                                                    def_map,
+                                                    if_map)
 from .lex_typer import (make_control_sequence_unexpanded_token,
                         make_char_cat_terminal_token)
 from .state import Mode, Group, ContextMode
@@ -53,16 +53,6 @@ expanding_context_modes = (
     ContextMode.awaiting_make_v_box_start,
     ContextMode.awaiting_make_v_top_start,
 )
-
-
-def terminalize_token(token):
-    if isinstance(token, TerminalToken):
-        return token
-    if len(token.value['name']) == 1:
-        type_ = unexpanded_one_char_cs_type
-    else:
-        type_ = unexpanded_many_char_cs_type
-    return TerminalToken(type_=type_, value=token.value, position_like=token)
 
 
 def get_brace_sign(token):
@@ -174,7 +164,7 @@ class Banisher:
         # - A \let character will become the (terminal) character token.
         # - A primitive control sequence will become a terminal token.
         if (self.expanding_control_sequences and
-                first_token.type == unexpanded_token_type):
+                first_token.type in unexpanded_cs_types):
             name = first_token.value['name']
             first_token = self.global_state.resolve_control_sequence_to_token(
                 name, position_like=first_token)
@@ -343,7 +333,7 @@ class Banisher:
             with context_mode(self.global_state,
                               ContextMode.absorbing_new_control_sequence_name):
                 cs_name_token = self._get_next_input_token()
-            output_tokens.append(terminalize_token(cs_name_token))
+            output_tokens.append(cs_name_token)
 
             if type_ in def_map.values():
                 parameter_text_tokens = []
@@ -383,7 +373,7 @@ class Banisher:
                     if let_arguments[-1].type == 'SPACE':
                         let_arguments.append(self._get_next_input_token())
                 # Make the target argument into a special 'any' token.
-                let_arguments[-1] = TerminalToken(type_=unexpanded_token_type,
+                let_arguments[-1] = TerminalToken(type_=let_target_type,
                                                   value=let_arguments[-1],
                                                   position_like=first_token)
                 output_tokens.extend(let_arguments)
@@ -394,7 +384,7 @@ class Banisher:
             # add it to the output.
             with context_mode(self.global_state, ContextMode.absorbing_backtick_argument):
                 arg_token = self._get_next_input_token()
-            output_tokens.append(terminalize_token(arg_token))
+            output_tokens.append(arg_token)
         elif type_ in token_variable_start_types:
             output_tokens.append(first_token)
             # Watch for a balanced text starting.
@@ -491,7 +481,7 @@ class Banisher:
             string_tokens = []
             # If the target token is a control sequence, then get the chars of
             # its name.
-            if target_token.type == unexpanded_token_type:
+            if target_token.type in unexpanded_cs_types:
                 chars = list(target_token.value['name'])
                 escape_char_token = self.get_escape_char_terminal_token(
                     position_like=target_token)

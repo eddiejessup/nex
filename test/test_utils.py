@@ -1,4 +1,4 @@
-from nex.utils import ensure_extension, find_file, file_path_to_chars
+from nex.utils import ensure_extension, file_path_to_chars
 
 from common import (test_file_name, test_chars)
 

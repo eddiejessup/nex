@@ -1,15 +1,15 @@
 from collections import deque
 
 from .common import UnexpandedToken, TerminalToken
-from .lexer import make_char_cat_lex_token
-from .typer import (CatCode,
-                    non_active_literals_map,
-                    other_literal_type,
-                    category_map,
-                    unexpanded_token_type,
-                    control_sequence_lex_type,
-                    char_cat_lex_type,
-                    literals_map)
+from .lexer import (make_char_cat_lex_token,
+                    control_sequence_lex_type, char_cat_lex_type)
+from .codes import CatCode
+from .constants.literals import (non_active_literals_map,
+                                 other_literal_type,
+                                 category_map,
+                                 literals_map)
+from .constants.strange_types import (unexpanded_one_char_cs_type,
+                                      unexpanded_many_char_cs_type)
 
 
 def get_char_cat_pair_terminal_type(char_cat_pair_token):
@@ -38,10 +38,14 @@ def make_char_cat_pair_terminal_token(char_cat_pair_token):
 
 
 def make_control_sequence_unexpanded_token(name, position_like=None):
-    return UnexpandedToken(type_=unexpanded_token_type,
-                           value={'name': name,
-                                  'lex_type': control_sequence_lex_type},
-                           position_like=position_like)
+    if len(name) == 1:
+        type_ = unexpanded_one_char_cs_type
+    else:
+        type_ = unexpanded_many_char_cs_type
+    return TerminalToken(type_=type_,
+                         value={'name': name,
+                                'lex_type': control_sequence_lex_type},
+                         position_like=position_like)
 
 
 def make_char_cat_terminal_token(char, cat, *pos_args, **pos_kwargs):

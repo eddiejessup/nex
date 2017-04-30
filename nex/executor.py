@@ -5,10 +5,10 @@ from .common import BuiltToken, TerminalToken
 from .utils import ExecuteCommandError
 from .reader import EndOfFile
 from .registers import is_register_type
-from .typer import (CatCode, MathCode, GlyphCode, DelimiterCode, MathClass,
-                    PhysicalUnit, MuUnit, InternalUnit, units_in_scaled_points,
-                    h_add_glue_tokens,
-                    )
+from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
+from .constants.units import (PhysicalUnit, MuUnit, InternalUnit,
+                              units_in_scaled_points)
+from .constants.primitive_control_sequences import h_add_glue_tokens
 from .tex_parameters import glue_keys, is_parameter_type
 from .router import primitive_canon_tokens
 from .state import Operation, Mode, Group, vertical_modes, horizontal_modes

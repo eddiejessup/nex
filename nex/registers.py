@@ -1,12 +1,13 @@
-from .typer import register_tokens, short_hand_def_to_token_map
+from .constants.primitive_control_sequences import (register_map,
+                                                    short_hand_def_to_def_token_map)
 
 
 def is_register_type(type_):
-    return type_ in register_tokens.values()
+    return type_ in register_map.values()
 
 
 def register_token_type_to_register_type(type_):
-    assert type_ in short_hand_def_to_token_map.values()
+    assert type_ in short_hand_def_to_def_token_map.values()
     return type_[:type_.find('_DEF_TOKEN')]
 
 
@@ -30,7 +31,7 @@ class Registers(object):
             'muskip': init_register(nr_mu_skips),
             'toks': init_register(nr_token_lists),
         }
-        self.register_map = {register_tokens[c]: r for
+        self.register_map = {register_map[c]: r for
                              c, r in cmd_register_map.items()}
 
     def _get_register_map(self, type_):

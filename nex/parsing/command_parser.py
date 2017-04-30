@@ -254,7 +254,7 @@ def code_name(p):
 # Start of 'let assignment', a simple assignment.
 
 
-@pg.production('let_assignment : LET control_sequence equals one_optional_space UNEXPANDED_TOKEN')
+@pg.production('let_assignment : LET control_sequence equals one_optional_space LET_TARGET')
 def let_assignment_control_sequence(p):
     target_token = p[4].value
     new_name = p[1].value['name']

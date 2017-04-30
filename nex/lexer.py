@@ -3,8 +3,7 @@ import logging
 
 from .reader import Reader, EndOfFile
 from .common import LexToken
-# TODO: Make lex types into an enum. Love an enum, makes me feel so safe.
-from .typer import CatCode, char_cat_lex_type, control_sequence_lex_type
+from .codes import CatCode
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +21,11 @@ tokenise_cats = [
     CatCode.other,
     CatCode.active,
 ]
+
+
+# TODO: Make lex types into an enum. Love an enum, makes me feel so safe.
+char_cat_lex_type = 'CHAR_CAT_PAIR'
+control_sequence_lex_type = 'CONTROL_SEQUENCE'
 
 
 class ReadingState(Enum):

@@ -1,23 +1,19 @@
 from ..rply import ParserGenerator
 
 from ..common import BuiltToken
-from ..typer import PhysicalUnit, terminal_token_types
-from ..special_quantities import special_quantity_types
-from ..tex_parameters import parameter_types, glue_keys
+from ..constants.units import PhysicalUnit
+from ..tex_parameters import glue_keys
 from ..registers import register_token_type_to_register_type
 
 from .character_parsing import add_character_productions
-
-
-terminal_token_types += parameter_types
-terminal_token_types += special_quantity_types
+from .types import terminal_types
 
 prec = (
     ('left', 'SPACE'),
 )
 
 
-pg = ParserGenerator(terminal_token_types,
+pg = ParserGenerator(terminal_types,
                      precedence=prec,
                      cache_id="changeme")
 
