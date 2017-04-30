@@ -1,6 +1,5 @@
 import logging
 from collections import deque
-from contextlib import contextmanager
 
 from .tokens import TerminalToken
 from .lexer import (is_control_sequence_call,
@@ -10,10 +9,12 @@ from .constants.strange_types import unexpanded_cs_types, let_target_type
 from .constants.primitive_control_sequences import (explicit_box_map,
                                                     short_hand_def_map,
                                                     def_map,
-                                                    if_map)
+                                                    if_map,
+                                                    message_map,
+                                                    hyphenation_map)
 from .lex_typer import (make_control_sequence_unexpanded_token,
                         make_char_cat_terminal_token)
-from .state import Mode, Group, ContextMode
+from .state import Mode, Group, ContextMode, context_mode
 from .executor import execute_commands, execute_condition
 from .expander import parse_parameter_text
 from .parsing.utils import ChunkGrabber
@@ -23,7 +24,6 @@ from .parsing.general_text_parser import general_text_parser
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel('DEBUG')
 
 read_unexpanded_control_sequence_types = (
     'LET',
@@ -33,11 +33,10 @@ read_unexpanded_control_sequence_types += tuple(set(def_map.values()))
 read_unexpanded_control_sequence_types += tuple(set(short_hand_def_map.values()))
 
 if_types = if_map.values()
-message_types = ('MESSAGE', 'ERROR_MESSAGE', 'WRITE')
-hyphenation_types = ('HYPHENATION', 'PATTERNS')
+message_types = message_map.values()
+hyphenation_types = hyphenation_map.values()
 
 token_variable_start_types = ('TOKEN_PARAMETER', 'TOKS_DEF_TOKEN', 'TOKS')
-
 
 box_context_mode_map = {
     'H_BOX': ContextMode.awaiting_make_h_box_start,
@@ -62,13 +61,6 @@ def get_brace_sign(token):
         return -1
     else:
         return 0
-
-
-@contextmanager
-def context_mode(state, context_mode):
-    state._push_context(context_mode)
-    yield
-    state._pop_context()
 
 
 class Banisher:

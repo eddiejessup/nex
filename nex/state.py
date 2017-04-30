@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from enum import Enum
 
 from .codes import get_initial_codes, get_local_codes
@@ -33,6 +34,13 @@ class ContextMode(Enum):
     absorbing_macro_replacement_text = 17
     # Entry 10.
     absorbing_backtick_argument = 20
+
+
+@contextmanager
+def context_mode(state, context_mode):
+    state._push_context(context_mode)
+    yield
+    state._pop_context()
 
 
 class Mode(Enum):

@@ -14,10 +14,6 @@ terminal_primitive_control_sequences_map = {
     'relax': 'RELAX',
     'immediate': 'IMMEDIATE',
 
-    'message': 'MESSAGE',
-    'errmessage': 'ERROR_MESSAGE',
-    'write': 'WRITE',
-
     'font': 'FONT',
 
     # Font assignment things.
@@ -70,14 +66,24 @@ terminal_primitive_control_sequences_map = {
 
     'input': 'INPUT',
 
-    'hyphenation': 'HYPHENATION',
-    'patterns': 'PATTERNS',
-
     'end': 'END',
 
     'char': 'CHAR',
     'indent': 'INDENT',
 }
+
+message_map = {
+    'message': 'MESSAGE',
+    'errmessage': 'ERROR_MESSAGE',
+    'write': 'WRITE',
+}
+terminal_primitive_control_sequences_map.update(message_map)
+
+hyphenation_map = {
+    'hyphenation': 'HYPHENATION',
+    'patterns': 'PATTERNS',
+}
+terminal_primitive_control_sequences_map.update(hyphenation_map)
 
 _add_glue_stems = {
     'skip': 'SKIP',
