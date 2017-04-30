@@ -2,8 +2,6 @@ from collections import namedtuple
 from string import ascii_letters
 from enum import Enum
 
-from .common import UnexpandedToken, InternalToken, TerminalToken
-
 
 cat_codes = [
     'escape',  # 0
@@ -184,51 +182,6 @@ literal_types += tuple(non_active_literals_map.values())
 literal_types += (other_literal_type,)
 literal_types += tuple(category_map.values())
 literal_types = tuple(set(literal_types))
-
-
-def get_char_cat_pair_terminal_type(char_cat_pair_token):
-    v = char_cat_pair_token.value
-    char, cat = v['char'], v['cat']
-    if cat in (CatCode.letter, CatCode.other) and (char, cat) in literals_map:
-        terminal_token_type = literals_map[(char, cat)]
-    elif cat != CatCode.active and char in non_active_literals_map:
-        terminal_token_type = non_active_literals_map[char]
-    elif cat in (CatCode.letter, CatCode.other):
-        terminal_token_type = other_literal_type
-    elif cat in category_map:
-        terminal_token_type = category_map[cat]
-    else:
-        import pdb; pdb.set_trace()
-    return terminal_token_type
-
-
-def make_char_cat_pair_terminal_token(char_cat_pair_token):
-    terminal_token_type = get_char_cat_pair_terminal_type(char_cat_pair_token)
-    value = char_cat_pair_token.value
-    value['lex_type'] = char_cat_pair_token.type
-    token = TerminalToken(type_=terminal_token_type, value=value,
-                          position_like=char_cat_pair_token)
-    return token
-
-
-def make_control_sequence_unexpanded_token(name, position_like=None):
-    return UnexpandedToken(type_=unexpanded_token_type,
-                           value={'name': name,
-                                  'lex_type': control_sequence_lex_type},
-                           position_like=position_like)
-
-
-def lex_token_to_unexpanded_token(lex_token):
-    # If we have a char-cat pair, we must type it to its terminal version,
-    if lex_token.type == char_cat_lex_type:
-        unexpanded_token = make_char_cat_pair_terminal_token(lex_token)
-    elif lex_token.type == control_sequence_lex_type:
-        name = lex_token.value
-        unexpanded_token = make_control_sequence_unexpanded_token(
-            name, position_like=lex_token)
-    elif isinstance(lex_token, InternalToken):
-        unexpanded_token = lex_token
-    return unexpanded_token
 
 
 terminal_primitive_control_sequences_map = {

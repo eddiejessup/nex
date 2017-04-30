@@ -3,17 +3,17 @@ from collections import deque
 from enum import Enum
 
 from .common import TerminalToken
-from .lexer import is_control_sequence_call, make_char_cat_lex_token
+from .lexer import is_control_sequence_call
 from .typer import (CatCode,
                     char_cat_lex_type, control_sequence_lex_type,
-                    lex_token_to_unexpanded_token,
-                    make_control_sequence_unexpanded_token,
-                    make_char_cat_pair_terminal_token,
                     unexpanded_one_char_cs_type, unexpanded_many_char_cs_type,
                     unexpanded_token_type,
                     explicit_box_map,
                     short_hand_def_map, def_map, if_map,
                     )
+from .lex_typer import (make_control_sequence_unexpanded_token,
+                        make_char_cat_pair_terminal_token,
+                        make_char_cat_terminal_token)
 from .state import Mode, Group
 from .executor import execute_commands, execute_condition
 from .expander import parse_parameter_text
@@ -69,14 +69,6 @@ expanding_context_modes = (
 expanding_context_modes += awaiting_make_box_context_modes
 
 
-def make_char_cat_terminal_token(char, cat, *pos_args, **pos_kwargs):
-    """Utility function to make a terminal char-cat token straight from a pair.
-    """
-    lex_token = make_char_cat_lex_token(char, cat, *pos_args, **pos_kwargs)
-    terminal_token = make_char_cat_pair_terminal_token(lex_token)
-    return terminal_token
-
-
 def terminise_unexpanded_cs_token(unexpanded_tok):
     if isinstance(unexpanded_tok, TerminalToken):
         term_token = unexpanded_tok
@@ -98,10 +90,10 @@ def get_brace_sign(token):
         return 0
 
 
-class Banisher(object):
+class Banisher:
 
-    def __init__(self, lexer, state, reader):
-        self.lexer = lexer
+    def __init__(self, token_source, state, reader):
+        self.token_source = token_source
         self.global_state = state
         # The banisher needs the reader because it can execute commands,
         # and one possible command is '\input', which needs to modify the
@@ -127,9 +119,8 @@ class Banisher(object):
 
     def _get_next_input_token(self):
         if not self.input_tokens_queue:
-            new_lex_token = self.lexer.get_next_token()
-            unexpanded_token = lex_token_to_unexpanded_token(new_lex_token)
-            self.input_tokens_queue.append(unexpanded_token)
+            new_input_token = self.token_source.pop_next_output_token()
+            self.input_tokens_queue.append(new_input_token)
         return self.input_tokens_queue.popleft()
 
     def get_balanced_text_token(self):
