@@ -1,20 +1,17 @@
 from collections import deque
-import operator
 
-from .tokens import BuiltToken, TerminalToken
 from .utils import ExecuteCommandError
 from .reader import EndOfFile
 from .registers import is_register_type
 from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
-from .constants.units import (PhysicalUnit, MuUnit, InternalUnit,
-                              units_in_scaled_points)
 from .constants.primitive_control_sequences import h_add_glue_tokens
-from .tex_parameters import glue_keys, is_parameter_type
+from .tex_parameters import is_parameter_type
 from .router import primitive_canon_tokens
 from .state import Operation, Mode, Group, vertical_modes, horizontal_modes
 from .box import (HBox, Rule, UnSetGlue, Character, FontDefinition,
                   FontSelection)
 from .paragraphs import h_list_to_best_h_boxes
+from . import evaluator as evaler
 
 
 sub_executor_groups = (
@@ -27,184 +24,6 @@ sub_executor_groups = (
 
 class EndOfSubExecutor(Exception):
     pass
-
-
-def get_real_decimal_constant(collection):
-    # Our function assumes the digits are in base 10.
-    assert collection.base == 10
-    chars = [t.value['char'] for t in collection.digits]
-    s = ''.join(chars)
-    return float(s)
-
-
-def get_integer_constant(collection):
-    chars = [t.value['char'] for t in collection.digits]
-    s = ''.join(chars)
-    return int(s, base=collection.base)
-
-
-def evaluate_size(state, size_token):
-    if isinstance(size_token, TerminalToken):
-        if is_parameter_type(size_token.type):
-            return state.get_parameter_value(size_token.value['name'])
-        elif size_token.type in ('CHAR_DEF_TOKEN', 'MATH_CHAR_DEF_TOKEN'):
-            return size_token.value
-        else:
-            import pdb; pdb.set_trace()
-    elif isinstance(size_token, BuiltToken):
-        if size_token.type == 'backtick_integer':
-            unexpanded_token = size_token.value
-            if unexpanded_token.type == 'UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE':
-                # If we have a single character control sequence in this context,
-                # it is just a way of specifying a character in a way that
-                # won't invoke its special effects.
-                char = unexpanded_token.value['name']
-            elif unexpanded_token.type == 'character':
-                char = unexpanded_token.value['char']
-            else:
-                import pdb; pdb.set_trace()
-            return ord(char)
-        elif size_token.type == 'control_sequence':
-            raise NotImplementedError
-        elif is_register_type(size_token.type):
-            evaled_i = evaluate_size(state, size_token.value)
-            v = state.get_register_value(size_token.type, i=evaled_i)
-            if size_token.type == 'SKIP':
-                import pdb; pdb.set_trace()
-            return v
-        elif size_token.type == 'integer_constant':
-            collection = size_token.value
-            return get_integer_constant(collection)
-        elif size_token.type == 'decimal_constant':
-            collection = size_token.value
-            return get_real_decimal_constant(collection)
-        else:
-            import pdb; pdb.set_trace()
-    else:
-        return size_token
-
-
-def evaluate_number(state, number_token):
-    number_value = number_token.value
-    size_token = number_value['size']
-    number = evaluate_size(state, size_token)
-    sign = number_value['sign'].value
-    if sign == '-':
-        number *= -1
-    return number
-
-
-def evaluate_dimen(state, dimen_token):
-    # TODO: Check if the sign is stored and retrieved in numbers, dimens, glues
-    # and so on.
-    dimen_value = dimen_token.value
-    size_token, sign = dimen_value['size'], dimen_value['sign']
-    if isinstance(size_token.value, int):
-        return size_token.value
-    number_of_units_token = size_token.value['factor']
-    unit_token = size_token.value['unit']
-    number_of_units = evaluate_size(state, number_of_units_token)
-    unit = unit_token['unit']
-    if unit == PhysicalUnit.fil:
-        if 'number_of_fils' not in unit_token:
-            import pdb; pdb.set_trace()
-        return BuiltToken(
-            type_='fil_dimension',
-            value={'factor': number_of_units,
-                   'number_of_fils': unit_token['number_of_fils']}
-        )
-    # Only one unit in mu units, a mu. I don't know what a mu is though...
-    elif unit in MuUnit:
-        number_of_scaled_points = number_of_units
-    elif unit in InternalUnit:
-        if unit == InternalUnit.em:
-            number_of_scaled_points = state.current_font.em_size
-        elif unit == InternalUnit.ex:
-            number_of_scaled_points = state.current_font.ex_size
-    else:
-        is_true_unit = unit_token['true']
-        number_of_scaled_points = units_in_scaled_points[unit] * number_of_units
-        magnification = state.get_parameter_value('mag')
-        # ['true'] unmagnifies the units, so that the subsequent magnification
-        # will cancel out. For example, `\vskip 0.5 true cm' is equivalent to
-        # `\vskip 0.25 cm' if you have previously said `\magnification=2000'.
-        if is_true_unit:
-            number_of_scaled_points *= 1000.0 / magnification
-    if sign == '-':
-        number_of_scaled_points *= -1
-    return int(round(number_of_scaled_points))
-
-
-def evaluate_glue(state, glue_token):
-    glue_value = glue_token.value
-    evaluated_glue = {}
-    for k in glue_keys:
-        dimen_token = glue_value[k]
-        if dimen_token is None:
-            evaluated_dimen = None
-        else:
-            evaluated_dimen = evaluate_dimen(state, dimen_token)
-        evaluated_glue[k] = evaluated_dimen
-    return evaluated_glue
-
-
-def evaluate_token_list(state, token_list_token):
-    token_list_value = token_list_token.value
-    if token_list_value.type == 'general_text':
-        evaluated_token_list = token_list_value.value
-    # Also could be token_register, or token parameter.
-    else:
-        raise NotImplementedError
-    return evaluated_token_list
-
-
-def split_at(s, inds):
-    inds = [0] + list(inds) + [len(s)]
-    return [s[inds[i]:inds[i + 1]] for i in range(0, len(inds) - 1)]
-
-
-def split_hex_code(n, hex_length, inds):
-    # Get the zero-padded string representation of the number in base 16.
-    n_hex = format(n, '0{}x'.format(hex_length))
-    # Check the number is of the correct magnitude.
-    assert len(n_hex) == hex_length
-    # Split the hex string into pieces, at the given indices.
-    parts_hex = split_at(n_hex, inds)
-    # Convert each part from hex to decimal.
-    parts = [int(part, base=16) for part in parts_hex]
-    return parts
-
-
-def execute_if_num(if_token, state):
-    v = if_token.value
-    left_number = evaluate_number(state, v['left_number'])
-    right_number = evaluate_number(state, v['right_number'])
-    operator_map = {
-        '<': operator.lt,
-        '=': operator.eq,
-        '>': operator.gt,
-    }
-    op = operator_map[v['relation']]
-    outcome = op(left_number, right_number)
-    return outcome
-
-
-def execute_if_case(if_token, state):
-    v = if_token.value
-    return evaluate_number(state, v['number'])
-
-
-def execute_condition(condition_token, state):
-    if_token = condition_token.value
-    exec_func_map = {
-        'if_num': execute_if_num,
-        'if_case': execute_if_case,
-        'if_true': lambda *args: True,
-        'if_false': lambda *args: False,
-    }
-    exec_func = exec_func_map[if_token.type]
-    outcome = exec_func(if_token, state)
-    return outcome
 
 
 shift_to_horizontal_control_sequence_types = (
@@ -327,7 +146,7 @@ def execute_command(command, state, banisher, reader):
                                    state.current_font)
         state.append_to_list(character_item)
     elif type_ == 'V_RULE':
-        e_spec = {k: (None if d is None else evaluate_dimen(state, d))
+        e_spec = {k: (None if d is None else evaler.evaluate_dimen(state, d))
                   for k, d in v.items()}
         rule_item = Rule(**e_spec)
         state.append_to_list(rule_item)
@@ -339,7 +158,7 @@ def execute_command(command, state, banisher, reader):
         to = None
         spread = None
         if spec is not None:
-            d = evaluate_dimen(state, spec.value)
+            d = evaler.evaluate_dimen(state, spec.value)
             if spec.type == 'to':
                 to = d
             elif spec.type == 'spread':
@@ -367,7 +186,7 @@ def execute_command(command, state, banisher, reader):
         state.append_to_list(font_define_item)
     elif type_ == 'family_assignment':
         family_nr = v['family_nr']
-        family_nr_eval = evaluate_number(state, family_nr)
+        family_nr_eval = evaler.evaluate_number(state, family_nr)
         state.set_font_family(v['global'], family_nr_eval,
                               v['font_range'], v['font_id'])
     elif type_ == 'input':
@@ -377,7 +196,7 @@ def execute_command(command, state, banisher, reader):
     elif type_ == 'END':
         raise EndOfFile
     elif type_ == 'short_hand_definition':
-        code_eval = evaluate_number(state, v['code'])
+        code_eval = evaler.evaluate_number(state, v['code'])
         state.do_short_hand_definition(v['global'],
                                        v['control_sequence_name'],
                                        v['def_type'],
@@ -395,15 +214,15 @@ def execute_command(command, state, banisher, reader):
         # Might reduce duplication?
         # TODO: We could actually have a 'set_variable' function in state.
         value_evaluate_map = {
-            'number': evaluate_number,
-            'dimen': evaluate_dimen,
-            'glue': evaluate_glue,
-            'mu_glue': evaluate_glue,
-            'token_list': evaluate_token_list,
+            'number': evaler.evaluate_number,
+            'dimen': evaler.evaluate_dimen,
+            'glue': evaler.evaluate_glue,
+            'mu_glue': evaler.evaluate_glue,
+            'token_list': evaler.evaluate_token_list,
         }
         value_evaluate_func = value_evaluate_map[value.type]
         evaled_value = value_evaluate_func(state, value)
-        evaled_i = evaluate_size(state, variable.value)
+        evaled_i = evaler.evaluate_size(state, variable.value)
         if is_register_type(variable.type):
             state.set_register_value(is_global=v['global'],
                                      type_=variable.type,
@@ -424,15 +243,15 @@ def execute_command(command, state, banisher, reader):
         pass
     elif type_ == 'code_assignment':
         code_type = v['code_type']
-        char_size = evaluate_number(state, v['char'])
-        code_size = evaluate_number(state, v['code'])
+        char_size = evaler.evaluate_number(state, v['char'])
+        code_size = evaler.evaluate_number(state, v['code'])
         char = chr(char_size)
         # TODO: Move inside state? What exactly is the benefit?
         # I guess separation of routing logic from execution logic.
         if code_type == 'CAT_CODE':
             code = CatCode(code_size)
         elif code_type == 'MATH_CODE':
-            parts = split_hex_code(code_size, hex_length=4, inds=(1, 2))
+            parts = evaler.split_hex_code(code_size, hex_length=4, inds=(1, 2))
             math_class_i, family, position = parts
             math_class = MathClass(math_class_i)
             glyph_code = GlyphCode(family, position)
@@ -442,20 +261,20 @@ def execute_command(command, state, banisher, reader):
         elif code_type == 'SPACE_FACTOR_CODE':
             code = code_size
         elif code_type == 'DELIMITER_CODE':
-            parts = split_hex_code(code_size, hex_length=6, inds=(1, 3, 4))
+            parts = evaler.split_hex_code(code_size, hex_length=6, inds=(1, 3, 4))
             small_family, small_position, large_family, large_position = parts
             small_glyph_code = GlyphCode(small_family, small_position)
             large_glyph_code = GlyphCode(large_family, large_position)
             code = DelimiterCode(small_glyph_code, large_glyph_code)
         state.set_code(v['global'], code_type, char, code)
     elif type_ == 'advance':
-        value_eval = evaluate_number(state, v['value'])
+        value_eval = evaler.evaluate_number(state, v['value'])
         variable = v['variable']
         kwargs = {'is_global': v['global'],
                   'by_operand': value_eval,
                   'operation': Operation.advance}
         if is_register_type(variable.type):
-            evaled_i = evaluate_size(state, variable.value)
+            evaled_i = evaler.evaluate_size(state, variable.value)
             state.modify_register_value(type_=variable.type, i=evaled_i,
                                         **kwargs)
         elif is_parameter_type(variable.type):
@@ -469,12 +288,12 @@ def execute_command(command, state, banisher, reader):
     elif type_ == 'skew_char_assignment':
         # TODO: can we make this nicer by storing the char instead of the
         # number?
-        code_eval = evaluate_number(state, v['code'])
+        code_eval = evaler.evaluate_number(state, v['code'])
         state.global_font_state.set_hyphen_char(v['font_id'], code_eval)
     elif type_ == 'hyphen_char_assignment':
         # TODO: can we make this nicer by storing the char instead of the
         #         number?
-        code_eval = evaluate_number(state, v['code'])
+        code_eval = evaler.evaluate_number(state, v['code'])
         state.global_font_state.set_hyphen_char(v['font_id'], code_eval)
     elif type_ == 'message':
         # print(command.value)
