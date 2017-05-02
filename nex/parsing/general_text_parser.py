@@ -1,9 +1,9 @@
+from ..rply import ParserGenerator
+
 from ..tokens import BuiltToken
 
-from .common_parsing import pg as common_pg
-
-
-gen_txt_pg = common_pg.copy_to_extend()
+term_types = ['SPACE', 'RELAX', 'LEFT_BRACE', 'BALANCED_TEXT_AND_RIGHT_BRACE']
+gen_txt_pg = ParserGenerator(term_types, cache_id="general_text")
 
 
 @gen_txt_pg.production('general_text : filler LEFT_BRACE BALANCED_TEXT_AND_RIGHT_BRACE')
@@ -15,6 +15,17 @@ def general_text(p):
 @gen_txt_pg.production('filler : optional_spaces')
 @gen_txt_pg.production('filler : filler RELAX optional_spaces')
 def filler(p):
+    return None
+
+
+@gen_txt_pg.production('optional_spaces : SPACE optional_spaces')
+@gen_txt_pg.production('optional_spaces : empty')
+def optional_spaces(p):
+    return None
+
+
+@gen_txt_pg.production('empty :')
+def empty(p):
     return None
 
 
