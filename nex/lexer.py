@@ -57,6 +57,13 @@ def is_control_sequence_call(token):
 
 
 class Lexer:
+    """
+    Takes output from a reader, and produces tokens representing either character-
+    category pairs, such as ("A", "letter") or ("{", "left brace"), or control
+    sequence calls, such as "\input" or "\mymacro". The only state the lexer
+    depends on is the mapping of characters to category codes (and the state of the
+    reader of course).
+    """
 
     def __init__(self, reader, get_cat_code_func):
         self.reader = reader

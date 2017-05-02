@@ -1,5 +1,7 @@
+"""
+
+"""
 from string import ascii_letters
-from collections import deque
 
 from .tokens import InstructionToken
 from .lexer import (make_char_cat_lex_token,
@@ -116,33 +118,8 @@ def lex_token_to_instruction_token(lex_token):
     if lex_token.type == char_cat_lex_type:
         return make_char_cat_pair_instruction_token(lex_token)
     elif lex_token.type == control_sequence_lex_type:
-        name = lex_token.value
         return make_control_sequence_instruction_token(
-            name, position_like=lex_token)
+            lex_token.value, position_like=lex_token)
     # Aren't any other types of lexed tokens.
     else:
         raise Exception
-
-
-class TyperPipe:
-
-    def __init__(self, lexer):
-        self.lexer = lexer
-        self.input_tokens_queue = deque()
-        self.output_tokens_queue = deque()
-
-    def pop_next_output_token(self):
-        while not self.output_tokens_queue:
-            new_output_tokens = self._get_new_output_tokens()
-            self.output_tokens_queue.extend(new_output_tokens)
-        return self.output_tokens_queue.popleft()
-
-    def _pop_next_input_token(self):
-        if not self.input_tokens_queue:
-            self.input_tokens_queue.append(self.lexer.get_next_token())
-        return self.input_tokens_queue.popleft()
-
-    def _get_new_output_tokens(self):
-        first_lex_token = self._pop_next_input_token()
-        instruction_token = lex_token_to_instruction_token(first_lex_token)
-        return [instruction_token]

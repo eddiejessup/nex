@@ -14,7 +14,8 @@ from .constants.primitive_control_sequences import (Instructions,
                                                     unexpanded_cs_instructions,
                                                     hyphenation_instructions)
 from .lex_typer import (make_control_sequence_instruction_token,
-                        make_instruction_token_from_char_cat)
+                        make_instruction_token_from_char_cat,
+                        lex_token_to_instruction_token)
 from .state import Mode, Group, ContextMode, context_mode
 from .executor import execute_commands
 from .if_executor import execute_condition
@@ -65,8 +66,8 @@ def get_brace_sign(token):
 
 class Banisher:
 
-    def __init__(self, token_source, state, reader):
-        self.token_source = token_source
+    def __init__(self, lexer, state, reader):
+        self.lexer = lexer
         self.global_state = state
         # The banisher needs the reader because it can execute commands,
         # and one possible command is '\input', which needs to modify the
@@ -91,8 +92,9 @@ class Banisher:
 
     def _get_next_input_token(self):
         if not self.input_tokens_queue:
-            new_input_token = self.token_source.pop_next_output_token()
-            self.input_tokens_queue.append(new_input_token)
+            new_input_token = self.lexer.get_next_token()
+            instruction_token = lex_token_to_instruction_token(new_input_token)
+            self.input_tokens_queue.append(instruction_token)
         return self.input_tokens_queue.popleft()
 
     def get_balanced_text_token(self):
