@@ -3,13 +3,13 @@ from string import ascii_lowercase
 from ..rply import ParserGenerator
 
 from ..tokens import BuiltToken, instructions_to_types
-from ..constants.units import PhysicalUnit
+from ..constants.units import PhysicalUnit, MuUnit, InternalUnit
 from ..tex_parameters import glue_keys
 from ..registers import short_hand_reg_def_token_type_to_reg_type
 from ..constants.primitive_control_sequences import (Instructions as I,
                                                      unexpanded_cs_instructions,
                                                      register_instructions)
-from .character_parsing import add_character_productions
+from ..lex_typer import non_active_letters_map
 
 common_terminal_instructions = (
     I.box_dimen_height,
@@ -42,7 +42,6 @@ common_terminal_instructions = (
     I.e,
     I.f,
     I.space,
-    I.active_character,
     I.misc_char_cat_pair,
     I.integer_parameter,
     I.dimen_parameter,
@@ -59,23 +58,17 @@ common_terminal_instructions = (
     I.skip_def_token,
     I.mu_skip_def_token,
     I.toks_def_token,
+    I.unexpanded_one_char_control_sequence,
 )
 # Add ordinary character literals.
 char_instructions = tuple(I['non_active_uncased_{}'.format(c.lower())]
                           for c in ascii_lowercase)
 common_terminal_instructions += char_instructions
-common_terminal_instructions += unexpanded_cs_instructions
 common_terminal_instructions += register_instructions
 
 common_terminal_types = instructions_to_types(common_terminal_instructions)
 
-prec = (
-    ('left', 'SPACE'),
-)
-
-pg = ParserGenerator(common_terminal_types,
-                     precedence=prec,
-                     cache_id="changeme")
+pg = ParserGenerator(common_terminal_types, cache_id="changeme")
 
 
 class DigitCollection(object):
@@ -85,22 +78,28 @@ class DigitCollection(object):
         self.digits = []
 
 
-@pg.production('control_sequence : UNEXPANDED_MANY_CHAR_CONTROL_SEQUENCE')
-@pg.production('control_sequence : UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE')
-def control_sequence(p):
-    return p[0]
+def wrap(pg, func, rule):
+    f = pg.production(rule)
+    return f(func)
 
 
-@pg.production('control_sequence : ACTIVE_CHARACTER')
-def control_sequence_active(p):
-    # We will prefix active characters with @.
-    # This really needs changing, but will do for now.
-    v = p[0]
-    v.value['name'] = v.value['char']
-    return v
+letter_to_non_active_uncased_type_map = {}
+for c, instr in non_active_letters_map.items():
+    type_ = instr.value
+    #  For hex characters, need to look for the composite production, not the
+    #  terminal production, because could be, for example, 'A' or
+    #  'NON_ACTIVE_UNCASED_a', so we should look for the composite production,
+    #  'non_active_uncased_a'.
+    if c in ('A', 'B', 'C', 'D', 'E', 'F'):
+        type_ = type_.lower()
+    letter_to_non_active_uncased_type_map[c] = type_
 
 
-add_character_productions(pg)
+def get_literal_production_rule(word, target=None):
+    if target is None:
+        target = word
+    rule = ' '.join(letter_to_non_active_uncased_type_map[c] for c in word)
+    return '{} : {}'.format(target, rule)
 
 
 @pg.production('token_variable : token_register')
@@ -329,6 +328,13 @@ def normal_mu_dimen_explicit(p):
                       position_like=p)
 
 
+@pg.production(get_literal_production_rule('mu', target='mu_unit') + ' one_optional_space')
+def unit_of_mu_measure(p):
+    return BuiltToken(type_='unit_of_measure',
+                      value={'unit': MuUnit.mu},
+                      position_like=p)
+
+
 @pg.production('normal_dimen : factor unit_of_measure')
 def normal_dimen_explicit(p):
     return BuiltToken(type_='normal_dimen',
@@ -391,6 +397,16 @@ def internal_unit(p):
     return BuiltToken(type_='unit_of_measure',
                       value={'unit': p[0]},
                       position_like=p)
+
+
+@pg.production(get_literal_production_rule('em'))
+def em(p):
+    return InternalUnit.em
+
+
+@pg.production(get_literal_production_rule('ex'))
+def ex(p):
+    return InternalUnit.em
 
 
 @pg.production('unit_of_measure : optional_true physical_unit one_optional_space')
@@ -526,6 +542,85 @@ def equals(p):
     return BuiltToken(type_='optional_equals', value=None,
                       position_like=p)
     # return None
+
+
+def make_literal_token(p):
+    s = ''.join(t.value['char'] for t in p)
+    return BuiltToken(type_='literal', value=s,
+                      position_like=p)
+
+
+@pg.production(get_literal_production_rule('minus'))
+@pg.production(get_literal_production_rule('plus'))
+@pg.production(get_literal_production_rule('fil'))
+@pg.production(get_literal_production_rule('true'))
+def literal(p):
+    return make_literal_token(p)
+
+
+@pg.production('character : MISC_CHAR_CAT_PAIR')
+@pg.production('character : EQUALS')
+@pg.production('character : GREATER_THAN')
+@pg.production('character : LESS_THAN')
+@pg.production('character : PLUS_SIGN')
+@pg.production('character : MINUS_SIGN')
+@pg.production('character : ZERO')
+@pg.production('character : ONE')
+@pg.production('character : TWO')
+@pg.production('character : THREE')
+@pg.production('character : FOUR')
+@pg.production('character : FIVE')
+@pg.production('character : SIX')
+@pg.production('character : SEVEN')
+@pg.production('character : EIGHT')
+@pg.production('character : NINE')
+@pg.production('character : SINGLE_QUOTE')
+@pg.production('character : DOUBLE_QUOTE')
+@pg.production('character : BACKTICK')
+@pg.production('character : COMMA')
+@pg.production('character : POINT')
+def character(p):
+    return BuiltToken(type_='character', value=p[0].value,
+                      position_like=p)
+
+
+for letter_type in letter_to_non_active_uncased_type_map.values():
+    rule = 'character : {}'.format(letter_type)
+    character = wrap(pg, character, rule)
+
+
+@pg.production(get_literal_production_rule('pt', target='physical_unit'))
+@pg.production(get_literal_production_rule('pc', target='physical_unit'))
+@pg.production(get_literal_production_rule('in', target='physical_unit'))
+@pg.production(get_literal_production_rule('bp', target='physical_unit'))
+@pg.production(get_literal_production_rule('cm', target='physical_unit'))
+@pg.production(get_literal_production_rule('mm', target='physical_unit'))
+@pg.production(get_literal_production_rule('dd', target='physical_unit'))
+@pg.production(get_literal_production_rule('cc', target='physical_unit'))
+@pg.production(get_literal_production_rule('sp', target='physical_unit'))
+def physical_unit(p):
+    unit = PhysicalUnit(''.join([t.value['char'] for t in p]))
+    return BuiltToken(type_='physical_unit',
+                      value=unit,
+                      position_like=p)
+
+
+# We split out some types of these letters for parsing into hexadecimal
+# constants. Here we allow them to be considered as normal characters.
+@pg.production('non_active_uncased_a : A')
+@pg.production('non_active_uncased_a : NON_ACTIVE_UNCASED_a')
+@pg.production('non_active_uncased_b : B')
+@pg.production('non_active_uncased_b : NON_ACTIVE_UNCASED_b')
+@pg.production('non_active_uncased_c : C')
+@pg.production('non_active_uncased_c : NON_ACTIVE_UNCASED_c')
+@pg.production('non_active_uncased_d : D')
+@pg.production('non_active_uncased_d : NON_ACTIVE_UNCASED_d')
+@pg.production('non_active_uncased_e : NON_ACTIVE_UNCASED_e')
+@pg.production('non_active_uncased_e : E')
+@pg.production('non_active_uncased_f : NON_ACTIVE_UNCASED_f')
+@pg.production('non_active_uncased_f : F')
+def non_active_uncased_hex_letter(p):
+    return p[0]
 
 
 @pg.production('optional_spaces : SPACE optional_spaces')

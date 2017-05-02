@@ -11,7 +11,8 @@ from ..constants.primitive_control_sequences import (Instructions as I,
                                                      short_hand_def_instructions,
                                                      def_instructions,
                                                      )
-from .common_parsing import pg as common_pg
+from .common_parsing import (pg as common_pg,
+                             make_literal_token, get_literal_production_rule)
 from .utils import (ExpectedParsingError, ExhaustedTokensError,
                     is_end_token)
 from .general_text_parser import gen_txt_pg
@@ -74,6 +75,8 @@ command_terminal_instructions = (
     I.h_box,
     # I.v_box,
     # I.v_top,
+    I.active_character,
+    I.unexpanded_many_char_control_sequence,
 )
 command_terminal_instructions += message_instructions
 command_terminal_instructions += hyphenation_instructions
@@ -449,6 +452,21 @@ def font_definition(p):
                       position_like=p)
 
 
+@pg.production('control_sequence : UNEXPANDED_MANY_CHAR_CONTROL_SEQUENCE')
+@pg.production('control_sequence : UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE')
+def control_sequence(p):
+    return p[0]
+
+
+@pg.production('control_sequence : ACTIVE_CHARACTER')
+def control_sequence_active(p):
+    # We will prefix active characters with @.
+    # This really needs changing, but will do for now.
+    v = p[0]
+    v.value['name'] = v.value['char']
+    return v
+
+
 @pg.production('at_clause : at dimen')
 def at_clause_dimen(p):
     return BuiltToken(type_='at_dimen', value=p[1],
@@ -643,6 +661,19 @@ def error(look_ahead):
         raise ExpectedParsingError
     else:
         import pdb; pdb.set_trace()
+
+
+@pg.production(get_literal_production_rule('width'))
+@pg.production(get_literal_production_rule('height'))
+@pg.production(get_literal_production_rule('depth'))
+@pg.production(get_literal_production_rule('by'))
+@pg.production(get_literal_production_rule('to'))
+@pg.production(get_literal_production_rule('spread'))
+@pg.production(get_literal_production_rule('at'))
+@pg.production(get_literal_production_rule('scaled'))
+def literal(p):
+    return make_literal_token(p)
+
 
 # Build the parser
 command_parser = pg.build()
