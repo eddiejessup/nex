@@ -12,10 +12,11 @@ class ExhaustedTokensError(Exception):
     pass
 
 
+end_tag = '$end'
+
+
 def is_end_token(t):
-    end_tag = '$end'
-    return (hasattr(t, 'name') and
-            all(a == end_tag for a in (t.name, t.value)))
+    return hasattr(t, 'name') and t.name == end_tag and t.value == end_tag
 
 
 class ChunkGrabber(object):
