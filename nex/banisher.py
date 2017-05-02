@@ -569,6 +569,9 @@ class Banisher:
             return []
         # Such as \message.
         elif instr in message_instructions + hyphenation_instructions:
+            # TODO: I think the balanced text contents *are* expanded, at least
+            # for \[err]message. Unlike upper/lower-case. Not sure how best to
+            # implement this.
             self._push_context(ContextMode.awaiting_balanced_text_start)
             return [first_token]
         # Such as \ifnum.
