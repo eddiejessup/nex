@@ -449,6 +449,33 @@ class Banisher:
         # Put cased tokens back on the queue to read again.
         self.replace_on_input_queue(cased_tokens)
 
+    def handle_string(self, first_token):
+        # TeX first reads the [next] token without expansion.
+        with context_mode(self.global_state,
+                          ContextMode.absorbing_misc_unexpanded_arguments):
+            target_token = self._get_next_input_token()
+        string_tokens = []
+        # If a control sequence token appears, its \string expansion
+        # consists of the control sequence name (including \escapechar as
+        # an escape character, if the control sequence isn't simply an
+        # active character).
+        if target_token.instruction in unexpanded_cs_instructions:
+            chars = list(target_token.value['name'])
+            escape_char_token = self.get_escape_char_instruction_token(
+                position_like=target_token)
+            if escape_char_token is not None:
+                string_tokens += [escape_char_token]
+        else:
+            char = target_token.value['char']
+            chars = [char]
+        string_tokens += [
+            make_instruction_token_from_char_cat(
+                c, CatCode.other, position_like=target_token
+            )
+            for c in chars
+        ]
+        return string_tokens
+
     def get_cs_name_token(self):
         # Get an unexpanded control sequence as an instruction token.
         with context_mode(self.global_state,
@@ -524,29 +551,7 @@ class Banisher:
         elif instr in if_instructions:
             self.handle_if(first_token)
         elif instr == Instructions.string:
-            with context_mode(self.global_state,
-                              ContextMode.absorbing_misc_unexpanded_arguments):
-                target_token = self._get_next_input_token()
-            string_tokens = []
-            # If the target token is a control sequence, then get the chars of
-            # its name.
-            if target_token.instruction in unexpanded_cs_instructions:
-                chars = list(target_token.value['name'])
-                escape_char_token = self.get_escape_char_terminal_token(
-                    position_like=target_token)
-                if escape_char_token is not None:
-                    string_tokens += [escape_char_token]
-            else:
-                char = target_token.value['char']
-                chars = [char]
-            char_terminal_tokens = [
-                make_instruction_token_from_char_cat(
-                    c, CatCode.other, position_like=target_token
-                )
-                for c in chars
-            ]
-            string_tokens += char_terminal_tokens
-            self.replace_on_input_queue(string_tokens)
+            output_tokens.extend(self.handle_string(first_token))
         elif instr == Instructions.cs_name:
             cs_name_tokens = []
             cs_name_queue = deque()
