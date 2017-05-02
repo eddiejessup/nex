@@ -126,7 +126,7 @@ class Banisher:
     def context_mode(self):
         return self.global_state.context_mode
 
-    def get_escape_char_terminal_token(self, position_like=None):
+    def get_escape_char_instruction_token(self, position_like=None):
         escape_char_code = self.global_state.get_parameter_value('escapechar')
         if escape_char_code >= 0:
             escape_char = chr(escape_char_code)
@@ -413,7 +413,7 @@ class Banisher:
         return [first_token, cs_name_token] + let_arguments
 
     def handle_backtick(self, first_token):
-        # Add an unexpanded control sequence as a terminal token to the output.
+        # Add an unexpanded control sequence as an instruction token to the output.
         with context_mode(self.global_state, ContextMode.absorbing_backtick_argument):
             arg_token = self._get_next_input_token()
         return [first_token, arg_token]
@@ -450,7 +450,7 @@ class Banisher:
         self.replace_on_input_queue(cased_tokens)
 
     def get_cs_name_token(self):
-        # Get an unexpanded control sequence as a terminal token.
+        # Get an unexpanded control sequence as an instruction token.
         with context_mode(self.global_state,
                           ContextMode.absorbing_new_control_sequence_name):
             return self._get_next_input_token()
@@ -462,9 +462,9 @@ class Banisher:
 
         # If the token is an unexpanded control sequence call, and expansion is
         # not suppressed, then we must normalize it:
-        # - A user control sequence will become a (non-terminal) macro token.
-        # - A \let character will become the (terminal) character token.
-        # - A primitive control sequence will become a terminal token.
+        # - A user control sequence will become a macro instruction token.
+        # - A \let character will become its character instruction token.
+        # - A primitive control sequence will become its instruction token.
         if (self.expanding_control_sequences and
                 first_token.instruction in unexpanded_cs_instructions):
             name = first_token.value['name']
