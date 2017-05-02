@@ -584,6 +584,7 @@ def character(p):
                       position_like=p)
 
 
+# Add character productions for letters.
 for letter_type in letter_to_non_active_uncased_type_map.values():
     rule = 'character : {}'.format(letter_type)
     character = wrap(pg, character, rule)
@@ -615,10 +616,10 @@ def physical_unit(p):
 @pg.production('non_active_uncased_c : NON_ACTIVE_UNCASED_c')
 @pg.production('non_active_uncased_d : D')
 @pg.production('non_active_uncased_d : NON_ACTIVE_UNCASED_d')
-@pg.production('non_active_uncased_e : NON_ACTIVE_UNCASED_e')
 @pg.production('non_active_uncased_e : E')
-@pg.production('non_active_uncased_f : NON_ACTIVE_UNCASED_f')
+@pg.production('non_active_uncased_e : NON_ACTIVE_UNCASED_e')
 @pg.production('non_active_uncased_f : F')
+@pg.production('non_active_uncased_f : NON_ACTIVE_UNCASED_f')
 def non_active_uncased_hex_letter(p):
     return p[0]
 
