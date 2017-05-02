@@ -535,6 +535,9 @@ class Banisher:
             # But first comes our shiny new control sequence token.
             self.input_tokens_queue.appendleft(cs_token)
         elif instr in (Instructions.upper_case, Instructions.lower_case):
+            # TODO: This is wrong because we are suppressing expansion before
+            # we get to the token list. Expansion should only be suppressed
+            # while the token list is being absorbed.
             case_tokens = []
             while True:
                 t = self._get_next_input_token()
@@ -546,8 +549,6 @@ class Banisher:
                     case_tokens.append(balanced_text_token)
                     break
             # Check arguments obey the rules of a 'general text'.
-            # TODO: Can this be done better with a chunk grabber or
-            # something?
             general_text_token = general_text_parser.parse(iter(case_tokens))
 
             case_funcs_map = {
