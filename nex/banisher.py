@@ -418,6 +418,37 @@ class Banisher:
             arg_token = self._get_next_input_token()
         return [first_token, arg_token]
 
+    def handle_change_case(self, first_token):
+        # Get the succeeding general text token for processing.
+        general_text_grabber = ChunkGrabber(self, parser=general_text_parser)
+        with context_mode(self.global_state,
+                          ContextMode.awaiting_balanced_text_start):
+            general_text_token = general_text_grabber.get_chunk()
+        un_cased_tokens = general_text_token.value
+
+        case_funcs_map = {
+            Instructions.lower_case: self.global_state.get_lower_case_code,
+            Instructions.upper_case: self.global_state.get_upper_case_code,
+        }
+        case_func = case_funcs_map[first_token.instruction]
+
+        def get_cased_tok(un_cased_tok):
+            if un_cased_tok.value['lex_type'] == char_cat_lex_type:
+                un_cased_char = un_cased_tok.value['char']
+                cased_char = case_func(un_cased_char)
+                if cased_char == chr(0):
+                    cased_char = un_cased_char
+                # Note that the category code is not changed.
+                cat = un_cased_tok.value['cat']
+                return make_instruction_token_from_char_cat(
+                    cased_char, cat, position_like=un_cased_tok)
+            else:
+                return un_cased_tok
+
+        cased_tokens = list(map(get_cased_tok, un_cased_tokens))
+        # Put cased tokens back on the queue to read again.
+        self.replace_on_input_queue(cased_tokens)
+
     def get_cs_name_token(self):
         # Get an unexpanded control sequence as a terminal token.
         with context_mode(self.global_state,
@@ -535,45 +566,7 @@ class Banisher:
             # But first comes our shiny new control sequence token.
             self.input_tokens_queue.appendleft(cs_token)
         elif instr in (Instructions.upper_case, Instructions.lower_case):
-            # TODO: This is wrong because we are suppressing expansion before
-            # we get to the token list. Expansion should only be suppressed
-            # while the token list is being absorbed.
-            case_tokens = []
-            while True:
-                t = self._get_next_input_token()
-                case_tokens.append(t)
-                if t.instruction == Instructions.left_brace:
-                    with context_mode(self.global_state,
-                                      ContextMode.absorbing_misc_unexpanded_arguments):
-                        balanced_text_token = self.get_balanced_text_token()
-                    case_tokens.append(balanced_text_token)
-                    break
-            # Check arguments obey the rules of a 'general text'.
-            general_text_token = general_text_parser.parse(iter(case_tokens))
-
-            case_funcs_map = {
-                Instructions.lower_case: self.global_state.get_lower_case_code,
-                Instructions.upper_case: self.global_state.get_upper_case_code,
-            }
-            case_func = case_funcs_map[instr]
-
-            def get_cased_tok(un_cased_tok):
-                if un_cased_tok.value['lex_type'] == char_cat_lex_type:
-                    un_cased_char = un_cased_tok.value['char']
-                    cased_char = case_func(un_cased_char)
-                    if cased_char == chr(0):
-                        cased_char = un_cased_char
-                    # Note that the category code is not changed.
-                    cat = un_cased_tok.value['cat']
-                    return make_instruction_token_from_char_cat(
-                        cased_char, cat, position_like=un_cased_tok)
-                else:
-                    return un_cased_tok
-
-            un_cased_toks = general_text_token.value
-            cased_toks = list(map(get_cased_tok, un_cased_toks))
-            # Put cased tokens back on the queue to read again.
-            self.replace_on_input_queue(cased_toks)
+            self.handle_change_case(first_token)
         elif instr in explicit_box_instructions:
             # First we read until box specification is finished.
             # Then we will do actual group and scope changes and so on.
