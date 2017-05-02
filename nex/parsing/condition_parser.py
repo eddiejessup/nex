@@ -49,7 +49,7 @@ def relation(p):
 
 @pg.error
 def error(look_ahead):
-    # TODO: remove duplication of this function with main parser.
+    # TODO: remove duplication of this function with command parser.
     # If we have exhausted the list of tokens while still
     # having a valid command, we should read more tokens until we get a syntax
     # error.
