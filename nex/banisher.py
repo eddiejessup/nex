@@ -476,6 +476,25 @@ class Banisher:
         ]
         return string_tokens
 
+    def handle_cs_name(self, first_token):
+        cs_name_tokens = []
+        cs_name_queue = deque()
+
+        while True:
+            t = self.pop_or_fill_and_pop(cs_name_queue)
+            if t.instruction == Instructions.end_cs_name:
+                break
+            cs_name_tokens.append(t)
+        chars = [tok.value['char'] for tok in cs_name_tokens]
+        cs_name = ''.join(chars)
+        cs_token = make_control_sequence_instruction_token(
+            cs_name, position_like=first_token)
+        # If we expanded such that we got tokens past 'endcsname', put them
+        # back on the input queue.
+        self.replace_on_input_queue(cs_name_queue)
+        # But first comes our shiny new control sequence token.
+        self.input_tokens_queue.appendleft(cs_token)
+
     def get_cs_name_token(self):
         # Get an unexpanded control sequence as an instruction token.
         with context_mode(self.global_state,
@@ -553,23 +572,7 @@ class Banisher:
         elif instr == Instructions.string:
             output_tokens.extend(self.handle_string(first_token))
         elif instr == Instructions.cs_name:
-            cs_name_tokens = []
-            cs_name_queue = deque()
-
-            while True:
-                t = self.pop_or_fill_and_pop(cs_name_queue)
-                if t.instruction == Instructions.end_cs_name:
-                    break
-                cs_name_tokens.append(t)
-            chars = [tok.value['char'] for tok in cs_name_tokens]
-            cs_name = ''.join(chars)
-            cs_token = make_control_sequence_instruction_token(
-                cs_name, position_like=first_token)
-            # If we expanded such that we got tokens past 'endcsname',
-            # put them back on the input queue.
-            self.replace_on_input_queue(cs_name_queue)
-            # But first comes our shiny new control sequence token.
-            self.input_tokens_queue.appendleft(cs_token)
+            self.handle_cs_name(first_token)
         elif instr in (Instructions.upper_case, Instructions.lower_case):
             self.handle_change_case(first_token)
         elif instr in explicit_box_instructions:
