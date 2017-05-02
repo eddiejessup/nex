@@ -203,3 +203,7 @@ class InstructionToken(PositionToken):
     @property
     def lexpos(self):
         return None
+
+
+def instructions_to_types(instructions):
+    return tuple(i.value for i in instructions)

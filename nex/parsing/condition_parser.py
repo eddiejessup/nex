@@ -1,13 +1,16 @@
-from .types import cond_terminal_types
-from ..tokens import BuiltToken
+from ..constants.primitive_control_sequences import if_instructions
+from ..tokens import BuiltToken, instructions_to_types
 
 from .common_parsing import pg as common_pg
 from .utils import (ExpectedParsingError, ExhaustedTokensError,
                     is_end_token)
 
 
-pg = common_pg.copy_to_extend()
+cond_terminal_instructions = if_instructions
 
+
+pg = common_pg.copy_to_extend()
+cond_terminal_types = instructions_to_types(cond_terminal_instructions)
 pg.tokens += cond_terminal_types
 
 

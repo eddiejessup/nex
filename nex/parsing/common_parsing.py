@@ -1,19 +1,79 @@
+from string import ascii_lowercase
+
 from ..rply import ParserGenerator
 
-from ..tokens import BuiltToken
+from ..tokens import BuiltToken, instructions_to_types
 from ..constants.units import PhysicalUnit
 from ..tex_parameters import glue_keys
 from ..registers import short_hand_reg_def_token_type_to_reg_type
-
+from ..constants.primitive_control_sequences import (Instructions as I,
+                                                     unexpanded_cs_instructions,
+                                                     register_instructions)
 from .character_parsing import add_character_productions
-from .types import terminal_types
+
+common_terminal_instructions = (
+    I.box_dimen_height,
+    I.box_dimen_width,
+    I.box_dimen_depth,
+    I.less_than,
+    I.greater_than,
+    I.equals,
+    I.plus_sign,
+    I.minus_sign,
+    I.zero,
+    I.one,
+    I.two,
+    I.three,
+    I.four,
+    I.five,
+    I.six,
+    I.seven,
+    I.eight,
+    I.nine,
+    I.single_quote,
+    I.double_quote,
+    I.backtick,
+    I.point,
+    I.comma,
+    I.a,
+    I.b,
+    I.c,
+    I.d,
+    I.e,
+    I.f,
+    I.space,
+    I.active_character,
+    I.misc_char_cat_pair,
+    I.integer_parameter,
+    I.dimen_parameter,
+    I.glue_parameter,
+    I.mu_glue_parameter,
+    I.token_parameter,
+    I.special_integer,
+    I.special_dimen,
+
+    I.char_def_token,
+    I.math_char_def_token,
+    I.count_def_token,
+    I.dimen_def_token,
+    I.skip_def_token,
+    I.mu_skip_def_token,
+    I.toks_def_token,
+)
+# Add ordinary character literals.
+char_instructions = tuple(I['non_active_uncased_{}'.format(c.lower())]
+                          for c in ascii_lowercase)
+common_terminal_instructions += char_instructions
+common_terminal_instructions += unexpanded_cs_instructions
+common_terminal_instructions += register_instructions
+
+common_terminal_types = instructions_to_types(common_terminal_instructions)
 
 prec = (
     ('left', 'SPACE'),
 )
 
-
-pg = ParserGenerator(terminal_types,
+pg = ParserGenerator(common_terminal_types,
                      precedence=prec,
                      cache_id="changeme")
 

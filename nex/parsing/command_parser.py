@@ -1,19 +1,90 @@
 import logging
 
-from ..tokens import BuiltToken
+from ..tokens import BuiltToken, instructions_to_types
 from ..expander import parse_replacement_text
 from ..fonts import FontRange
+from ..constants.primitive_control_sequences import (Instructions as I,
+                                                     message_instructions,
+                                                     hyphenation_instructions,
+                                                     h_add_glue_instructions,
+                                                     v_add_glue_instructions,
+                                                     short_hand_def_instructions,
+                                                     def_instructions,
+                                                     )
 from .common_parsing import pg as common_pg
 from .utils import (ExpectedParsingError, ExhaustedTokensError,
                     is_end_token)
 from .general_text_parser import gen_txt_pg
 
-
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
 
 
+command_terminal_instructions = (
+    I.cat_code,
+    I.math_code,
+    I.upper_case_code,
+    I.lower_case_code,
+    I.space_factor_code,
+    I.delimiter_code,
+    I.let,
+    I.advance,
+    I.par,
+    I.relax,
+    I.immediate,
+    I.font,
+    I.skew_char,
+    I.hyphen_char,
+    # I.font_dimen,
+    I.text_font,
+    I.script_font,
+    I.script_script_font,
+    # I.undefined,
+    I.global_mod,
+    I.long_mod,
+    I.outer_mod,
+    I.set_box,
+    # I.box,
+    # I.copy,
+    I.un_h_box,
+    I.un_h_copy,
+    I.un_v_box,
+    I.un_v_copy,
+    # I.last_box,
+    # I.v_split,
+    # I.box_dimen_height,
+    # I.box_dimen_width,
+    # I.box_dimen_depth,
+    I.kern,
+    I.math_kern,
+    I.v_rule,
+    I.h_rule,
+    I.input,
+    I.end,
+    I.char,
+    I.indent,
+    I.left_brace,
+    I.right_brace,
+    I.font_def_token,
+    I.let_target,
+    I.parameter_text,
+    I.balanced_text_and_right_brace,
+    I.horizontal_mode_material_and_right_brace,
+    # I.vertical_mode_material_and_right_brace,
+    I.h_box,
+    # I.v_box,
+    # I.v_top,
+)
+command_terminal_instructions += message_instructions
+command_terminal_instructions += hyphenation_instructions
+command_terminal_instructions += h_add_glue_instructions
+command_terminal_instructions += v_add_glue_instructions
+command_terminal_instructions += short_hand_def_instructions
+command_terminal_instructions += def_instructions
+
 pg = common_pg.copy_to_extend()
+command_terminal_types = instructions_to_types(command_terminal_instructions)
+pg.tokens += command_terminal_types
 
 
 @pg.production('command : assignment')

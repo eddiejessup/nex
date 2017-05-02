@@ -232,128 +232,21 @@ instructions += tuple('NON_ACTIVE_UNCASED_{}'.format(c)
 Instructions = Enum('Instructions', {s.lower(): s for s in instructions})
 I = Instructions
 
-terminal_primitive_instructions = (
-    I.cat_code,
-    I.math_code,
-    I.upper_case_code,
-    I.lower_case_code,
-    I.space_factor_code,
-    I.delimiter_code,
-    I.let,
-    I.advance,
-    I.par,
-    I.relax,
-    I.immediate,
-    I.font,
-    I.skew_char,
-    I.hyphen_char,
-    I.font_dimen,
-    I.text_font,
-    I.script_font,
-    I.script_script_font,
-    I.undefined,
-    I.global_mod,
-    I.long_mod,
-    I.outer_mod,
-    I.set_box,
-    I.box,
-    I.copy,
-    I.un_h_box,
-    I.un_h_copy,
-    I.un_v_box,
-    I.un_v_copy,
-    I.last_box,
-    I.v_split,
-    I.box_dimen_height,
-    I.box_dimen_width,
-    I.box_dimen_depth,
-    I.kern,
-    I.math_kern,
-    I.v_rule,
-    I.h_rule,
-    I.input,
-    I.end,
-    I.char,
-    I.indent,
-
-    I.less_than,
-    I.greater_than,
-    I.equals,
-    I.plus_sign,
-    I.minus_sign,
-    I.zero,
-    I.one,
-    I.two,
-    I.three,
-    I.four,
-    I.five,
-    I.six,
-    I.seven,
-    I.eight,
-    I.nine,
-    I.single_quote,
-    I.double_quote,
-    I.backtick,
-    I.point,
-    I.comma,
-    I.a,
-    I.b,
-    I.c,
-    I.d,
-    I.e,
-    I.f,
-    I.space,
-    I.left_brace,
-    I.right_brace,
-    I.active_character,
-    # I don't think these are terminal.
-    # I.parameter,
-    # I.math_shift,
-    # I.align_tab,
-    # I.superscript,
-    # I.subscript,
-    I.misc_char_cat_pair,
-    I.integer_parameter,
-    I.dimen_parameter,
-    I.glue_parameter,
-    I.mu_glue_parameter,
-    I.token_parameter,
-    I.special_integer,
-    I.special_dimen,
-
-    I.char_def_token,
-    I.math_char_def_token,
-    I.count_def_token,
-    I.dimen_def_token,
-    I.skip_def_token,
-    I.mu_skip_def_token,
-    I.toks_def_token,
-    I.font_def_token,
-)
-# Add ordinary character literals.
-t = tuple(Instructions['non_active_uncased_{}'.format(c.lower())]
-          for c in ascii_lowercase)
-terminal_primitive_instructions += t
-
-
 unexpanded_cs_instructions = (
     I.unexpanded_one_char_control_sequence,
     I.unexpanded_many_char_control_sequence,
 )
-terminal_primitive_instructions += unexpanded_cs_instructions
 
 message_instructions = (
     I.message,
     I.error_message,
     I.write,
 )
-terminal_primitive_instructions += message_instructions
 
 hyphenation_instructions = (
     I.hyphenation,
     I.patterns,
 )
-terminal_primitive_instructions += hyphenation_instructions
 
 h_add_glue_instructions = (
     I.h_skip,
@@ -362,7 +255,6 @@ h_add_glue_instructions = (
     I.h_stretch_or_shrink,
     I.h_fil_neg,
 )
-terminal_primitive_instructions += h_add_glue_instructions
 
 
 v_add_glue_instructions = (
@@ -372,14 +264,12 @@ v_add_glue_instructions = (
     I.v_stretch_or_shrink,
     I.v_fil_neg,
 )
-terminal_primitive_instructions += v_add_glue_instructions
 
 explicit_box_instructions = (
     I.h_box,
     I.v_box,
     I.v_top,
 )
-terminal_primitive_instructions += explicit_box_instructions
 
 register_instructions = (
     I.count,
@@ -388,7 +278,6 @@ register_instructions = (
     I.mu_skip,
     I.toks,
 )
-terminal_primitive_instructions += register_instructions
 
 short_hand_def_instructions = (
     I.char_def,
@@ -400,7 +289,6 @@ short_hand_def_instructions = (
     I.mu_skip_def,
     I.toks_def,
 )
-terminal_primitive_instructions += short_hand_def_instructions
 
 def_instructions = (
     I.def_,
@@ -408,18 +296,7 @@ def_instructions = (
     I.e_def,
     I.x_def,
 )
-terminal_primitive_instructions += def_instructions
 
-terminal_internal_instructions = (
-    I.let_target,
-    I.parameter_text,
-    I.balanced_text_and_right_brace,
-    I.horizontal_mode_material_and_right_brace,
-    I.vertical_mode_material_and_right_brace,
-)
-
-terminal_instructions = (terminal_internal_instructions +
-                         terminal_primitive_instructions)
 
 # Note: These are only terminal for the condition parser, so not added to that
 # list.
