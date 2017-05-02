@@ -1,68 +1,123 @@
+from string import ascii_letters
 from collections import deque
 
-from .tokens import TerminalToken
+from .tokens import InstructionToken
 from .lexer import (make_char_cat_lex_token,
                     control_sequence_lex_type, char_cat_lex_type)
+from .constants.primitive_control_sequences import Instructions
 from .codes import CatCode
-from .constants.literals import (non_active_literals_map,
-                                 other_literal_type,
-                                 category_map,
-                                 literals_map)
-from .constants.strange_types import (unexpanded_one_char_cs_type,
-                                      unexpanded_many_char_cs_type)
 
 
-def get_char_cat_pair_terminal_type(char_cat_pair_token):
-    v = char_cat_pair_token.value
-    char, cat = v['char'], v['cat']
+literals_map = {
+    ('<', CatCode.other): Instructions.less_than,
+    ('>', CatCode.other): Instructions.greater_than,
+
+    ('=', CatCode.other): Instructions.equals,
+    ('+', CatCode.other): Instructions.plus_sign,
+    ('-', CatCode.other): Instructions.minus_sign,
+
+    ('0', CatCode.other): Instructions.zero,
+    ('1', CatCode.other): Instructions.one,
+    ('2', CatCode.other): Instructions.two,
+    ('3', CatCode.other): Instructions.three,
+    ('4', CatCode.other): Instructions.four,
+    ('5', CatCode.other): Instructions.five,
+    ('6', CatCode.other): Instructions.six,
+    ('7', CatCode.other): Instructions.seven,
+    ('8', CatCode.other): Instructions.eight,
+    ('9', CatCode.other): Instructions.nine,
+
+    ('\'', CatCode.other): Instructions.single_quote,
+    ('"', CatCode.other): Instructions.double_quote,
+    ('`', CatCode.other): Instructions.backtick,
+
+    ('.', CatCode.other): Instructions.point,
+    (',', CatCode.other): Instructions.comma,
+
+    ('A', CatCode.other): Instructions.a,
+    ('B', CatCode.other): Instructions.b,
+    ('C', CatCode.other): Instructions.c,
+    ('D', CatCode.other): Instructions.d,
+    ('E', CatCode.other): Instructions.e,
+    ('F', CatCode.other): Instructions.f,
+    ('A', CatCode.letter): Instructions.a,
+    ('B', CatCode.letter): Instructions.b,
+    ('C', CatCode.letter): Instructions.c,
+    ('D', CatCode.letter): Instructions.d,
+    ('E', CatCode.letter): Instructions.e,
+    ('F', CatCode.letter): Instructions.f,
+}
+
+non_active_letters_map = {c: Instructions['non_active_uncased_{}'.format(c.lower())]
+                          for c in ascii_letters}
+
+category_map = {
+    CatCode.space: Instructions.space,
+    CatCode.begin_group: Instructions.left_brace,
+    CatCode.end_group: Instructions.right_brace,
+    CatCode.active: Instructions.active_character,
+    CatCode.parameter: Instructions.parameter,
+    CatCode.math_shift: Instructions.math_shift,
+    CatCode.align_tab: Instructions.align_tab,
+    CatCode.superscript: Instructions.superscript,
+    CatCode.subscript: Instructions.subscript,
+}
+
+
+def get_char_cat_pair_instruction(char, cat):
     if cat in (CatCode.letter, CatCode.other) and (char, cat) in literals_map:
-        terminal_token_type = literals_map[(char, cat)]
-    elif cat != CatCode.active and char in non_active_literals_map:
-        terminal_token_type = non_active_literals_map[char]
+        return literals_map[(char, cat)]
+    elif cat != CatCode.active and char in non_active_letters_map:
+        return non_active_letters_map[char]
     elif cat in (CatCode.letter, CatCode.other):
-        terminal_token_type = other_literal_type
+        return Instructions.misc_char_cat_pair
     elif cat in category_map:
-        terminal_token_type = category_map[cat]
+        return category_map[cat]
     else:
         import pdb; pdb.set_trace()
-    return terminal_token_type
 
 
-def make_char_cat_pair_terminal_token(char_cat_pair_token):
-    terminal_token_type = get_char_cat_pair_terminal_type(char_cat_pair_token)
-    value = char_cat_pair_token.value
-    value['lex_type'] = char_cat_pair_token.type
-    token = TerminalToken(type_=terminal_token_type, value=value,
-                          position_like=char_cat_pair_token)
+def make_char_cat_pair_instruction_token(char_cat_lex_token):
+    v = char_cat_lex_token.value
+    char, cat = v['char'], v['cat']
+    instruction = get_char_cat_pair_instruction(char, cat)
+    value = char_cat_lex_token.value
+    value['lex_type'] = char_cat_lex_token.type
+    token = InstructionToken.from_instruction(
+        instruction,
+        value=value,
+        position_like=char_cat_lex_token
+    )
     return token
 
 
-def make_control_sequence_unexpanded_token(name, position_like=None):
+def make_control_sequence_instruction_token(name, position_like=None):
     if len(name) == 1:
-        type_ = unexpanded_one_char_cs_type
+        instruction = Instructions.unexpanded_one_char_control_sequence
     else:
-        type_ = unexpanded_many_char_cs_type
-    return TerminalToken(type_=type_,
-                         value={'name': name,
-                                'lex_type': control_sequence_lex_type},
-                         position_like=position_like)
+        instruction = Instructions.unexpanded_many_char_control_sequence
+    return InstructionToken.from_instruction(
+        instruction,
+        value={'name': name, 'lex_type': control_sequence_lex_type},
+        position_like=position_like
+    )
 
 
-def make_char_cat_terminal_token(char, cat, *pos_args, **pos_kwargs):
+def make_instruction_token_from_char_cat(char, cat, *pos_args, **pos_kwargs):
     """Utility function to make a terminal char-cat token straight from a pair.
     """
     lex_token = make_char_cat_lex_token(char, cat, *pos_args, **pos_kwargs)
-    terminal_token = make_char_cat_pair_terminal_token(lex_token)
-    return terminal_token
+    token = make_char_cat_pair_instruction_token(lex_token)
+    return token
 
 
-def lex_token_to_unexpanded_token(lex_token):
+def lex_token_to_instruction_token(lex_token):
     # If we have a char-cat pair, we must type it to its terminal version,
     if lex_token.type == char_cat_lex_type:
-        return make_char_cat_pair_terminal_token(lex_token)
+        return make_char_cat_pair_instruction_token(lex_token)
     elif lex_token.type == control_sequence_lex_type:
         name = lex_token.value
-        return make_control_sequence_unexpanded_token(
+        return make_control_sequence_instruction_token(
             name, position_like=lex_token)
     # Aren't any other types of lexed tokens.
     else:
@@ -88,6 +143,6 @@ class TyperPipe:
         return self.input_tokens_queue.popleft()
 
     def _get_new_output_tokens(self):
-        first_input_token = self._pop_next_input_token()
-        unexpanded_token = lex_token_to_unexpanded_token(first_input_token)
-        return deque([unexpanded_token])
+        first_lex_token = self._pop_next_input_token()
+        instruction_token = lex_token_to_instruction_token(first_lex_token)
+        return [instruction_token]

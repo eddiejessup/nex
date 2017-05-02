@@ -4,7 +4,8 @@ from .utils import ExecuteCommandError
 from .reader import EndOfFile
 from .registers import is_register_type
 from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
-from .constants.primitive_control_sequences import h_add_glue_tokens
+from .constants.primitive_control_sequences import (Instructions,
+                                                    h_add_glue_instructions)
 from .tex_parameters import is_parameter_type
 from .router import primitive_canon_tokens
 from .state import Operation, Mode, Group, vertical_modes, horizontal_modes
@@ -26,27 +27,29 @@ class EndOfSubExecutor(Exception):
     pass
 
 
-shift_to_horizontal_control_sequence_types = (
-    'char',
-    'CHAR_DEF_TOKEN',
-    'UN_H_BOX',
-    'UN_H_COPY',
-    # 'V_ALIGN',
-    'V_RULE',
-    # 'ACCENT',
-    # 'DISCRETIONARY',
-    # 'CONTROL_HYPHEN',
+shift_to_horizontal_instructions = (
+    Instructions.char,
+    Instructions.char_def_token,
+    Instructions.un_h_box,
+    Instructions.un_h_copy,
+    # Instructions.v_align
+    Instructions.v_rule,
+    # Instructions.accent,
+    # Instructions.discretionary,
+    # Instructions.control_hyphen,
     # TODO: Add control-space primitive, parsing and control sequence.
-    # 'CONTROL_SPACE',
+    # Instructions.control_space,
 )
-shift_to_horizontal_control_sequence_types += tuple(h_add_glue_tokens.values())
+shift_to_horizontal_instructions += tuple(h_add_glue_instructions)
+shift_to_horizontal_types = tuple(i.value
+                                  for i in shift_to_horizontal_instructions)
 shift_to_horizontal_cat_codes = (CatCode.letter,
                                  CatCode.other,
                                  CatCode.math_shift)
 
 
 def command_shifts_to_horizontal(command):
-    if command.type in shift_to_horizontal_control_sequence_types:
+    if command.type in shift_to_horizontal_types:
         return True
     if (command.type == 'character' and
             command.value['cat'] in shift_to_horizontal_cat_codes):

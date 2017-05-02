@@ -1,19 +1,20 @@
 import logging
 from collections import deque
 
-from .tokens import TerminalToken
+from .tokens import InstructionToken
 from .lexer import (is_control_sequence_call,
                     char_cat_lex_type, control_sequence_lex_type)
 from .codes import CatCode
-from .constants.strange_types import unexpanded_cs_types, let_target_type
-from .constants.primitive_control_sequences import (explicit_box_map,
-                                                    short_hand_def_map,
-                                                    def_map,
-                                                    if_map,
-                                                    message_map,
-                                                    hyphenation_map)
-from .lex_typer import (make_control_sequence_unexpanded_token,
-                        make_char_cat_terminal_token)
+from .constants.primitive_control_sequences import (Instructions,
+                                                    explicit_box_instructions,
+                                                    short_hand_def_instructions,
+                                                    def_instructions,
+                                                    if_instructions,
+                                                    message_instructions,
+                                                    unexpanded_cs_instructions,
+                                                    hyphenation_instructions)
+from .lex_typer import (make_control_sequence_instruction_token,
+                        make_instruction_token_from_char_cat)
 from .state import Mode, Group, ContextMode, context_mode
 from .executor import execute_commands
 from .if_executor import execute_condition
@@ -26,26 +27,26 @@ from .parsing.general_text_parser import general_text_parser
 
 logger = logging.getLogger(__name__)
 
-read_unexpanded_control_sequence_types = (
-    'FONT',
+read_unexpanded_control_sequence_instructions = (
+    Instructions.font,
+) + short_hand_def_instructions
+
+token_variable_start_instructions = (
+    # TODO: This will break, parameters are not instructions.
+    Instructions.token_parameter,
+    Instructions.toks_def_token,
+    Instructions.toks,
 )
-read_unexpanded_control_sequence_types += tuple(set(short_hand_def_map.values()))
-
-if_types = if_map.values()
-message_types = message_map.values()
-hyphenation_types = hyphenation_map.values()
-
-token_variable_start_types = ('TOKEN_PARAMETER', 'TOKS_DEF_TOKEN', 'TOKS')
 
 box_context_mode_map = {
-    'H_BOX': ContextMode.awaiting_make_h_box_start,
-    'V_BOX': ContextMode.awaiting_make_v_box_start,
-    'V_TOP': ContextMode.awaiting_make_v_top_start,
+    Instructions.h_box: ContextMode.awaiting_make_h_box_start,
+    Instructions.v_box: ContextMode.awaiting_make_v_box_start,
+    Instructions.v_top: ContextMode.awaiting_make_v_top_start,
 }
 
-material_map = {
-    Mode.internal_vertical: 'VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE',
-    Mode.restricted_horizontal: 'HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE',
+mode_material_instruction_map = {
+    Mode.internal_vertical: Instructions.vertical_mode_material_and_right_brace,
+    Mode.restricted_horizontal: Instructions.horizontal_mode_material_and_right_brace,
 }
 
 expanding_context_modes = (
@@ -59,9 +60,9 @@ expanding_context_modes = (
 
 
 def get_brace_sign(token):
-    if token.type == 'LEFT_BRACE':
+    if token.instruction == Instructions.left_brace:
         return 1
-    elif token.type == 'RIGHT_BRACE':
+    elif token.instruction == Instructions.right_brace:
         return -1
     else:
         return 0
@@ -108,9 +109,11 @@ class Banisher:
             brace_level += get_brace_sign(token)
             if brace_level == 0:
                 break
-        balanced_text = TerminalToken(type_='BALANCED_TEXT_AND_RIGHT_BRACE',
-                                      value=tokens[:-1],
-                                      position_like=tokens[0])
+        balanced_text = InstructionToken.from_instruction(
+            Instructions.balanced_text_and_right_brace,
+            value=tokens[:-1],
+            position_like=tokens[0]
+        )
         return balanced_text
 
     def _push_context(self, *args, **kwargs):
@@ -127,7 +130,7 @@ class Banisher:
         escape_char_code = self.global_state.get_parameter_value('escapechar')
         if escape_char_code >= 0:
             escape_char = chr(escape_char_code)
-            escape_char_token = make_char_cat_terminal_token(
+            escape_char_token = make_instruction_token_from_char_cat(
                 escape_char, CatCode.other, position_like=position_like)
             return escape_char_token
         else:
@@ -178,7 +181,8 @@ class Banisher:
             for i_param in range(len(params)):
                 arg_toks = []
                 p_t = params[i_param]
-                if p_t.type not in ('UNDELIMITED_PARAM', 'DELIMITED_PARAM'):
+                if p_t.instruction not in (Instructions.undelimited_param,
+                                           Instructions.delimited_param):
                     # We should only see non-parameters in the parameter list,
                     # if they are text preceding the parameters proper. See
                     # the comments in `parse_parameter_text` for further
@@ -187,18 +191,19 @@ class Banisher:
                     assert not arguments
                     next_token = self._get_next_input_token()
                     if not tokens_equal(p_t, next_token):
+                        import pdb; pdb.set_trace()
                         raise Exception
                     continue
                 delim_toks = p_t.value['delim_tokens']
-                if p_t.type == 'UNDELIMITED_PARAM':
+                if p_t.instruction == Instructions.undelimited_param:
                     assert not delim_toks
                     next_token = self._get_next_input_token()
-                    if next_token.type == 'LEFT_BRACE':
+                    if next_token.instruction == Instructions.left_brace:
                         b_tok = self.get_balanced_text_token()
                         arg_toks.extend(b_tok.value)
                     else:
                         arg_toks.append(next_token)
-                elif p_t.type == 'DELIMITED_PARAM':
+                elif p_t.instruction == Instructions.delimited_param:
                     # To be finished, we must be balanced brace-wise.
                     brace_level = 0
                     while True:
@@ -218,7 +223,7 @@ class Banisher:
                     # the argument
                     arg_toks = arg_toks[:-len(delim_toks)]
                     # We remove exactly one set of braces, if present.
-                    if arg_toks[0].type == 'LEFT_BRACE' and arg_toks[-1].type == 'RIGHT_BRACE':
+                    if arg_toks[0].instruction == Instructions.left_brace and arg_toks[-1].instruction == Instructions.right_brace:
                         arg_toks = arg_toks[1:-1]
                 arguments.append(arg_toks)
 
@@ -239,7 +244,7 @@ class Banisher:
         if_queue = condition_grabber.buffer_token_queue
 
         # TODO: Move inside executor? Not sure.
-        if first_token.type == 'IF_CASE':
+        if first_token.instruction == Instructions.if_case:
             i_block_to_pick = outcome
         else:
             i_block_to_pick = 0 if outcome else 1
@@ -255,24 +260,27 @@ class Banisher:
         nr_conditions = 1
         i_block = 0
         not_skipped_tokens = []
-        condition_block_delimiter_names = ('else', 'or')
 
-        if_names = if_map.keys()
+        # I don't think I can rely on instructions, because expansion is
+        # suppressed.
+        delimit_condition_block_names = ('else', 'or')
+        end_condition_names = ('fi',)
+        start_condition_names = ('ifnum', 'iftrue', 'iffalse', 'ifcase',)
 
         def get_condition_sign(token):
             if not is_control_sequence_call(token):
                 return 0
             name = token.value['name']
-            if name in if_names:
+            if name in start_condition_names:
                 return 1
-            elif name == 'fi':
+            elif name in end_condition_names:
                 return -1
             else:
                 return 0
 
         def is_condition_delimiter(token):
             return (is_control_sequence_call(token) and
-                    t.value['name'] in condition_block_delimiter_names)
+                    t.value['name'] in delimit_condition_block_names)
 
         with context_mode(self.global_state,
                           ContextMode.absorbing_conditional_text):
@@ -341,10 +349,13 @@ class Banisher:
         # command, returning to the mode it was in at the time of the
         # setbox.
         layout_list = self.global_state.pop_mode()
-        material = TerminalToken(type_=material_map[mode], value=layout_list,
-                                 position_like=first_token)
+        material_token = InstructionToken.from_instruction(
+            mode_material_instruction_map[mode],
+            value=layout_list,
+            position_like=first_token
+        )
         # Put the LEFT_BRACE on the output queue, and the box material.
-        return [first_token, material]
+        return [first_token, material_token]
 
     def handle_def(self, first_token):
         cs_name_token = self.get_cs_name_token()
@@ -355,14 +366,16 @@ class Banisher:
                           ContextMode.absorbing_macro_parameter_text):
             while True:
                 tok = self._get_next_input_token()
-                if tok.type == 'LEFT_BRACE':
+                if tok.instruction == Instructions.left_brace:
                     left_brace_token = tok
                     break
                 parameter_text_tokens.append(tok)
         parameters = parse_parameter_text(parameter_text_tokens)
-        parameters_token = TerminalToken(type_='PARAMETER_TEXT',
-                                         value=parameters,
-                                         position_like=first_token)
+        parameters_token = InstructionToken.from_instruction(
+            Instructions.parameter_text,
+            value=parameters,
+            position_like=first_token
+        )
 
         # Now get the replacement text.
         # TODO: this is where expanded-def will be differentiated from
@@ -387,14 +400,16 @@ class Banisher:
                           ContextMode.absorbing_misc_unexpanded_arguments):
             let_arguments.append(self._get_next_input_token())
             # If we have found an equals, ignore that and read again.
-            if let_arguments[-1].type == 'EQUALS':
+            if let_arguments[-1].instruction == Instructions.equals:
                 let_arguments.append(self._get_next_input_token())
-            if let_arguments[-1].type == 'SPACE':
+            if let_arguments[-1].instruction == Instructions.space:
                 let_arguments.append(self._get_next_input_token())
         # Make the target argument into a special 'any' token.
-        let_arguments[-1] = TerminalToken(type_=let_target_type,
-                                          value=let_arguments[-1],
-                                          position_like=first_token)
+        let_arguments[-1] = InstructionToken.from_instruction(
+            Instructions.let_target,
+            value=let_arguments[-1],
+            position_like=first_token
+        )
         return [first_token, cs_name_token] + let_arguments
 
     def handle_backtick(self, first_token):
@@ -420,24 +435,24 @@ class Banisher:
         # - A \let character will become the (terminal) character token.
         # - A primitive control sequence will become a terminal token.
         if (self.expanding_control_sequences and
-                first_token.type in unexpanded_cs_types):
+                first_token.instruction in unexpanded_cs_instructions):
             name = first_token.value['name']
             first_token = self.global_state.resolve_control_sequence_to_token(
                 name, position_like=first_token)
 
-        type_ = first_token.type
-        if type_ == 'MACRO':
+        instr = first_token.instruction
+        if instr == Instructions.macro:
             self.handle_macro(first_token)
         elif (self.context_mode in (ContextMode.awaiting_balanced_text_start,
                                     ContextMode.awaiting_balanced_text_or_token_variable_start)
-                and type_ == 'LEFT_BRACE'):
+                and instr == Instructions.left_brace):
             # Put the LEFT_BRACE on the output queue, and then get a balanced-
             # text token and add that.
             output_tokens.extend([first_token, self.get_balanced_text_token()])
             # Done getting balanced text, so pop context.
             self._pop_context()
         elif (self.context_mode == ContextMode.awaiting_balanced_text_or_token_variable_start and
-              type_ in token_variable_start_types):
+              instr in token_variable_start_instructions):
             # We can handle this sort of token-list argument in the parser; we
             # only had this context in case a balanced text needed to be got,
             # so we can just put the token on the output queue and pop the
@@ -445,46 +460,46 @@ class Banisher:
             output_tokens.append(first_token)
             self._pop_context()
         elif (self.context_mode in box_context_mode_map.values() and
-                type_ == 'LEFT_BRACE'):
+                instr == Instructions.left_brace):
             output_tokens.extend(self.handle_making_box(first_token))
-        elif type_ in read_unexpanded_control_sequence_types:
+        elif instr in read_unexpanded_control_sequence_instructions:
             output_tokens.extend([first_token, self.get_cs_name_token()])
-        elif type_ in def_map.values():
+        elif instr in def_instructions:
             output_tokens.extend(self.handle_def(first_token))
-        elif type_ == 'LET':
+        elif instr == Instructions.let:
             output_tokens.extend(self.handle_let(first_token))
-        elif type_ == 'BACKTICK':
+        elif instr == Instructions.backtick:
             output_tokens.extend(self.handle_backtick(first_token))
-        elif type_ in token_variable_start_types:
+        elif instr in token_variable_start_instructions:
             output_tokens.append(first_token)
             # Watch for a balanced text starting.
             self._push_context(ContextMode.awaiting_balanced_text_or_token_variable_start)
-        elif type_ == 'EXPAND_AFTER':
+        elif instr == Instructions.expand_after:
             with context_mode(self.global_state,
                               ContextMode.absorbing_misc_unexpanded_arguments):
                 unexpanded_token = self._get_next_input_token()
             next_tokens = self._process_next_input_token()
             self.replace_on_input_queue(next_tokens)
             self.input_tokens_queue.appendleft(unexpanded_token)
-        elif type_ in message_types:
+        elif instr in message_instructions:
             # TODO: this is all wrong, these things expect general_text.
             # do like (upper/lower)case does.
             output_tokens.append(first_token)
             self._push_context(ContextMode.awaiting_balanced_text_start)
-        elif type_ in hyphenation_types:
+        elif instr in hyphenation_instructions:
             # TODO: See above.
             output_tokens.append(first_token)
             self._push_context(ContextMode.awaiting_balanced_text_start)
-        elif type_ in if_types:
+        elif instr in if_instructions:
             self.handle_if(first_token)
-        elif type_ == 'STRING':
+        elif instr == Instructions.string:
             with context_mode(self.global_state,
                               ContextMode.absorbing_misc_unexpanded_arguments):
                 target_token = self._get_next_input_token()
             string_tokens = []
             # If the target token is a control sequence, then get the chars of
             # its name.
-            if target_token.type in unexpanded_cs_types:
+            if target_token.instruction in unexpanded_cs_instructions:
                 chars = list(target_token.value['name'])
                 escape_char_token = self.get_escape_char_terminal_token(
                     position_like=target_token)
@@ -494,41 +509,37 @@ class Banisher:
                 char = target_token.value['char']
                 chars = [char]
             char_terminal_tokens = [
-                make_char_cat_terminal_token(c, CatCode.other,
-                                             position_like=target_token)
+                make_instruction_token_from_char_cat(
+                    c, CatCode.other, position_like=target_token
+                )
                 for c in chars
             ]
             string_tokens += char_terminal_tokens
             self.replace_on_input_queue(string_tokens)
-        elif type_ == 'CS_NAME':
+        elif instr == Instructions.cs_name:
             cs_name_tokens = []
             cs_name_queue = deque()
 
             while True:
                 t = self.pop_or_fill_and_pop(cs_name_queue)
-                if t.type == 'END_CS_NAME':
+                if t.instruction == Instructions.end_cs_name:
                     break
                 cs_name_tokens.append(t)
             chars = [tok.value['char'] for tok in cs_name_tokens]
             cs_name = ''.join(chars)
-            cs_token = make_control_sequence_unexpanded_token(
+            cs_token = make_control_sequence_instruction_token(
                 cs_name, position_like=first_token)
             # If we expanded such that we got tokens past 'endcsname',
             # put them back on the input queue.
             self.replace_on_input_queue(cs_name_queue)
             # But first comes our shiny new control sequence token.
             self.input_tokens_queue.appendleft(cs_token)
-        elif type_ == 'ESCAPE_CHAR':
-            escape_char_token = self.get_escape_char_terminal_token(
-                position_like=first_token)
-            if escape_char_token is not None:
-                output_tokens.append(escape_char_token)
-        elif type_ in ('UPPER_CASE', 'LOWER_CASE'):
+        elif instr in (Instructions.upper_case, Instructions.lower_case):
             case_tokens = []
             while True:
                 t = self._get_next_input_token()
                 case_tokens.append(t)
-                if t.type == 'LEFT_BRACE':
+                if t.instruction == Instructions.left_brace:
                     with context_mode(self.global_state,
                                       ContextMode.absorbing_misc_unexpanded_arguments):
                         balanced_text_token = self.get_balanced_text_token()
@@ -540,10 +551,10 @@ class Banisher:
             general_text_token = general_text_parser.parse(iter(case_tokens))
 
             case_funcs_map = {
-                'LOWER_CASE': self.global_state.get_lower_case_code,
-                'UPPER_CASE': self.global_state.get_upper_case_code,
+                Instructions.lower_case: self.global_state.get_lower_case_code,
+                Instructions.upper_case: self.global_state.get_upper_case_code,
             }
-            case_func = case_funcs_map[type_]
+            case_func = case_funcs_map[instr]
 
             def get_cased_tok(un_cased_tok):
                 if un_cased_tok.value['lex_type'] == char_cat_lex_type:
@@ -553,7 +564,7 @@ class Banisher:
                         cased_char = un_cased_char
                     # Note that the category code is not changed.
                     cat = un_cased_tok.value['cat']
-                    return make_char_cat_terminal_token(
+                    return make_instruction_token_from_char_cat(
                         cased_char, cat, position_like=un_cased_tok)
                 else:
                     return un_cased_tok
@@ -562,10 +573,10 @@ class Banisher:
             cased_toks = list(map(get_cased_tok, un_cased_toks))
             # Put cased tokens back on the queue to read again.
             self.replace_on_input_queue(cased_toks)
-        elif type_ in explicit_box_map.values():
+        elif instr in explicit_box_instructions:
             # First we read until box specification is finished.
             # Then we will do actual group and scope changes and so on.
-            self._push_context(box_context_mode_map[type_])
+            self._push_context(box_context_mode_map[instr])
             # Put the box token on the queue.
             output_tokens.append(first_token)
         # Just some semantic bullshit, stick it on the output queue

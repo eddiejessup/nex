@@ -85,9 +85,9 @@ def macro_assignment_prefix(p):
     return p[1]
 
 
-@pg.production('prefix : GLOBAL')
-@pg.production('prefix : LONG')
-@pg.production('prefix : OUTER')
+@pg.production('prefix : GLOBAL_MOD')
+@pg.production('prefix : LONG_MOD')
+@pg.production('prefix : OUTER_MOD')
 def prefix(p):
     return p[0].type
 
@@ -112,7 +112,7 @@ def definition(p):
 
 
 # TODO: can automate this, and many like it, using expander maps.
-@pg.production('def : DEF')
+@pg.production('def : DEF_')
 @pg.production('def : G_DEF')
 @pg.production('def : E_DEF')
 @pg.production('def : X_DEF')
@@ -138,7 +138,7 @@ def definition_text(p):
 # prefix.)
 
 
-@pg.production('non_macro_assignment : GLOBAL non_macro_assignment')
+@pg.production('non_macro_assignment : GLOBAL_MOD non_macro_assignment')
 def non_macro_assignment_global(p):
     tok = p[1]
     tok.value['global'] = True

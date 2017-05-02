@@ -1,8 +1,5 @@
-from .tokens import InternalToken
-
-undelim_macro_param_type = 'UNDELIMITED_PARAM'
-delim_macro_param_type = 'DELIMITED_PARAM'
-macro_param_types = (undelim_macro_param_type, delim_macro_param_type)
+from .tokens import InstructionToken
+from .constants.primitive_control_sequences import Instructions
 
 
 def parse_parameter_text(tokens):
@@ -20,7 +17,7 @@ def parse_parameter_text(tokens):
         # text of a definition are required to follow the control sequence; in
         # effect, they become part of the control sequence name.
         # "
-        if t.type != 'PARAMETER':
+        if t.instruction != Instructions.parameter:
             assert p_nr == 1
             parameters.append(t)
             i += 1
@@ -49,15 +46,17 @@ def parse_parameter_text(tokens):
             # delimiter tokens.
             while i < len(tokens):
                 d_t = tokens[i]
-                if d_t.type == 'PARAMETER':
+                if d_t.instruction == Instructions.parameter:
                     break
                 else:
                     delim_tokens.append(d_t)
                 i += 1
-        type_ = (delim_macro_param_type if delim_tokens
-                 else undelim_macro_param_type)
-        param = InternalToken(type_=type_, value={'param_nr': p_nr,
-                                                  'delim_tokens': delim_tokens})
+        instruction = (Instructions.delimited_param if delim_tokens
+                       else Instructions.undelimited_param)
+        param = InstructionToken.from_instruction(
+            instruction,
+            value={'param_nr': p_nr, 'delim_tokens': delim_tokens}
+        )
         p_nr += 1
         parameters.append(param)
     return parameters
@@ -68,19 +67,22 @@ def parse_replacement_text(tokens):
     tokens_processed = []
     while i < len(tokens):
         t = tokens[i]
-        if t.type == 'PARAMETER':
+        if t.instruction == Instructions.parameter:
             i += 1
             t_next = tokens[i]
             # [...] each # must be followed by a digit that appeared after # in
             # the parameter text, or else the # should be followed by another
             # #.
-            if t_next.type == 'PARAMETER':
+            if t_next.instruction == Instructions.parameter:
                 # TODO: I don't know if the cat-code of this should be changed.
                 # Look in TeX: The Program to see what it does.
                 tokens_processed.append(t_next)
             else:
                 p_nr = int(t_next.value['char'])
-                t = InternalToken(type_='PARAM_NUMBER', value=p_nr)
+                t = InstructionToken.from_instruction(
+                    Instructions.param_number,
+                    value=p_nr
+                )
         tokens_processed.append(t)
         i += 1
     return tokens_processed
@@ -89,7 +91,7 @@ def parse_replacement_text(tokens):
 def substitute_params_with_args(replace_text, arguments):
     finished_text = []
     for i, t in enumerate(replace_text):
-        if t.type == 'PARAM_NUMBER':
+        if t.instruction == Instructions.param_number:
             param_nr = t.value
             argument_i = param_nr - 1
             argument_tokens = arguments[argument_i]

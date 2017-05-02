@@ -1,11 +1,115 @@
-from .tokens import BuiltToken, TerminalToken, NonTerminalToken, InternalToken
+from .tokens import BuiltToken, InstructionToken, InternalToken
 from .utils import get_unique_id, NoSuchControlSequence
-from .tex_parameters import parameter_type_to_names
+from .tex_parameters import parameter_instr_to_names
 from .lexer import control_sequence_lex_type, char_cat_lex_type
-from .constants.primitive_control_sequences import (short_hand_def_to_def_token_map,
-                                                    font_def_token_type,
-                                                    primitive_control_sequences_map,
-                                                    terminal_primitive_control_sequences_map)
+from .constants.primitive_control_sequences import Instructions
+
+
+# Control sequence to instruction map.
+I = Instructions
+primitive_control_sequences_map = {
+    'catcode': I.cat_code,
+    'mathcode': I.math_code,
+    'uccode': I.upper_case_code,
+    'lccode': I.lower_case_code,
+    'sfcode': I.space_factor_code,
+    'delcode': I.delimiter_code,
+    'let': I.let,
+    'advance': I.advance,
+    'par': I.par,
+    'relax': I.relax,
+    'immediate': I.immediate,
+    'font': I.font,
+    'skewchar': I.skew_char,
+    'hyphenchar': I.hyphen_char,
+    'fontdimen': I.font_dimen,
+    'textfont': I.text_font,
+    'scriptfont': I.script_font,
+    'scriptscriptfont': I.script_script_font,
+    'undefined': I.undefined,
+    'global': I.global_mod,
+    'long': I.long_mod,
+    'outer': I.outer_mod,
+    'setbox': I.set_box,
+    'box': I.box,
+    'copy': I.copy,
+    'unhbox': I.un_h_box,
+    'unhcopy': I.un_h_copy,
+    'unvbox': I.un_v_box,
+    'unvcopy': I.un_v_copy,
+    'lastbox': I.last_box,
+    'vsplit': I.v_split,
+    'ht': I.box_dimen_height,
+    'wd': I.box_dimen_width,
+    'dp': I.box_dimen_depth,
+    'kern': I.kern,
+    'mkern': I.math_kern,
+    'vrule': I.v_rule,
+    'hrule': I.h_rule,
+    'input': I.input,
+    'end': I.end,
+    'char': I.char,
+    'indent': I.indent,
+    'message': I.message,
+    'errmessage': I.error_message,
+    'write': I.write,
+    'hyphenation': I.hyphenation,
+    'patterns': I.patterns,
+    'hskip': I.h_skip,
+    'hfil': I.h_fil,
+    'hfill': I.h_fill,
+    'hss': I.h_stretch_or_shrink,
+    'hfilneg': I.h_fil_neg,
+    'vskip': I.v_skip,
+    'vfil': I.v_fil,
+    'vfill': I.v_fill,
+    'vss': I.v_stretch_or_shrink,
+    'vfilneg': I.v_fil_neg,
+    'hbox': I.h_box,
+    'vbox': I.v_box,
+    'vtop': I.v_top,
+    'count': I.count,
+    'dimen': I.dimen,
+    'skip': I.skip,
+    'muskip': I.mu_skip,
+    'toks': I.toks,
+    'chardef': I.char_def,
+    'mathchardef': I.math_char_def,
+    'countdef': I.count_def,
+    'dimendef': I.dimen_def,
+    'skipdef': I.skip_def,
+    'muskipdef': I.mu_skip_def,
+    'toksdef': I.toks_def,
+    'def': I.def_,
+    'gdef': I.g_def,
+    'edef': I.e_def,
+    'xdef': I.x_def,
+    'ifnum': I.if_num,
+    'iftrue': I.if_true,
+    'iffalse': I.if_false,
+    'ifcase': I.if_case,
+    'string': I.string,
+    'csname': I.cs_name,
+    'endcsname': I.end_cs_name,
+    'expandafter': I.expand_after,
+    'uppercase': I.upper_case,
+    'lowercase': I.lower_case,
+    'cr': I.cr,
+    'else': I.else_,
+    'fi': I.end_if,
+    'or': I.or_,
+}
+
+
+short_hand_def_type_to_token_instr = {
+    Instructions.char_def.value: Instructions.char_def_token,
+    Instructions.math_char_def.value: Instructions.math_char_def_token,
+    Instructions.count_def.value: Instructions.count_def_token,
+    Instructions.dimen_def.value: Instructions.dimen_def_token,
+    Instructions.skip_def.value: Instructions.skip_def_token,
+    Instructions.mu_skip_def.value: Instructions.mu_skip_def_token,
+    Instructions.toks_def.value: Instructions.toks_def_token,
+}
 
 
 def make_simple_definition_token(name, tokens):
@@ -19,19 +123,17 @@ def make_simple_definition_token(name, tokens):
 
 
 primitive_canon_tokens = {}
-for prim_canon_name, prim_type in primitive_control_sequences_map.items():
+for prim_cs, prim_instruction in primitive_control_sequences_map.items():
     # Terminals are tokens that may be passed to the parser. Non-terminals
     # are tokens that will be consumed by the banisher before the parser
     # sees them.
-    is_terminal = prim_canon_name in terminal_primitive_control_sequences_map
-    TokenCls = TerminalToken if is_terminal else NonTerminalToken
-    primitive_canon_token = TokenCls(
-        type_=prim_type,
-        value={'canonical_name': prim_canon_name,
-               'name': prim_canon_name,
+    primitive_canon_token = InstructionToken.from_instruction(
+        prim_instruction,
+        value={'canonical_name': prim_cs,
+               'name': prim_cs,
                'lex_type': control_sequence_lex_type},
         line_nr='abstract')
-    primitive_canon_tokens[prim_canon_name] = primitive_canon_token
+    primitive_canon_tokens[prim_cs] = primitive_canon_token
 
 
 def make_route_token(type_, route_id):
@@ -46,15 +148,15 @@ def get_initial_router():
     font_ids = {}
 
     parameters = {}
-    for param_type, param_canonical_names in parameter_type_to_names.items():
+    for param_instr, param_canonical_names in parameter_instr_to_names.items():
         for param_canonical_name in param_canonical_names:
             # Add a router for the canonical name to the primitive.
             route_id = param_canonical_name
             route_token = make_route_token('parameter', route_id)
             control_sequences[param_canonical_name] = route_token
 
-            param_canon_token = TerminalToken(
-                type_=param_type,
+            param_canon_token = InstructionToken.from_instruction(
+                param_instr,
                 value={'canonical_name': param_canonical_name,
                        'name': param_canonical_name},
                 line_nr='abstract',
@@ -171,17 +273,20 @@ class CSRouter(object):
 
         if prefixes is None:
             prefixes = set()
-        macro_token = NonTerminalToken(type_='MACRO',
-                                       value={'prefixes': prefixes,
-                                              'definition': definition_token},
-                                       line_nr='abstract',
-                                       )
+        macro_token = InstructionToken.from_instruction(
+            Instructions.macro,
+            value={'prefixes': prefixes, 'definition': definition_token},
+            line_nr='abstract',
+        )
         self.macros[route_id] = macro_token
 
     def do_short_hand_definition(self, name, def_type, code):
-        def_token_type = short_hand_def_to_def_token_map[def_type]
-        terminal_token = TerminalToken(type_=def_token_type, value=code,
-                                       line_nr='abstract')
+        def_token_instr = short_hand_def_type_to_token_instr[def_type]
+        terminal_token = InstructionToken.from_instruction(
+            def_token_instr,
+            value=code,
+            line_nr='abstract'
+        )
         definition_token = make_simple_definition_token(name,
                                                         [terminal_token])
         self.set_macro(name, definition_token, prefixes=None)
@@ -201,7 +306,9 @@ class CSRouter(object):
         # is stored in the global font state, because it has internal
         # state that might be modified later; we need to know where to get
         # at it.
-        font_id_token = TerminalToken(type_=font_def_token_type,
-                                      value=font_id,
-                                      line_nr='abstract')
+        font_id_token = InstructionToken.from_instruction(
+            Instructions.font_def_token,
+            value=font_id,
+            line_nr='abstract'
+        )
         self.font_ids[route_id] = font_id_token

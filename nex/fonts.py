@@ -4,7 +4,7 @@ from enum import Enum
 from .pydvi.TeXUnit import pt2sp
 from .dampf.dvi_document import get_font_info
 
-from .constants.primitive_control_sequences import terminal_primitive_control_sequences_map
+from .constants.primitive_control_sequences import Instructions
 from .utils import ensure_extension, find_file
 
 
@@ -93,9 +93,9 @@ class FontInfo(object):
 
 
 class FontRange(Enum):
-    text = terminal_primitive_control_sequences_map['textfont']
-    script = terminal_primitive_control_sequences_map['scriptfont']
-    scriptscript = terminal_primitive_control_sequences_map['scriptscriptfont']
+    text = Instructions.text_font.value
+    script = Instructions.script_font.value
+    scriptscript = Instructions.script_script_font.value
 
 
 get_empty_font_family = lambda: {font_range: None for font_range in FontRange}

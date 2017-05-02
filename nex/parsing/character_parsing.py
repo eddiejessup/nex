@@ -1,39 +1,44 @@
 from ..tokens import BuiltToken
 from ..constants.units import PhysicalUnit, MuUnit, InternalUnit
-from ..constants.literals import non_active_literals_map, hex_letters_map
+from ..constants.primitive_control_sequences import Instructions
+from ..lex_typer import non_active_letters_map
 
 
 letter_to_non_active_uncased_type_map = {}
-for c, token_type in non_active_literals_map.items():
-    if c in hex_letters_map.values():
-        token_type = token_type.lower()
-    letter_to_non_active_uncased_type_map[c] = token_type
+for c, instr in non_active_letters_map.items():
+    type_ = instr.value
+    #  For hex characters, need to look for the composite production, not the
+    #  terminal production, because could be, for example, 'A' or
+    #  'NON_ACTIVE_UNCASED_a', so we should look for the composite production,
+    #  'non_active_uncased_a'.
+    if c in ('A', 'B', 'C', 'D', 'E', 'F'):
+        type_ = type_.lower()
+    letter_to_non_active_uncased_type_map[c] = type_
 
 
 normal_char_types = (
-    'MISC_CHAR_CAT_PAIR',
-    'EQUALS',
-    'GREATER_THAN',
-    'LESS_THAN',
-    'PLUS_SIGN',
-    'MINUS_SIGN',
-    'ZERO',
-    'ONE',
-    'TWO',
-    'THREE',
-    'FOUR',
-    'FIVE',
-    'SIX',
-    'SEVEN',
-    'EIGHT',
-    'NINE',
-    'SINGLE_QUOTE',
-    'DOUBLE_QUOTE',
-    'BACKTICK',
-    'COMMA',
-    'POINT',
-)
-normal_char_types += tuple(letter_to_non_active_uncased_type_map.values())
+    Instructions.misc_char_cat_pair.value,
+    Instructions.equals.value,
+    Instructions.greater_than.value,
+    Instructions.less_than.value,
+    Instructions.plus_sign.value,
+    Instructions.minus_sign.value,
+    Instructions.zero.value,
+    Instructions.one.value,
+    Instructions.two.value,
+    Instructions.three.value,
+    Instructions.four.value,
+    Instructions.five.value,
+    Instructions.six.value,
+    Instructions.seven.value,
+    Instructions.eight.value,
+    Instructions.nine.value,
+    Instructions.single_quote.value,
+    Instructions.double_quote.value,
+    Instructions.backtick.value,
+    Instructions.comma.value,
+    Instructions.point.value,
+) + tuple(letter_to_non_active_uncased_type_map.values())
 
 
 def word_to_pr(word, target=None):
@@ -57,6 +62,8 @@ def make_literal_token(p):
 
 def add_character_productions(pg):
 
+    # Add production for each instruction that may act as a 'character'
+    # production.
     def character(p):
         return BuiltToken(type_='character', value=p[0].value,
                           position_like=p)

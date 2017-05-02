@@ -7,36 +7,18 @@ colorama.init()
 class BaseToken(object):
 
     def __init__(self, type_, value):
-        self.type = type_
+        self._type = type_
         self.value = value
+
+    @property
+    def type(self):
+        return self._type
 
     def __repr__(self):
         return "<%s: %r %r>" % (self.__class__.__name__, self.type, self.value)
 
     def __str__(self):
         return self.__repr__()
-
-    def copy(self, *args, **kwargs):
-        v = self.value
-        if isinstance(v, dict):
-            v_copy = v.copy()
-        elif isinstance(v, int):
-            v_copy = v
-        return self.__class__(type_=self.type, value=v_copy, *args, **kwargs)
-
-    def equal_contents_to(self, other):
-        if self.type != other.type:
-            return False
-        if self.value.keys() != other.value.keys():
-            return False
-        for k in self.value:
-            # Tokens with different *call* names are still considered to be the
-            # same.
-            if k == 'name':
-                continue
-            if self.value[k] != other.value[k]:
-                return False
-        return True
 
 
 class InternalToken(BaseToken):
@@ -108,7 +90,7 @@ class PositionToken(BaseToken):
     def get_position_str(self, reader):
         cs = reader.get_buffer(self.file_hash).chars
         here_i = self.char_nr
-        context_len = 20
+        context_len = 40
 
         before_i = max(here_i - context_len, 0)
         pre_context = ''.join(cs[before_i:here_i])
@@ -170,17 +152,38 @@ class BuiltToken(PositionToken):
             self.char_len = char_len
 
 
-class NonTerminalToken(PositionToken):
-
-    pass
-
-
 class LexToken(PositionToken):
 
     pass
 
 
-class TerminalToken(PositionToken):
+class InstructionToken(PositionToken):
+
+    def __init__(self, instruction, *args, **kwargs):
+        super().__init__(type_=None, *args, **kwargs)
+        self.instruction = instruction
+
+    def copy(self, *args, **kwargs):
+        v = self.value
+        if isinstance(v, dict):
+            v_copy = v.copy()
+        elif isinstance(v, int):
+            v_copy = v
+        else:
+            raise Exception
+        return self.__class__(instruction=self.instruction,
+                              value=v_copy, *args, **kwargs)
+
+    @classmethod
+    def from_instruction(cls, instruction, *args, **kwargs):
+        return cls(instruction, *args, **kwargs)
+
+    @property
+    def type(self):
+        try:
+            return self.instruction.value
+        except:
+            import pdb; pdb.set_trace()
 
     # Token interface.
 

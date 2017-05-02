@@ -16,8 +16,3 @@ special_dimen_names = (
     'pageshrink',
     'pagedepth',
 )
-
-special_quantity_types = (
-    'SPECIAL_INTEGER',
-    'SPECIAL_DIMEN',
-)

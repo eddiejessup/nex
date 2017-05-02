@@ -3,7 +3,7 @@ from ..rply import ParserGenerator
 from ..tokens import BuiltToken
 from ..constants.units import PhysicalUnit
 from ..tex_parameters import glue_keys
-from ..registers import register_token_type_to_register_type
+from ..registers import short_hand_reg_def_token_type_to_reg_type
 
 from .character_parsing import add_character_productions
 from .types import terminal_types
@@ -77,7 +77,7 @@ def register_explicit(p):
 @pg.production('dimen_register : DIMEN_DEF_TOKEN')
 @pg.production('count_register : COUNT_DEF_TOKEN')
 def register_token(p):
-    type_ = register_token_type_to_register_type(p[0].type)
+    type_ = short_hand_reg_def_token_type_to_reg_type[p[0].type]
     return BuiltToken(type_=type_, value=p[0].value,
                       position_like=p)
 

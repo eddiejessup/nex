@@ -2,7 +2,6 @@ from collections import deque
 
 from ..reader import EndOfFile
 from ..utils import NoSuchControlSequence
-from ..tokens import TerminalToken
 
 
 class ExpectedParsingError(Exception):
@@ -72,8 +71,6 @@ class ChunkGrabber(object):
             except Exception as e:
                 import pdb; pdb.set_trace()
                 raise
-            if not isinstance(t, TerminalToken):
-                import pdb; pdb.set_trace()
             chunk_token_queue.append(t)
             try:
                 chunk = self.parser.parse(iter(chunk_token_queue))

@@ -1,4 +1,4 @@
-from ..constants.primitive_control_sequences import if_map
+from .types import cond_terminal_types
 from ..tokens import BuiltToken
 
 from .common_parsing import pg as common_pg
@@ -8,7 +8,7 @@ from .utils import (ExpectedParsingError, ExhaustedTokensError,
 
 pg = common_pg.copy_to_extend()
 
-pg.tokens += tuple(if_map.values())
+pg.tokens += cond_terminal_types
 
 
 @pg.production('condition_wrap : condition')

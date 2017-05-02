@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from .tokens import TerminalToken
+from .tokens import InstructionToken
+from .constants.primitive_control_sequences import Instructions
 
 
 integer_parameter_names = (
@@ -123,14 +124,14 @@ token_parameter_names = (
 )
 
 
-parameter_type_to_names = {
-    'INTEGER_PARAMETER': integer_parameter_names,
-    'DIMEN_PARAMETER': dimen_parameter_names,
-    'GLUE_PARAMETER': glue_parameter_names,
-    'MU_GLUE_PARAMETER': mu_glue_parameter_names,
-    'TOKEN_PARAMETER': token_parameter_names,
+parameter_instr_to_names = {
+    Instructions.integer_parameter: integer_parameter_names,
+    Instructions.dimen_parameter: dimen_parameter_names,
+    Instructions.glue_parameter: glue_parameter_names,
+    Instructions.mu_glue_parameter: mu_glue_parameter_names,
+    Instructions.token_parameter: token_parameter_names,
 }
-parameter_types = tuple(parameter_type_to_names.keys())
+parameter_types = tuple(k.value for k in parameter_instr_to_names)
 
 
 def is_parameter_type(type_):
@@ -162,8 +163,8 @@ def get_initial_parameters():
     glue_parameters = {p: get_zero_glue() for p in glue_parameter_names}
     mu_glue_parameters = {p: get_zero_glue() for p in mu_glue_parameter_names}
 
-    get_empty_token_list = lambda: TerminalToken(
-        type_='BALANCED_TEXT_AND_RIGHT_BRACE',
+    get_empty_token_list = lambda: InstructionToken.from_instruction(
+        Instructions.balanced_text_and_right_brace,
         value=[],
         line_nr='abstract',
     )

@@ -1,4 +1,4 @@
-from .tokens import BuiltToken, TerminalToken
+from .tokens import BuiltToken, InstructionToken
 from .registers import is_register_type
 from .constants.units import (PhysicalUnit, MuUnit, InternalUnit,
                               units_in_scaled_points)
@@ -20,7 +20,7 @@ def get_integer_constant(collection):
 
 
 def evaluate_size(state, size_token):
-    if isinstance(size_token, TerminalToken):
+    if isinstance(size_token, InstructionToken):
         if is_parameter_type(size_token.type):
             return state.get_parameter_value(size_token.value['name'])
         elif size_token.type in ('CHAR_DEF_TOKEN', 'MATH_CHAR_DEF_TOKEN'):
