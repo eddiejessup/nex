@@ -559,12 +559,9 @@ class Banisher:
             self.replace_on_input_queue(next_tokens)
             self.input_tokens_queue.appendleft(unexpanded_token)
         elif instr in message_instructions:
-            # TODO: this is all wrong, these things expect general_text.
-            # do like (upper/lower)case does.
             output_tokens.append(first_token)
             self._push_context(ContextMode.awaiting_balanced_text_start)
         elif instr in hyphenation_instructions:
-            # TODO: See above.
             output_tokens.append(first_token)
             self._push_context(ContextMode.awaiting_balanced_text_start)
         elif instr in if_instructions:
