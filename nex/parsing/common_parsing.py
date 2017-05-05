@@ -9,7 +9,7 @@ from ..registers import short_hand_reg_def_token_type_to_reg_type
 from ..constants.primitive_control_sequences import (Instructions as I,
                                                      unexpanded_cs_instructions,
                                                      register_instructions)
-from ..lex_typer import non_active_letters_map
+from ..instructioner import non_active_letters_map
 
 common_terminal_instructions = (
     I.box_dimen_height,

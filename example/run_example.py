@@ -4,6 +4,7 @@ import os
 from nex.state import GlobalState
 from nex.reader import Reader
 from nex.lexer import Lexer
+from nex.instructioner import Instructioner
 from nex.banisher import Banisher
 from nex.executor import execute_commands
 from nex.box_writer import write_to_file
@@ -26,7 +27,8 @@ def run_file(in_path, font_search_paths):
     reader = Reader()
     reader.insert_file(in_path)
     lexer = Lexer(reader, get_cat_code_func=state.get_cat_code)
-    banisher = Banisher(lexer=lexer, state=state, reader=reader)
+    instructioner = Instructioner(lexer)
+    banisher = Banisher(instructions=instructioner, state=state, reader=reader)
 
     command_grabber = ChunkGrabber(banisher, parser=command_parser)
     execute_commands(command_grabber, state=state, banisher=banisher,

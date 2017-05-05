@@ -39,8 +39,12 @@ class PositionToken(BaseToken):
             self.set_position(line_nr, col_nr, char_nr, char_len, file_hash)
 
     def pos_summary(self, verbose=False):
+        if self.line_nr == 'abstract':
+            return ''
+
         s = ''
         if self.line_nr is not None:
+
             s_line = '{:d}'.format(self.line_nr)
         else:
             s_line = '?'

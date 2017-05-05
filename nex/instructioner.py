@@ -1,10 +1,8 @@
-"""
-
-"""
 from string import ascii_letters
+from collections import deque
 
 from .tokens import InstructionToken
-from .lexer import (make_char_cat_lex_token,
+from .lexer import (Lexer, make_char_cat_lex_token,
                     control_sequence_lex_type, char_cat_lex_type)
 from .constants.primitive_control_sequences import Instructions
 from .codes import CatCode
@@ -122,3 +120,32 @@ def lex_token_to_instruction_token(lex_token):
     # Aren't any other types of lexed tokens.
     else:
         raise Exception
+
+
+class Instructioner:
+
+    def __init__(self, lexer):
+        self.lexer = lexer
+        # Input buffer.
+        self.input_tokens_queue = deque()
+
+    @classmethod
+    def from_string(cls, *args, **kwargs):
+        lexer = Lexer.from_string(*args, **kwargs)
+        return cls(lexer)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.input_tokens_queue:
+            return self.input_tokens_queue.popleft()
+        else:
+            new_lex_token = next(self.lexer)
+            return lex_token_to_instruction_token(new_lex_token)
+
+    def replace_tokens_on_input(self, tokens):
+        self.input_tokens_queue.extendleft(reversed(tokens))
+
+    def replace_token_on_input(self, token):
+        self.input_tokens_queue.appendleft(token)

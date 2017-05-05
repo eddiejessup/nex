@@ -4,7 +4,7 @@ from collections import deque
 from enum import Enum
 
 from .tokens import InstructionToken
-from .lexer import (Lexer, is_control_sequence_call,
+from .lexer import (is_control_sequence_call,
                     char_cat_lex_type, control_sequence_lex_type)
 from .codes import CatCode
 from .constants.primitive_control_sequences import (Instructions,
@@ -15,9 +15,9 @@ from .constants.primitive_control_sequences import (Instructions,
                                                     message_instructions,
                                                     unexpanded_cs_instructions,
                                                     hyphenation_instructions)
-from .lex_typer import (make_control_sequence_instruction_token,
-                        make_instruction_token_from_char_cat,
-                        lex_token_to_instruction_token)
+from .instructioner import (make_control_sequence_instruction_token,
+                            make_instruction_token_from_char_cat,
+                            lex_token_to_instruction_token)
 from .state import Mode, Group
 from .executor import execute_commands
 from .if_executor import execute_condition
@@ -101,24 +101,24 @@ def get_brace_sign(token):
         return 0
 
 
-def get_balanced_text_token(get_next_token):
-    tokens = []
+def get_balanced_text_token(tokens):
+    b_tokens = []
     brace_level = 1
     while True:
-        token = get_next_token()
-        tokens.append(token)
+        token = next(tokens)
+        b_tokens.append(token)
         brace_level += get_brace_sign(token)
         if brace_level == 0:
             break
     balanced_text = InstructionToken.from_instruction(
         Instructions.balanced_text_and_right_brace,
-        value=tokens[:-1],
-        position_like=tokens[0]
+        value=b_tokens[:-1],
+        position_like=b_tokens[0]
     )
     return balanced_text
 
 
-def get_macro_arguments(params, get_next_token):
+def get_macro_arguments(params, tokens):
     def tokens_equal(t, u):
         if t.value['lex_type'] != u.value['lex_type']:
             return False
@@ -146,7 +146,7 @@ def get_macro_arguments(params, get_next_token):
             # details.
             # We just swallow up these tokens.
             assert not arguments
-            next_token = get_next_token()
+            next_token = next(tokens)
             if not tokens_equal(p_t, next_token):
                 import pdb; pdb.set_trace()
                 raise Exception
@@ -154,9 +154,9 @@ def get_macro_arguments(params, get_next_token):
         delim_toks = p_t.value['delim_tokens']
         if p_t.instruction == Instructions.undelimited_param:
             assert not delim_toks
-            next_token = get_next_token()
+            next_token = next(tokens)
             if next_token.instruction == Instructions.left_brace:
-                b_tok = get_balanced_text_token(get_next_token)
+                b_tok = get_balanced_text_token(tokens)
                 arg_toks.extend(b_tok.value)
             else:
                 arg_toks.append(next_token)
@@ -164,7 +164,7 @@ def get_macro_arguments(params, get_next_token):
             # To be finished, we must be balanced brace-wise.
             brace_level = 0
             while True:
-                next_token = get_next_token()
+                next_token = next(tokens)
                 brace_level += get_brace_sign(next_token)
                 arg_toks.append(next_token)
                 # If we are balanced, and we could possibly
@@ -188,9 +188,9 @@ def get_macro_arguments(params, get_next_token):
 
 class Banisher:
 
-    def __init__(self, lexer, state, reader):
+    def __init__(self, instructions, state, reader):
         # TODO: Take this with each call instead of being part of state.
-        self.lexer = lexer
+        self.instructions = instructions
         self.global_state = state
         # The banisher needs the reader because it can execute commands,
         # and one possible command is '\input', which needs to modify the
@@ -201,11 +201,6 @@ class Banisher:
         # Context is not a TeX concept; it's used when doing this messy bit of
         # parsing.
         self.context_mode_stack = []
-
-    @classmethod
-    def from_string(cls, s, get_cat_code_func, state, reader):
-        lexer = Lexer.from_string(s, get_cat_code_func)
-        return cls(lexer, state, reader)
 
     def _push_context(self, context_mode):
         self.context_mode_stack.append(context_mode)
@@ -232,18 +227,8 @@ class Banisher:
         next_token = queue.popleft()
         return next_token
 
-    def replace_on_input_queue(self, tokens):
-        self.input_tokens_queue.extendleft(reversed(tokens))
-
-    def _get_next_input_token(self):
-        if not self.input_tokens_queue:
-            new_input_token = next(self.lexer)
-            instruction_token = lex_token_to_instruction_token(new_input_token)
-            self.input_tokens_queue.append(instruction_token)
-        return self.input_tokens_queue.popleft()
-
     def get_balanced_text_token(self):
-        return get_balanced_text_token(get_next_token=self._get_next_input_token)
+        return get_balanced_text_token(tokens=self.instructions)
 
     def get_escape_char_instruction_token(self, position_like=None):
         escape_char_code = self.global_state.get_parameter_value('escapechar')
@@ -256,7 +241,7 @@ class Banisher:
             return None
 
     def _process_next_input_token(self):
-        first_token = self._get_next_input_token()
+        first_token = next(self.instructions)
 
         if first_token.char_nr is not None:
             print(first_token.get_position_str(self.reader))
@@ -282,7 +267,7 @@ class Banisher:
             # bled into another chunk that only makes sense once the previous
             # one has executed. For example, defining a new macro, then
             # calling that macro.
-            self.input_tokens_queue.appendleft(first_token)
+            self.instructions.replace_token_on_input(first_token)
             raise
         return output_tokens
 
@@ -290,11 +275,10 @@ class Banisher:
         # Get an unexpanded control sequence as an instruction token.
         with context_mode(self,
                           ContextMode.absorbing_new_control_sequence_name):
-            return self._get_next_input_token()
+            return next(self.instructions)
 
     def _get_macro_arguments(self, params):
-        return get_macro_arguments(params,
-                                   get_next_token=self._get_next_input_token)
+        return get_macro_arguments(params, tokens=self.instructions)
 
     def handle_macro(self, first_token):
         macro_definition = first_token.value['definition']
@@ -309,7 +293,7 @@ class Banisher:
 
         # Put expanded tokens back on input queue.
         # Note that these tokens might themselves need more expansion.
-        self.replace_on_input_queue(expanded_first_token)
+        self.instructions.replace_tokens_on_input(expanded_first_token)
         return []
 
     def handle_if(self, first_token):
@@ -363,7 +347,7 @@ class Banisher:
                           ContextMode.absorbing_conditional_text):
             while True:
                 if not if_queue:
-                    if_queue.append(self._get_next_input_token())
+                    if_queue.append(next(self.instructions))
                 t = if_queue.popleft()
 
                 # Keep track of nested conditions.
@@ -383,7 +367,7 @@ class Banisher:
                 # Otherwise we are skipping tokens.
                 else:
                     pass
-        self.replace_on_input_queue(not_skipped_tokens)
+        self.instructions.replace_tokens_on_input(not_skipped_tokens)
         return []
 
     def handle_making_box(self, first_token):
@@ -443,7 +427,7 @@ class Banisher:
         with context_mode(self,
                           ContextMode.absorbing_macro_parameter_text):
             while True:
-                tok = self._get_next_input_token()
+                tok = next(self.instructions)
                 if tok.instruction == Instructions.left_brace:
                     left_brace_token = tok
                     break
@@ -476,12 +460,12 @@ class Banisher:
         let_arguments = []
         with context_mode(self,
                           ContextMode.absorbing_misc_unexpanded_arguments):
-            let_arguments.append(self._get_next_input_token())
+            let_arguments.append(next(self.instructions))
             # If we have found an equals, ignore that and read again.
             if let_arguments[-1].instruction == Instructions.equals:
-                let_arguments.append(self._get_next_input_token())
+                let_arguments.append(next(self.instructions))
             if let_arguments[-1].instruction == Instructions.space:
-                let_arguments.append(self._get_next_input_token())
+                let_arguments.append(next(self.instructions))
         # Make the target argument into a special 'any' token.
         let_arguments[-1] = InstructionToken.from_instruction(
             Instructions.let_target,
@@ -493,7 +477,7 @@ class Banisher:
     def handle_backtick(self, first_token):
         # Add an unexpanded control sequence as an instruction token to the output.
         with context_mode(self, ContextMode.absorbing_backtick_argument):
-            arg_token = self._get_next_input_token()
+            arg_token = next(self.instructions)
         return [first_token, arg_token]
 
     def handle_change_case(self, first_token):
@@ -525,14 +509,14 @@ class Banisher:
 
         cased_tokens = list(map(get_cased_tok, un_cased_tokens))
         # Put cased tokens back on the queue to read again.
-        self.replace_on_input_queue(cased_tokens)
+        self.instructions.replace_tokens_on_input(cased_tokens)
         return []
 
     def handle_string(self, first_token):
         # TeX first reads the [next] token without expansion.
         with context_mode(self,
                           ContextMode.absorbing_misc_unexpanded_arguments):
-            target_token = self._get_next_input_token()
+            target_token = next(self.instructions)
         string_tokens = []
         # If a control sequence token appears, its \string expansion
         # consists of the control sequence name (including \escapechar as
@@ -570,9 +554,9 @@ class Banisher:
             cs_name, position_like=first_token)
         # If we expanded such that we got tokens past 'endcsname', put them
         # back on the input queue.
-        self.replace_on_input_queue(cs_name_queue)
+        self.instructions.replace_tokens_on_input(cs_name_queue)
         # But first comes our shiny new control sequence token.
-        self.input_tokens_queue.appendleft(cs_token)
+        self.instructions.replace_token_on_input(cs_token)
         return []
 
     def _process_input_token(self, first_token):
@@ -623,10 +607,10 @@ class Banisher:
         elif instr == Instructions.expand_after:
             with context_mode(self,
                               ContextMode.absorbing_misc_unexpanded_arguments):
-                unexpanded_token = self._get_next_input_token()
+                unexpanded_token = next(self.instructions)
             next_tokens = self._process_next_input_token()
-            self.replace_on_input_queue(next_tokens)
-            self.input_tokens_queue.appendleft(unexpanded_token)
+            self.instructions.replace_tokens_on_input(next_tokens)
+            self.instructions.replace_token_on_input(unexpanded_token)
             return []
         # Such as \message.
         elif instr in message_instructions + hyphenation_instructions:
