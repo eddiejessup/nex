@@ -256,6 +256,41 @@ def get_let_arguments(instructions):
     return preamble_tokens, let_target
 
 
+def get_cased_tokens(un_cased_tokens, case_func):
+    def get_cased_tok(un_cased_tok):
+        if un_cased_tok.value['lex_type'] == char_cat_lex_type:
+            un_cased_char = un_cased_tok.value['char']
+            cased_char = case_func(un_cased_char)
+            if cased_char == chr(0):
+                cased_char = un_cased_char
+            # Note that the category code is not changed.
+            cat = un_cased_tok.value['cat']
+            return make_instruction_token_from_char_cat(
+                cased_char, cat, position_like=un_cased_tok)
+        else:
+            return un_cased_tok
+    return list(map(get_cased_tok, un_cased_tokens))
+
+
+def get_string_instr_repr(target_token, escape_char_token):
+    toks = []
+    # If a control sequence token appears, its \string expansion
+    # consists of the control sequence name (including \escapechar as
+    # an escape character, if the control sequence isn't simply an
+    # active character).
+    if target_token.instruction in unexpanded_cs_instructions:
+        chars = list(target_token.value['name'])
+        if escape_char_token is not None:
+            toks += [escape_char_token]
+    else:
+        char = target_token.value['char']
+        chars = [char]
+    toks += [make_instruction_token_from_char_cat(c, CatCode.other,
+                                                  position_like=target_token)
+             for c in chars]
+    return toks
+
+
 class Banisher:
 
     def __init__(self, instructions, state, reader):
@@ -497,20 +532,7 @@ class Banisher:
         }
         case_func = case_funcs_map[first_token.instruction]
 
-        def get_cased_tok(un_cased_tok):
-            if un_cased_tok.value['lex_type'] == char_cat_lex_type:
-                un_cased_char = un_cased_tok.value['char']
-                cased_char = case_func(un_cased_char)
-                if cased_char == chr(0):
-                    cased_char = un_cased_char
-                # Note that the category code is not changed.
-                cat = un_cased_tok.value['cat']
-                return make_instruction_token_from_char_cat(
-                    cased_char, cat, position_like=un_cased_tok)
-            else:
-                return un_cased_tok
-
-        cased_tokens = list(map(get_cased_tok, un_cased_tokens))
+        cased_tokens = get_cased_tokens(un_cased_tokens, case_func)
         # Put cased tokens back on the queue to read again.
         self.instructions.replace_tokens_on_input(cased_tokens)
         return []
@@ -520,27 +542,9 @@ class Banisher:
         with context_mode(self,
                           ContextMode.absorbing_misc_unexpanded_arguments):
             target_token = next(self.instructions)
-        string_tokens = []
-        # If a control sequence token appears, its \string expansion
-        # consists of the control sequence name (including \escapechar as
-        # an escape character, if the control sequence isn't simply an
-        # active character).
-        if target_token.instruction in unexpanded_cs_instructions:
-            chars = list(target_token.value['name'])
-            escape_char_token = self.get_escape_char_instruction_token(
-                position_like=target_token)
-            if escape_char_token is not None:
-                string_tokens += [escape_char_token]
-        else:
-            char = target_token.value['char']
-            chars = [char]
-        string_tokens += [
-            make_instruction_token_from_char_cat(
-                c, CatCode.other, position_like=target_token
-            )
-            for c in chars
-        ]
-        return string_tokens
+        escape_char_token = self.get_escape_char_instruction_token(
+            position_like=target_token)
+        return get_string_instr_repr(target_token, escape_char_token)
 
     def handle_cs_name(self, first_token):
         cs_name_tokens = []
