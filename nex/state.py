@@ -1,4 +1,3 @@
-from contextlib import contextmanager
 from enum import Enum
 
 from .codes import get_initial_codes, get_local_codes
@@ -8,39 +7,6 @@ from .fonts import (GlobalFontState, get_initial_font_state,
                     get_local_font_state)
 from .router import get_initial_router, get_local_router
 from .expander import expand_macro_to_token_list
-
-
-class ContextMode(Enum):
-    normal = 1
-    awaiting_balanced_text_start = 2
-    awaiting_balanced_text_or_token_variable_start = 7
-    awaiting_make_h_box_start = 3
-    awaiting_make_v_box_start = 4
-    awaiting_make_v_top_start = 5
-    # Inhibited expansion contexts. I have listed the corresponding entry in
-    # the list of cases where expansion is suppressed, in the TeXbook, page
-    # 215.
-    # Entry 2.
-    absorbing_conditional_text = 12
-    # Entry 3.
-    absorbing_macro_arguments = 13
-    # Entry 4.
-    absorbing_new_control_sequence_name = 14
-    # Entry 5, and the latter part of entry 7.
-    absorbing_misc_unexpanded_arguments = 15
-    # Entry 6.
-    absorbing_macro_parameter_text = 16
-    # First part of entry 7.
-    absorbing_macro_replacement_text = 17
-    # Entry 10.
-    absorbing_backtick_argument = 20
-
-
-@contextmanager
-def context_mode(state, context_mode):
-    state._push_context(context_mode)
-    yield
-    state._pop_context()
 
 
 class Mode(Enum):
@@ -264,23 +230,6 @@ class GlobalState(object):
         self.scopes = []
         initial_scope = get_initial_scope(self.global_font_state)
         self.push_scope(initial_scope)
-        self.context_mode_stack = []
-
-    # Context. Not a TeX concept; used when parsing. Not scoped.
-
-    def _push_context(self, context_mode):
-        self.context_mode_stack.append(context_mode)
-
-    def _pop_context(self):
-        if self.context_mode_stack:
-            return self.context_mode_stack.pop()
-
-    @property
-    def context_mode(self):
-        if self.context_mode_stack:
-            return self.context_mode_stack[-1]
-        else:
-            return ContextMode.normal
 
     # Mode.
 

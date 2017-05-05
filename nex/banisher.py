@@ -1,5 +1,7 @@
+from contextlib import contextmanager
 import logging
 from collections import deque
+from enum import Enum
 
 from .tokens import InstructionToken
 from .lexer import (is_control_sequence_call,
@@ -16,7 +18,7 @@ from .constants.primitive_control_sequences import (Instructions,
 from .lex_typer import (make_control_sequence_instruction_token,
                         make_instruction_token_from_char_cat,
                         lex_token_to_instruction_token)
-from .state import Mode, Group, ContextMode, context_mode
+from .state import Mode, Group
 from .executor import execute_commands
 from .if_executor import execute_condition
 from .expander import parse_parameter_text
@@ -34,6 +36,40 @@ token_variable_start_instructions = (
     Instructions.toks,
 )
 
+
+class ContextMode(Enum):
+    normal = 1
+    awaiting_balanced_text_start = 2
+    awaiting_balanced_text_or_token_variable_start = 7
+    awaiting_make_h_box_start = 3
+    awaiting_make_v_box_start = 4
+    awaiting_make_v_top_start = 5
+    # Inhibited expansion contexts. I have listed the corresponding entry in
+    # the list of cases where expansion is suppressed, in the TeXbook, page
+    # 215.
+    # Entry 2.
+    absorbing_conditional_text = 12
+    # Entry 3.
+    absorbing_macro_arguments = 13
+    # Entry 4.
+    absorbing_new_control_sequence_name = 14
+    # Entry 5, and the latter part of entry 7.
+    absorbing_misc_unexpanded_arguments = 15
+    # Entry 6.
+    absorbing_macro_parameter_text = 16
+    # First part of entry 7.
+    absorbing_macro_replacement_text = 17
+    # Entry 10.
+    absorbing_backtick_argument = 20
+
+
+@contextmanager
+def context_mode(banisher, context_mode):
+    banisher._push_context(context_mode)
+    yield
+    banisher._pop_context()
+
+
 box_context_mode_map = {
     Instructions.h_box: ContextMode.awaiting_make_h_box_start,
     Instructions.v_box: ContextMode.awaiting_make_v_box_start,
@@ -44,6 +80,7 @@ mode_material_instruction_map = {
     Mode.internal_vertical: Instructions.vertical_mode_material_and_right_brace,
     Mode.restricted_horizontal: Instructions.horizontal_mode_material_and_right_brace,
 }
+
 
 expanding_context_modes = (
     ContextMode.normal,
@@ -75,6 +112,23 @@ class Banisher:
         self.reader = reader
         # Input buffer.
         self.input_tokens_queue = deque()
+        # Context is not a TeX concept; it's used when doing this messy bit of
+        # parsing.
+        self.context_mode_stack = []
+
+    def _push_context(self, context_mode):
+        self.context_mode_stack.append(context_mode)
+
+    def _pop_context(self):
+        if self.context_mode_stack:
+            return self.context_mode_stack.pop()
+
+    @property
+    def context_mode(self):
+        if self.context_mode_stack:
+            return self.context_mode_stack[-1]
+        else:
+            return ContextMode.normal
 
     @property
     def expanding_control_sequences(self):
@@ -112,16 +166,6 @@ class Banisher:
             position_like=tokens[0]
         )
         return balanced_text
-
-    def _push_context(self, *args, **kwargs):
-        return self.global_state._push_context(*args, **kwargs)
-
-    def _pop_context(self, *args, **kwargs):
-        return self.global_state._pop_context(*args, **kwargs)
-
-    @property
-    def context_mode(self):
-        return self.global_state.context_mode
 
     def get_escape_char_instruction_token(self, position_like=None):
         escape_char_code = self.global_state.get_parameter_value('escapechar')
@@ -166,7 +210,7 @@ class Banisher:
 
     def get_cs_name_token(self):
         # Get an unexpanded control sequence as an instruction token.
-        with context_mode(self.global_state,
+        with context_mode(self,
                           ContextMode.absorbing_new_control_sequence_name):
             return self._get_next_input_token()
 
@@ -192,8 +236,7 @@ class Banisher:
 
         # Get macro arguments.
         # Set context to inhibit expansion.
-        with context_mode(self.global_state,
-                          ContextMode.absorbing_macro_arguments):
+        with context_mode(self, ContextMode.absorbing_macro_arguments):
             arguments = []
             i_param = 0
             for i_param in range(len(params)):
@@ -247,9 +290,8 @@ class Banisher:
 
         expanded_first_token = self.global_state.expand_macro_to_token_list(name, arguments)
 
-        # Now run again, hopefully now seeing a primitive token.
-        # (Might not, if the expansion needs more expansion, but the
-        # ultimate escape route is to see a primitive token.)
+        # Put expanded tokens back on input queue.
+        # Note that these tokens might themselves need more expansion.
         self.replace_on_input_queue(expanded_first_token)
         return []
 
@@ -300,7 +342,7 @@ class Banisher:
             return (is_control_sequence_call(token) and
                     t.value['name'] in delimit_condition_block_names)
 
-        with context_mode(self.global_state,
+        with context_mode(self,
                           ContextMode.absorbing_conditional_text):
             while True:
                 if not if_queue:
@@ -381,7 +423,7 @@ class Banisher:
 
         # Get parameter text.
         parameter_text_tokens = []
-        with context_mode(self.global_state,
+        with context_mode(self,
                           ContextMode.absorbing_macro_parameter_text):
             while True:
                 tok = self._get_next_input_token()
@@ -399,7 +441,7 @@ class Banisher:
         # Now get the replacement text.
         # TODO: this is where expanded-def will be differentiated from
         # normal-def.
-        with context_mode(self.global_state,
+        with context_mode(self,
                           ContextMode.absorbing_macro_replacement_text):
             replacement_text_token = self.get_balanced_text_token()
 
@@ -415,7 +457,7 @@ class Banisher:
         # because we want to allow the target token be basically
         # anything, and this would be a pain to tell the parser.
         let_arguments = []
-        with context_mode(self.global_state,
+        with context_mode(self,
                           ContextMode.absorbing_misc_unexpanded_arguments):
             let_arguments.append(self._get_next_input_token())
             # If we have found an equals, ignore that and read again.
@@ -433,14 +475,14 @@ class Banisher:
 
     def handle_backtick(self, first_token):
         # Add an unexpanded control sequence as an instruction token to the output.
-        with context_mode(self.global_state, ContextMode.absorbing_backtick_argument):
+        with context_mode(self, ContextMode.absorbing_backtick_argument):
             arg_token = self._get_next_input_token()
         return [first_token, arg_token]
 
     def handle_change_case(self, first_token):
         # Get the succeeding general text token for processing.
         general_text_grabber = ChunkGrabber(self, parser=general_text_parser)
-        with context_mode(self.global_state,
+        with context_mode(self,
                           ContextMode.awaiting_balanced_text_start):
             general_text_token = general_text_grabber.get_chunk()
         un_cased_tokens = general_text_token.value
@@ -471,7 +513,7 @@ class Banisher:
 
     def handle_string(self, first_token):
         # TeX first reads the [next] token without expansion.
-        with context_mode(self.global_state,
+        with context_mode(self,
                           ContextMode.absorbing_misc_unexpanded_arguments):
             target_token = self._get_next_input_token()
         string_tokens = []
@@ -562,7 +604,7 @@ class Banisher:
             return [first_token]
         # \expandafter.
         elif instr == Instructions.expand_after:
-            with context_mode(self.global_state,
+            with context_mode(self,
                               ContextMode.absorbing_misc_unexpanded_arguments):
                 unexpanded_token = self._get_next_input_token()
             next_tokens = self._process_next_input_token()

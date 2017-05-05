@@ -109,8 +109,7 @@ def make_instruction_token_from_char_cat(char, cat, *pos_args, **pos_kwargs):
     """Utility function to make a terminal char-cat token straight from a pair.
     """
     lex_token = make_char_cat_lex_token(char, cat, *pos_args, **pos_kwargs)
-    token = make_char_cat_pair_instruction_token(lex_token)
-    return token
+    return make_char_cat_pair_instruction_token(lex_token)
 
 
 def lex_token_to_instruction_token(lex_token):
