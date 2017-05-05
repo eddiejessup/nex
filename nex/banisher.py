@@ -231,6 +231,17 @@ def get_conditional_text(instructions, i_block_to_pick):
             pass
 
 
+def get_parameter_instrs(instructions):
+    param_instrs = []
+    while True:
+        instr = next(instructions)
+        if instr.instruction == Instructions.left_brace:
+            left_brace_instr = instr
+            parameters = parse_parameter_text(param_instrs)
+            return parameters, left_brace_instr
+        param_instrs.append(instr)
+
+
 class Banisher:
 
     def __init__(self, instructions, state, reader):
@@ -413,35 +424,28 @@ class Banisher:
         return [first_token, material_token]
 
     def handle_def(self, first_token):
+        # Get name of macro.
         cs_name_token = self.get_cs_name_token()
 
         # Get parameter text.
-        parameter_text_tokens = []
-        with context_mode(self,
-                          ContextMode.absorbing_macro_parameter_text):
-            while True:
-                tok = next(self.instructions)
-                if tok.instruction == Instructions.left_brace:
-                    left_brace_token = tok
-                    break
-                parameter_text_tokens.append(tok)
-        parameters = parse_parameter_text(parameter_text_tokens)
-        parameters_token = InstructionToken.from_instruction(
+        with context_mode(self, ContextMode.absorbing_macro_parameter_text):
+            parameter_instrs, left_brace_token = get_parameter_instrs(self.instructions)
+        parameter_text_token = InstructionToken.from_instruction(
             Instructions.parameter_text,
-            value=parameters,
-            position_like=first_token
+            value=parameter_instrs,
+            position_like=first_token,
         )
 
-        # Now get the replacement text.
+        # Get the replacement text.
         # TODO: this is where expanded-def will be differentiated from
         # normal-def.
         with context_mode(self,
                           ContextMode.absorbing_macro_replacement_text):
             replacement_text_token = self.get_balanced_text_token()
 
-        # Add the def token, macro name, parameter text, LEFT_BRACE and
+        # Add the def token, macro name, parameter text, left brace and
         # replacement text to the output queue.
-        return [first_token, cs_name_token, parameters_token, left_brace_token,
+        return [first_token, cs_name_token, parameter_text_token, left_brace_token,
                 replacement_text_token]
 
     def handle_let(self, first_token):
