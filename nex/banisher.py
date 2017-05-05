@@ -4,7 +4,7 @@ from collections import deque
 from enum import Enum
 
 from .tokens import InstructionToken
-from .lexer import (is_control_sequence_call,
+from .lexer import (Lexer, is_control_sequence_call,
                     char_cat_lex_type, control_sequence_lex_type)
 from .codes import CatCode
 from .constants.primitive_control_sequences import (Instructions,
@@ -101,9 +101,96 @@ def get_brace_sign(token):
         return 0
 
 
+def get_balanced_text_token(get_next_token):
+    tokens = []
+    brace_level = 1
+    while True:
+        token = get_next_token()
+        tokens.append(token)
+        brace_level += get_brace_sign(token)
+        if brace_level == 0:
+            break
+    balanced_text = InstructionToken.from_instruction(
+        Instructions.balanced_text_and_right_brace,
+        value=tokens[:-1],
+        position_like=tokens[0]
+    )
+    return balanced_text
+
+
+def get_macro_arguments(params, get_next_token):
+    def tokens_equal(t, u):
+        if t.value['lex_type'] != u.value['lex_type']:
+            return False
+        if t.value['lex_type'] == char_cat_lex_type:
+            attr_keys = ('char', 'cat')
+        elif t.value['lex_type'] == control_sequence_lex_type:
+            attr_keys = ('name',)
+        else:
+            import pdb; pdb.set_trace()
+        try:
+            return all(t.value[k] == u.value[k] for k in attr_keys)
+        except:
+            import pdb; pdb.set_trace()
+
+    arguments = []
+    i_param = 0
+    for i_param in range(len(params)):
+        arg_toks = []
+        p_t = params[i_param]
+        if p_t.instruction not in (Instructions.undelimited_param,
+                                   Instructions.delimited_param):
+            # We should only see non-parameters in the parameter list,
+            # if they are text preceding the parameters proper. See
+            # the comments in `parse_parameter_text` for further
+            # details.
+            # We just swallow up these tokens.
+            assert not arguments
+            next_token = get_next_token()
+            if not tokens_equal(p_t, next_token):
+                import pdb; pdb.set_trace()
+                raise Exception
+            continue
+        delim_toks = p_t.value['delim_tokens']
+        if p_t.instruction == Instructions.undelimited_param:
+            assert not delim_toks
+            next_token = get_next_token()
+            if next_token.instruction == Instructions.left_brace:
+                b_tok = get_balanced_text_token(get_next_token)
+                arg_toks.extend(b_tok.value)
+            else:
+                arg_toks.append(next_token)
+        elif p_t.instruction == Instructions.delimited_param:
+            # To be finished, we must be balanced brace-wise.
+            brace_level = 0
+            while True:
+                next_token = get_next_token()
+                brace_level += get_brace_sign(next_token)
+                arg_toks.append(next_token)
+                # If we are balanced, and we could possibly
+                # have got the delimiter tokens.
+                if brace_level == 0 and len(arg_toks) >= len(delim_toks):
+                    # Check if the recent argument tokens match the
+                    # delimiter tokens, and if so, we are done.
+                    to_compare = zip(reversed(arg_toks),
+                                     reversed(delim_toks))
+                    if all(tokens_equal(*ts) for ts in to_compare):
+                        break
+            # Remove the delimiter tokens as they are not part of
+            # the argument
+            arg_toks = arg_toks[:-len(delim_toks)]
+            # We remove exactly one set of braces, if present.
+            if arg_toks[0].instruction == Instructions.left_brace and arg_toks[-1].instruction == Instructions.right_brace:
+                arg_toks = arg_toks[1:-1]
+        arguments.append(arg_toks)
+    return arguments
+
+
 class Banisher:
 
     def __init__(self, lexer, state, reader):
+        # TODO: Take iterable of lexers and call `next`.
+        # TODO: Take this with each call instead of being part of state.
         self.lexer = lexer
         self.global_state = state
         # The banisher needs the reader because it can execute commands,
@@ -115,6 +202,11 @@ class Banisher:
         # Context is not a TeX concept; it's used when doing this messy bit of
         # parsing.
         self.context_mode_stack = []
+
+    @classmethod
+    def from_string(cls, s, get_cat_code_func, state, reader):
+        lexer = Lexer.from_string(s, get_cat_code_func)
+        return cls(lexer, state, reader)
 
     def _push_context(self, context_mode):
         self.context_mode_stack.append(context_mode)
@@ -152,20 +244,7 @@ class Banisher:
         return self.input_tokens_queue.popleft()
 
     def get_balanced_text_token(self):
-        tokens = []
-        brace_level = 1
-        while True:
-            token = self._get_next_input_token()
-            tokens.append(token)
-            brace_level += get_brace_sign(token)
-            if brace_level == 0:
-                break
-        balanced_text = InstructionToken.from_instruction(
-            Instructions.balanced_text_and_right_brace,
-            value=tokens[:-1],
-            position_like=tokens[0]
-        )
-        return balanced_text
+        return get_balanced_text_token(get_next_token=self._get_next_input_token)
 
     def get_escape_char_instruction_token(self, position_like=None):
         escape_char_code = self.global_state.get_parameter_value('escapechar')
@@ -214,80 +293,19 @@ class Banisher:
                           ContextMode.absorbing_new_control_sequence_name):
             return self._get_next_input_token()
 
+    def _get_macro_arguments(self, params):
+        return get_macro_arguments(params,
+                                   get_next_token=self._get_next_input_token)
+
     def handle_macro(self, first_token):
         macro_definition = first_token.value['definition']
         name = macro_definition.value['name']
         macro_text = macro_definition.value['text']
         params = macro_text.value['parameter_text']
 
-        def tokens_equal(t, u):
-            if t.value['lex_type'] != u.value['lex_type']:
-                return False
-            if t.value['lex_type'] == char_cat_lex_type:
-                attr_keys = ('char', 'cat')
-            elif t.value['lex_type'] == control_sequence_lex_type:
-                attr_keys = ('name',)
-            else:
-                import pdb; pdb.set_trace()
-            try:
-                return all(t.value[k] == u.value[k] for k in attr_keys)
-            except:
-                import pdb; pdb.set_trace()
-
-        # Get macro arguments.
         # Set context to inhibit expansion.
         with context_mode(self, ContextMode.absorbing_macro_arguments):
-            arguments = []
-            i_param = 0
-            for i_param in range(len(params)):
-                arg_toks = []
-                p_t = params[i_param]
-                if p_t.instruction not in (Instructions.undelimited_param,
-                                           Instructions.delimited_param):
-                    # We should only see non-parameters in the parameter list,
-                    # if they are text preceding the parameters proper. See
-                    # the comments in `parse_parameter_text` for further
-                    # details.
-                    # We just swallow up these tokens.
-                    assert not arguments
-                    next_token = self._get_next_input_token()
-                    if not tokens_equal(p_t, next_token):
-                        import pdb; pdb.set_trace()
-                        raise Exception
-                    continue
-                delim_toks = p_t.value['delim_tokens']
-                if p_t.instruction == Instructions.undelimited_param:
-                    assert not delim_toks
-                    next_token = self._get_next_input_token()
-                    if next_token.instruction == Instructions.left_brace:
-                        b_tok = self.get_balanced_text_token()
-                        arg_toks.extend(b_tok.value)
-                    else:
-                        arg_toks.append(next_token)
-                elif p_t.instruction == Instructions.delimited_param:
-                    # To be finished, we must be balanced brace-wise.
-                    brace_level = 0
-                    while True:
-                        next_token = self._get_next_input_token()
-                        brace_level += get_brace_sign(next_token)
-                        arg_toks.append(next_token)
-                        # If we are balanced, and we could possibly
-                        # have got the delimiter tokens.
-                        if brace_level == 0 and len(arg_toks) >= len(delim_toks):
-                            # Check if the recent argument tokens match the
-                            # delimiter tokens, and if so, we are done.
-                            to_compare = zip(reversed(arg_toks),
-                                             reversed(delim_toks))
-                            if all(tokens_equal(*ts) for ts in to_compare):
-                                break
-                    # Remove the delimiter tokens as they are not part of
-                    # the argument
-                    arg_toks = arg_toks[:-len(delim_toks)]
-                    # We remove exactly one set of braces, if present.
-                    if arg_toks[0].instruction == Instructions.left_brace and arg_toks[-1].instruction == Instructions.right_brace:
-                        arg_toks = arg_toks[1:-1]
-                arguments.append(arg_toks)
-
+            arguments = self._get_macro_arguments(params)
         expanded_first_token = self.global_state.expand_macro_to_token_list(name, arguments)
 
         # Put expanded tokens back on input queue.
