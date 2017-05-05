@@ -186,6 +186,51 @@ def get_macro_arguments(params, tokens):
     return arguments
 
 
+def get_conditional_text(instructions, i_block_to_pick):
+    # I don't think I can rely on instructions, because expansion is
+    # suppressed.
+    delimit_condition_block_names = ('else', 'or')
+    end_condition_names = ('fi',)
+    start_condition_names = ('ifnum', 'iftrue', 'iffalse', 'ifcase',)
+
+    def get_condition_sign(token):
+        if not is_control_sequence_call(token):
+            return 0
+        name = token.value['name']
+        if name in start_condition_names:
+            return 1
+        elif name in end_condition_names:
+            return -1
+        else:
+            return 0
+
+    def is_condition_delimiter(token):
+        return (is_control_sequence_call(token) and
+                token.value['name'] in delimit_condition_block_names)
+
+    nr_conditions = 1
+    i_block = 0
+    not_skipped_instructions = []
+    for t in instructions:
+        # Keep track of nested conditions.
+        nr_conditions += get_condition_sign(t)
+
+        # If we get the terminal \fi, return the gathered tokens.
+        if nr_conditions == 0:
+            return not_skipped_instructions
+        # If we are at the pertinent if-nesting level, then
+        # a condition block delimiter should be kept track of.
+        elif nr_conditions == 1 and is_condition_delimiter(t):
+            i_block += 1
+        # if we're in the block the condition says we should pick,
+        # include token.
+        elif i_block == i_block_to_pick:
+            not_skipped_instructions.append(t)
+        # Otherwise we are skipping tokens.
+        else:
+            pass
+
+
 class Banisher:
 
     def __init__(self, instructions, state, reader):
@@ -301,8 +346,9 @@ class Banisher:
         condition_grabber.buffer_token_queue.append(first_token)
         condition_token = condition_grabber.get_chunk()
         outcome = execute_condition(condition_token, self.global_state)
-        # Pick up any left-over tokens from the condition parsing.
-        if_queue = condition_grabber.buffer_token_queue
+        # Replace any instructions left over from the condition parsing on the
+        # input queue.
+        self.instructions.replace_tokens_on_input(condition_grabber.buffer_token_queue)
 
         # TODO: Move inside executor? Not sure.
         if first_token.instruction == Instructions.if_case:
@@ -311,62 +357,9 @@ class Banisher:
             i_block_to_pick = 0 if outcome else 1
 
         # Now get the body of the condition text.
-        # TeXbook:
-        # "Expansion is suppressed at the following times:
-        # [...]
-        # When tokens are being skipped because conditional text is
-        # being ignored."
-        # From testing, the above does not seem to hold, so I am going
-        # to carry on expansion.
-        nr_conditions = 1
-        i_block = 0
-        not_skipped_tokens = []
-
-        # I don't think I can rely on instructions, because expansion is
-        # suppressed.
-        delimit_condition_block_names = ('else', 'or')
-        end_condition_names = ('fi',)
-        start_condition_names = ('ifnum', 'iftrue', 'iffalse', 'ifcase',)
-
-        def get_condition_sign(token):
-            if not is_control_sequence_call(token):
-                return 0
-            name = token.value['name']
-            if name in start_condition_names:
-                return 1
-            elif name in end_condition_names:
-                return -1
-            else:
-                return 0
-
-        def is_condition_delimiter(token):
-            return (is_control_sequence_call(token) and
-                    t.value['name'] in delimit_condition_block_names)
-
-        with context_mode(self,
-                          ContextMode.absorbing_conditional_text):
-            while True:
-                if not if_queue:
-                    if_queue.append(next(self.instructions))
-                t = if_queue.popleft()
-
-                # Keep track of nested conditions.
-                nr_conditions += get_condition_sign(t)
-
-                # If we get the terminal \fi, break
-                if nr_conditions == 0:
-                    break
-                # If we are at the pertinent if-nesting level, then
-                # a condition block delimiter should be kept track of.
-                elif nr_conditions == 1 and is_condition_delimiter(t):
-                    i_block += 1
-                # if we're in the block the condition says we should pick,
-                # include token.
-                elif i_block == i_block_to_pick:
-                    not_skipped_tokens.append(t)
-                # Otherwise we are skipping tokens.
-                else:
-                    pass
+        with context_mode(self, ContextMode.absorbing_conditional_text):
+            not_skipped_tokens = get_conditional_text(self.instructions,
+                                                      i_block_to_pick)
         self.instructions.replace_tokens_on_input(not_skipped_tokens)
         return []
 
