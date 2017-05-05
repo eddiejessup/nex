@@ -189,7 +189,6 @@ def get_macro_arguments(params, get_next_token):
 class Banisher:
 
     def __init__(self, lexer, state, reader):
-        # TODO: Take iterable of lexers and call `next`.
         # TODO: Take this with each call instead of being part of state.
         self.lexer = lexer
         self.global_state = state
@@ -238,7 +237,7 @@ class Banisher:
 
     def _get_next_input_token(self):
         if not self.input_tokens_queue:
-            new_input_token = self.lexer.get_next_token()
+            new_input_token = next(self.lexer)
             instruction_token = lex_token_to_instruction_token(new_input_token)
             self.input_tokens_queue.append(instruction_token)
         return self.input_tokens_queue.popleft()

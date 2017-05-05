@@ -76,7 +76,10 @@ class Lexer:
         reader.insert_string(s)
         return cls(reader, *args, **kwargs)
 
-    def get_next_token(self):
+    def __iter__(self):
+        return self
+
+    def __next__(self):
         while True:
             token = self._process_next_character()
             if token is not None:
@@ -89,9 +92,9 @@ class Lexer:
         that should be read."""
         while True:
             try:
-                yield self.get_next_token()
+                yield next(self)
             except EndOfFile:
-                break
+                return
 
     def _peek_ahead(self, n=1):
         if n > 3:
