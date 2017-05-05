@@ -242,6 +242,20 @@ def get_parameter_instrs(instructions):
         param_instrs.append(instr)
 
 
+def get_let_arguments(instructions):
+    let_arguments = []
+    let_arguments.append(next(instructions))
+    # If we find an equals, ignore that and read again.
+    if let_arguments[-1].instruction == Instructions.equals:
+        let_arguments.append(next(instructions))
+    # If we find a space, ignore that and read again.
+    if let_arguments[-1].instruction == Instructions.space:
+        let_arguments.append(next(instructions))
+    # Now we know the last instruction should be the let target.
+    preamble_tokens, let_target = let_arguments[:-1], let_arguments[-1]
+    return preamble_tokens, let_target
+
+
 class Banisher:
 
     def __init__(self, instructions, state, reader):
@@ -451,25 +465,17 @@ class Banisher:
     def handle_let(self, first_token):
         cs_name_token = self.get_cs_name_token()
 
-        # We are going to parse the arguments of LET ourselves,
-        # because we want to allow the target token be basically
-        # anything, and this would be a pain to tell the parser.
-        let_arguments = []
+        # Parse the arguments of LET manually, because the target token can be
+        # basically anything, and this would be a pain to tell the parser.
         with context_mode(self,
                           ContextMode.absorbing_misc_unexpanded_arguments):
-            let_arguments.append(next(self.instructions))
-            # If we have found an equals, ignore that and read again.
-            if let_arguments[-1].instruction == Instructions.equals:
-                let_arguments.append(next(self.instructions))
-            if let_arguments[-1].instruction == Instructions.space:
-                let_arguments.append(next(self.instructions))
-        # Make the target argument into a special 'any' token.
-        let_arguments[-1] = InstructionToken.from_instruction(
+            let_preamble, let_target_tok = get_let_arguments(self.instructions)
+        let_target_instr = InstructionToken.from_instruction(
             Instructions.let_target,
-            value=let_arguments[-1],
+            value=let_target_tok,
             position_like=first_token
         )
-        return [first_token, cs_name_token] + let_arguments
+        return [first_token, cs_name_token] + let_preamble + [let_target_instr]
 
     def handle_backtick(self, first_token):
         # Add an unexpanded control sequence as an instruction token to the output.
