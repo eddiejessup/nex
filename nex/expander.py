@@ -53,7 +53,7 @@ def parse_parameter_text(tokens):
                 i += 1
         instruction = (Instructions.delimited_param if delim_tokens
                        else Instructions.undelimited_param)
-        param = InstructionToken.from_instruction(
+        param = InstructionToken(
             instruction,
             value={'param_nr': p_nr, 'delim_tokens': delim_tokens}
         )
@@ -79,7 +79,7 @@ def parse_replacement_text(tokens):
                 tokens_processed.append(t_next)
             else:
                 p_nr = int(t_next.value['char'])
-                t = InstructionToken.from_instruction(
+                t = InstructionToken(
                     Instructions.param_number,
                     value=p_nr
                 )

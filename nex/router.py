@@ -118,7 +118,7 @@ for prim_cs, prim_instruction in primitive_control_sequences_map.items():
     # Terminals are tokens that may be passed to the parser. Non-terminals
     # are tokens that will be consumed by the banisher before the parser
     # sees them.
-    primitive_canon_token = InstructionToken.from_instruction(
+    primitive_canon_token = InstructionToken(
         prim_instruction,
         value={'canonical_name': prim_cs,
                'name': prim_cs,
@@ -129,6 +129,21 @@ for prim_cs, prim_instruction in primitive_control_sequences_map.items():
 
 def make_route_token(type_, route_id):
     return InternalToken(type_=type_, value=route_id)
+
+
+def make_macro_token(name, replacement_text, parameter_text,
+                     def_type=None, prefixes=None):
+    if prefixes is None:
+        prefixes = set()
+    return InstructionToken(
+        Instructions.macro,
+        value={'name': name,
+               'prefixes': prefixes,
+               'replacement_text': parse_replacement_text(replacement_text),
+               'parameter_text': parse_parameter_text(parameter_text),
+               'def_type': def_type},
+        line_nr='abstract',
+    )
 
 
 def get_initial_router():
@@ -146,7 +161,7 @@ def get_initial_router():
             route_token = make_route_token('parameter', route_id)
             control_sequences[param_canonical_name] = route_token
 
-            param_canon_token = InstructionToken.from_instruction(
+            param_canon_token = InstructionToken(
                 param_instr,
                 value={'canonical_name': param_canonical_name,
                        'name': param_canonical_name},
@@ -266,15 +281,10 @@ class CSRouter(object):
         if prefixes is None:
             prefixes = set()
 
-        macro_token = InstructionToken(
-            Instructions.macro,
-            value={'name': name,
-                   'prefixes': prefixes,
-                   'replacement_text': parse_replacement_text(replacement_text),
-                   'parameter_text': parse_parameter_text(parameter_text),
-                   'def_type': def_type},
-            line_nr='abstract',
-        )
+        macro_token = make_macro_token(name,
+                                       replacement_text=replacement_text,
+                                       parameter_text=parameter_text,
+                                       def_type=def_type, prefixes=prefixes)
         self.macros[route_id] = macro_token
 
     def do_short_hand_definition(self, name, def_type, code):
@@ -302,7 +312,7 @@ class CSRouter(object):
         # is stored in the global font state, because it has internal
         # state that might be modified later; we need to know where to get
         # at it.
-        font_id_token = InstructionToken.from_instruction(
+        font_id_token = InstructionToken(
             Instructions.font_def_token,
             value=font_id,
             line_nr='abstract'

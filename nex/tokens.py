@@ -186,10 +186,6 @@ class InstructionToken(PositionToken):
         return self.__class__(instruction=self.instruction,
                               value=v_copy, *args, **kwargs)
 
-    @classmethod
-    def from_instruction(cls, instruction, *args, **kwargs):
-        return cls(instruction, *args, **kwargs)
-
     @property
     def type(self):
         try:

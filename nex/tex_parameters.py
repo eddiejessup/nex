@@ -163,7 +163,7 @@ def get_initial_parameters():
     glue_parameters = {p: get_zero_glue() for p in glue_parameter_names}
     mu_glue_parameters = {p: get_zero_glue() for p in mu_glue_parameter_names}
 
-    get_empty_token_list = lambda: InstructionToken.from_instruction(
+    get_empty_token_list = lambda: InstructionToken(
         Instructions.balanced_text_and_right_brace,
         value=[],
         line_nr='abstract',

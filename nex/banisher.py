@@ -107,7 +107,7 @@ def get_balanced_text_token(tokens):
         brace_level += get_brace_sign(token)
         if brace_level == 0:
             break
-    balanced_text = InstructionToken.from_instruction(
+    balanced_text = InstructionToken(
         Instructions.balanced_text_and_right_brace,
         value=b_tokens[:-1],
         position_like=b_tokens[0]
@@ -129,7 +129,6 @@ def get_macro_arguments(params, tokens):
             return all(t.value[k] == u.value[k] for k in attr_keys)
         except:
             import pdb; pdb.set_trace()
-
     arguments = []
     i_param = 0
     for i_param in range(len(params)):
@@ -421,7 +420,7 @@ class Banisher:
         # command, returning to the mode it was in at the time of the
         # setbox.
         layout_list = self.global_state.pop_mode()
-        material_token = InstructionToken.from_instruction(
+        material_token = InstructionToken(
             mode_material_instruction_map[mode],
             value=layout_list,
             position_like=first_token
@@ -436,7 +435,7 @@ class Banisher:
         # Get parameter text.
         with context_mode(self, ContextMode.absorbing_macro_parameter_text):
             parameter_instrs, left_brace_token = get_parameter_instrs(self.instructions)
-        parameter_text_token = InstructionToken.from_instruction(
+        parameter_text_token = InstructionToken(
             Instructions.parameter_text,
             value=parameter_instrs,
             position_like=first_token,
@@ -461,7 +460,7 @@ class Banisher:
         with context_mode(self,
                           ContextMode.absorbing_misc_unexpanded_arguments):
             let_preamble, let_target_tok = get_let_arguments(self.instructions)
-        let_target_instr = InstructionToken.from_instruction(
+        let_target_instr = InstructionToken(
             Instructions.let_target,
             value=let_target_tok,
             position_like=first_token

@@ -83,7 +83,7 @@ def make_char_cat_pair_instruction_token(char_cat_lex_token):
     instruction = get_char_cat_pair_instruction(char, cat)
     value = char_cat_lex_token.value
     value['lex_type'] = char_cat_lex_token.type
-    token = InstructionToken.from_instruction(
+    token = InstructionToken(
         instruction,
         value=value,
         position_like=char_cat_lex_token
@@ -96,7 +96,7 @@ def make_control_sequence_instruction_token(name, position_like=None):
         instruction = Instructions.unexpanded_one_char_control_sequence
     else:
         instruction = Instructions.unexpanded_many_char_control_sequence
-    return InstructionToken.from_instruction(
+    return InstructionToken(
         instruction,
         value={'name': name, 'lex_type': control_sequence_lex_type},
         position_like=position_like
