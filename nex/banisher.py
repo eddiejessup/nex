@@ -22,7 +22,7 @@ from .state import Mode, Group
 from .executor import execute_commands
 from .if_executor import execute_condition
 from .expander import parse_parameter_text
-from .parsing.utils import ChunkGrabber
+from .parsing.utils import ChunkGrabber, GetBuffer
 from .parsing.command_parser import command_parser
 from .parsing.condition_parser import condition_parser
 from .parsing.general_text_parser import general_text_parser
@@ -285,6 +285,7 @@ def get_string_instr_repr(target_token, escape_char_token):
     else:
         char = target_token.value['char']
         chars = [char]
+    # TODO: Maybe just make a lex token and leave the instructioner to type it?
     toks += [make_instruction_token_from_char_cat(c, CatCode.other,
                                                   position_like=target_token)
              for c in chars]
@@ -325,12 +326,25 @@ class Banisher:
     def expanding_control_sequences(self):
         return self.context_mode in expanding_context_modes
 
-    def pop_or_fill_and_pop(self, queue):
-        while not queue:
-            next_output_tokens = self._process_next_input_token()
-            queue.extend(next_output_tokens)
-        next_token = queue.popleft()
-        return next_token
+    def get_next_output_list(self):
+        while True:
+            # TODO: Check what happens when we try to parse tokens too far in one
+            # chunk, and bleed into another chunk that only makes sense once the
+            # previous one has executed. For example, defining a new macro, then
+            # calling that macro. This function might have side effects on the
+            # state, and the instructions.
+            next_inputs, next_outputs = self._process_next_input_token()
+            if next_inputs and next_outputs:
+                import pdb; pdb.set_trace()
+                raise Exception
+            if next_inputs:
+                self.instructions.replace_tokens_on_input(next_inputs)
+            elif next_outputs:
+                return next_outputs
+            else:
+                # The output of a command could *be* an empty list. For
+                # example, a condition might return nothing in some branches.
+                pass
 
     def get_balanced_text_token(self):
         return get_balanced_text_token(tokens=self.instructions)
@@ -344,37 +358,6 @@ class Banisher:
             return escape_char_token
         else:
             return None
-
-    def _process_next_input_token(self):
-        first_token = next(self.instructions)
-
-        if first_token.char_nr is not None:
-            print(first_token.get_position_str(self.reader))
-
-        # If the token is an unexpanded control sequence call, and expansion is
-        # not suppressed, then we must normalize it:
-        # - A user control sequence will become a macro instruction token.
-        # - A \let character will become its character instruction token.
-        # - A primitive control sequence will become its instruction token.
-        if (self.expanding_control_sequences and
-                first_token.instruction in unexpanded_cs_instructions):
-            name = first_token.value['name']
-            first_token = self.global_state.resolve_control_sequence_to_token(
-                name, position_like=first_token)
-
-        try:
-            output_tokens = self._process_input_token(first_token)
-        except Exception:
-            # If something goes wrong in the expansion, we *assume* that the
-            # function has had no side effects, and just put the input token
-            # back on the input queue, then raise the exception. This might
-            # happen if we've tried to parse tokens too far in one chunk, and
-            # bled into another chunk that only makes sense once the previous
-            # one has executed. For example, defining a new macro, then
-            # calling that macro.
-            self.instructions.replace_token_on_input(first_token)
-            raise
-        return output_tokens
 
     def get_cs_name_token(self):
         # Get an unexpanded control sequence as an instruction token.
@@ -394,21 +377,16 @@ class Banisher:
         # Set context to inhibit expansion.
         with context_mode(self, ContextMode.absorbing_macro_arguments):
             arguments = self._get_macro_arguments(params)
-        expanded_first_token = self.global_state.expand_macro_to_token_list(name, arguments)
+        tokens = self.global_state.expand_macro_to_token_list(name, arguments)
 
-        # Put expanded tokens back on input queue.
         # Note that these tokens might themselves need more expansion.
-        self.instructions.replace_tokens_on_input(expanded_first_token)
-        return []
+        return tokens, []
 
     def handle_if(self, first_token):
-        condition_grabber = ChunkGrabber(self, parser=condition_parser)
-        condition_grabber.buffer_token_queue.append(first_token)
+        condition_grabber = ChunkGrabber(self, parser=condition_parser,
+                                         initial=[first_token])
         condition_token = condition_grabber.get_chunk()
         outcome = execute_condition(condition_token, self.global_state)
-        # Replace any instructions left over from the condition parsing on the
-        # input queue.
-        self.instructions.replace_tokens_on_input(condition_grabber.buffer_token_queue)
 
         # TODO: Move inside executor? Not sure.
         if first_token.instruction == Instructions.if_case:
@@ -420,8 +398,7 @@ class Banisher:
         with context_mode(self, ContextMode.absorbing_conditional_text):
             not_skipped_tokens = get_conditional_text(self.instructions,
                                                       i_block_to_pick)
-        self.instructions.replace_tokens_on_input(not_skipped_tokens)
-        return []
+        return not_skipped_tokens, []
 
     def handle_making_box(self, first_token):
         # Left brace initiates a new level of grouping.
@@ -470,7 +447,7 @@ class Banisher:
             position_like=first_token
         )
         # Put the LEFT_BRACE on the output queue, and the box material.
-        return [first_token, material_token]
+        return [], [first_token, material_token]
 
     def handle_def(self, first_token):
         # Get name of macro.
@@ -494,8 +471,9 @@ class Banisher:
 
         # Add the def token, macro name, parameter text, left brace and
         # replacement text to the output queue.
-        return [first_token, cs_name_token, parameter_text_token, left_brace_token,
-                replacement_text_token]
+        output = [first_token, cs_name_token, parameter_text_token,
+                  left_brace_token, replacement_text_token]
+        return [], output
 
     def handle_let(self, first_token):
         cs_name_token = self.get_cs_name_token()
@@ -510,13 +488,15 @@ class Banisher:
             value=let_target_tok,
             position_like=first_token
         )
-        return [first_token, cs_name_token] + let_preamble + [let_target_instr]
+        output = ([first_token, cs_name_token] +
+                  let_preamble + [let_target_instr])
+        return [], output
 
     def handle_backtick(self, first_token):
         # Add an unexpanded control sequence as an instruction token to the output.
         with context_mode(self, ContextMode.absorbing_backtick_argument):
             arg_token = next(self.instructions)
-        return [first_token, arg_token]
+        return [], [first_token, arg_token]
 
     def handle_change_case(self, first_token):
         # Get the succeeding general text token for processing.
@@ -533,9 +513,7 @@ class Banisher:
         case_func = case_funcs_map[first_token.instruction]
 
         cased_tokens = get_cased_tokens(un_cased_tokens, case_func)
-        # Put cased tokens back on the queue to read again.
-        self.instructions.replace_tokens_on_input(cased_tokens)
-        return []
+        return cased_tokens, []
 
     def handle_string(self, first_token):
         # TeX first reads the [next] token without expansion.
@@ -544,14 +522,13 @@ class Banisher:
             target_token = next(self.instructions)
         escape_char_token = self.get_escape_char_instruction_token(
             position_like=target_token)
-        return get_string_instr_repr(target_token, escape_char_token)
+        return [], get_string_instr_repr(target_token, escape_char_token)
 
     def handle_cs_name(self, first_token):
         cs_name_tokens = []
-        cs_name_queue = deque()
 
-        while True:
-            t = self.pop_or_fill_and_pop(cs_name_queue)
+        out_queue = GetBuffer(getter=self.get_next_output_list)
+        for t in out_queue:
             if t.instruction == Instructions.end_cs_name:
                 break
             cs_name_tokens.append(t)
@@ -559,15 +536,35 @@ class Banisher:
         cs_name = ''.join(chars)
         cs_token = make_control_sequence_instruction_token(
             cs_name, position_like=first_token)
-        # If we expanded such that we got tokens past 'endcsname', put them
-        # back on the input queue.
-        self.instructions.replace_tokens_on_input(cs_name_queue)
-        # But first comes our shiny new control sequence token.
-        self.instructions.replace_token_on_input(cs_token)
-        return []
+        # Put our shiny new control sequence token on the input,
+        # along with any spare tokens from the expansion
+        return [cs_token] + list(out_queue.queue), []
 
-    def _process_input_token(self, first_token):
+    def _process_next_input_token(self):
+        first_token = next(self.instructions)
+
+        if first_token.char_nr is not None:
+            print(first_token.get_position_str(self.reader))
+
+        # If the token is an unexpanded control sequence call, and expansion is
+        # not suppressed, then we must resolve the call:
+        # - A user control sequence will become a macro instruction token.
+        # - A \let character will become its character instruction token.
+        # - A primitive control sequence will become its instruction token.
+        # NOTE: I've made this mistake twice now: we can't make this resolution
+        # into a two-call process, where we resolve the token, put the resolved
+        # token on the input, then handle it in the next call. This is because,
+        # for example, \expandafter expects a single call to this method to do
+        # resolution and actual expansion. Basically this method has certain
+        # responsibilites to do a certain amount to a token in each call.
+        if (self.expanding_control_sequences and
+                first_token.instruction in unexpanded_cs_instructions):
+            name = first_token.value['name']
+            first_token = self.global_state.resolve_control_sequence_to_token(
+                name, position_like=first_token)
+
         instr = first_token.instruction
+
         # A user control sequence.
         if instr == Instructions.macro:
             return self.handle_macro(first_token)
@@ -575,11 +572,11 @@ class Banisher:
         elif (self.context_mode in (ContextMode.awaiting_balanced_text_start,
                                     ContextMode.awaiting_balanced_text_or_token_variable_start)
                 and instr == Instructions.left_brace):
+            bal_tok = self.get_balanced_text_token()
             # Done getting balanced text, so pop context.
             self._pop_context()
-            # Put the LEFT_BRACE on the output queue, and then get a balanced-
-            # text token and add that.
-            return [first_token, self.get_balanced_text_token()]
+            # Put the LEFT_BRACE and the balanced text on the output queue.
+            return [], [first_token, bal_tok]
         # Waiting to absorb either a balanced text, or a token variable, and
         # see a token variable.
         elif (self.context_mode == ContextMode.awaiting_balanced_text_or_token_variable_start and
@@ -589,14 +586,14 @@ class Banisher:
             # so we can just pop the context and put the token on the output
             # queue.
             self._pop_context()
-            return [first_token]
+            return [], [first_token]
         # Waiting to absorb some box contents, and see a "{".
         elif (self.context_mode in box_context_mode_map.values() and
                 instr == Instructions.left_brace):
             return self.handle_making_box(first_token)
         # Such as \chardef, or \font.
         elif instr in short_hand_def_instructions + (Instructions.font,):
-            return [first_token, self.get_cs_name_token()]
+            return [], [first_token, self.get_cs_name_token()]
         # Such as \def.
         elif instr in def_instructions:
             return self.handle_def(first_token)
@@ -609,23 +606,28 @@ class Banisher:
         # Such as \toks.
         elif instr in token_variable_start_instructions:
             self._push_context(ContextMode.awaiting_balanced_text_or_token_variable_start)
-            return [first_token]
+            return [], [first_token]
         # \expandafter.
         elif instr == Instructions.expand_after:
+            # Read a token without expansion.
             with context_mode(self,
                               ContextMode.absorbing_misc_unexpanded_arguments):
                 unexpanded_token = next(self.instructions)
-            next_tokens = self._process_next_input_token()
-            self.instructions.replace_tokens_on_input(next_tokens)
-            self.instructions.replace_token_on_input(unexpanded_token)
-            return []
+            # Then get the next token *with* expansion.
+            next_input_tokens, next_output_tokens = self._process_next_input_token()
+            # Order doesn't matter because only one should have elements anyway.
+            next_tokens = next_input_tokens + next_output_tokens
+            # Then replace the first unexpanded token, and results of second
+            # expansion, on the input queue.
+            replace = [unexpanded_token] + next_tokens
+            return replace, []
         # Such as \message.
         elif instr in message_instructions + hyphenation_instructions:
             # TODO: I think the balanced text contents *are* expanded, at least
             # for \[err]message. Unlike upper/lower-case. Not sure how best to
             # implement this.
             self._push_context(ContextMode.awaiting_balanced_text_start)
-            return [first_token]
+            return [], [first_token]
         # Such as \ifnum.
         elif instr in if_instructions:
             return self.handle_if(first_token)
@@ -643,8 +645,8 @@ class Banisher:
             # Read until box specification is finished,
             # then we will do actual group and scope changes and so on.
             self._push_context(box_context_mode_map[instr])
-            return [first_token]
+            return [], [first_token]
         # Just some semantic bullshit, stick it on the output queue
         # for the parser to deal with.
         else:
-            return [first_token]
+            return [], [first_token]

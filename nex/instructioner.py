@@ -127,6 +127,7 @@ class Instructioner:
     def __init__(self, lexer):
         self.lexer = lexer
         # Input buffer.
+        # TODO: Use GetBuffer.
         self.input_tokens_queue = deque()
 
     @classmethod

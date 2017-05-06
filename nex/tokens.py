@@ -94,10 +94,14 @@ class PositionToken(BaseToken):
     def get_position_str(self, reader):
         cs = reader.get_buffer(self.file_hash).chars
         here_i = self.char_nr
-        context_len = 40
+        context_len = 60
 
         before_i = max(here_i - context_len, 0)
         pre_context = ''.join(cs[before_i:here_i])
+        if '\n' in pre_context:
+            pre_context = pre_context[pre_context.rfind('\n'):]
+        else:
+            pre_context = '…' + pre_context
 
         if self.char_len is None:
             here_len = 1
@@ -109,14 +113,18 @@ class PositionToken(BaseToken):
         here = colorama.Fore.RED + here + colorama.Style.RESET_ALL
 
         end_i = min(here_i_end + context_len, len(cs))
-        post_context = ''.join(cs[here_i_end:end_i])
 
-        intro = 'L:{:04d}C:{:03d}: '.format(self.line_nr, self.col_nr)
-        s = intro + '…' + pre_context + here + post_context + '…'
+        post_context = ''.join(cs[here_i_end:end_i])
+        if '\n' in post_context:
+            post_context = post_context[:post_context.find('\n') + 1]
+        else:
+            post_context = post_context + '…'
+
+        s = pre_context + here + post_context
         s = s.replace('\n', '⏎ ')
         s = s.replace('\t', '⇥')
-        s = self.pos_summary() + '\t' + s
-        return s
+        intro = 'Line {:d}: '.format(self.line_nr, self.col_nr)
+        return intro + s
 
 
 class BuiltToken(PositionToken):

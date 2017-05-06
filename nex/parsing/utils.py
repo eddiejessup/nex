@@ -19,15 +19,33 @@ def is_end_token(t):
     return hasattr(t, 'name') and t.name == end_tag and t.value == end_tag
 
 
+class GetBuffer:
+
+    def __init__(self, getter, initial=None):
+        self.queue = deque()
+        if initial is not None:
+            self.queue.extend(initial)
+        self.getter = getter
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        while not self.queue:
+            self.queue.extend(self.getter())
+        return self.queue.popleft()
+
+
 class ChunkGrabber(object):
 
-    def __init__(self, banisher, parser):
+    def __init__(self, banisher, parser, initial=None):
         self.banisher = banisher
         self.parser = parser
 
         # Processing input tokens might return many tokens, so
         # we store them in a buffer.
-        self.buffer_token_queue = deque()
+        self.out_queue = GetBuffer(getter=banisher.get_next_output_list,
+                                   initial=initial)
 
     def get_chunk(self):
         # Want to extend the queue-to-be-parsed one token at a time,
@@ -42,7 +60,7 @@ class ChunkGrabber(object):
         have_parsed = False
         while True:
             try:
-                t = self.banisher.pop_or_fill_and_pop(self.buffer_token_queue)
+                t = next(self.out_queue)
             except EndOfFile:
                 # If we get an EndOfFile, and we have just started trying to
                 # get a parse-chunk, we are done, so just propagate the
@@ -83,7 +101,7 @@ class ChunkGrabber(object):
                 if have_parsed:
                     # We got one token of fluff due to extra read, to make the
                     # parse queue not-parse. So put it back on the buffer.
-                    self.buffer_token_queue.appendleft(chunk_token_queue.pop())
+                    self.out_queue.queue.appendleft(chunk_token_queue.pop())
                     break
                 # If we have not yet parsed, then something is wrong.
                 else:
@@ -107,3 +125,6 @@ class ChunkGrabber(object):
         # did in the parser, so save the bits in a special place.
         chunk._terminal_tokens = chunk_token_queue
         return chunk
+
+    def clean_up(self):
+        self.banisher.instructions.replace_tokens_on_input(self.out_queue.queue)
