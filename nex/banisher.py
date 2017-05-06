@@ -22,7 +22,7 @@ from .state import Mode, Group
 from .executor import execute_commands
 from .if_executor import execute_condition
 from .expander import parse_parameter_text
-from .parsing.utils import ChunkGrabber, GetBuffer
+from .parsing.utils import GetBuffer, safe_chunk_grabber
 from .parsing.command_parser import command_parser
 from .parsing.condition_parser import condition_parser
 from .parsing.general_text_parser import general_text_parser
@@ -302,8 +302,6 @@ class Banisher:
         # and one possible command is '\input', which needs to modify the
         # reader.
         self.reader = reader
-        # Input buffer.
-        self.input_tokens_queue = deque()
         # Context is not a TeX concept; it's used when doing this messy bit of
         # parsing.
         self.context_mode_stack = []
@@ -383,9 +381,9 @@ class Banisher:
         return tokens, []
 
     def handle_if(self, first_token):
-        condition_grabber = ChunkGrabber(self, parser=condition_parser,
-                                         initial=[first_token])
-        condition_token = condition_grabber.get_chunk()
+        with safe_chunk_grabber(self, condition_parser,
+                                initial=[first_token]) as condition_grabber:
+            condition_token = condition_grabber.get_chunk()
         outcome = execute_condition(condition_token, self.global_state)
 
         # TODO: Move inside executor? Not sure.
@@ -430,11 +428,10 @@ class Banisher:
         self._pop_context()
 
         box_parser = command_parser
-        chunk_grabber = ChunkGrabber(self, parser=box_parser)
-
-        # Matching right brace should trigger EndOfSubExecutor and return.
-        execute_commands(chunk_grabber, self.global_state,
-                         banisher=self, reader=self.reader)
+        with safe_chunk_grabber(self, parser=box_parser) as chunk_grabber:
+            # Matching right brace should trigger EndOfSubExecutor and return.
+            execute_commands(chunk_grabber, self.global_state,
+                             banisher=self, reader=self.reader)
 
         # [After ending the group, then TeX] packages the hbox (using the
         # size that was saved on the stack), and completes the setbox
@@ -500,10 +497,10 @@ class Banisher:
 
     def handle_change_case(self, first_token):
         # Get the succeeding general text token for processing.
-        general_text_grabber = ChunkGrabber(self, parser=general_text_parser)
-        with context_mode(self,
-                          ContextMode.awaiting_balanced_text_start):
-            general_text_token = general_text_grabber.get_chunk()
+        with safe_chunk_grabber(self,
+                                general_text_parser) as general_text_grabber:
+            with context_mode(self, ContextMode.awaiting_balanced_text_start):
+                general_text_token = general_text_grabber.get_chunk()
         un_cased_tokens = general_text_token.value
 
         case_funcs_map = {

@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from collections import deque
 
 from ..reader import EndOfFile
@@ -34,6 +35,15 @@ class GetBuffer:
         while not self.queue:
             self.queue.extend(self.getter())
         return self.queue.popleft()
+
+
+@contextmanager
+def safe_chunk_grabber(banisher, *args, **kwargs):
+    c = ChunkGrabber(banisher, *args, **kwargs)
+    yield c
+    if c.out_queue.queue:
+        raise ValueError(f'Finished with chunk grabber but still tokens on '
+                         f'output queue: {c.out_queue.queue}')
 
 
 class ChunkGrabber(object):

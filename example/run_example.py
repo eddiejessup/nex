@@ -9,7 +9,7 @@ from nex.banisher import Banisher
 from nex.executor import execute_commands
 from nex.box_writer import write_to_file
 from nex.parsing.command_parser import command_parser
-from nex.parsing.utils import ChunkGrabber
+from nex.parsing.utils import safe_chunk_grabber
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -30,9 +30,9 @@ def run_file(in_path, font_search_paths):
     instructioner = Instructioner(lexer)
     banisher = Banisher(instructions=instructioner, state=state, reader=reader)
 
-    command_grabber = ChunkGrabber(banisher, parser=command_parser)
-    execute_commands(command_grabber, state=state, banisher=banisher,
-                     reader=reader)
+    with safe_chunk_grabber(banisher, command_parser) as command_grabber:
+        execute_commands(command_grabber, state=state, banisher=banisher,
+                         reader=reader)
     return state
 
 
