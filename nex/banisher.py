@@ -294,9 +294,11 @@ def get_string_instr_repr(target_token, escape_char_token):
 
 class Banisher:
 
-    def __init__(self, instructions, state, reader):
+    def __init__(self, instructions, state, reader,
+                 resolve_control_sequence_func):
         self.instructions = instructions
         self.global_state = state
+        self.resolve_control_sequence = resolve_control_sequence_func
         # The banisher needs the reader because it can execute commands,
         # and one possible command is '\input', which needs to modify the
         # reader.
@@ -535,7 +537,7 @@ class Banisher:
         if (self._expanding_control_sequences and
                 first_token.instruction in unexpanded_cs_instructions):
             name = first_token.value['name']
-            first_token = self.global_state.resolve_control_sequence_to_token(
+            first_token = self.resolve_control_sequence(
                 name, position_like=first_token)
 
         instr = first_token.instruction
