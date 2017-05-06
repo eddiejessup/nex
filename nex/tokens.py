@@ -47,7 +47,6 @@ class PositionToken(BaseToken):
         if self.line_nr == 'abstract':
             return ''
 
-        s = ''
         if self.line_nr is not None:
 
             s_line = '{:d}'.format(self.line_nr)
@@ -70,16 +69,26 @@ class PositionToken(BaseToken):
             s_len = '?'
 
         if verbose:
-            f = 'Line {}, Col {}, Index {}, Length {}'
+            s = 'Line {}, Col {}, Index {}, Length {}'.format(s_line, s_col,
+                                                              s_pos, s_len)
         else:
-            f = '{}:{},{}+{}'
-        s = f.format(s_line, s_col, s_pos, s_len)
+            s = 'L{}:{}'.format(s_line, s_col)
         return s
 
     def __repr__(self):
-        return '<{}({}): {} @ {}>'.format(self.__class__.__name__,
-                                          self.type, self.value_repr,
-                                          self.pos_summary())
+        pos_summary = self.pos_summary()
+        if pos_summary:
+            pos = ' {}'.format(pos_summary)
+        else:
+            pos = ''
+        val_r = self.value_repr
+        if val_r:
+            val = ': {}'.format(val_r)
+        else:
+            val = ''
+        return '<{}({}){}{}>'.format(self.__class__.__name__,
+                                     self.type,
+                                     pos, val)
 
     def set_position(self, line_nr, col_nr, char_nr, char_len, file_hash):
         self.line_nr = line_nr
@@ -106,7 +115,8 @@ class PositionToken(BaseToken):
         if '\n' in pre_context:
             pre_context = pre_context[pre_context.rfind('\n'):]
         else:
-            pre_context = '…' + pre_context
+            if before_i > 0:
+                pre_context = '…' + pre_context
 
         if self.char_len is None:
             here_len = 1
@@ -123,7 +133,8 @@ class PositionToken(BaseToken):
         if '\n' in post_context:
             post_context = post_context[:post_context.find('\n') + 1]
         else:
-            post_context = post_context + '…'
+            if end_i != len(cs):
+                post_context = post_context + '…'
 
         s = pre_context + here + post_context
         s = s.replace('\n', '⏎ ')
@@ -182,7 +193,9 @@ class InstructionToken(PositionToken):
 
     def copy(self, *args, **kwargs):
         v = self.value
-        if isinstance(v, dict):
+        if v is None:
+            v_copy = v
+        elif isinstance(v, dict):
             v_copy = v.copy()
         elif isinstance(v, int):
             v_copy = v
@@ -190,6 +203,12 @@ class InstructionToken(PositionToken):
             raise Exception
         return self.__class__(instruction=self.instruction,
                               value=v_copy, *args, **kwargs)
+
+    def __eq__(self, other):
+        return (
+            self.instruction == other.instruction and
+            self.value == other.value
+        )
 
     @property
     def type(self):
@@ -201,7 +220,7 @@ class InstructionToken(PositionToken):
     def __repr__(self):
         pos_summary = self.pos_summary()
         if pos_summary:
-            pos = ' @{}'.format(pos_summary)
+            pos = ' {}'.format(pos_summary)
         else:
             pos = ''
         val_r = self.value_repr
@@ -210,8 +229,8 @@ class InstructionToken(PositionToken):
         else:
             val = ''
         return '<{}(I.{}){}{}>'.format(self.__class__.__name__,
-                                         self.instruction.name,
-                                         pos, val)
+                                       self.instruction.name,
+                                       pos, val)
 
     # Token interface.
 

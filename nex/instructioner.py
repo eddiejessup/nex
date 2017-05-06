@@ -140,10 +140,13 @@ class Instructioner:
 
     def __next__(self):
         if self.input_tokens_queue:
-            return self.input_tokens_queue.popleft()
+            t = self.input_tokens_queue.popleft()
         else:
             new_lex_token = next(self.lexer)
-            return lex_token_to_instruction_token(new_lex_token)
+            t = lex_token_to_instruction_token(new_lex_token)
+        if t.char_nr is not None:
+            print(t.get_position_str(self.lexer.reader))
+        return t
 
     def advance_to_end(self):
         yield from self.lexer.advance_to_end()

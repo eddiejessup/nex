@@ -96,6 +96,14 @@ def test_control_sequence():
     assert tokens_single[0].value == '@' and len(tokens_single) == 2
 
 
+def test_control_sequence_spacing():
+    """Check multiple spaces are ignored."""
+    tokens_close = lex_string_to_tokens(r'\howdy\world')
+    tokens_spaced = lex_string_to_tokens(r'\howdy \world')
+    tokens_super_spaced = lex_string_to_tokens(r'\howdy  \world')
+    assert len(tokens_close) == len(tokens_spaced) == len(tokens_super_spaced)
+
+
 def test_new_lines():
     """Check what happens when entering new-lines."""
     # Note that I'm not even sure what the specification says *should* happen

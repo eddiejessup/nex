@@ -510,9 +510,6 @@ class Banisher:
     def _expand_next_input_token(self):
         first_token = next(self.instructions)
 
-        if first_token.char_nr is not None:
-            print(first_token.get_position_str(self.reader))
-
         # If the token is an unexpanded control sequence call, and expansion is
         # not suppressed, then we must resolve the call:
         # - A user control sequence will become a macro instruction token.
