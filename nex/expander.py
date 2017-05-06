@@ -99,10 +99,3 @@ def substitute_params_with_args(replace_text, arguments):
         else:
             finished_text.append(t)
     return finished_text
-
-
-def expand_macro_to_token_list(macro_token, arguments):
-    def_text_token = macro_token.value['text']
-    replace_text = def_text_token.value['replacement_text']
-    finished_text = substitute_params_with_args(replace_text, arguments)
-    return finished_text

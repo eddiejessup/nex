@@ -1,6 +1,5 @@
 from contextlib import contextmanager
 import logging
-from collections import deque
 from enum import Enum
 
 from .tokens import InstructionToken
@@ -16,12 +15,10 @@ from .constants.primitive_control_sequences import (Instructions,
                                                     unexpanded_cs_instructions,
                                                     hyphenation_instructions)
 from .instructioner import (make_control_sequence_instruction_token,
-                            make_instruction_token_from_char_cat,
-                            lex_token_to_instruction_token)
+                            make_instruction_token_from_char_cat)
 from .state import Mode, Group
 from .executor import execute_commands
 from .if_executor import execute_condition
-from .expander import parse_parameter_text
 from .parsing.utils import GetBuffer, safe_chunk_grabber
 from .parsing.command_parser import command_parser
 from .parsing.condition_parser import condition_parser
@@ -237,8 +234,7 @@ def get_parameter_instrs(instructions):
         instr = next(instructions)
         if instr.instruction == Instructions.left_brace:
             left_brace_instr = instr
-            parameters = parse_parameter_text(param_instrs)
-            return parameters, left_brace_instr
+            return param_instrs, left_brace_instr
         param_instrs.append(instr)
 
 
@@ -357,8 +353,7 @@ class Banisher:
 
     def _handle_macro(self, first_token):
         name = first_token.value['name']
-        macro_text = first_token.value['text']
-        params = macro_text.value['parameter_text']
+        params = first_token.value['parameter_text']
 
         # Set context to inhibit expansion.
         with context_mode(self, ContextMode.absorbing_macro_arguments):

@@ -206,7 +206,9 @@ def execute_command(command, state, banisher, reader):
                                        code_eval)
     elif type_ == 'macro_assignment':
         name = v['name']
-        state.set_macro(name, v['text'], v['def_type'], v['prefixes'])
+        state.set_macro(name, parameter_text=v['parameter_text'],
+                        replacement_text=v['replacement_text'],
+                        def_type=v['def_type'], prefixes=v['prefixes'])
     elif type_ == 'variable_assignment':
         variable, value = v['variable'], v['value']
         # The value might be a variable reference or something, so we must

@@ -6,7 +6,7 @@ from .tex_parameters import get_initial_parameters, get_local_parameters
 from .fonts import (GlobalFontState, get_initial_font_state,
                     get_local_font_state)
 from .router import get_initial_router, get_local_router
-from .expander import expand_macro_to_token_list
+from .expander import substitute_params_with_args
 
 
 class Mode(Enum):
@@ -173,10 +173,10 @@ class Scope(object):
 
     # Router interface.
 
-    def expand_macro_to_token_list(self, name, *args, **kwargs):
+    def expand_macro_to_token_list(self, name, arguments):
         macro_token = self.resolve_control_sequence_to_token(name)
-        return expand_macro_to_token_list(macro_token,
-                                          *args, **kwargs)
+        replace_text = macro_token.value['replacement_text']
+        return substitute_params_with_args(replace_text, arguments)
 
     # TODO: maybe just have outside things address .router directly.
     def defer_to_router(self, func_name, *args, **kwargs):
@@ -412,7 +412,7 @@ class GlobalState(object):
     def resolve_control_sequence_to_token(self, *args, **kwargs):
         return self.try_scope_func_until_success('resolve_control_sequence_to_token', *args, **kwargs)
 
-    def set_macro(self, name, text, def_type, prefixes):
+    def set_macro(self, name, replacement_text, parameter_text, def_type, prefixes):
         # TODO: Consider \globaldefs integer parameter.
         # TODO: do something about \outer. Although it seems a bit fussy...
         # TODO: do something about \long. Although the above also applies...
@@ -420,7 +420,11 @@ class GlobalState(object):
         # Need to set for all outer scopes, in case we have already defined
         # the macro in a non-global scope.
         for scope in self.get_scopes(is_global):
-            macro_token = scope.set_macro(name, text, def_type, prefixes)
+            macro_token = scope.set_macro(name,
+                                          replacement_text=replacement_text,
+                                          parameter_text=parameter_text,
+                                          def_type=def_type,
+                                          prefixes=prefixes)
         return macro_token
 
     def do_short_hand_definition(self, is_global, *args, **kwargs):

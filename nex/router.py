@@ -1,8 +1,9 @@
-from .tokens import BuiltToken, InstructionToken, InternalToken
+from .tokens import InstructionToken, InternalToken
 from .utils import get_unique_id, NoSuchControlSequence
 from .tex_parameters import parameter_instr_to_names
 from .lexer import control_sequence_lex_type, char_cat_lex_type
 from .constants.primitive_control_sequences import Instructions
+from .expander import parse_replacement_text, parse_parameter_text
 
 
 # Control sequence to instruction map.
@@ -256,18 +257,21 @@ class CSRouter(object):
         else:
             import pdb; pdb.set_trace()
 
-    def set_macro(self, name, text, def_type, prefixes=None):
+    def set_macro(self, name, replacement_text, parameter_text,
+                  def_type, prefixes=None):
         route_id = get_unique_id()
         route_token = make_route_token('macro', route_id)
         self._set_route_token(name, route_token)
 
         if prefixes is None:
             prefixes = set()
+
         macro_token = InstructionToken(
             Instructions.macro,
             value={'name': name,
                    'prefixes': prefixes,
-                   'text': text,
+                   'replacement_text': parse_replacement_text(replacement_text),
+                   'parameter_text': parse_parameter_text(parameter_text),
                    'def_type': def_type},
             line_nr='abstract',
         )
@@ -275,15 +279,13 @@ class CSRouter(object):
 
     def do_short_hand_definition(self, name, def_type, code):
         def_token_instr = short_hand_def_type_to_token_instr[def_type]
-        terminal_token = InstructionToken(
+        instr_token = InstructionToken(
             def_token_instr,
             value=code,
             line_nr='abstract'
         )
-        text = BuiltToken(type_='definition_text',
-                          value={'parameter_text': [],
-                                 'replacement_text': [terminal_token]})
-        self.set_macro(name, text, def_type='sdef', prefixes=None)
+        self.set_macro(name, replacement_text=[instr_token],
+                       parameter_text=[], def_type='sdef', prefixes=None)
 
     def _set_let_character(self, name, char_cat_token):
         route_id = get_unique_id()

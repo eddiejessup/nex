@@ -1,7 +1,6 @@
 import logging
 
 from ..tokens import BuiltToken, instructions_to_types
-from ..expander import parse_replacement_text
 from ..fonts import FontRange
 from ..constants.primitive_control_sequences import (Instructions as I,
                                                      message_instructions,
@@ -176,12 +175,11 @@ def macro_assignment(p):
 
 @pg.production('definition : def control_sequence definition_text')
 def definition(p):
-    def_token = BuiltToken(type_='definition',
-                           value={'def_type': p[0],
-                                  'name': p[1].value['name'],
-                                  'text': p[2]},
-                           position_like=p)
-    return def_token
+    return BuiltToken(type_='definition',
+                      value=dict(def_type=p[0],
+                                 name=p[1].value['name'],
+                                 **p[2].value),
+                      position_like=p)
 
 
 # TODO: can automate this, and many like it, using expander maps.
@@ -195,11 +193,9 @@ def def_(p):
 
 @pg.production('definition_text : PARAMETER_TEXT LEFT_BRACE BALANCED_TEXT_AND_RIGHT_BRACE')
 def definition_text(p):
-    # TODO: maybe move this parsing logic to inside the Expander.
-    replacement_text = parse_replacement_text(p[2].value)
     def_text_token = BuiltToken(type_='definition_text',
                                 value={'parameter_text': p[0].value,
-                                       'replacement_text': replacement_text},
+                                       'replacement_text': p[2].value},
                                 position_like=p)
     return def_text_token
 
