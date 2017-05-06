@@ -2,6 +2,7 @@ from datetime import datetime
 
 from .tokens import InstructionToken
 from .instructions import Instructions
+from .registers import check_type
 
 
 integer_parameter_names = (
@@ -186,23 +187,26 @@ class Parameters(object):
 
     def __init__(self, integers, dimens, glues, mu_glues, tokens):
         self.parameter_maps = {
-            'integer': integers,
-            'dimen': dimens,
-            'glue': glues,
-            'mu_glue': mu_glues,
-            'token': tokens,
+            Instructions.count.value: integers,
+            Instructions.dimen.value: dimens,
+            Instructions.skip.value: glues,
+            Instructions.mu_skip.value: mu_glues,
+            Instructions.toks.value: tokens,
         }
 
-    def _get_parameter_map_by_name(self, name):
-        for parameter_map in self.parameter_maps.values():
+    def _get_parameter_type_by_name(self, name):
+        for parameter_type, parameter_map in self.parameter_maps.items():
             if name in parameter_map:
-                return parameter_map
-        raise KeyError('Parameter ''{}'' not known'.format(name))
+                return parameter_type
+        raise KeyError(f'Parameter ''{name}'' not known')
 
     def get_parameter_value(self, name):
-        parameter_map = self._get_parameter_map_by_name(name)
+        parameter_type = self._get_parameter_type_by_name(name)
+        parameter_map = self.parameter_maps[parameter_type]
         return parameter_map[name]
 
     def set_parameter_value(self, name, value):
-        parameter_map = self._get_parameter_map_by_name(name)
+        parameter_type = self._get_parameter_type_by_name(name)
+        check_type(parameter_type, value)
+        parameter_map = self.parameter_maps[parameter_type]
         parameter_map[name] = value

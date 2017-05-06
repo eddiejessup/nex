@@ -28,21 +28,33 @@ def get_initial_registers():
 get_local_registers = get_initial_registers
 
 
+def check_type(type_, value):
+    # TODO: Make type checking more strict, and do in more places.
+    if type_ in (Instructions.count.value, Instructions.dimen.value):
+        expected_type = int
+    elif type_ in (Instructions.skip.value, Instructions.mu_skip.value):
+        expected_type = dict
+    elif type_ == Instructions.toks.value:
+        expected_type = list
+    if not isinstance(value, expected_type):
+        raise TypeError('Setting register to wrong type')
+
+
 class Registers(object):
 
     def __init__(self, nr_counts, nr_dimens,
                  nr_skips, nr_mu_skips, nr_token_lists):
         init_register = lambda n: {i: None for i in range(n)}
         self.register_map = {
-            Instructions.count: init_register(nr_counts),
-            Instructions.dimen: init_register(nr_dimens),
-            Instructions.skip: init_register(nr_skips),
-            Instructions.mu_skip: init_register(nr_mu_skips),
-            Instructions.toks: init_register(nr_token_lists),
+            Instructions.count.value: init_register(nr_counts),
+            Instructions.dimen.value: init_register(nr_dimens),
+            Instructions.skip.value: init_register(nr_skips),
+            Instructions.mu_skip.value: init_register(nr_mu_skips),
+            Instructions.toks.value: init_register(nr_token_lists),
         }
 
     def _get_register_map(self, type_):
-        return self.register_map[Instructions(type_)]
+        return self.register_map[type_]
 
     def get_register_value(self, type_, i):
         register = self._get_register_map(type_)
@@ -57,15 +69,7 @@ class Registers(object):
         return r
 
     def set_register_value(self, type_, i, value):
-        # TODO: Make type checking more strict, and do in more places.
-        if type_ in ('COUNT', 'DIMEN'):
-            expected_type = int
-        elif type_ in ('SKIP', 'MU_SKIP'):
-            expected_type = dict
-        elif type_ == 'TOKS':
-            expected_type = list
-        if not isinstance(value, expected_type):
-            raise TypeError('Setting register to wrong type')
+        check_type(type_, value)
         register = self._get_register_map(type_)
         if i not in register:
             raise ValueError('No register number {} of type {}'
