@@ -261,14 +261,27 @@
 
 % And here's a different sort of allocation:
 % For example, \newif\iffoo creates \footrue, \foofalse to go with \iffoo.
-\outer\def\newif#1{\count@\escapechar \escapechar\m@ne
+\outer\def\newif#1{
+  \count@\escapechar
+  \escapechar\m@ne
+
   \expandafter\expandafter\expandafter
    \def\@if#1{true}{\let#1=\iftrue}%
+
   \expandafter\expandafter\expandafter
    \def\@if#1{false}{\let#1=\iffalse}%
-  \@if#1{false}\escapechar\count@} % the condition starts out false
-\def\@if#1#2{\csname\expandafter\if@\string#1#2\endcsname}
-{\uccode`1=`i \uccode`2=`f \uppercase{\gdef\if@12{}}} % `if' is required
+
+  \@if#1{false} % the condition starts out false
+
+  \escapechar\count@
+}
+% remove the if
+\def\@if#1#2{\csname\expandafter\if@\string#1#2\endcsname} % `if' is required
+{
+\uccode`1=`i
+\uccode`2=`f
+\uppercase{\gdef\if@12{}}
+} 
 
 % Assign initial values to TeX's parameters
 
@@ -1219,7 +1232,7 @@
 \message{hyphenation}
 
 \lefthyphenmin=2 \righthyphenmin=3 % disallow x- or -xx breaks
-\input hyphen
+% \input hyphen
 
 \def\magnification{\afterassignment\m@g\count@}
 \def\m@g{\mag\count@
