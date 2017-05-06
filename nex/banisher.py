@@ -295,7 +295,6 @@ def get_string_instr_repr(target_token, escape_char_token):
 class Banisher:
 
     def __init__(self, instructions, state, reader):
-        # TODO: Take this with each call instead of being part of state.
         self.instructions = instructions
         self.global_state = state
         # The banisher needs the reader because it can execute commands,

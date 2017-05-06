@@ -74,11 +74,11 @@ def execute_command(command, state, banisher, reader):
         # Put the terminal tokens that led to this command back on the input
         # queue.
         terminal_tokens = command._terminal_tokens
-        banisher.instructions.replace_tokens_on_input(terminal_tokens)
         # Get a primitive token for the indent command.
         indent_token = primitive_canon_tokens['indent']
         # And add it before the tokens we just read.
-        banisher.instructions.replace_token_on_input(indent_token)
+        banisher.instructions.replace_tokens_on_input([indent_token] +
+                                                      terminal_tokens)
     elif type_ == 'SPACE':
         if state.mode in vertical_modes:
             # "Spaces have no effects in vertical modes".

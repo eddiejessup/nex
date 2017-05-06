@@ -147,6 +147,3 @@ class Instructioner:
 
     def replace_tokens_on_input(self, tokens):
         self.input_tokens_queue.extendleft(reversed(tokens))
-
-    def replace_token_on_input(self, token):
-        self.input_tokens_queue.appendleft(token)
