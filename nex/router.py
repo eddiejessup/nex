@@ -112,16 +112,6 @@ short_hand_def_type_to_token_instr = {
 }
 
 
-def make_simple_definition_token(name, tokens):
-    def_text_token = BuiltToken(type_='definition_text',
-                                value={'parameter_text': [],
-                                       'replacement_text': tokens})
-    def_token = BuiltToken(type_='definition',
-                           value={'name': name,
-                                  'text': def_text_token})
-    return def_token
-
-
 primitive_canon_tokens = {}
 for prim_cs, prim_instruction in primitive_control_sequences_map.items():
     # Terminals are tokens that may be passed to the parser. Non-terminals
@@ -266,30 +256,34 @@ class CSRouter(object):
         else:
             import pdb; pdb.set_trace()
 
-    def set_macro(self, name, definition_token, prefixes=None):
+    def set_macro(self, name, text, def_type, prefixes=None):
         route_id = get_unique_id()
         route_token = make_route_token('macro', route_id)
         self._set_route_token(name, route_token)
 
         if prefixes is None:
             prefixes = set()
-        macro_token = InstructionToken.from_instruction(
+        macro_token = InstructionToken(
             Instructions.macro,
-            value={'prefixes': prefixes, 'definition': definition_token},
+            value={'name': name,
+                   'prefixes': prefixes,
+                   'text': text,
+                   'def_type': def_type},
             line_nr='abstract',
         )
         self.macros[route_id] = macro_token
 
     def do_short_hand_definition(self, name, def_type, code):
         def_token_instr = short_hand_def_type_to_token_instr[def_type]
-        terminal_token = InstructionToken.from_instruction(
+        terminal_token = InstructionToken(
             def_token_instr,
             value=code,
             line_nr='abstract'
         )
-        definition_token = make_simple_definition_token(name,
-                                                        [terminal_token])
-        self.set_macro(name, definition_token, prefixes=None)
+        text = BuiltToken(type_='definition_text',
+                          value={'parameter_text': [],
+                                 'replacement_text': [terminal_token]})
+        self.set_macro(name, text, def_type='sdef', prefixes=None)
 
     def _set_let_character(self, name, char_cat_token):
         route_id = get_unique_id()

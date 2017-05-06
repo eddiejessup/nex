@@ -169,8 +169,7 @@ def prefix(p):
 @pg.production('macro_assignment : definition')
 def macro_assignment(p):
     macro_token = BuiltToken(type_='macro_assignment',
-                             value={'prefixes': set(),
-                                    'definition': p[0]},
+                             value=dict(prefixes=set(), **p[0].value),
                              position_like=p)
     return macro_token
 

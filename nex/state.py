@@ -412,18 +412,15 @@ class GlobalState(object):
     def resolve_control_sequence_to_token(self, *args, **kwargs):
         return self.try_scope_func_until_success('resolve_control_sequence_to_token', *args, **kwargs)
 
-    def set_macro(self, name, definition_token, prefixes):
-        # TODO: Consider of \globaldefs integer parameter.
+    def set_macro(self, name, text, def_type, prefixes):
+        # TODO: Consider \globaldefs integer parameter.
         # TODO: do something about \outer. Although it seems a bit fussy...
         # TODO: do something about \long. Although the above also applies...
-        def_type = definition_token.value['def_type']
         is_global = def_type.type in ('G_DEF', 'X_DEF') or 'GLOBAL' in prefixes
-        # TODO: do something about this.
-        is_expanded = def_type in ('E_DEF', 'X_DEF')
         # Need to set for all outer scopes, in case we have already defined
         # the macro in a non-global scope.
         for scope in self.get_scopes(is_global):
-            macro_token = scope.set_macro(name, definition_token, prefixes)
+            macro_token = scope.set_macro(name, text, def_type, prefixes)
         return macro_token
 
     def do_short_hand_definition(self, is_global, *args, **kwargs):

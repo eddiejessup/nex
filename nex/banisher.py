@@ -356,9 +356,8 @@ class Banisher:
             return None
 
     def _handle_macro(self, first_token):
-        macro_definition = first_token.value['definition']
-        name = macro_definition.value['name']
-        macro_text = macro_definition.value['text']
+        name = first_token.value['name']
+        macro_text = first_token.value['text']
         params = macro_text.value['parameter_text']
 
         # Set context to inhibit expansion.
