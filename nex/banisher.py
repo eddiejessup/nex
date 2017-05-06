@@ -353,10 +353,7 @@ class Banisher:
     def _handle_macro(self, first_token):
         name = first_token.value['name']
         params = first_token.value['parameter_text']
-
-        # Set context to inhibit expansion.
-        with context_mode(self, ContextMode.absorbing_macro_arguments):
-            arguments = get_macro_arguments(params, tokens=self.instructions)
+        arguments = get_macro_arguments(params, tokens=self.instructions)
         tokens = self.global_state.expand_macro_to_token_list(name, arguments)
 
         # Note that these tokens might themselves need more expansion.
@@ -375,9 +372,8 @@ class Banisher:
             i_block_to_pick = 0 if outcome else 1
 
         # Now get the body of the condition text.
-        with context_mode(self, ContextMode.absorbing_conditional_text):
-            not_skipped_tokens = get_conditional_text(self.instructions,
-                                                      i_block_to_pick)
+        not_skipped_tokens = get_conditional_text(self.instructions,
+                                                  i_block_to_pick)
         return not_skipped_tokens, []
 
     def _handle_making_box(self, first_token):
@@ -433,8 +429,7 @@ class Banisher:
         cs_name_token = next(self.instructions)
 
         # Get parameter text.
-        with context_mode(self, ContextMode.absorbing_macro_parameter_text):
-            parameter_instrs, left_brace_token = get_parameter_instrs(self.instructions)
+        parameter_instrs, left_brace_token = get_parameter_instrs(self.instructions)
         parameter_text_token = InstructionToken(
             Instructions.parameter_text,
             value=parameter_instrs,
@@ -457,9 +452,7 @@ class Banisher:
 
         # Parse the arguments of LET manually, because the target token can be
         # basically anything, and this would be a pain to tell the parser.
-        with context_mode(self,
-                          ContextMode.absorbing_misc_unexpanded_arguments):
-            let_preamble, let_target_tok = get_let_arguments(self.instructions)
+        let_preamble, let_target_tok = get_let_arguments(self.instructions)
         let_target_instr = InstructionToken(
             Instructions.let_target,
             value=let_target_tok,
