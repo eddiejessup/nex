@@ -4,7 +4,7 @@ from collections import deque
 from .tokens import InstructionToken
 from .lexer import (Lexer, make_char_cat_lex_token,
                     control_sequence_lex_type, char_cat_lex_type)
-from .constants.primitive_control_sequences import Instructions
+from .instructions import Instructions
 from .codes import CatCode
 
 

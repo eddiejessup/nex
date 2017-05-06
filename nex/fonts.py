@@ -4,7 +4,7 @@ from enum import Enum
 from .pydvi.TeXUnit import pt2sp
 from .dampf.dvi_document import get_font_info
 
-from .constants.primitive_control_sequences import Instructions
+from .instructions import Instructions
 from .utils import ensure_extension, find_file
 
 

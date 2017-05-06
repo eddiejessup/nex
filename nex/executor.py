@@ -4,8 +4,7 @@ from .utils import ExecuteCommandError
 from .reader import EndOfFile
 from .registers import is_register_type
 from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
-from .constants.primitive_control_sequences import (Instructions,
-                                                    h_add_glue_instructions)
+from .instructions import Instructions, h_add_glue_instructions
 from .tex_parameters import is_parameter_type
 from .router import primitive_canon_tokens
 from .state import Operation, Mode, Group, vertical_modes, horizontal_modes

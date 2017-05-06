@@ -1,5 +1,4 @@
-from .constants.primitive_control_sequences import (Instructions,
-                                                    register_instructions)
+from .instructions import Instructions, register_instructions
 
 
 short_hand_reg_def_token_type_to_reg_type = {

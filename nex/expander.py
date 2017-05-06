@@ -1,5 +1,5 @@
 from .tokens import InstructionToken
-from .constants.primitive_control_sequences import Instructions
+from .instructions import Instructions
 
 
 def parse_parameter_text(tokens):

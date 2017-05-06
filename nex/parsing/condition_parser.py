@@ -1,4 +1,4 @@
-from ..constants.primitive_control_sequences import if_instructions
+from ..instructions import if_instructions
 from ..tokens import BuiltToken, instructions_to_types
 
 from .common_parsing import pg as common_pg

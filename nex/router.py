@@ -2,7 +2,7 @@ from .tokens import InstructionToken, InternalToken
 from .utils import get_unique_id, NoSuchControlSequence
 from .tex_parameters import parameter_instr_to_names
 from .lexer import control_sequence_lex_type, char_cat_lex_type
-from .constants.primitive_control_sequences import Instructions
+from .instructions import Instructions
 from .expander import parse_replacement_text, parse_parameter_text
 
 

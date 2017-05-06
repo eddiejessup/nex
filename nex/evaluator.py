@@ -1,7 +1,6 @@
 from .tokens import BuiltToken, InstructionToken
 from .registers import is_register_type
-from .constants.units import (PhysicalUnit, MuUnit, InternalUnit,
-                              units_in_scaled_points)
+from .units import PhysicalUnit, MuUnit, InternalUnit, units_in_scaled_points
 from .tex_parameters import glue_keys, is_parameter_type
 
 

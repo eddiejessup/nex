@@ -3,12 +3,12 @@ from string import ascii_lowercase
 from ..rply import ParserGenerator
 
 from ..tokens import BuiltToken, instructions_to_types
-from ..constants.units import PhysicalUnit, MuUnit, InternalUnit
+from ..units import PhysicalUnit, MuUnit, InternalUnit
 from ..tex_parameters import glue_keys
 from ..registers import short_hand_reg_def_token_type_to_reg_type
-from ..constants.primitive_control_sequences import (Instructions as I,
-                                                     unexpanded_cs_instructions,
-                                                     register_instructions)
+from ..instructions import (Instructions as I,
+                            unexpanded_cs_instructions,
+                            register_instructions)
 from ..instructioner import non_active_letters_map
 
 common_terminal_instructions = (

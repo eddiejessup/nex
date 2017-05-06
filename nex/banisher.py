@@ -6,14 +6,14 @@ from .tokens import InstructionToken
 from .lexer import (is_control_sequence_call,
                     char_cat_lex_type, control_sequence_lex_type)
 from .codes import CatCode
-from .constants.primitive_control_sequences import (Instructions,
-                                                    explicit_box_instructions,
-                                                    short_hand_def_instructions,
-                                                    def_instructions,
-                                                    if_instructions,
-                                                    message_instructions,
-                                                    unexpanded_cs_instructions,
-                                                    hyphenation_instructions)
+from .instructions import (Instructions,
+                           explicit_box_instructions,
+                           short_hand_def_instructions,
+                           def_instructions,
+                           if_instructions,
+                           message_instructions,
+                           unexpanded_cs_instructions,
+                           hyphenation_instructions)
 from .instructioner import (make_control_sequence_instruction_token,
                             make_instruction_token_from_char_cat)
 from .state import Mode, Group

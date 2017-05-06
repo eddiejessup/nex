@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from .tokens import InstructionToken
-from .constants.primitive_control_sequences import Instructions
+from .instructions import Instructions
 
 
 integer_parameter_names = (

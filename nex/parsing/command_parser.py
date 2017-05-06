@@ -2,14 +2,14 @@ import logging
 
 from ..tokens import BuiltToken, instructions_to_types
 from ..fonts import FontRange
-from ..constants.primitive_control_sequences import (Instructions as I,
-                                                     message_instructions,
-                                                     hyphenation_instructions,
-                                                     h_add_glue_instructions,
-                                                     v_add_glue_instructions,
-                                                     short_hand_def_instructions,
-                                                     def_instructions,
-                                                     )
+from ..instructions import (Instructions as I,
+                            message_instructions,
+                            hyphenation_instructions,
+                            h_add_glue_instructions,
+                            v_add_glue_instructions,
+                            short_hand_def_instructions,
+                            def_instructions,
+                            )
 from .common_parsing import (pg as common_pg,
                              make_literal_token, get_literal_production_rule)
 from .utils import (ExpectedParsingError, ExhaustedTokensError,
