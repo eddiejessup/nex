@@ -59,6 +59,12 @@ class DummyState:
     def get_cat_code(self, char):
         return self.char_to_cat[char]
 
+    def get_lower_case_code(self, c):
+        return c.lower()
+
+    def get_upper_case_code(self, c):
+        return c.upper()
+
 
 def test_resolver():
     cs_map = {
@@ -313,3 +319,35 @@ def test_cs_name_containing_non_char():
     b = string_to_banisher('$getCSName $primitive $endCSName', cs_map)
     with pytest.raises(BanisherError):
         b.get_next_output_list()
+
+
+def test_change_case():
+    B_token = make_instruction_token_from_char_cat('B', CatCode.letter)
+    make_B_token = make_macro_token(name='makeB', replacement_text=[B_token],
+                                    parameter_text=[])
+    y_token = make_instruction_token_from_char_cat('y', CatCode.letter)
+    make_y_token = make_macro_token(name='makey', replacement_text=[y_token],
+                                    parameter_text=[])
+
+    cs_map = {
+        'upper': InstructionToken(Instructions.upper_case),
+        'lower': InstructionToken(Instructions.lower_case),
+        'makeB': make_B_token,
+        'makey': make_y_token,
+    }
+
+    b = string_to_banisher('$upper[abc]', cs_map)
+    out = b.advance_to_end()
+    assert ''.join(t.value['char'] for t in out) == 'ABC'
+
+    b = string_to_banisher('$lower[XYZ]', cs_map)
+    out = b.advance_to_end()
+    assert ''.join(t.value['char'] for t in out) == 'xyz'
+
+    b = string_to_banisher('$lower[A$makeB C]', cs_map)
+    out = b.advance_to_end()
+    assert ''.join(t.value['char'] for t in out) == 'aBc'
+
+    b = string_to_banisher('$upper[x$makey z]', cs_map)
+    out = b.advance_to_end()
+    assert ''.join(t.value['char'] for t in out) == 'XyZ'

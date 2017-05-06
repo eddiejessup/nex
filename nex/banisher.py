@@ -3,6 +3,7 @@ import logging
 from enum import Enum
 
 from .tokens import InstructionToken
+from .reader import EndOfFile
 from .lexer import (is_control_sequence_call, is_char_cat,
                     char_cat_lex_type, control_sequence_lex_type)
 from .codes import CatCode
@@ -256,22 +257,6 @@ def get_let_arguments(instructions):
     return preamble_tokens, let_target
 
 
-def get_cased_tokens(un_cased_tokens, case_func):
-    def get_cased_tok(un_cased_tok):
-        if un_cased_tok.value['lex_type'] == char_cat_lex_type:
-            un_cased_char = un_cased_tok.value['char']
-            cased_char = case_func(un_cased_char)
-            if cased_char == chr(0):
-                cased_char = un_cased_char
-            # Note that the category code is not changed.
-            cat = un_cased_tok.value['cat']
-            return make_instruction_token_from_char_cat(
-                cased_char, cat, position_like=un_cased_tok)
-        else:
-            return un_cased_tok
-    return list(map(get_cased_tok, un_cased_tokens))
-
-
 def get_string_instr_repr(target_token, escape_char_code):
     # If a control sequence token appears, its \string expansion
     # consists of the control sequence name (including \escapechar as
@@ -332,6 +317,15 @@ class Banisher:
     @property
     def _expanding_control_sequences(self):
         return self.context_mode in expanding_context_modes
+
+    def advance_to_end(self):
+        while True:
+            try:
+                ts = self.get_next_output_list()
+            except EndOfFile:
+                return
+            for t in ts:
+                yield t
 
     def get_next_output_list(self):
         while True:
@@ -474,7 +468,6 @@ class Banisher:
                                 general_text_parser) as general_text_grabber:
             with context_mode(self, ContextMode.awaiting_balanced_text_start):
                 general_text_token = general_text_grabber.get_chunk()
-        un_cased_tokens = general_text_token.value
 
         case_funcs_map = {
             Instructions.lower_case: self.global_state.get_lower_case_code,
@@ -482,7 +475,24 @@ class Banisher:
         }
         case_func = case_funcs_map[first_token.instruction]
 
-        cased_tokens = get_cased_tokens(un_cased_tokens, case_func)
+        def get_cased_tok(un_cased_tok):
+            if un_cased_tok.value['lex_type'] == char_cat_lex_type:
+                un_cased_char = un_cased_tok.value['char']
+                # Conversion to uppercase means that a character is replaced by
+                # its \uccode value, unless the \uccode value is zero (when no
+                # change is made). Conversion to lowercase is similar, using
+                # the \lccode.
+                cased_char = case_func(un_cased_char)
+                if cased_char == chr(0):
+                    cased_char = un_cased_char
+                # The category codes aren't changed.
+                cat = un_cased_tok.value['cat']
+                return make_instruction_token_from_char_cat(
+                    cased_char, cat, position_like=un_cased_tok)
+            else:
+                return un_cased_tok
+
+        cased_tokens = list(map(get_cased_tok, general_text_token.value))
         return cased_tokens, []
 
     def _handle_string(self, first_token):
