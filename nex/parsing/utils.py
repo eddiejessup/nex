@@ -133,7 +133,7 @@ class ChunkGrabber(object):
                 have_parsed = True
         # We might want to reverse the composition of terminal tokens we just
         # did in the parser, so save the bits in a special place.
-        chunk._terminal_tokens = chunk_token_queue
+        chunk._terminal_tokens = list(chunk_token_queue)
         return chunk
 
     def clean_up(self):
