@@ -1,8 +1,10 @@
+import pytest
+
 from string import ascii_letters
 from enum import Enum
 
 from nex.codes import CatCode
-from nex.banisher import Banisher
+from nex.banisher import Banisher, BanisherError
 from nex.tokens import InstructionToken
 from nex.instructions import Instructions
 from nex.instructioner import (Instructioner,
@@ -252,18 +254,62 @@ def test_string_control_sequence_no_escape():
 def test_cs_name():
     char = 'a'
     a_token = make_instruction_token_from_char_cat(char, CatCode.letter)
-    and_token = make_macro_token(name='AND',
-                                 replacement_text=[a_token],
-                                 parameter_text=[])
+    make_A_token = make_macro_token(name='theA',
+                                    replacement_text=[a_token],
+                                    parameter_text=[])
     cs_map = {
         'getCSName': InstructionToken(Instructions.cs_name),
         'endCSName': InstructionToken(Instructions.end_cs_name),
-        'AND': and_token,
+        'theA': make_A_token,
     }
 
-    b = string_to_banisher('$getCSName AND$endCSName', cs_map)
+    b = string_to_banisher('$getCSName theA$endCSName', cs_map)
+    # In the first iteration, should make a $theA control sequence call.
+    # In the second iteration, should expand $theA to `a_token`.
+    out = b.get_next_output_list()
+    assert len(out) == 1
+    assert out[0] == a_token
+
+
+def test_cs_name_end_by_expansion():
+    # I seem to have made this test very complicated. The idea is that a macro,
+    # $theFThenEnd, makes the string 'theF' then '\endcsname'.
+    # This is then procesed by \csname, to produce a control sequence call
+    # '$theF'.
+    # This control sequence is then expanded to the string 'F'.
+    char = 'F'
+    F_token = make_instruction_token_from_char_cat(char, CatCode.letter)
+    cs_name = 'theF'
+    get_lett_instr = lambda c: make_instruction_token_from_char_cat(c, CatCode.letter)
+    the_F_then_end_token = make_macro_token(
+        name='theFThenEnd',
+        replacement_text=[get_lett_instr(c) for c in cs_name] + [InstructionToken(Instructions.end_cs_name)],
+        parameter_text=[]
+    )
+    make_F_token = make_macro_token(name='theF',
+                                    replacement_text=[F_token],
+                                    parameter_text=[])
+    cs_map = {
+        'getCSName': InstructionToken(Instructions.cs_name),
+        'theFThenEnd': the_F_then_end_token,
+        'theF': make_F_token,
+    }
+
+    b = string_to_banisher('$getCSName $theFThenEnd', cs_map)
     # In the first iteration, should make a $AND control sequence call.
     # In the second iteration, should expand $AND to `a_token`.
     out = b.get_next_output_list()
     assert len(out) == 1
-    assert out[0] == a_token
+    assert out[0] == F_token
+
+
+def test_cs_name_containing_non_char():
+    cs_map = {
+        'getCSName': InstructionToken(Instructions.cs_name),
+        'endCSName': InstructionToken(Instructions.end_cs_name),
+        'primitive': InstructionToken(DummyInstructions.test),
+    }
+
+    b = string_to_banisher('$getCSName $primitive $endCSName', cs_map)
+    with pytest.raises(BanisherError):
+        b.get_next_output_list()

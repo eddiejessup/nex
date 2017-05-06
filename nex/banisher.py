@@ -3,7 +3,7 @@ import logging
 from enum import Enum
 
 from .tokens import InstructionToken
-from .lexer import (is_control_sequence_call,
+from .lexer import (is_control_sequence_call, is_char_cat,
                     char_cat_lex_type, control_sequence_lex_type)
 from .codes import CatCode
 from .instructions import (Instructions,
@@ -33,6 +33,10 @@ token_variable_start_instructions = (
     Instructions.toks_def_token,
     Instructions.toks,
 )
+
+
+class BanisherError(Exception):
+    pass
 
 
 class ContextMode(Enum):
@@ -488,15 +492,18 @@ class Banisher:
         return [], get_string_instr_repr(target_token, escape_char_code)
 
     def _handle_cs_name(self, first_token):
-        cs_name_tokens = []
+        chars = []
 
         out_queue = GetBuffer(getter=self.get_next_output_list)
         for t in out_queue:
             if t.instruction == Instructions.end_cs_name:
                 break
-            cs_name_tokens.append(t)
+            if is_char_cat(t):
+                chars.append(t.value['char'])
+            else:
+                raise BanisherError(f'Found non-character inside '
+                                    f'\csname ... \endcsname block: {t}')
 
-        chars = [tok.value['char'] for tok in cs_name_tokens]
         cs_name = ''.join(chars)
         cs_token = make_control_sequence_instruction_token(
             cs_name, position_like=first_token)
