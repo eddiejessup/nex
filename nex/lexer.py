@@ -68,7 +68,7 @@ class Lexer:
     def __init__(self, reader, get_cat_code_func):
         self.reader = reader
         self.reading_state = ReadingState.line_begin
-        self.get_cat_code_func = get_cat_code_func
+        self.get_cat_code = get_cat_code_func
 
     @classmethod
     def from_string(cls, s, *args, **kwargs):
@@ -101,7 +101,7 @@ class Lexer:
             raise ValueError('Peeking ahead so far is forbidden, as lies might'
                              'be returned')
         char = self.reader.peek_ahead(n)
-        cat = self.get_cat_code_func(char)
+        cat = self.get_cat_code(char)
         return char, cat
 
     @property
@@ -148,7 +148,7 @@ class Lexer:
                     else:
                         triod_ascii_code += 64
                     char = chr(triod_ascii_code)
-                    cat = self.get_cat_code_func(char)
+                    cat = self.get_cat_code(char)
                     char_len = 3
                     if not peek:
                         self.reader.advance_loc(n=2)

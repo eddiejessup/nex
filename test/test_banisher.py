@@ -5,7 +5,9 @@ from nex.codes import CatCode
 from nex.banisher import Banisher
 from nex.tokens import InstructionToken
 from nex.instructions import Instructions
-from nex.instructioner import Instructioner, make_control_sequence_instruction_token
+from nex.instructioner import (Instructioner,
+                               make_control_sequence_instruction_token,
+                               make_instruction_token_from_char_cat)
 from nex.router import make_macro_token
 from nex.utils import ascii_characters
 
@@ -27,32 +29,20 @@ test_char_to_cat.update({
 })
 
 
-class DummyCatCodeGetter:
-
-    def __init__(self, char_to_cat):
-        if char_to_cat is None:
-            self.char_to_cat = test_char_to_cat.copy()
-        else:
-            self.char_to_cat = char_to_cat
-
-    def get(self, char):
-        return self.char_to_cat[char]
-
-
-def string_to_instructions(s, char_to_cat):
-    cat_code_getter = DummyCatCodeGetter(char_to_cat)
-    return Instructioner.from_string(s, get_cat_code_func=cat_code_getter.get)
-
-
 def string_to_banisher(s, cs_map, char_to_cat=None, param_map=None):
-    state = DummyState(cs_map, param_map=param_map)
-    instrs = string_to_instructions(s, char_to_cat=char_to_cat)
+    state = DummyState(cs_map=cs_map,
+                       param_map=param_map, char_to_cat=char_to_cat)
+    instrs = Instructioner.from_string(s, get_cat_code_func=state.get_cat_code)
     return Banisher(instrs, state, instrs.lexer.reader)
 
 
 class DummyState:
 
-    def __init__(self, cs_map, param_map=None):
+    def __init__(self, char_to_cat, cs_map, param_map=None):
+        if char_to_cat is None:
+            self.char_to_cat = test_char_to_cat.copy()
+        else:
+            self.char_to_cat = char_to_cat
         self.cs_map = cs_map
         self.param_map = param_map
 
@@ -63,6 +53,9 @@ class DummyState:
 
     def get_parameter_value(self, name):
         return self.param_map[name]
+
+    def get_cat_code(self, char):
+        return self.char_to_cat[char]
 
 
 def test_resolver():
@@ -238,3 +231,39 @@ def test_string_control_sequence_containing_space():
             correct_cat = CatCode.other
         assert t.value['cat'] == correct_cat
     assert ''.join(t.value['char'] for t in out) == '@CS WITH SPACES'
+
+
+def test_string_control_sequence_no_escape():
+    cs_map = {
+        'getString': InstructionToken(Instructions.string),
+    }
+    param_map = {
+        # Negative value should cause no escape character to be shown.
+        'escapechar': -1,
+    }
+
+    b = string_to_banisher('$getString$NoEscapeCS', cs_map,
+                           param_map=param_map)
+    out = b.get_next_output_list()
+    assert all(t.value['cat'] == CatCode.other for t in out)
+    assert ''.join(t.value['char'] for t in out) == 'NoEscapeCS'
+
+
+def test_cs_name():
+    char = 'a'
+    a_token = make_instruction_token_from_char_cat(char, CatCode.letter)
+    and_token = make_macro_token(name='AND',
+                                 replacement_text=[a_token],
+                                 parameter_text=[])
+    cs_map = {
+        'getCSName': InstructionToken(Instructions.cs_name),
+        'endCSName': InstructionToken(Instructions.end_cs_name),
+        'AND': and_token,
+    }
+
+    b = string_to_banisher('$getCSName AND$endCSName', cs_map)
+    # In the first iteration, should make a $AND control sequence call.
+    # In the second iteration, should expand $AND to `a_token`.
+    out = b.get_next_output_list()
+    assert len(out) == 1
+    assert out[0] == a_token
