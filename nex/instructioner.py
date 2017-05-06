@@ -145,5 +145,8 @@ class Instructioner:
             new_lex_token = next(self.lexer)
             return lex_token_to_instruction_token(new_lex_token)
 
+    def advance_to_end(self):
+        yield from self.lexer.advance_to_end()
+
     def replace_tokens_on_input(self, tokens):
         self.input_tokens_queue.extendleft(reversed(tokens))

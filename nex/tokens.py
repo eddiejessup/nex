@@ -6,7 +6,7 @@ colorama.init()
 
 class BaseToken(object):
 
-    def __init__(self, type_, value):
+    def __init__(self, type_, value=None):
         self._type = type_
         self.value = value
 
@@ -14,8 +14,13 @@ class BaseToken(object):
     def type(self):
         return self._type
 
+    @property
+    def value_repr(self):
+        return self.value if self.value is not None else ''
+
     def __repr__(self):
-        return "<%s: %r %r>" % (self.__class__.__name__, self.type, self.value)
+        return '<{}({}): {}>'.format(self.__class__.__name__,
+                                     self.type, self.value_repr)
 
     def __str__(self):
         return self.__repr__()
@@ -29,7 +34,7 @@ class InternalToken(BaseToken):
 class PositionToken(BaseToken):
 
     def __init__(self,
-                 line_nr=None, col_nr=None, char_nr=None, char_len=None,
+                 line_nr='abstract', col_nr=None, char_nr=None, char_len=None,
                  file_hash=None,
                  position_like=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -72,9 +77,9 @@ class PositionToken(BaseToken):
         return s
 
     def __repr__(self):
-        return "<{}({}): {!r} {!r}>".format(self.__class__.__name__,
-                                            self.pos_summary(),
-                                            self.type, self.value)
+        return '<{}({}): {} @ {}>'.format(self.__class__.__name__,
+                                          self.type, self.value_repr,
+                                          self.pos_summary())
 
     def set_position(self, line_nr, col_nr, char_nr, char_len, file_hash):
         self.line_nr = line_nr
@@ -192,6 +197,21 @@ class InstructionToken(PositionToken):
             return self.instruction.value
         except:
             import pdb; pdb.set_trace()
+
+    def __repr__(self):
+        pos_summary = self.pos_summary()
+        if pos_summary:
+            pos = ' @{}'.format(pos_summary)
+        else:
+            pos = ''
+        val_r = self.value_repr
+        if val_r:
+            val = ': {}'.format(val_r)
+        else:
+            val = ''
+        return '<{}(I.{}){}{}>'.format(self.__class__.__name__,
+                                         self.instruction.name,
+                                         pos, val)
 
     # Token interface.
 

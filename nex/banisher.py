@@ -323,23 +323,27 @@ class Banisher:
 
     def get_next_output_list(self):
         while True:
-            # TODO: Check what happens when we try to parse tokens too far in one
-            # chunk, and bleed into another chunk that only makes sense once the
-            # previous one has executed. For example, defining a new macro, then
-            # calling that macro. This function might have side effects on the
-            # state, and the instructions.
-            next_inputs, next_outputs = self._expand_next_input_token()
-            if next_inputs and next_outputs:
-                import pdb; pdb.set_trace()
-                raise Exception
-            if next_inputs:
-                self.instructions.replace_tokens_on_input(next_inputs)
-            elif next_outputs:
-                return next_outputs
-            else:
-                # The output of a command could *be* an empty list. For
-                # example, a condition might return nothing in some branches.
-                pass
+            outputs = self._iterate()
+            if outputs is not None:
+                return outputs
+
+    def _iterate(self):
+        # TODO: Check what happens when we try to parse tokens too far in one
+        # chunk, and bleed into another chunk that only makes sense once the
+        # previous one has executed. For example, defining a new macro, then
+        # calling that macro. This function might have side effects on the
+        # state, and the instructions.
+        next_inputs, next_outputs = self._expand_next_input_token()
+        if next_inputs and next_outputs:
+            raise Exception
+        if next_inputs:
+            self.instructions.replace_tokens_on_input(next_inputs)
+        elif next_outputs:
+            return next_outputs
+        else:
+            # The output of a command could *be* an empty list. For
+            # example, a condition might return nothing in some branches.
+            pass
 
     def _get_escape_char_instruction_token(self, position_like=None):
         escape_char_code = self.global_state.get_parameter_value('escapechar')
