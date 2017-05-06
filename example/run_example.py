@@ -30,7 +30,6 @@ def run_file(in_path, font_search_paths):
     instructioner = Instructioner(lexer)
     banisher = Banisher(
         instructions=instructioner, state=state, reader=reader,
-        resolve_control_sequence_func=state.resolve_control_sequence_to_token
     )
 
     with safe_chunk_grabber(banisher, command_parser) as command_grabber:
