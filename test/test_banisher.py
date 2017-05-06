@@ -14,12 +14,12 @@ class DummyInstructions(Enum):
     test = 'TEST'
 
 
-char_to_cat = {}
+test_char_to_cat = {}
 for c in ascii_characters:
-    char_to_cat[c] = CatCode.other
+    test_char_to_cat[c] = CatCode.other
 for c in ascii_letters:
-    char_to_cat[c] = CatCode.letter
-char_to_cat.update({
+    test_char_to_cat[c] = CatCode.letter
+test_char_to_cat.update({
     '$': CatCode.escape,
     ' ': CatCode.space,
     '[': CatCode.begin_group,
@@ -29,38 +29,40 @@ char_to_cat.update({
 
 class DummyCatCodeGetter:
 
-    def __init__(self):
-        # self.char_to_cat = get_initial_char_cats()
-        self.char_to_cat = char_to_cat.copy()
+    def __init__(self, char_to_cat):
+        if char_to_cat is None:
+            self.char_to_cat = test_char_to_cat.copy()
+        else:
+            self.char_to_cat = char_to_cat
 
     def get(self, char):
         return self.char_to_cat[char]
 
 
-def string_to_instructions(s):
-    cat_code_getter = DummyCatCodeGetter()
+def string_to_instructions(s, char_to_cat):
+    cat_code_getter = DummyCatCodeGetter(char_to_cat)
     return Instructioner.from_string(s, get_cat_code_func=cat_code_getter.get)
 
 
-def string_to_banisher(s, cs_map):
-    st = DummyState()
-    instrs = string_to_instructions(s)
-
-    def resolve_control_sequence(name, *args, **kwargs):
-        canon_token = cs_map[name]
-        token = canon_token.copy(*args, **kwargs)
-        # Amend canonical tokens to give them the proper control sequence
-        # 'name'.
-        if isinstance(token.value, dict) and 'name' in token.value:
-            token.value['name'] = name
-        return token
-
-    return Banisher(instrs, st, instrs.lexer.reader,
-                    resolve_control_sequence_func=resolve_control_sequence)
+def string_to_banisher(s, cs_map, char_to_cat=None, param_map=None):
+    state = DummyState(cs_map, param_map=param_map)
+    instrs = string_to_instructions(s, char_to_cat=char_to_cat)
+    return Banisher(instrs, state, instrs.lexer.reader)
 
 
 class DummyState:
-    pass
+
+    def __init__(self, cs_map, param_map=None):
+        self.cs_map = cs_map
+        self.param_map = param_map
+
+    def resolve_control_sequence_to_token(self, name, *args, **kwargs):
+        canon_token = self.cs_map[name]
+        token = canon_token.copy(*args, **kwargs)
+        return token
+
+    def get_parameter_value(self, name):
+        return self.param_map[name]
 
 
 def test_resolver():
@@ -187,3 +189,52 @@ def test_expand_after():
     assert len(out) == 2
     assert out[0] == cs_map['defCount']
     assert out[1] == def_target
+
+
+def test_string_control_sequence():
+    cs_map = {
+        'getString': InstructionToken(Instructions.string),
+    }
+    param_map = {
+        'escapechar': ord('@'),
+    }
+    b = string_to_banisher('$getString $CS', cs_map, param_map=param_map)
+    out = b.get_next_output_list()
+    assert all(t.value['cat'] == CatCode.other for t in out)
+    assert ''.join(t.value['char'] for t in out) == '@CS'
+
+
+def test_string_character():
+    cs_map = {
+        'getString': InstructionToken(Instructions.string),
+    }
+    param_map = {
+        'escapechar': ord('@'),
+    }
+    b = string_to_banisher('$getString A', cs_map, param_map=param_map)
+    out = b.get_next_output_list()
+    assert all(t.value['cat'] == CatCode.other for t in out)
+    assert ''.join(t.value['char'] for t in out) == 'A'
+
+
+def test_string_control_sequence_containing_space():
+    cs_map = {
+        'getString': InstructionToken(Instructions.string),
+    }
+    param_map = {
+        'escapechar': ord('@'),
+    }
+    char_to_cat_weird = test_char_to_cat.copy()
+    char_to_cat_weird[' '] = CatCode.letter
+
+    b = string_to_banisher('$getString$CS WITH SPACES', cs_map,
+                           char_to_cat=char_to_cat_weird,
+                           param_map=param_map)
+    out = b.get_next_output_list()
+    for t in out:
+        if t.value['char'] == ' ':
+            correct_cat = CatCode.space
+        else:
+            correct_cat = CatCode.other
+        assert t.value['cat'] == correct_cat
+    assert ''.join(t.value['char'] for t in out) == '@CS WITH SPACES'

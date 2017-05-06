@@ -268,23 +268,33 @@ def get_cased_tokens(un_cased_tokens, case_func):
     return list(map(get_cased_tok, un_cased_tokens))
 
 
-def get_string_instr_repr(target_token, escape_char_token):
-    toks = []
+def get_string_instr_repr(target_token, escape_char_code):
     # If a control sequence token appears, its \string expansion
     # consists of the control sequence name (including \escapechar as
     # an escape character, if the control sequence isn't simply an
     # active character).
     if target_token.instruction in unexpanded_cs_instructions:
-        chars = list(target_token.value['name'])
-        if escape_char_token is not None:
-            toks += [escape_char_token]
+        chars = []
+        if escape_char_code >= 0:
+            chars.append(chr(escape_char_code))
+        chars += list(target_token.value['name'])
     else:
-        char = target_token.value['char']
-        chars = [char]
-    # TODO: Maybe just make a lex token and leave the instructioner to type it?
-    toks += [make_instruction_token_from_char_cat(c, CatCode.other,
-                                                  position_like=target_token)
-             for c in chars]
+        chars = [target_token.value['char']]
+
+    toks = []
+    for c in chars:
+        # Each character in this token list automatically gets category code
+        # [other], including the backslash that \string inserts to represent an
+        # escape character. However, category [space] will be assigned to the
+        # character ']' if it somehow sneaks into the name of a control
+        # sequence.
+        if c == ' ':
+            cat = CatCode.space
+        else:
+            cat = CatCode.other
+        t = make_instruction_token_from_char_cat(c, cat,
+                                                 position_like=target_token)
+        toks.append(t)
     return toks
 
 
@@ -342,16 +352,6 @@ class Banisher:
             # The output of a command could *be* an empty list. For
             # example, a condition might return nothing in some branches.
             pass
-
-    def _get_escape_char_instruction_token(self, position_like=None):
-        escape_char_code = self.global_state.get_parameter_value('escapechar')
-        if escape_char_code >= 0:
-            escape_char = chr(escape_char_code)
-            escape_char_token = make_instruction_token_from_char_cat(
-                escape_char, CatCode.other, position_like=position_like)
-            return escape_char_token
-        else:
-            return None
 
     def _handle_macro(self, first_token):
         params = first_token.value['parameter_text']
@@ -484,9 +484,8 @@ class Banisher:
     def _handle_string(self, first_token):
         # TeX first reads the [next] token without expansion.
         target_token = next(self.instructions)
-        escape_char_token = self._get_escape_char_instruction_token(
-            position_like=target_token)
-        return [], get_string_instr_repr(target_token, escape_char_token)
+        escape_char_code = self.global_state.get_parameter_value('escapechar')
+        return [], get_string_instr_repr(target_token, escape_char_code)
 
     def _handle_cs_name(self, first_token):
         cs_name_tokens = []
