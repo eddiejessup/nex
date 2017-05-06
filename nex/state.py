@@ -6,7 +6,6 @@ from .tex_parameters import get_initial_parameters, get_local_parameters
 from .fonts import (GlobalFontState, get_initial_font_state,
                     get_local_font_state)
 from .router import get_initial_router, get_local_router
-from .expander import substitute_params_with_args
 
 
 class Mode(Enum):
@@ -170,13 +169,6 @@ class Scope(object):
     @property
     def current_font_id(self):
         return self.font_state.current_font_id
-
-    # Router interface.
-
-    def expand_macro_to_token_list(self, name, arguments):
-        macro_token = self.resolve_control_sequence_to_token(name)
-        replace_text = macro_token.value['replacement_text']
-        return substitute_params_with_args(replace_text, arguments)
 
     # TODO: maybe just have outside things address .router directly.
     def defer_to_router(self, func_name, *args, **kwargs):

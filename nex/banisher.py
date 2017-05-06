@@ -17,6 +17,7 @@ from .instructions import (Instructions,
 from .instructioner import (make_control_sequence_instruction_token,
                             make_instruction_token_from_char_cat)
 from .state import Mode, Group
+from .expander import substitute_params_with_args
 from .executor import execute_commands
 from .if_executor import execute_condition
 from .parsing.utils import GetBuffer, safe_chunk_grabber
@@ -351,11 +352,10 @@ class Banisher:
             return None
 
     def _handle_macro(self, first_token):
-        name = first_token.value['name']
         params = first_token.value['parameter_text']
+        replace_text = first_token.value['replacement_text']
         arguments = get_macro_arguments(params, tokens=self.instructions)
-        tokens = self.global_state.expand_macro_to_token_list(name, arguments)
-
+        tokens = substitute_params_with_args(replace_text, arguments)
         # Note that these tokens might themselves need more expansion.
         return tokens, []
 
