@@ -7,7 +7,8 @@ from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from .instructions import Instructions, h_add_glue_instructions
 from .instructioner import make_primitive_control_sequence_instruction
 from .tex_parameters import is_parameter_type, Parameters
-from .state import Operation, Mode, Group, vertical_modes, horizontal_modes
+from .state import Mode, Group, vertical_modes, horizontal_modes
+from .scopes import Operation
 from .box import (HBox, Rule, UnSetGlue, Character, FontDefinition,
                   FontSelection)
 from .paragraphs import h_list_to_best_h_boxes
@@ -155,9 +156,9 @@ class Executor:
                 if isinstance(horizontal_list[-1], UnSetGlue):
                     horizontal_list.pop()
                 # Do \hskip\parfillskip.
-                par_fill_glue = self.state.get_parameter_value(Parameters.par_fill_skip)
+                par_fill_glue = self.state.parameters.get_parameter_value(Parameters.par_fill_skip)
                 horizontal_list.append(UnSetGlue(**par_fill_glue))
-                h_size = self.state.get_parameter_value(Parameters.h_size)
+                h_size = self.state.parameters.get_parameter_value(Parameters.h_size)
                 h_boxes = h_list_to_best_h_boxes(horizontal_list, h_size)
                 # all_routes = get_all_routes(root_node, h_box_tree, h_size, outer=True)
 
@@ -165,7 +166,7 @@ class Executor:
                 for h_box in h_boxes:
                     # Add it to the enclosing vertical list.
                     self.state.append_to_list(h_box)
-                    bl_skip = self.state.get_parameter_value(Parameters.base_line_skip)
+                    bl_skip = self.state.parameters.get_parameter_value(Parameters.base_line_skip)
                     line_glue_item = UnSetGlue(**bl_skip)
                     self.state.append_to_list(line_glue_item)
 
@@ -202,7 +203,7 @@ class Executor:
         # Commands like font commands aren't exactly boxes, but they go through
         # as DVI commands. Just put them in the box for now to deal with later.
         elif type_ == 'font_selection':
-            self.state.set_current_font(v['global'], v['font_id'])
+            self.state.scoped_font_state.set_current_font(v['global'], v['font_id'])
             font_select_item = FontSelection(font_nr=v['font_id'])
             self.state.append_to_list(font_select_item)
         elif type_ == 'font_definition':
@@ -219,8 +220,10 @@ class Executor:
         elif type_ == 'family_assignment':
             family_nr = v['family_nr']
             family_nr_eval = evaler.evaluate_number(self.state, family_nr)
-            self.state.set_font_family(v['global'], family_nr_eval,
-                                  v['font_range'], v['font_id'])
+            self.state.scoped_font_state.set_font_family(v['global'],
+                                                         family_nr_eval,
+                                                         v['font_range'],
+                                                         v['font_id'])
         elif type_ == 'input':
             self.reader.insert_file(command.value['file_name'])
         # I think technically only this should cause the program to end, not
@@ -229,13 +232,13 @@ class Executor:
             raise EndOfFile
         elif type_ == 'short_hand_definition':
             code_eval = evaler.evaluate_number(self.state, v['code'])
-            self.state.do_short_hand_definition(
+            self.state.router.do_short_hand_definition(
                 v['global'], v['control_sequence_name'], v['def_type'],
                 code_eval
             )
         elif type_ == 'macro_assignment':
             name = v['name']
-            self.state.set_macro(
+            self.state.router.set_macro(
                 name, parameter_text=v['parameter_text'],
                 replacement_text=v['replacement_text'],
                 def_type=v['def_type'], prefixes=v['prefixes']
@@ -259,13 +262,13 @@ class Executor:
             evaled_value = value_evaluate_func(self.state, value)
             evaled_i = evaler.evaluate_size(self.state, variable.value)
             if is_register_type(variable.type):
-                self.state.set_register_value(
+                self.state.registers.set_register_value(
                     is_global=v['global'], type_=variable.type,
                     i=evaled_i, value=evaled_value
                 )
             elif is_parameter_type(variable.type):
                 parameter = variable.value['parameter']
-                self.state.set_parameter(
+                self.state.parameters.set_parameter(
                     is_global=v['global'], parameter=parameter,
                     value=evaled_value
                 )
@@ -305,7 +308,7 @@ class Executor:
                 small_glyph_code = GlyphCode(small_family, small_position)
                 large_glyph_code = GlyphCode(large_family, large_position)
                 code = DelimiterCode(small_glyph_code, large_glyph_code)
-            self.state.set_code(v['global'], code_type, char, code)
+            self.state.codes.set_code(v['global'], code_type, char, code)
         elif type_ == 'advance':
             value_eval = evaler.evaluate_number(self.state, v['value'])
             variable = v['variable']
@@ -314,16 +317,16 @@ class Executor:
                       'operation': Operation.advance}
             if is_register_type(variable.type):
                 evaled_i = evaler.evaluate_size(self.state, variable.value)
-                self.state.modify_register_value(type_=variable.type,
-                                                 i=evaled_i, **kwargs)
+                self.state.registers.modify_register_value(type_=variable.type,
+                                                           i=evaled_i, **kwargs)
             elif is_parameter_type(variable.type):
-                self.state.modify_parameter_value(parameter=variable.value['parameter'],
-                                                  **kwargs)
+                self.state.registers.modify_parameter_value(parameter=variable.value['parameter'],
+                                                            **kwargs)
             else:
                 import pdb; pdb.set_trace()
         elif type_ == 'let_assignment':
-            self.state.do_let_assignment(v['global'], new_name=v['name'],
-                                         target_token=v['target_token'])
+            self.state.router.do_let_assignment(v['global'], new_name=v['name'],
+                                                target_token=v['target_token'])
         elif type_ == 'skew_char_assignment':
             # TODO: can we make this nicer by storing the char instead of the
             # number?
@@ -353,13 +356,13 @@ class Executor:
                 # \parindent. The \everypar tokens are inserted into TeX's
                 # input. The page builder is exercised."
                 if not (self.state.mode == Mode.internal_vertical):
-                    par_skip_glue = self.state.get_parameter_value(Parameters.par_skip)
+                    par_skip_glue = self.state.parameters.get_parameter_value(Parameters.par_skip)
                     par_skip_glue_item = UnSetGlue(**par_skip_glue)
                     self.state.append_to_list(par_skip_glue_item)
                 self.state.push_mode(Mode.horizontal)
                 # An empty box of width \parindent is appended to the current
                 # list, and the space factor is set to 1000.
-                par_indent_width = self.state.get_parameter_value(Parameters.par_indent)
+                par_indent_width = self.state.parameters.get_parameter_value(Parameters.par_indent)
                 par_indent_hbox_item = HBox(contents=[], to=par_indent_width)
                 self.state.append_to_list(par_indent_hbox_item)
             elif self.state.mode in horizontal_modes:

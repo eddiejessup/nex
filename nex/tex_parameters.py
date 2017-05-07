@@ -183,7 +183,7 @@ def get_initial_parameters():
     return TexParameterValues(parameter_values)
 
 
-def get_local_parameters():
+def get_local_parameters(enclosing_scope):
     return TexParameterValues({})
 
 

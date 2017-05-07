@@ -143,7 +143,7 @@ def get_initial_codes():
     return codes
 
 
-def get_local_codes():
+def get_local_codes(enclosing_scope):
     char_to_cat = {}
     char_to_math_code = {}
     lower_case_code, upper_case_code = {}, {}

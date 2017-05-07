@@ -28,23 +28,12 @@ test_char_to_cat.update({
 })
 
 
-class DummyState:
-
-    def __init__(self, char_to_cat, cs_map, param_map=None):
+class DummyCodes:
+    def __init__(self, char_to_cat):
         if char_to_cat is None:
             self.char_to_cat = test_char_to_cat.copy()
         else:
             self.char_to_cat = char_to_cat
-        self.cs_map = cs_map
-        self.param_map = param_map
-
-    def lookup_control_sequence(self, name, *args, **kwargs):
-        canon_token = self.cs_map[name]
-        token = canon_token.copy(*args, **kwargs)
-        return token
-
-    def get_parameter_value(self, parameter):
-        return self.param_map[parameter]
 
     def get_cat_code(self, char):
         return self.char_to_cat[char]
@@ -56,10 +45,37 @@ class DummyState:
         return c.upper()
 
 
+class DummyRouter:
+
+    def __init__(self, cs_map):
+        self.cs_map = cs_map
+
+    def lookup_control_sequence(self, name, *args, **kwargs):
+        canon_token = self.cs_map[name]
+        return canon_token.copy(*args, **kwargs)
+
+
+class DummyParameters:
+
+    def __init__(self, param_map):
+        self.param_map = param_map
+
+    def get_parameter_value(self, name, *args, **kwargs):
+        return self.param_map[name]
+
+
+class DummyState:
+
+    def __init__(self, char_to_cat, cs_map, param_map=None):
+        self.router = DummyRouter(cs_map)
+        self.parameters = DummyParameters(param_map)
+        self.codes = DummyCodes(char_to_cat)
+
+
 def string_to_banisher(s, cs_map, char_to_cat=None, param_map=None):
     state = DummyState(cs_map=cs_map,
                        param_map=param_map, char_to_cat=char_to_cat)
-    instrs = Instructioner.from_string(s, get_cat_code_func=state.get_cat_code)
+    instrs = Instructioner.from_string(s, get_cat_code_func=state.codes.get_cat_code)
     return Banisher(instrs, state, instrs.lexer.reader)
 
 

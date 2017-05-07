@@ -25,7 +25,8 @@ def get_initial_registers():
     return Registers(*register_sizes)
 
 
-get_local_registers = get_initial_registers
+def get_local_registers(enclosing_scope):
+    return get_initial_registers()
 
 
 def check_type(type_, value):

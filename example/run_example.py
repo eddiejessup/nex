@@ -23,10 +23,10 @@ logger.addHandler(ch)
 
 
 def run_file(in_path, font_search_paths):
-    state = GlobalState(font_search_paths)
+    state = GlobalState.from_defaults(font_search_paths)
     reader = Reader()
     reader.insert_file(in_path)
-    lexer = Lexer(reader, get_cat_code_func=state.get_cat_code)
+    lexer = Lexer(reader, get_cat_code_func=state.codes.get_cat_code)
     instructioner = Instructioner(lexer)
     banisher = Banisher(
         instructions=instructioner, state=state, reader=reader,

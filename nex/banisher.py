@@ -473,8 +473,8 @@ class Banisher:
                 general_text_token = next(general_text_grabber)
 
         case_funcs_map = {
-            Instructions.lower_case: self.global_state.get_lower_case_code,
-            Instructions.upper_case: self.global_state.get_upper_case_code,
+            Instructions.lower_case: self.global_state.codes.get_lower_case_code,
+            Instructions.upper_case: self.global_state.codes.get_upper_case_code,
         }
         case_func = case_funcs_map[first_token.instruction]
 
@@ -501,7 +501,7 @@ class Banisher:
     def _handle_string(self, first_token):
         # TeX first reads the [next] token without expansion.
         target_token = next(self.instructions)
-        escape_char_code = self.global_state.get_parameter_value(Parameters.escape_char)
+        escape_char_code = self.global_state.parameters.get_parameter_value(Parameters.escape_char)
         return [], get_string_instr_repr(target_token, escape_char_code)
 
     def _handle_cs_name(self, first_token):
@@ -541,7 +541,7 @@ class Banisher:
         if (self._expanding_control_sequences and
                 first_token.instruction in unexpanded_cs_instructions):
             name = first_token.value['name']
-            first_token = self.global_state.lookup_control_sequence(
+            first_token = self.global_state.router.lookup_control_sequence(
                 name, position_like=first_token)
 
         instr = first_token.instruction

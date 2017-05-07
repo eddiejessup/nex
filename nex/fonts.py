@@ -106,14 +106,14 @@ def get_initial_font_families():
     return font_families
 
 
-def get_initial_font_state(global_font_state):
+def get_initial_font_state():
     font_families = get_initial_font_families()
     font_state = FontState(font_families)
-    font_state.set_current_font(global_font_state.null_font_id)
+    font_state.set_current_font(GlobalFontState.null_font_id)
     return font_state
 
 
-def get_local_font_state():
+def get_local_font_state(enclosing_scope):
     # Much like global, because I think we need to define the data structure so
     # we can read and write to it easily. But we should make it so that if the
     # entry is None, we raise a KeyError.

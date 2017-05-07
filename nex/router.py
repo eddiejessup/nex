@@ -378,7 +378,7 @@ class CSRouter(object):
             route_token = self.control_sequences[name]
         # Otherwise, if there's an enclosing scope, ask it for it.
         elif self.enclosing_scope is not None:
-            route_token = self.enclosing_scope.cs_router._lookup_route_token(name)
+            route_token = self.enclosing_scope._lookup_route_token(name)
         # If we are the outermost scope, the control sequence is unknown.
         else:
             raise NoSuchControlSequence(name)
@@ -398,5 +398,5 @@ class CSRouter(object):
         try:
             v = value_map[route_id]
         except KeyError:
-            v = self.enclosing_scope.cs_router._resolve_route_token_to_raw_value(r)
+            v = self.enclosing_scope._resolve_route_token_to_raw_value(r)
         return v
