@@ -285,6 +285,10 @@ class GlobalState(object):
         else:
             import pdb; pdb.set_trace()
 
+    def add_character(self, char):
+        character_item = Character(char, self.current_font)
+        self.append_to_list(character_item)
+
     def execute_command(self, command, banisher, reader):
         # Reader needed to allow us to insert new input in response to
         # commands.
@@ -331,9 +335,7 @@ class GlobalState(object):
         elif type_ == 'PAR':
             self.do_paragraph()
         elif type_ == 'character':
-            character_item = Character(command.value['char'],
-                                       self.current_font)
-            self.append_to_list(character_item)
+            self.add_character(v['char'])
         elif type_ == 'V_RULE':
             e_spec = {k: (None if d is None else evaler.evaluate_dimen(self, d))
                       for k, d in v.items()}

@@ -25,6 +25,7 @@ test_char_to_cat.update({
     ' ': CatCode.space,
     '[': CatCode.begin_group,
     ']': CatCode.end_group,
+    '\n': CatCode.end_of_line,
 })
 
 
