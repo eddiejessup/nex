@@ -17,7 +17,7 @@ from .instructions import (Instructions,
                            hyphenation_instructions)
 from .tex_parameters import Parameters
 from .instructioner import (make_unexpanded_control_sequence_instruction,
-                            make_instruction_token_from_char_cat)
+                            char_cat_instr_tok)
 from .state import Mode, Group
 from .expander import substitute_params_with_args
 from .executor import execute_commands
@@ -282,8 +282,7 @@ def get_string_instr_repr(target_token, escape_char_code):
             cat = CatCode.space
         else:
             cat = CatCode.other
-        t = make_instruction_token_from_char_cat(c, cat,
-                                                 position_like=target_token)
+        t = char_cat_instr_tok(c, cat, position_like=target_token)
         toks.append(t)
     return toks
 
@@ -488,8 +487,8 @@ class Banisher:
                     cased_char = un_cased_char
                 # The category codes aren't changed.
                 cat = un_cased_tok.value['cat']
-                return make_instruction_token_from_char_cat(
-                    cased_char, cat, position_like=un_cased_tok)
+                return char_cat_instr_tok(cased_char, cat,
+                                          position_like=un_cased_tok)
             else:
                 return un_cased_tok
 

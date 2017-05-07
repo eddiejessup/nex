@@ -253,7 +253,8 @@ def make_macro_token(name, replacement_text, parameter_text,
                'prefixes': prefixes,
                'replacement_text': parse_replacement_text(replacement_text),
                'parameter_text': parse_parameter_text(parameter_text),
-               'def_type': def_type},
+               'def_type': def_type,
+               'lex_type': control_sequence_lex_type},
         line_nr='abstract',
     )
 
@@ -287,7 +288,7 @@ class CSRouter(object):
             self._set_primitive(name, instruction)
 
     def lookup_control_sequence(self, name, position_like=None):
-        route_token = self._resolve_control_sequence_to_route_token(name)
+        route_token = self._lookup_route_token(name)
         canon_token = self._resolve_route_token_to_raw_value(route_token)
         token = canon_token.copy(position_like=position_like)
         # Amend tokens to give them the proper control sequence name.
@@ -318,15 +319,6 @@ class CSRouter(object):
         self.set_macro(name, replacement_text=[instr_token],
                        parameter_text=[], def_type='sdef', prefixes=None)
 
-    def do_let_assignment(self, new_name, target_token):
-        if target_token.value['lex_type'] == control_sequence_lex_type:
-            target_name = target_token.value['name']
-            self._copy_control_sequence(target_name, new_name)
-        elif target_token.value['lex_type'] == char_cat_lex_type:
-            self._set_let_character(new_name, target_token)
-        else:
-            import pdb; pdb.set_trace()
-
     def define_new_font_control_sequence(self, name, font_id):
         route_id = self._set_route_token(name, ControlSequenceType.font)
 
@@ -340,6 +332,15 @@ class CSRouter(object):
             line_nr='abstract'
         )
         self.font_ids[route_id] = font_id_token
+
+    def do_let_assignment(self, new_name, target_token):
+        if target_token.value['lex_type'] == control_sequence_lex_type:
+            target_name = target_token.value['name']
+            self._copy_control_sequence(target_name, new_name)
+        elif target_token.value['lex_type'] == char_cat_lex_type:
+            self._set_let_character(new_name, target_token)
+        else:
+            import pdb; pdb.set_trace()
 
     def _set_primitive(self, name, instruction):
         # Get a route from the name to a primitive.
@@ -361,7 +362,7 @@ class CSRouter(object):
     def _copy_control_sequence(self, target_name, new_name):
         # Make a new control sequence that is routed to the same spot as the
         # current one.
-        target_route_token = self._resolve_control_sequence_to_route_token(target_name)
+        target_route_token = self._lookup_route_token(target_name)
         self.control_sequences[new_name] = target_route_token
 
     def _set_let_character(self, name, char_cat_token):
@@ -375,13 +376,13 @@ class CSRouter(object):
         self.control_sequences[name] = route_token
         return route_id
 
-    def _resolve_control_sequence_to_route_token(self, name):
+    def _lookup_route_token(self, name):
         # If the route token exists in this scope, return it.
         if name in self.control_sequences:
             route_token = self.control_sequences[name]
         # Otherwise, if there's an enclosing scope, ask it for it.
         elif self.enclosing_scope is not None:
-            route_token = self.enclosing_scope.cs_router._resolve_control_sequence_to_route_token(name)
+            route_token = self.enclosing_scope.cs_router._lookup_route_token(name)
         # If we are the outermost scope, the control sequence is unknown.
         else:
             raise NoSuchControlSequence(name)

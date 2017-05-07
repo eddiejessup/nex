@@ -121,7 +121,7 @@ def make_unexpanded_control_sequence_instruction(name, position_like=None):
     )
 
 
-def make_instruction_token_from_char_cat(char, cat, *pos_args, **pos_kwargs):
+def char_cat_instr_tok(char, cat, *pos_args, **pos_kwargs):
     """Utility function to make a terminal char-cat token straight from a pair.
     """
     lex_token = make_char_cat_lex_token(char, cat, *pos_args, **pos_kwargs)
