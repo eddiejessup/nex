@@ -48,8 +48,8 @@ def get_font_info(font_name, font_path):
     return font_info
 
 
-class DVIDocument(object):
-    """docstring for DVIDocument"""
+class DVIDocument:
+
     def __init__(self, magnification):
         self.magnification = magnification
 

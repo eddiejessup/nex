@@ -120,10 +120,9 @@ def command_shifts_to_horizontal(command):
 
 class GlobalState(object):
 
-    def __init__(self, font_search_paths,
+    def __init__(self, global_font_state,
                  codes, registers, scoped_font_state, router, parameters):
-        self.global_font_state = GlobalFontState(font_search_paths)
-
+        self.global_font_state = global_font_state
         self.codes = codes
         self.registers = registers
         self.scoped_font_state = scoped_font_state
@@ -136,12 +135,13 @@ class GlobalState(object):
 
     @classmethod
     def from_defaults(cls, font_search_paths):
+        global_font_state = GlobalFontState(font_search_paths)
         codes = ScopedCodes.from_defaults()
         registers = ScopedRegisters.from_defaults()
         scoped_font_state = ScopedFontState.from_defaults()
         router = ScopedRouter.from_defaults()
         parameters = ScopedParameters.from_defaults()
-        return cls(font_search_paths,
+        return cls(global_font_state,
                    codes, registers, scoped_font_state, router, parameters)
 
     # Mode.
@@ -184,7 +184,7 @@ class GlobalState(object):
         # Load the font
         new_font_id = self.global_font_state.define_new_font(file_name, at_clause)
         # Add an instruction in the layout list to define a font.
-        font_info = self.global_font_state.fonts[new_font_id]
+        font_info = self.global_font_state.get_font(new_font_id)
         font_define_item = FontDefinition(font_nr=new_font_id,
                                           font_name=font_info.font_name,
                                           file_name=font_info.file_name,
@@ -195,7 +195,7 @@ class GlobalState(object):
     @property
     def current_font(self):
         current_font_id = self.scoped_font_state.current_font_id
-        return self.global_font_state.fonts[current_font_id]
+        return self.global_font_state.get_font(current_font_id)
 
     # Scope
 

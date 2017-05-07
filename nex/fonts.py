@@ -8,7 +8,7 @@ from .instructions import Instructions
 from .utils import ensure_extension, find_file
 
 
-class FontInfo(object):
+class FontInfo:
 
     def __init__(self, file_name, file_path, at_clause):
         if file_name is None:
@@ -122,7 +122,7 @@ def get_local_font_state(enclosing_scope):
     return font_state
 
 
-class FontState(object):
+class FontState:
 
     def __init__(self, font_families):
         self._current_font_id = None
@@ -146,12 +146,14 @@ class FontState(object):
         raise AttributeError
 
 
-class GlobalFontState(object):
+class GlobalFontState:
 
     null_font_id = 0
+    FontInfo = FontInfo
 
     def __init__(self, search_paths=None):
-        null_font = FontInfo(file_name=None, file_path=None, at_clause=None)
+        null_font = self.FontInfo(file_name=None, file_path=None,
+                                  at_clause=None)
         self.fonts = {self.null_font_id: null_font}
         # TODO: Avoid multiple entries.
         self.search_paths = [os.getcwd()]
@@ -167,6 +169,9 @@ class GlobalFontState(object):
     @property
     def null_font(self):
         return self.fonts[self.null_font_id]
+
+    def get_font(self, font_id):
+        return self.fonts[font_id]
 
     def define_new_font(self, file_name, at_clause):
         file_path = find_file(ensure_extension(file_name, 'tfm'),

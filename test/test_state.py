@@ -1,10 +1,8 @@
 import pytest
 
-from nex.parsing.command_parser import command_parser
-from nex.banisher import Banisher
-from nex.parsing.utils import safe_chunk_grabber
 from nex.state import GlobalState, Mode
 from nex.tex_parameters import Parameters
+from nex.fonts import GlobalFontState
 from nex import box
 from nex.box_writer import write_to_file
 
@@ -60,6 +58,29 @@ class DummyParameters:
         return self.param_map[name]
 
 
+class DummyFontInfo:
+
+    def __init__(self, file_name, file_path, at_clause):
+        self.font_name = file_name
+        self.file_name = file_name
+        self.file_path = file_path
+        self.at_clause = at_clause
+
+
+class DummyGlobalFontState(GlobalFontState):
+
+    FontInfo = DummyFontInfo
+
+    def define_new_font(self, file_name, at_clause):
+        font_info = DummyFontInfo(file_name=file_name,
+                                  file_path=f'/dummy/font/path/{file_name}',
+                                  at_clause=at_clause)
+        font_id = max(self.fonts.keys()) + 1
+        self.fonts[font_id] = font_info
+        # Return new font id.
+        return font_id
+
+
 font_path = '/Users/ejm/projects/nex/example/fonts'
 
 
@@ -68,7 +89,8 @@ def get_state(char_to_cat, cs_map, param_map):
     parameters = DummyParameters(param_map)
     codes = DummyCodes(char_to_cat)
     font = DummyFontState()
-    return GlobalState(font_search_paths=[font_path],
+    global_font_state = DummyGlobalFontState()
+    return GlobalState(global_font_state=global_font_state,
                        codes=codes, registers=None,
                        scoped_font_state=font, router=router,
                        parameters=parameters)
@@ -86,7 +108,7 @@ def test():
         Parameters.mag: 1000
     }
     state = get_state(test_char_to_cat, {}, params)
-    font_id = state.define_new_font(file_name='cmr10', at_clause=None)
+    font_id = state.define_new_font(file_name='testy', at_clause=None)
     state.select_font(is_global=True, font_id=font_id)
     state.add_character('a')
     state.do_paragraph()
@@ -97,5 +119,3 @@ def test():
     assert isinstance(lst[0], box.FontDefinition)
     assert isinstance(lst[1], box.FontSelection)
     assert isinstance(lst[2], box.Character)
-    out_path = 'state_test.dvi'
-    write_to_file(state, out_path)
