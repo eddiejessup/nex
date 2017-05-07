@@ -48,7 +48,7 @@ def check_type(type_, value):
         raise TypeError('Value has wrong type')
 
 
-class Registers(object):
+class Registers:
 
     def __init__(self, nr_counts, nr_dimens,
                  nr_skips, nr_mu_skips, nr_token_lists):

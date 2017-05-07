@@ -4,7 +4,7 @@ import os.path
 from .utils import get_bytes_needed
 
 
-class EncodedValue(object):
+class EncodedValue:
 
     def __init__(self, name, value):
         self.name = name

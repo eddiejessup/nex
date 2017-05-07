@@ -4,7 +4,7 @@ import colorama
 colorama.init()
 
 
-class BaseToken(object):
+class BaseToken:
 
     def __init__(self, type_, value=None):
         self._type = type_

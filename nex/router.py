@@ -271,7 +271,7 @@ def get_local_router(enclosing_scope):
                     enclosing_scope=enclosing_scope)
 
 
-class CSRouter(object):
+class CSRouter:
 
     def __init__(self, param_control_sequences, primitive_control_sequences,
                  enclosing_scope=None):

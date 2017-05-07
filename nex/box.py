@@ -16,11 +16,11 @@ class GlueRatio(Enum):
     no_shrinkability = 3
 
 
-class LayoutList(object):
+class LayoutList:
     pass
 
 
-class ListElement(object):
+class ListElement:
 
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__,

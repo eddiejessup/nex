@@ -158,7 +158,7 @@ def get_local_codes(enclosing_scope):
     return codes
 
 
-class Codes(object):
+class Codes:
 
     def __init__(self,
                  char_to_cat,

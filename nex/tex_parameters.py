@@ -187,7 +187,7 @@ def get_local_parameters(enclosing_scope):
     return TexParameterValues({})
 
 
-class TexParameterValues(object):
+class TexParameterValues:
 
     def __init__(self, parameter_value_map):
         self.parameter_values = parameter_value_map

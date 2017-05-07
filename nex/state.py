@@ -118,7 +118,7 @@ def command_shifts_to_horizontal(command):
     return False
 
 
-class GlobalState(object):
+class GlobalState:
 
     def __init__(self, global_font_state,
                  codes, registers, scoped_font_state, router, parameters):

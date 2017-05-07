@@ -71,7 +71,7 @@ common_terminal_types = instructions_to_types(common_terminal_instructions)
 pg = ParserGenerator(common_terminal_types, cache_id="changeme")
 
 
-class DigitCollection(object):
+class DigitCollection:
 
     def __init__(self, base):
         self.base = base

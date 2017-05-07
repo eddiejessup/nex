@@ -46,7 +46,7 @@ def safe_chunk_grabber(banisher, *args, **kwargs):
                          f'output queue: {c.out_queue.queue}')
 
 
-class ChunkGrabber(object):
+class ChunkGrabber:
 
     def __init__(self, banisher, parser, initial=None):
         self.banisher = banisher
