@@ -289,6 +289,23 @@ class GlobalState:
         character_item = Character(char, self.current_font)
         self.append_to_list(character_item)
 
+    def do_space(self):
+        if self.mode in vertical_modes:
+            # "Spaces have no effects in vertical modes".
+            pass
+        elif self.mode in horizontal_modes:
+            # Spaces append glue to the current list; the exact amount of
+            # glue depends on \spacefactor, the current font, and the
+            # \spaceskip and
+            # \xspaceskip parameters, as described in Chapter 12.
+            font = self.current_font
+            space_glue_item = UnSetGlue(dimen=font.spacing,
+                                        stretch=font.space_stretch,
+                                        shrink=font.space_shrink)
+            self.append_to_list(space_glue_item)
+        else:
+            import pdb; pdb.set_trace()
+
     def execute_command(self, command, banisher, reader):
         # Reader needed to allow us to insert new input in response to
         # commands.
@@ -317,28 +334,17 @@ class GlobalState:
             banisher.instructions.replace_tokens_on_input([indent_token] +
                                                           terminal_tokens)
         elif type_ == 'SPACE':
-            if self.mode in vertical_modes:
-                # "Spaces have no effects in vertical modes".
-                pass
-            elif self.mode in horizontal_modes:
-                # Spaces append glue to the current list; the exact amount of
-                # glue depends on \spacefactor, the current font, and the
-                # \spaceskip and
-                # \xspaceskip parameters, as described in Chapter 12.
-                font = self.current_font
-                space_glue_item = UnSetGlue(dimen=font.spacing,
-                                            stretch=font.space_stretch,
-                                            shrink=font.space_shrink)
-                self.append_to_list(space_glue_item)
-            else:
-                import pdb; pdb.set_trace()
+            self.do_space()
         elif type_ == 'PAR':
             self.do_paragraph()
         elif type_ == 'character':
             self.add_character(v['char'])
         elif type_ == 'V_RULE':
-            e_spec = {k: (None if d is None else evaler.evaluate_dimen(self, d))
-                      for k, d in v.items()}
+            e_spec = {}
+            for k, d in v.items():
+                if d is None:
+                    d = evaler.evaluate_dimen(self, d)
+                e_spec[k] = d
             rule_item = Rule(**e_spec)
             self.append_to_list(rule_item)
         # The box already has its contents in the correct way, built using this
