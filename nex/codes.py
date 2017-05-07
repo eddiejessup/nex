@@ -183,46 +183,46 @@ class Codes(object):
             'delimiter': self.delimiter_code,
         }
 
-    def set_code(self, code_type, char, code):
+    def set(self, code_type, char, code):
         char_map = self.code_type_to_char_map[code_type]
         char_map[char] = code
 
     def set_cat_code(self, char, cat):
-        self.set_code('cat', char, cat)
+        self.set('cat', char, cat)
 
     def set_math_code(self, char, code):
-        self.set_code('math', char, code)
+        self.set('math', char, code)
 
     def set_upper_case_code(self, char, up_char):
-        self.set_code('upper_case', char, up_char)
+        self.set('upper_case', char, up_char)
 
     def set_lower_case_code(self, char, low_char):
-        self.set_code('lower_case', char, low_char)
+        self.set('lower_case', char, low_char)
 
     def set_space_factor_code(self, char, code):
-        self.set_code('space_factor', char, code)
+        self.set('space_factor', char, code)
 
     def set_delimiter_code(self, char, code):
-        self.set_code('delimiter', char, code)
+        self.set('delimiter', char, code)
 
-    def get_code(self, code_type, char):
+    def get(self, code_type, char):
         char_map = self.code_type_to_char_map[code_type]
         return char_map[char]
 
     def get_cat_code(self, char):
-        return self.get_code('cat', char)
+        return self.get('cat', char)
 
     def get_math_code(self, char):
-        return self.get_code('math', char)
+        return self.get('math', char)
 
     def get_upper_case_code(self, char):
-        return self.get_code('upper_case', char)
+        return self.get('upper_case', char)
 
     def get_lower_case_code(self, char):
-        return self.get_code('lower_case', char)
+        return self.get('lower_case', char)
 
     def get_space_factor_code(self, char):
-        return self.get_code('space_factor', char)
+        return self.get('space_factor', char)
 
     def get_delimiter_code(self, char):
-        return self.get_code('delimiter', char)
+        return self.get('delimiter', char)

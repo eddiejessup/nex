@@ -61,11 +61,8 @@ class Registers(object):
             Instructions.toks.value: init_register(nr_token_lists),
         }
 
-    def _get_register_map(self, type_):
-        return self.register_map[type_]
-
-    def get_register_value(self, type_, i):
-        register = self._get_register_map(type_)
+    def get(self, type_, i):
+        register = self.register_map[type_]
         try:
             r = register[i]
         except KeyError:
@@ -76,9 +73,9 @@ class Registers(object):
                              .format(i, type_))
         return r
 
-    def set_register_value(self, type_, i, value):
+    def set(self, type_, i, value):
         check_type(type_, value)
-        register = self._get_register_map(type_)
+        register = self.register_map[type_]
         if i not in register:
             raise ValueError('No register number {} of type {}'
                              .format(i, type_))

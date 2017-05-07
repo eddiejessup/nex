@@ -192,16 +192,16 @@ class TexParameterValues(object):
     def __init__(self, parameter_value_map):
         self.parameter_values = parameter_value_map
 
-    def _get_parameter_type(self, parameter):
+    def _get_type(self, parameter):
         for parameter_type, parameter_map in self.parameter_maps.items():
             if parameter in parameter_map:
                 return parameter_type
         raise KeyError(f'Parameter ''{name}'' not known')
 
-    def get_parameter_value(self, parameter):
+    def get(self, parameter):
         return self.parameter_values[parameter]
 
-    def set_parameter_value(self, parameter, value):
+    def set(self, parameter, value):
         parameter_instr = param_to_instr[parameter]
         parameter_type = parameter_instr.value
         check_type(parameter_type, value)

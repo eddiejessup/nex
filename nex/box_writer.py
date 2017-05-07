@@ -41,7 +41,7 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
 
 
 def write_to_file(state, out_path):
-    magnification = state.parameters.get_parameter_value(Parameters.mag)
+    magnification = state.parameters.get(Parameters.mag)
     doc = DVIDocument(magnification)
     total_layout_list = state.pop_mode()
     write_box_to_doc(doc, total_layout_list)

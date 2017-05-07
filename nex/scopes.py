@@ -83,7 +83,7 @@ class ScopedCodes(ScopedAccessor):
     def from_defaults(cls):
         return cls(get_initial_codes(), get_local_codes)
 
-    def set_code(self, is_global, code_type, char, code):
+    def set(self, is_global, code_type, char, code):
         code_type_to_func_map = {
             'CAT_CODE': 'set_cat_code',
             'MATH_CODE': 'set_math_code',
@@ -122,12 +122,12 @@ class ScopedRegisters(ScopedAccessor):
     def from_defaults(cls):
         return cls(get_initial_registers(), get_local_registers)
 
-    def get_register_value(self, *args, **kwargs):
-        return self.try_scope_func_until_success('get_register_value', *args, **kwargs)
+    def get(self, *args, **kwargs):
+        return self.try_scope_func_until_success('get', *args, **kwargs)
 
-    def set_register_value(self, is_global, *args, **kwargs):
+    def set(self, is_global, *args, **kwargs):
         for scope in self.get_scopes(is_global):
-            scope.set_register_value(*args, **kwargs)
+            scope.set(*args, **kwargs)
 
     def modify_register_value(self, is_global, type_, i, by_operand,
                               operation):
@@ -140,9 +140,9 @@ class ScopedRegisters(ScopedAccessor):
         # on the most-local register value; then the strictly-local register
         # value becomes the value for all scopes.
         # That is to say, the \global bit is acted on last.
-        object_operand = self.get_register_value(type_, i)
+        object_operand = self.get(type_, i)
         result = operate(object_operand, by_operand, operation)
-        self.set_register_value(is_global, type_, i, result)
+        self.set(is_global, type_, i, result)
 
 
 class ScopedFontState(ScopedAccessor):
@@ -212,17 +212,17 @@ class ScopedParameters(ScopedAccessor):
     def from_defaults(cls):
         return cls(get_initial_parameters(), get_local_parameters)
 
-    def get_parameter_value(self, *args, **kwargs):
-        return self.try_scope_func_until_success('get_parameter_value', *args, **kwargs)
+    def get(self, *args, **kwargs):
+        return self.try_scope_func_until_success('get', *args, **kwargs)
 
     def set_parameter(self, is_global, *args, **kwargs):
         for scope in self.get_scopes(is_global):
-            scope.set_parameter_value(*args, **kwargs)
+            scope.set(*args, **kwargs)
 
     def modify_parameter_value(self, is_global, parameter, by_operand,
                                operation):
         # We assume the same applies for parameters as for registers in
         # `modify_register_value`.
-        object_operand = self.get_parameter_value(parameter)
+        object_operand = self.get(parameter)
         result = operate(object_operand, by_operand, operation)
         self.set_parameter(is_global, parameter, result)

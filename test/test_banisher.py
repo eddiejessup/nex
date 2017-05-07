@@ -60,7 +60,7 @@ class DummyParameters:
     def __init__(self, param_map):
         self.param_map = param_map
 
-    def get_parameter_value(self, name, *args, **kwargs):
+    def get(self, name, *args, **kwargs):
         return self.param_map[name]
 
 

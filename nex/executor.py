@@ -156,9 +156,9 @@ class Executor:
                 if isinstance(horizontal_list[-1], UnSetGlue):
                     horizontal_list.pop()
                 # Do \hskip\parfillskip.
-                par_fill_glue = self.state.parameters.get_parameter_value(Parameters.par_fill_skip)
+                par_fill_glue = self.state.parameters.get(Parameters.par_fill_skip)
                 horizontal_list.append(UnSetGlue(**par_fill_glue))
-                h_size = self.state.parameters.get_parameter_value(Parameters.h_size)
+                h_size = self.state.parameters.get(Parameters.h_size)
                 h_boxes = h_list_to_best_h_boxes(horizontal_list, h_size)
                 # all_routes = get_all_routes(root_node, h_box_tree, h_size, outer=True)
 
@@ -166,7 +166,7 @@ class Executor:
                 for h_box in h_boxes:
                     # Add it to the enclosing vertical list.
                     self.state.append_to_list(h_box)
-                    bl_skip = self.state.parameters.get_parameter_value(Parameters.base_line_skip)
+                    bl_skip = self.state.parameters.get(Parameters.base_line_skip)
                     line_glue_item = UnSetGlue(**bl_skip)
                     self.state.append_to_list(line_glue_item)
 
@@ -262,7 +262,7 @@ class Executor:
             evaled_value = value_evaluate_func(self.state, value)
             evaled_i = evaler.evaluate_size(self.state, variable.value)
             if is_register_type(variable.type):
-                self.state.registers.set_register_value(
+                self.state.registers.set(
                     is_global=v['global'], type_=variable.type,
                     i=evaled_i, value=evaled_value
                 )
@@ -308,7 +308,7 @@ class Executor:
                 small_glyph_code = GlyphCode(small_family, small_position)
                 large_glyph_code = GlyphCode(large_family, large_position)
                 code = DelimiterCode(small_glyph_code, large_glyph_code)
-            self.state.codes.set_code(v['global'], code_type, char, code)
+            self.state.codes.set(v['global'], code_type, char, code)
         elif type_ == 'advance':
             value_eval = evaler.evaluate_number(self.state, v['value'])
             variable = v['variable']
@@ -356,13 +356,13 @@ class Executor:
                 # \parindent. The \everypar tokens are inserted into TeX's
                 # input. The page builder is exercised."
                 if not (self.state.mode == Mode.internal_vertical):
-                    par_skip_glue = self.state.parameters.get_parameter_value(Parameters.par_skip)
+                    par_skip_glue = self.state.parameters.get(Parameters.par_skip)
                     par_skip_glue_item = UnSetGlue(**par_skip_glue)
                     self.state.append_to_list(par_skip_glue_item)
                 self.state.push_mode(Mode.horizontal)
                 # An empty box of width \parindent is appended to the current
                 # list, and the space factor is set to 1000.
-                par_indent_width = self.state.parameters.get_parameter_value(Parameters.par_indent)
+                par_indent_width = self.state.parameters.get(Parameters.par_indent)
                 par_indent_hbox_item = HBox(contents=[], to=par_indent_width)
                 self.state.append_to_list(par_indent_hbox_item)
             elif self.state.mode in horizontal_modes:

@@ -21,7 +21,7 @@ def get_integer_constant(collection):
 def evaluate_size(state, size_token):
     if isinstance(size_token, InstructionToken):
         if is_parameter_type(size_token.type):
-            return state.parameters.get_parameter_value(size_token.value['parameter'])
+            return state.parameters.get(size_token.value['parameter'])
         elif size_token.type in ('CHAR_DEF_TOKEN', 'MATH_CHAR_DEF_TOKEN'):
             return size_token.value
         else:
@@ -43,7 +43,7 @@ def evaluate_size(state, size_token):
             raise NotImplementedError
         elif is_register_type(size_token.type):
             evaled_i = evaluate_size(state, size_token.value)
-            v = state.registers.get_register_value(size_token.type, i=evaled_i)
+            v = state.registers.get(size_token.type, i=evaled_i)
             if size_token.type == 'SKIP':
                 import pdb; pdb.set_trace()
             return v
@@ -99,7 +99,7 @@ def evaluate_dimen(state, dimen_token):
     else:
         is_true_unit = unit_token['true']
         number_of_scaled_points = units_in_scaled_points[unit] * number_of_units
-        magnification = state.parameters.get_parameter_value(Parameters.mag)
+        magnification = state.parameters.get(Parameters.mag)
         # ['true'] unmagnifies the units, so that the subsequent magnification
         # will cancel out. For example, `\vskip 0.5 true cm' is equivalent to
         # `\vskip 0.25 cm' if you have previously said `\magnification=2000'.

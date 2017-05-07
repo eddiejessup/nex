@@ -501,7 +501,7 @@ class Banisher:
     def _handle_string(self, first_token):
         # TeX first reads the [next] token without expansion.
         target_token = next(self.instructions)
-        escape_char_code = self.global_state.parameters.get_parameter_value(Parameters.escape_char)
+        escape_char_code = self.global_state.parameters.get(Parameters.escape_char)
         return [], get_string_instr_repr(target_token, escape_char_code)
 
     def _handle_cs_name(self, first_token):
