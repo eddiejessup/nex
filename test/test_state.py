@@ -10,7 +10,7 @@ from test_banisher import test_char_to_cat
 
 
 do_output = True
-
+font_path = '/Users/ejm/projects/nex/example/fonts'
 
 class DummyCodes:
     def __init__(self, char_to_cat):
@@ -93,7 +93,7 @@ def get_state(char_to_cat, cs_map, param_map):
     codes = DummyCodes(char_to_cat)
     font = DummyFontState()
     if do_output:
-        global_font_state = GlobalFontState(search_paths=['/Users/ejm/projects/nex/example/fonts'])
+        global_font_state = GlobalFontState(search_paths=[font_path])
     else:
         global_font_state = DummyGlobalFontState()
     state = GlobalState(global_font_state=global_font_state,
@@ -109,15 +109,17 @@ def g(d, str, shr):
     return {'dimen': d, 'stretch': str, 'shrink': shr}
 
 
+params = {
+    Parameters.par_skip: g(10, 0, 0),
+    Parameters.par_indent: 100,
+    Parameters.par_fill_skip: g(10, 0, 0),
+    Parameters.h_size: 10,
+    Parameters.base_line_skip: g(10, 0, 0),
+    Parameters.mag: 1000
+}
+
+
 def test_single_letter():
-    params = {
-        Parameters.par_skip: g(10, 0, 0),
-        Parameters.par_indent: 100,
-        Parameters.par_fill_skip: g(10, 0, 0),
-        Parameters.h_size: 10,
-        Parameters.base_line_skip: g(10, 0, 0),
-        Parameters.mag: 1000
-    }
     state = get_state(test_char_to_cat, {}, params)
     state.add_character('a')
     state.do_paragraph()
@@ -130,3 +132,17 @@ def test_single_letter():
     assert isinstance(lst[2], box.Character)
     if do_output:
         write_to_file(state, 'test_single_letter.dvi')
+
+
+def test_rule():
+    state = get_state(test_char_to_cat, {}, params)
+    state.add_rule(width=int(1e7), height=int(1e2), depth=0)
+    state.add_rule(width=int(1e7), height=int(1e2), depth=int(1e7))
+    state.do_paragraph()
+    assert len(state.modes) == 1
+    assert state.mode == Mode.vertical
+    lst = state._layout_list
+    assert isinstance(lst[2], box.Rule)
+    assert isinstance(lst[3], box.Rule)
+    if do_output:
+        write_to_file(state, 'test_v_rule.dvi')

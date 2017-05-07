@@ -1,26 +1,25 @@
 from nex.dampf.dvi_document import DVIDocument
 
 from .tex_parameters import Parameters
-from .box import (HBox, UnSetGlue, SetGlue, Character, FontDefinition,
-                  FontSelection)
+from . import box
 
 
 def write_box_to_doc(doc, layout_list, horizontal=False):
     for item in layout_list:
-        if isinstance(item, FontDefinition):
+        if isinstance(item, box.FontDefinition):
             doc.define_font(item.font_nr, item.font_name,
                             font_path=item.file_name)
-        elif isinstance(item, FontSelection):
+        elif isinstance(item, box.FontSelection):
             doc.select_font(item.font_nr)
-        elif isinstance(item, HBox):
+        elif isinstance(item, box.HBox):
             doc.push()
             write_box_to_doc(doc, item.contents, horizontal=True)
             doc.pop()
             if horizontal:
                 doc.right(item.width)
-        elif isinstance(item, Character):
+        elif isinstance(item, box.Character):
             doc.set_char(item.code)
-        elif isinstance(item, UnSetGlue):
+        elif isinstance(item, box.UnSetGlue):
             if not horizontal:
                 item = item.set(item.natural_dimen)
             amount = item.dimen
@@ -29,13 +28,15 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
                 doc.right(amount)
             else:
                 doc.down(amount)
-        elif isinstance(item, SetGlue):
+        elif isinstance(item, box.SetGlue):
             amount = item.dimen
             if horizontal:
                 # doc.put_rule(height=1000, width=amount)
                 doc.right(amount)
             else:
                 doc.down(amount)
+        elif isinstance(item, box.Rule):
+            doc.set_rule(item.height, item.width)
         else:
             import pdb; pdb.set_trace()
 

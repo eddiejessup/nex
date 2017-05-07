@@ -306,6 +306,15 @@ class GlobalState:
         else:
             import pdb; pdb.set_trace()
 
+    def add_rule(self, width, height, depth):
+        if width is not None:
+            width = evaler.evaluate_dimen(self, width)
+        if height is not None:
+            height = evaler.evaluate_dimen(self, height)
+        if depth is not None:
+            depth = evaler.evaluate_dimen(self, depth)
+        self.append_to_list(Rule(width, height, depth))
+
     def execute_command(self, command, banisher, reader):
         # Reader needed to allow us to insert new input in response to
         # commands.
@@ -340,13 +349,7 @@ class GlobalState:
         elif type_ == 'character':
             self.add_character(v['char'])
         elif type_ == 'V_RULE':
-            e_spec = {}
-            for k, d in v.items():
-                if d is None:
-                    d = evaler.evaluate_dimen(self, d)
-                e_spec[k] = d
-            rule_item = Rule(**e_spec)
-            self.append_to_list(rule_item)
+            self.add_rule(**v)
         # The box already has its contents in the correct way, built using this
         # very method. Recursion still amazes me sometimes.
         elif type_ == 'h_box':

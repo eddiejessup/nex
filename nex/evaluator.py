@@ -72,6 +72,8 @@ def evaluate_number(state, number_token):
 def evaluate_dimen(state, dimen_token):
     # TODO: Check if the sign is stored and retrieved in numbers, dimens, glues
     # and so on.
+    if isinstance(dimen_token, int):
+        return dimen_token
     dimen_value = dimen_token.value
     size_token, sign = dimen_value['size'], dimen_value['sign']
     if isinstance(size_token.value, int):
