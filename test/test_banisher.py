@@ -4,16 +4,15 @@ from string import ascii_letters
 
 from nex.codes import CatCode
 from nex.banisher import Banisher, BanisherError
-from nex.tokens import InstructionToken
 from nex.tex_parameters import Parameters
 from nex.instructions import Instructions
 from nex.instructioner import (Instructioner,
                                make_unexpanded_control_sequence_instruction,
-                               make_instruction_token_from_char_cat)
+                               char_cat_instr_tok)
 from nex.router import make_macro_token
 from nex.utils import ascii_characters
 
-from common import DummyInstructions
+from common import DummyInstructions, ITok
 
 
 test_char_to_cat = {}
@@ -66,7 +65,7 @@ def string_to_banisher(s, cs_map, char_to_cat=None, param_map=None):
 
 def test_resolver():
     cs_map = {
-        'hi': InstructionToken(DummyInstructions.test),
+        'hi': ITok(DummyInstructions.test),
     }
     b = string_to_banisher('$hi', cs_map)
     out = b.get_next_output_list()
@@ -86,7 +85,7 @@ def test_empty_macro():
 
 def test_short_hand_def():
     cs_map = {
-        'cd': InstructionToken(Instructions.count_def),
+        'cd': ITok(Instructions.count_def),
     }
     b = string_to_banisher('$cd $myBestNumber', cs_map)
     out = b.get_next_output_list()
@@ -97,7 +96,7 @@ def test_short_hand_def():
 
 def test_def():
     cs_map = {
-        'df': InstructionToken(Instructions.def_),
+        'df': ITok(Instructions.def_),
     }
     b = string_to_banisher('$df $myName[$sayLola]', cs_map)
     out = b._iterate()
@@ -106,7 +105,7 @@ def test_def():
 
 def test_let():
     cs_map = {
-        'letrill': InstructionToken(Instructions.let),
+        'letrill': ITok(Instructions.let),
     }
     b_minimal = string_to_banisher('$letrill $cheese a', cs_map)
     out_minimal = b_minimal._iterate()
@@ -126,7 +125,7 @@ def test_let():
 
 def test_toks_def_balanced():
     cs_map = {
-        'bestToks': InstructionToken(Instructions.token_parameter),
+        'bestToks': ITok(Instructions.token_parameter),
     }
     b = string_to_banisher('$bestToks [[$this] and $that]', cs_map)
     out = b._iterate()
@@ -142,7 +141,7 @@ def test_toks_def_balanced():
 
 def test_toks_assign_literal():
     cs_map = {
-        'bestToks': InstructionToken(Instructions.token_parameter),
+        'bestToks': ITok(Instructions.token_parameter),
     }
     b = string_to_banisher('$bestToks [[$this] and $that]', cs_map)
     out = b._iterate()
@@ -158,8 +157,8 @@ def test_toks_assign_literal():
 
 def test_toks_assign_variable():
     cs_map = {
-        'bestOfToks': InstructionToken(Instructions.token_parameter),
-        'worstOfToks': InstructionToken(Instructions.token_parameter),
+        'bestOfToks': ITok(Instructions.token_parameter),
+        'worstOfToks': ITok(Instructions.token_parameter),
     }
     b = string_to_banisher('$bestOfToks $worstOfToks', cs_map)
     out = b._iterate()
@@ -175,8 +174,8 @@ def test_toks_assign_variable():
 def test_expand_after():
     def_target = make_unexpanded_control_sequence_instruction('defTarget')
     cs_map = {
-        'expandAfter': InstructionToken(Instructions.expand_after),
-        'defCount': InstructionToken(Instructions.count_def),
+        'expandAfter': ITok(Instructions.expand_after),
+        'defCount': ITok(Instructions.count_def),
         'getTarget': make_macro_token(name='getTarget',
                                       replacement_text=[def_target],
                                       parameter_text=[]),
@@ -192,7 +191,7 @@ def test_expand_after():
 
 def test_string_control_sequence():
     cs_map = {
-        'getString': InstructionToken(Instructions.string),
+        'getString': ITok(Instructions.string),
     }
     param_map = {
         Parameters.escape_char: ord('@'),
@@ -205,7 +204,7 @@ def test_string_control_sequence():
 
 def test_string_character():
     cs_map = {
-        'getString': InstructionToken(Instructions.string),
+        'getString': ITok(Instructions.string),
     }
     param_map = {
         Parameters.escape_char: ord('@'),
@@ -218,7 +217,7 @@ def test_string_character():
 
 def test_string_control_sequence_containing_space():
     cs_map = {
-        'getString': InstructionToken(Instructions.string),
+        'getString': ITok(Instructions.string),
     }
     param_map = {
         Parameters.escape_char: ord('@'),
@@ -241,7 +240,7 @@ def test_string_control_sequence_containing_space():
 
 def test_string_control_sequence_no_escape():
     cs_map = {
-        'getString': InstructionToken(Instructions.string),
+        'getString': ITok(Instructions.string),
     }
     param_map = {
         # Negative value should cause no escape character to be shown.
@@ -257,13 +256,13 @@ def test_string_control_sequence_no_escape():
 
 def test_cs_name():
     char = 'a'
-    a_token = make_instruction_token_from_char_cat(char, CatCode.letter)
+    a_token = char_cat_instr_tok(char, CatCode.letter)
     make_A_token = make_macro_token(name='theA',
                                     replacement_text=[a_token],
                                     parameter_text=[])
     cs_map = {
-        'getCSName': InstructionToken(Instructions.cs_name),
-        'endCSName': InstructionToken(Instructions.end_cs_name),
+        'getCSName': ITok(Instructions.cs_name),
+        'endCSName': ITok(Instructions.end_cs_name),
         'theA': make_A_token,
     }
 
@@ -282,19 +281,20 @@ def test_cs_name_end_by_expansion():
     # '$theF'.
     # This control sequence is then expanded to the string 'F'.
     char = 'F'
-    F_token = make_instruction_token_from_char_cat(char, CatCode.letter)
+    F_token = char_cat_instr_tok(char, CatCode.letter)
     cs_name = 'theF'
-    get_lett_instr = lambda c: make_instruction_token_from_char_cat(c, CatCode.letter)
     the_F_then_end_token = make_macro_token(
         name='theFThenEnd',
-        replacement_text=[get_lett_instr(c) for c in cs_name] + [InstructionToken(Instructions.end_cs_name)],
+        replacement_text=([char_cat_instr_tok(c, CatCode.letter)
+                           for c in cs_name] +
+                          [ITok(Instructions.end_cs_name)]),
         parameter_text=[]
     )
     make_F_token = make_macro_token(name='theF',
                                     replacement_text=[F_token],
                                     parameter_text=[])
     cs_map = {
-        'getCSName': InstructionToken(Instructions.cs_name),
+        'getCSName': ITok(Instructions.cs_name),
         'theFThenEnd': the_F_then_end_token,
         'theF': make_F_token,
     }
@@ -309,9 +309,9 @@ def test_cs_name_end_by_expansion():
 
 def test_cs_name_containing_non_char():
     cs_map = {
-        'getCSName': InstructionToken(Instructions.cs_name),
-        'endCSName': InstructionToken(Instructions.end_cs_name),
-        'primitive': InstructionToken(DummyInstructions.test),
+        'getCSName': ITok(Instructions.cs_name),
+        'endCSName': ITok(Instructions.end_cs_name),
+        'primitive': ITok(DummyInstructions.test),
     }
 
     b = string_to_banisher('$getCSName $primitive $endCSName', cs_map)
@@ -320,16 +320,16 @@ def test_cs_name_containing_non_char():
 
 
 def test_change_case():
-    B_token = make_instruction_token_from_char_cat('B', CatCode.letter)
+    B_token = char_cat_instr_tok('B', CatCode.letter)
     make_B_token = make_macro_token(name='makeB', replacement_text=[B_token],
                                     parameter_text=[])
-    y_token = make_instruction_token_from_char_cat('y', CatCode.letter)
+    y_token = char_cat_instr_tok('y', CatCode.letter)
     make_y_token = make_macro_token(name='makey', replacement_text=[y_token],
                                     parameter_text=[])
 
     cs_map = {
-        'upper': InstructionToken(Instructions.upper_case),
-        'lower': InstructionToken(Instructions.lower_case),
+        'upper': ITok(Instructions.upper_case),
+        'lower': ITok(Instructions.lower_case),
         'makeB': make_B_token,
         'makey': make_y_token,
     }

@@ -1,11 +1,14 @@
 import pytest
 
+from nex.codes import CatCode
 from nex.router import CSRouter
 from nex.utils import NoSuchControlSequence
-from nex.instructioner import make_unexpanded_control_sequence_instruction
+from nex.instructioner import (make_unexpanded_control_sequence_instruction,
+                               char_cat_instr_tok)
+from nex.instructions import Instructions
 from nex.tex_parameters import Parameters
 
-from common import DummyInstructions
+from common import DummyInstructions, ITok
 
 dummy_token = make_unexpanded_control_sequence_instruction('dummy')
 
@@ -39,127 +42,90 @@ def test_parameter_resolution():
     assert t.value['parameter'] == Parameters.med_mu_skip
 
 
-# def test_macro_definition():
-#     r = CSRouter(param_control_sequences={},
-#                  primitive_control_sequences={},
-#                  enclosing_scope=None)
-#     r.set_macro(name='hi', replacement_text=repl, parameter_text=par,
-#                 def_type=None, prefixes=None)
-#     assert t.value['name'] == 'ho'
-#     assert t.value['parameter'] == Parameters.med_mu_skip
-
-# def prepare_control_sequences(type_map, route_id):
-#     control_sequences = {}
-#     for type_, t_map in type_map.items():
-#         route_token = make_route_token(type_, route_id)
-#         name = 'test_' + type_
-#         control_sequences[name] = route_token
-#         attr_value = 'value_' + type_
-#         tok = dummy_token.copy()
-#         tok.value['attribute'] = attr_value
-#         t_map[route_id] = tok
-#     return control_sequences
+def test_macro_definition():
+    r = CSRouter(param_control_sequences={},
+                 primitive_control_sequences={},
+                 enclosing_scope=None)
+    repl = [ITok(DummyInstructions.test)]
+    r.set_macro(name='hi', replacement_text=repl, parameter_text=[],
+                def_type=None, prefixes=None)
+    t = r.lookup_control_sequence('hi')
+    assert t.value['name'] == 'hi'
+    assert t.value['replacement_text'] == repl
+    assert len(t.value['prefixes']) == 0
+    assert isinstance(t.value['prefixes'], set)
 
 
-# def test_router_resolve_name():
-#     route_id = 1
-#     macros, parameters, primitives = {}, {}, {}
-#     type_map = {
-#         'macro': macros,
-#         'parameter': parameters,
-#         'primitive': primitives,
-#     }
-#     control_sequences = prepare_control_sequences(type_map, route_id)
-#     r = CSRouter(control_sequences=control_sequences,
-#                  macros=macros,
-#                  let_chars={},
-#                  parameters=parameters,
-#                  primitives=primitives,
-#                  enclosing_scope=None)
-#     name_to_expected_token_map = {
-#         'test_macro': macros[route_id],
-#         'test_parameter': parameters[route_id],
-#         'test_primitive': primitives[route_id],
-#     }
-#     for name in control_sequences:
-#         d = r.lookup_control_sequence(name=name)
-#         # Check 'name' matches the call, not the underlying token name.
-#         assert d.value['name'] == name
-#         # But is in other ways identical.
-#         assert d.equal_contents_to(name_to_expected_token_map[name])
+def test_short_hand_macro_definition():
+    r = CSRouter(param_control_sequences={},
+                 primitive_control_sequences={},
+                 enclosing_scope=None)
+    code = 200
+    r.do_short_hand_definition('hi', def_type=Instructions.char_def.value,
+                               code=code)
+    t = r.lookup_control_sequence('hi')
+    assert t.value['name'] == 'hi'
+    assert t.value['def_type'] == 'sdef'
+    assert len(t.value['replacement_text']) == 1
+    tok = t.value['replacement_text'][0]
+    assert tok.value == code
+    assert tok.instruction == Instructions.char_def_token
 
 
-# def test_router_resolve_name():
-#     route_id = 1
-#     macros, parameters, primitives = {}, {}, {}
-#     type_map = {
-#         'macro': macros,
-#         'parameter': parameters,
-#         'primitive': primitives,
-#     }
-#     control_sequences = prepare_control_sequences(type_map, route_id)
-#     r = CSRouter(control_sequences=control_sequences,
-#                  macros=macros,
-#                  let_chars={},
-#                  parameters=parameters,
-#                  primitives=primitives,
-#                  enclosing_scope=None)
-#     name_to_expected_token_map = {
-#         'test_macro': macros[route_id],
-#         'test_parameter': parameters[route_id],
-#         'test_primitive': primitives[route_id],
-#     }
-#     for name in control_sequences:
-#         d = r.lookup_control_sequence(name=name)
-#         # Check 'name' matches the call, not the underlying token name.
-#         assert d.value['name'] == name
-#         # But is in other ways identical.
-#         assert d.equal_contents_to(name_to_expected_token_map[name])
+def test_let_to_macro():
+    r = CSRouter(param_control_sequences={},
+                 primitive_control_sequences={},
+                 enclosing_scope=None)
+    code = 200
+    r.do_short_hand_definition('hi', def_type=Instructions.char_def.value,
+                               code=code)
+    t = r.lookup_control_sequence('hi')
+    r.do_let_assignment('new_way_to_say_hi', t)
+    t_let = r.lookup_control_sequence('new_way_to_say_hi')
+
+    assert t.value['name'] == 'hi'
+    assert t_let.value['name'] == 'new_way_to_say_hi'
+    assert t_let.instruction == t.instruction
+    assert t_let.value['replacement_text'] is t.value['replacement_text']
+
+    # Check letting to a let token.
+    r.do_let_assignment('even_newer_way_to_say_hi', t_let)
+    t_even_newer = r.lookup_control_sequence('even_newer_way_to_say_hi')
+    assert t_even_newer.value['name'] == 'even_newer_way_to_say_hi'
+    assert t_even_newer.instruction == t.instruction
+    assert t_even_newer.value['replacement_text'] is t.value['replacement_text']
 
 
-# def test_router_let():
-#     route_id = 1
-#     macros, parameters, primitives = {}, {}, {}
-#     type_map = {
-#         'macro': macros,
-#         'parameter': parameters,
-#         'primitive': primitives,
-#     }
-#     control_sequences = prepare_control_sequences(type_map, route_id)
-#     r = CSRouter(control_sequences=control_sequences,
-#                  macros=macros,
-#                  let_chars={},
-#                  parameters=parameters,
-#                  primitives=primitives,
-#                  enclosing_scope=None)
+def test_let_to_primitive():
+    r = CSRouter(param_control_sequences={},
+                 primitive_control_sequences={'hi': DummyInstructions.test},
+                 enclosing_scope=None)
+    t = r.lookup_control_sequence('hi')
+    r.do_let_assignment('new_way_to_say_hi', t)
+    t_let = r.lookup_control_sequence('new_way_to_say_hi')
+    assert t.value['name'] == 'hi'
+    assert t_let.value['name'] == 'new_way_to_say_hi'
+    assert t_let.instruction == t.instruction
 
-#     # Alias 'something_let' to 'something' and check they return the same.
-#     for name in ('test_macro', 'test_parameter', 'test_primitive'):
-#         new_let_name = name + '_let'
-#         call_token = get_call_token(name)
-#         r.do_let_assignment(new_name=new_let_name, target_token=call_token)
-#         d_old = r.lookup_control_sequence(name=name)
-#         d_new = r.lookup_control_sequence(name=new_let_name)
-#         assert d_old.equal_contents_to(d_new)
 
-#     # Alias some things to overwrite and check they stay correct.
+def test_let_to_parameter():
+    r = CSRouter(param_control_sequences={'ho': Parameters.med_mu_skip},
+                 primitive_control_sequences={},
+                 enclosing_scope=None)
+    t = r.lookup_control_sequence('ho')
+    r.do_let_assignment('new_way_to_say_ho', t)
+    t_let = r.lookup_control_sequence('new_way_to_say_ho')
+    assert t.value['name'] == 'ho'
+    assert t_let.value['name'] == 'new_way_to_say_ho'
+    assert t_let.instruction == t.instruction
+    assert t_let.value['parameter'] == t.value['parameter']
 
-#     # Make 'test_macro' refer to our primitive token.
-#     r.do_let_assignment(new_name='test_macro',
-#                         target_token=get_call_token('test_primitive'))
-#     # Check 'test_macro' now returns the primitive token.
-#     d_1 = r.lookup_control_sequence(name='test_macro')
-#     assert d_1.equal_contents_to(primitives[route_id])
-#     # Check so does the original call, 'test_primitive'.
-#     d_2 = r.lookup_control_sequence(name='test_primitive')
-#     assert d_2.equal_contents_to(primitives[route_id])
-#     assert d_2.equal_contents_to(d_1)
-#     # And so does the let primitive version.
-#     d_4 = r.lookup_control_sequence(name='test_primitive_let')
-#     assert d_4.equal_contents_to(primitives[route_id])
-#     assert d_4.equal_contents_to(d_1)
-#     assert d_4.equal_contents_to(d_2)
-#     # But the let version, 'test_macro_let', still returns the macro token.
-#     d_3 = r.lookup_control_sequence(name='test_macro_let')
-#     assert d_3.equal_contents_to(macros[route_id])
-#     assert not d_3.equal_contents_to(primitives[route_id])
+
+def test_let_to_character():
+    r = CSRouter(param_control_sequences={},
+                 primitive_control_sequences={},
+                 enclosing_scope=None)
+    targ = char_cat_instr_tok('c', CatCode.letter)
+    r.do_let_assignment('c', targ)
+    t_let = r.lookup_control_sequence('c')
+    print(t_let)

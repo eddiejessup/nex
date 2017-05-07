@@ -224,6 +224,7 @@ short_hand_def_type_to_token_instr = {
     Instructions.skip_def.value: Instructions.skip_def_token,
     Instructions.mu_skip_def.value: Instructions.mu_skip_def_token,
     Instructions.toks_def.value: Instructions.toks_def_token,
+    Instructions.font.value: Instructions.font_def_token,
 }
 
 
@@ -320,18 +321,13 @@ class CSRouter(object):
                        parameter_text=[], def_type='sdef', prefixes=None)
 
     def define_new_font_control_sequence(self, name, font_id):
-        route_id = self._set_route_token(name, ControlSequenceType.font)
-
         # Note, this token just records the font id; the information
         # is stored in the global font state, because it has internal
         # state that might be modified later; we need to know where to get
         # at it.
-        font_id_token = InstructionToken(
-            Instructions.font_def_token,
-            value=font_id,
-            line_nr='abstract'
-        )
-        self.font_ids[route_id] = font_id_token
+        self.do_short_hand_definition(name=name,
+                                      def_type=Instructions.font.value,
+                                      code=font_id)
 
     def do_let_assignment(self, new_name, target_token):
         if target_token.value['lex_type'] == control_sequence_lex_type:
