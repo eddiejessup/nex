@@ -9,6 +9,9 @@ from nex.box_writer import write_to_file
 from test_banisher import test_char_to_cat
 
 
+do_output = True
+
+
 class DummyCodes:
     def __init__(self, char_to_cat):
         if char_to_cat is None:
@@ -89,16 +92,24 @@ def get_state(char_to_cat, cs_map, param_map):
     parameters = DummyParameters(param_map)
     codes = DummyCodes(char_to_cat)
     font = DummyFontState()
-    global_font_state = DummyGlobalFontState()
-    return GlobalState(global_font_state=global_font_state,
-                       codes=codes, registers=None,
-                       scoped_font_state=font, router=router,
-                       parameters=parameters)
+    if do_output:
+        global_font_state = GlobalFontState(search_paths=['/Users/ejm/projects/nex/example/fonts'])
+    else:
+        global_font_state = DummyGlobalFontState()
+    state = GlobalState(global_font_state=global_font_state,
+                        codes=codes, registers=None,
+                        scoped_font_state=font, router=router,
+                        parameters=parameters)
+    font_id = state.define_new_font(file_name='cmr10', at_clause=None)
+    state.select_font(is_global=True, font_id=font_id)
+    return state
 
 
-def test():
-    def g(d, str, shr):
-        return {'dimen': d, 'stretch': str, 'shrink': shr}
+def g(d, str, shr):
+    return {'dimen': d, 'stretch': str, 'shrink': shr}
+
+
+def test_single_letter():
     params = {
         Parameters.par_skip: g(10, 0, 0),
         Parameters.par_indent: 100,
@@ -108,8 +119,6 @@ def test():
         Parameters.mag: 1000
     }
     state = get_state(test_char_to_cat, {}, params)
-    font_id = state.define_new_font(file_name='testy', at_clause=None)
-    state.select_font(is_global=True, font_id=font_id)
     state.add_character('a')
     state.do_paragraph()
     assert len(state.modes) == 1
@@ -119,3 +128,5 @@ def test():
     assert isinstance(lst[0], box.FontDefinition)
     assert isinstance(lst[1], box.FontSelection)
     assert isinstance(lst[2], box.Character)
+    if do_output:
+        write_to_file(state, 'test_single_letter.dvi')
