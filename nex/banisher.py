@@ -16,7 +16,8 @@ from .instructions import (Instructions,
                            unexpanded_cs_instructions,
                            hyphenation_instructions)
 from .tex_parameters import Parameters
-from .instructioner import (make_unexpanded_control_sequence_instruction,
+from .instructioner import (Instructioner,
+                            make_unexpanded_control_sequence_instruction,
                             char_cat_instr_tok)
 from .state import Mode, Group
 from .expander import substitute_params_with_args
@@ -299,6 +300,11 @@ class Banisher:
         # Context is not a TeX concept; it's used when doing this messy bit of
         # parsing.
         self.context_mode_stack = []
+
+    @classmethod
+    def from_string(cls, s, state):
+        instrs = Instructioner.from_string(s, state.codes.get_cat_code)
+        return cls(instrs, state, instrs.lexer.reader)
 
     def _push_context(self, context_mode):
         self.context_mode_stack.append(context_mode)
