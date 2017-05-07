@@ -370,13 +370,13 @@ class GlobalState(object):
         for scope in self.get_scopes(is_global):
             scope.set_parameter_value(*args, **kwargs)
 
-    def modify_parameter_value(self, is_global, name, by_operand,
+    def modify_parameter_value(self, is_global, parameter, by_operand,
                                operation):
         # We assume the same applies for parameters as for registers in
         # `modify_register_value`.
-        object_operand = self.get_parameter_value(name)
+        object_operand = self.get_parameter_value(parameter)
         result = operate(object_operand, by_operand, operation)
-        self.set_parameter(is_global, name, result)
+        self.set_parameter(is_global, parameter, result)
 
     # Fonts.
 

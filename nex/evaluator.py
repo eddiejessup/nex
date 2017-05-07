@@ -1,7 +1,7 @@
 from .tokens import BuiltToken, InstructionToken
 from .registers import is_register_type
 from .units import PhysicalUnit, MuUnit, InternalUnit, units_in_scaled_points
-from .tex_parameters import glue_keys, is_parameter_type
+from .tex_parameters import glue_keys, is_parameter_type, Parameters
 
 
 def get_real_decimal_constant(collection):
@@ -21,7 +21,7 @@ def get_integer_constant(collection):
 def evaluate_size(state, size_token):
     if isinstance(size_token, InstructionToken):
         if is_parameter_type(size_token.type):
-            return state.get_parameter_value(size_token.value['name'])
+            return state.get_parameter_value(size_token.value['parameter'])
         elif size_token.type in ('CHAR_DEF_TOKEN', 'MATH_CHAR_DEF_TOKEN'):
             return size_token.value
         else:
@@ -99,7 +99,7 @@ def evaluate_dimen(state, dimen_token):
     else:
         is_true_unit = unit_token['true']
         number_of_scaled_points = units_in_scaled_points[unit] * number_of_units
-        magnification = state.get_parameter_value('mag')
+        magnification = state.get_parameter_value(Parameters.mag)
         # ['true'] unmagnifies the units, so that the subsequent magnification
         # will cancel out. For example, `\vskip 0.5 true cm' is equivalent to
         # `\vskip 0.25 cm' if you have previously said `\magnification=2000'.

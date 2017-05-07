@@ -5,8 +5,8 @@ from .reader import EndOfFile
 from .registers import is_register_type
 from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from .instructions import Instructions, h_add_glue_instructions
-from .tex_parameters import is_parameter_type
-from .router import primitive_canon_tokens
+from .instructioner import make_primitive_control_sequence_instruction
+from .tex_parameters import is_parameter_type, Parameters
 from .state import Operation, Mode, Group, vertical_modes, horizontal_modes
 from .box import (HBox, Rule, UnSetGlue, Character, FontDefinition,
                   FontSelection)
@@ -74,7 +74,8 @@ def execute_command(command, state, banisher, reader):
         # queue.
         terminal_tokens = command._terminal_tokens
         # Get a primitive token for the indent command.
-        indent_token = primitive_canon_tokens['indent']
+        indent_token = make_primitive_control_sequence_instruction(
+            name='indent', instruction=Instructions.indent)
         # And add it before the tokens we just read.
         banisher.instructions.replace_tokens_on_input([indent_token] +
                                                       terminal_tokens)
@@ -126,9 +127,9 @@ def execute_command(command, state, banisher, reader):
             if isinstance(horizontal_list[-1], UnSetGlue):
                 horizontal_list.pop()
             # Do \hskip\parfillskip.
-            par_fill_glue = state.get_parameter_value('parfillskip')
+            par_fill_glue = state.get_parameter_value(Parameters.par_fill_skip)
             horizontal_list.append(UnSetGlue(**par_fill_glue))
-            h_size = state.get_parameter_value('hsize')
+            h_size = state.get_parameter_value(Parameters.h_size)
             h_boxes = h_list_to_best_h_boxes(horizontal_list, h_size)
             # all_routes = get_all_routes(root_node, h_box_tree, h_size, outer=True)
 
@@ -136,7 +137,7 @@ def execute_command(command, state, banisher, reader):
             for h_box in h_boxes:
                 # Add it to the enclosing vertical list.
                 state.append_to_list(h_box)
-                line_glue_item = UnSetGlue(**state.get_parameter_value('baselineskip'))
+                line_glue_item = UnSetGlue(**state.get_parameter_value(Parameters.base_line_skip))
                 state.append_to_list(line_glue_item)
 
             # par_glue_item = UnSetGlue(dimen=200000)
@@ -232,9 +233,9 @@ def execute_command(command, state, banisher, reader):
                                      i=evaled_i,
                                      value=evaled_value)
         elif is_parameter_type(variable.type):
-            param_name = variable.value['canonical_name']
+            parameter = variable.value['parameter']
             state.set_parameter(is_global=v['global'],
-                                name=param_name, value=evaled_value)
+                                parameter=parameter, value=evaled_value)
     elif type_ == 'set_box_assignment':
         # TODO: Implement.
         pass
@@ -281,7 +282,7 @@ def execute_command(command, state, banisher, reader):
             state.modify_register_value(type_=variable.type, i=evaled_i,
                                         **kwargs)
         elif is_parameter_type(variable.type):
-            state.modify_parameter_value(name=variable.value['canonical_name'],
+            state.modify_parameter_value(parameter=variable.value['parameter'],
                                          **kwargs)
         else:
             import pdb; pdb.set_trace()
@@ -315,13 +316,13 @@ def execute_command(command, state, banisher, reader):
             # tokens are inserted into TeX's input. The page builder is
             # exercised."
             if not (state.mode == Mode.internal_vertical):
-                par_skip_glue = state.get_parameter_value('parskip')
+                par_skip_glue = state.get_parameter_value(Parameters.par_skip)
                 par_skip_glue_item = UnSetGlue(**par_skip_glue)
                 state.append_to_list(par_skip_glue_item)
             state.push_mode(Mode.horizontal)
             # An empty box of width \parindent is appended to the current list, and
             # the space factor is set to 1000.
-            par_indent_width = state.get_parameter_value('parindent')
+            par_indent_width = state.get_parameter_value(Parameters.par_indent)
             par_indent_hbox_item = HBox(contents=[], to=par_indent_width)
             state.append_to_list(par_indent_hbox_item)
         elif state.mode in horizontal_modes:

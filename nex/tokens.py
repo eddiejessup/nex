@@ -26,11 +26,6 @@ class BaseToken(object):
         return self.__repr__()
 
 
-class InternalToken(BaseToken):
-
-    pass
-
-
 class PositionToken(BaseToken):
 
     def __init__(self,

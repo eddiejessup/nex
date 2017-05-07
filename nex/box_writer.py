@@ -1,5 +1,6 @@
 from nex.dampf.dvi_document import DVIDocument
 
+from .tex_parameters import Parameters
 from .box import (HBox, UnSetGlue, SetGlue, Character, FontDefinition,
                   FontSelection)
 
@@ -40,7 +41,7 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
 
 
 def write_to_file(state, out_path):
-    magnification = state.get_parameter_value('mag')
+    magnification = state.get_parameter_value(Parameters.mag)
     doc = DVIDocument(magnification)
     total_layout_list = state.pop_mode()
     write_box_to_doc(doc, total_layout_list)

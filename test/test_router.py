@@ -1,40 +1,35 @@
-import os
-
 import pytest
 
-from nex.router import CSRouter, make_route_token
+from nex.router import CSRouter, RouteToken
 from nex.utils import NoSuchControlSequence
-from nex.tokens import BaseToken
-from nex.lexer import control_sequence_lex_type
+from nex.instructioner import make_unexpanded_control_sequence_instruction
 
-# dir_path = os.path.dirname(os.path.realpath(__file__))
-# test_file_dir_path = os.path.join(dir_path, 'test_files')
-# test_file_name = os.path.join(test_file_dir_path, 'test.tex')
+dummy_token = make_unexpanded_control_sequence_instruction('dummy')
 
 
-# dummy_token = BaseToken(type_='dummy',
-#                         value={'lex_type': control_sequence_lex_type,
-#                                'name': 'test',
-#                                'attribute': 'attribute_value'})
+def test_router_non_exist():
+    e = CSRouter(control_sequences={},
+                 macros={},
+                 let_chars={},
+                 parameters={},
+                 primitives={},
+                 font_ids={},
+                 enclosing_scope=None)
+    with pytest.raises(NoSuchControlSequence):
+        e.resolve_control_sequence_to_token(name='test')
+    with pytest.raises(NoSuchControlSequence):
+        e.do_let_assignment(target_token=dummy_token, new_name='test_2')
 
 
-# def get_call_token(name):
-#     return BaseToken(type_='call',
-#                      value={'name': name,
-#                             'lex_type': control_sequence_lex_type})
-
-
-# def test_router_non_exist():
-#     e = CSRouter(control_sequences={},
+# def test_router_resolution():
+#     r_tok = RouteToken('macro')
+#     e = CSRouter(control_sequences={'a': },
 #                  macros={},
 #                  let_chars={},
 #                  parameters={},
 #                  primitives={},
+#                  font_ids={},
 #                  enclosing_scope=None)
-#     with pytest.raises(NoSuchControlSequence):
-#         e.resolve_control_sequence_to_token(name='test')
-#     with pytest.raises(NoSuchControlSequence):
-#         e.do_let_assignment(target_token=dummy_token, new_name='test_2')
 
 
 # def prepare_control_sequences(type_map, route_id):

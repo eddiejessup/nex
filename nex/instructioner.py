@@ -5,6 +5,7 @@ from .tokens import InstructionToken
 from .lexer import (Lexer, make_char_cat_lex_token,
                     control_sequence_lex_type, char_cat_lex_type)
 from .instructions import Instructions
+from .tex_parameters import param_to_instr
 from .codes import CatCode
 
 
@@ -91,7 +92,24 @@ def make_char_cat_pair_instruction_token(char_cat_lex_token):
     return token
 
 
-def make_control_sequence_instruction_token(name, position_like=None):
+def make_parameter_control_sequence_instruction(name, parameter):
+    instr = param_to_instr[parameter]
+    instr_tok = make_primitive_control_sequence_instruction(name, instr)
+    # This is what is used to look up the parameter value. The  'name' just
+    # records the name of the control sequence used to refer to this parameter.
+    instr_tok.value['parameter'] = parameter
+    return instr_tok
+
+
+def make_primitive_control_sequence_instruction(name, instruction):
+    return InstructionToken(
+        instruction,
+        value={'name': name, 'lex_type': control_sequence_lex_type},
+        line_nr='abstract'
+    )
+
+
+def make_unexpanded_control_sequence_instruction(name, position_like=None):
     if len(name) == 1:
         instruction = Instructions.unexpanded_one_char_control_sequence
     else:
@@ -115,7 +133,7 @@ def lex_token_to_instruction_token(lex_token):
     if lex_token.type == char_cat_lex_type:
         return make_char_cat_pair_instruction_token(lex_token)
     elif lex_token.type == control_sequence_lex_type:
-        return make_control_sequence_instruction_token(
+        return make_unexpanded_control_sequence_instruction(
             lex_token.value, position_like=lex_token)
     # Aren't any other types of lexed tokens.
     else:

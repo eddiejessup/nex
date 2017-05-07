@@ -15,7 +15,8 @@ from .instructions import (Instructions,
                            message_instructions,
                            unexpanded_cs_instructions,
                            hyphenation_instructions)
-from .instructioner import (make_control_sequence_instruction_token,
+from .tex_parameters import Parameters
+from .instructioner import (make_unexpanded_control_sequence_instruction,
                             make_instruction_token_from_char_cat)
 from .state import Mode, Group
 from .expander import substitute_params_with_args
@@ -498,7 +499,7 @@ class Banisher:
     def _handle_string(self, first_token):
         # TeX first reads the [next] token without expansion.
         target_token = next(self.instructions)
-        escape_char_code = self.global_state.get_parameter_value('escapechar')
+        escape_char_code = self.global_state.get_parameter_value(Parameters.escape_char)
         return [], get_string_instr_repr(target_token, escape_char_code)
 
     def _handle_cs_name(self, first_token):
@@ -515,7 +516,7 @@ class Banisher:
                                     f'\csname ... \endcsname block: {t}')
 
         cs_name = ''.join(chars)
-        cs_token = make_control_sequence_instruction_token(
+        cs_token = make_unexpanded_control_sequence_instruction(
             cs_name, position_like=first_token)
         # Put our shiny new control sequence token on the input,
         # along with any spare tokens from the expansion

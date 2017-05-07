@@ -30,14 +30,21 @@ get_local_registers = get_initial_registers
 
 def check_type(type_, value):
     # TODO: Make type checking more strict, and do in more places.
-    if type_ in (Instructions.count.value, Instructions.dimen.value):
+    if type_ in (Instructions.count.value,
+                 Instructions.dimen.value,
+                 Instructions.integer_parameter.value,
+                 Instructions.dimen_parameter.value):
         expected_type = int
-    elif type_ in (Instructions.skip.value, Instructions.mu_skip.value):
+    elif type_ in (Instructions.skip.value,
+                   Instructions.mu_skip.value,
+                   Instructions.glue_parameter.value,
+                   Instructions.mu_glue_parameter.value):
         expected_type = dict
-    elif type_ == Instructions.toks.value:
+    elif type_ in (Instructions.toks.value,
+                   Instructions.token_parameter.value):
         expected_type = list
     if not isinstance(value, expected_type):
-        raise TypeError('Setting register to wrong type')
+        raise TypeError('Value has wrong type')
 
 
 class Registers(object):

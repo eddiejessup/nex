@@ -6,9 +6,10 @@ from enum import Enum
 from nex.codes import CatCode
 from nex.banisher import Banisher, BanisherError
 from nex.tokens import InstructionToken
+from nex.tex_parameters import Parameters
 from nex.instructions import Instructions
 from nex.instructioner import (Instructioner,
-                               make_control_sequence_instruction_token,
+                               make_unexpanded_control_sequence_instruction,
                                make_instruction_token_from_char_cat)
 from nex.router import make_macro_token
 from nex.utils import ascii_characters
@@ -53,8 +54,8 @@ class DummyState:
         token = canon_token.copy(*args, **kwargs)
         return token
 
-    def get_parameter_value(self, name):
-        return self.param_map[name]
+    def get_parameter_value(self, parameter):
+        return self.param_map[parameter]
 
     def get_cat_code(self, char):
         return self.char_to_cat[char]
@@ -175,7 +176,7 @@ def test_toks_assign_variable():
 
 
 def test_expand_after():
-    def_target = make_control_sequence_instruction_token('defTarget')
+    def_target = make_unexpanded_control_sequence_instruction('defTarget')
     cs_map = {
         'expandAfter': InstructionToken(Instructions.expand_after),
         'defCount': InstructionToken(Instructions.count_def),
@@ -197,7 +198,7 @@ def test_string_control_sequence():
         'getString': InstructionToken(Instructions.string),
     }
     param_map = {
-        'escapechar': ord('@'),
+        Parameters.escape_char: ord('@'),
     }
     b = string_to_banisher('$getString $CS', cs_map, param_map=param_map)
     out = b.get_next_output_list()
@@ -210,7 +211,7 @@ def test_string_character():
         'getString': InstructionToken(Instructions.string),
     }
     param_map = {
-        'escapechar': ord('@'),
+        Parameters.escape_char: ord('@'),
     }
     b = string_to_banisher('$getString A', cs_map, param_map=param_map)
     out = b.get_next_output_list()
@@ -223,7 +224,7 @@ def test_string_control_sequence_containing_space():
         'getString': InstructionToken(Instructions.string),
     }
     param_map = {
-        'escapechar': ord('@'),
+        Parameters.escape_char: ord('@'),
     }
     char_to_cat_weird = test_char_to_cat.copy()
     char_to_cat_weird[' '] = CatCode.letter
@@ -247,7 +248,7 @@ def test_string_control_sequence_no_escape():
     }
     param_map = {
         # Negative value should cause no escape character to be shown.
-        'escapechar': -1,
+        Parameters.escape_char: -1,
     }
 
     b = string_to_banisher('$getString$NoEscapeCS', cs_map,
