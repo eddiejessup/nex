@@ -40,9 +40,9 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
             import pdb; pdb.set_trace()
 
 
-def write_to_file(state, out_path):
+def write_to_file(state, out_stream):
     magnification = state.parameters.get(Parameters.mag)
     doc = DVIDocument(magnification)
     total_layout_list = state.pop_mode()
     write_box_to_doc(doc, total_layout_list)
-    doc.write(out_path)
+    doc.write(out_stream)

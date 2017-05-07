@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 from nex.state import GlobalState
 from nex.reader import Reader
@@ -41,5 +42,6 @@ if __name__ == '__main__':
     # in_path = os.path.join(dir_path, 'plain.tex')
     font_search_paths = [os.path.join(dir_path, 'fonts')]
     state = run_file(in_path, font_search_paths)
-    out_path = in_path[:-4] + '.dvi'
+    # out_path = in_path[:-4] + '.dvi'
+    out_path = sys.stdout.buffer
     write_to_file(state, out_path)

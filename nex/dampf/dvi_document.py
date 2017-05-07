@@ -192,10 +192,13 @@ class DVIDocument(object):
     def set_char(self, char):
         self.mundane_instructions.append(get_set_char_instruction(char))
 
-    def write(self, file_name):
+    def write(self, stream):
         self._end_page()
         self._end_document()
-        open(file_name, 'wb').write(self._encode())
+        # Allow passing a filename.
+        if isinstance(stream, str):
+            stream = open(stream, 'wb')
+        stream.write(self._encode())
 
     def put_rule(self, height, width):
         inst = get_put_rule_instruction(height, width)
