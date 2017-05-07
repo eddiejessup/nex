@@ -8,7 +8,6 @@ from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from .instructions import Instructions, h_add_glue_instructions
 from .instructioner import make_primitive_control_sequence_instruction
 from .tex_parameters import is_parameter_type, Parameters
-from .scopes import Operation
 from .box import (HBox, Rule, UnSetGlue, Character, FontDefinition,
                   FontSelection)
 from .paragraphs import h_list_to_best_h_boxes
@@ -181,9 +180,16 @@ class GlobalState(object):
     # state, but the current font and control sequences to access them are
     # scoped.
 
-    def define_new_font(self, is_global, name, file_name, at_clause):
+    def define_new_font(self, file_name, at_clause):
+        # Load the font
         new_font_id = self.global_font_state.define_new_font(file_name, at_clause)
-        self.router.define_new_font_control_sequence(is_global, name, new_font_id)
+        # Add an instruction in the layout list to define a font.
+        font_info = self.global_font_state.fonts[new_font_id]
+        font_define_item = FontDefinition(font_nr=new_font_id,
+                                          font_name=font_info.font_name,
+                                          file_name=font_info.file_name,
+                                          at_clause=font_info.at_clause)
+        self.append_to_list(font_define_item)
         return new_font_id
 
     @property
@@ -209,17 +215,75 @@ class GlobalState(object):
     def execute_commands(self, commands, banisher, reader):
         while True:
             try:
-                command = next(commands)
-            except EndOfFile:
-                return
-            try:
-                self.execute_command(command, banisher, reader)
+                self.execute_next_command(commands, banisher, reader)
             except EndOfFile:
                 return
             except EndOfSubExecutor:
                 return
-            except Exception as e:
-                raise ExecuteCommandError(command, e)
+
+    def execute_next_command(self, commands, banisher, reader):
+        command = next(commands)
+        try:
+            self.execute_command(command, banisher, reader)
+        except (EndOfFile, EndOfSubExecutor):
+            raise
+        except Exception as e:
+            raise ExecuteCommandError(command, e)
+
+    def select_font(self, is_global, font_id):
+        self.scoped_font_state.set_current_font(is_global, font_id)
+        font_select_item = FontSelection(font_nr=font_id)
+        self.append_to_list(font_select_item)
+
+    def do_paragraph(self):
+        if self.mode in vertical_modes:
+            # The primitive \par command has no effect when TeX is in
+            # vertical mode, except that the page builder is exercised in
+            # case something is present on the contribution list, and the
+            # paragraph shape parameters are cleared.
+            return
+        elif self.mode == Mode.restricted_horizontal:
+            # The primitive \par command, also called \endgraf in plain
+            # \TeX, does nothing in restricted horizontal mode.
+            return
+        elif self.mode == Mode.horizontal:
+            # "But it terminates horizontal mode: The current list is
+            # finished off by doing, '\unskip \penalty10000
+            # \hskip\parfillskip' then it is broken into lines as explained
+            # in Chapter 14, and TeX returns to the enclosing vertical or
+            # internal vertical mode. The lines of the paragraph are
+            # appended to the enclosing vertical list, interspersed with
+            # interline glue and interline penalties, and with the
+            # migration of vertical material that was in the horizontal
+            # list. Then TeX exercises the page builder."
+
+            # TODO: Not sure whether to do the above things as internal
+            # calls, or whether the tokens should be inserted.
+            # TODO: Do these commands before we pop.
+            # Get the horizontal list
+            horizontal_list = deque(self.pop_mode())
+            # Do \unskip.
+            if isinstance(horizontal_list[-1], UnSetGlue):
+                horizontal_list.pop()
+            # Do \hskip\parfillskip.
+            par_fill_glue = self.parameters.get(Parameters.par_fill_skip)
+            horizontal_list.append(UnSetGlue(**par_fill_glue))
+            h_size = self.parameters.get(Parameters.h_size)
+            h_boxes = h_list_to_best_h_boxes(horizontal_list, h_size)
+            # all_routes = get_all_routes(root_node, h_box_tree, h_size, outer=True)
+
+            # for best_route in all_routes:
+            for h_box in h_boxes:
+                # Add it to the enclosing vertical list.
+                self.append_to_list(h_box)
+                bl_skip = self.parameters.get(Parameters.base_line_skip)
+                line_glue_item = UnSetGlue(**bl_skip)
+                self.append_to_list(line_glue_item)
+
+            # par_glue_item = UnSetGlue(dimen=200000)
+            # self.append_to_list(par_glue_item)
+        else:
+            import pdb; pdb.set_trace()
 
     def execute_command(self, command, banisher, reader):
         # Reader needed to allow us to insert new input in response to
@@ -265,54 +329,7 @@ class GlobalState(object):
             else:
                 import pdb; pdb.set_trace()
         elif type_ == 'PAR':
-            if self.mode in vertical_modes:
-                # The primitive \par command has no effect when TeX is in
-                # vertical mode, except that the page builder is exercised in
-                # case something is present on the contribution list, and the
-                # paragraph shape parameters are cleared.
-                pass
-            elif self.mode == Mode.restricted_horizontal:
-                # The primitive \par command, also called \endgraf in plain
-                # \TeX, does nothing in restricted horizontal mode.
-                pass
-            elif self.mode == Mode.horizontal:
-                # "But it terminates horizontal mode: The current list is
-                # finished off by doing, '\unskip \penalty10000
-                # \hskip\parfillskip' then it is broken into lines as explained
-                # in Chapter 14, and TeX returns to the enclosing vertical or
-                # internal vertical mode. The lines of the paragraph are
-                # appended to the enclosing vertical list, interspersed with
-                # interline glue and interline penalties, and with the
-                # migration of vertical material that was in the horizontal
-                # list. Then TeX exercises the page builder."
-
-                # TODO: Not sure whether to do the above things as internal
-                # calls, or whether the tokens should be inserted.
-                # TODO: Do these commands before we pop.
-                # Get the horizontal list
-                horizontal_list = deque(self.pop_mode())
-                # Do \unskip.
-                if isinstance(horizontal_list[-1], UnSetGlue):
-                    horizontal_list.pop()
-                # Do \hskip\parfillskip.
-                par_fill_glue = self.parameters.get(Parameters.par_fill_skip)
-                horizontal_list.append(UnSetGlue(**par_fill_glue))
-                h_size = self.parameters.get(Parameters.h_size)
-                h_boxes = h_list_to_best_h_boxes(horizontal_list, h_size)
-                # all_routes = get_all_routes(root_node, h_box_tree, h_size, outer=True)
-
-                # for best_route in all_routes:
-                for h_box in h_boxes:
-                    # Add it to the enclosing vertical list.
-                    self.append_to_list(h_box)
-                    bl_skip = self.parameters.get(Parameters.base_line_skip)
-                    line_glue_item = UnSetGlue(**bl_skip)
-                    self.append_to_list(line_glue_item)
-
-                # par_glue_item = UnSetGlue(dimen=200000)
-                # self.append_to_list(par_glue_item)
-            else:
-                import pdb; pdb.set_trace()
+            self.do_paragraph()
         elif type_ == 'character':
             character_item = Character(command.value['char'],
                                        self.current_font)
@@ -342,27 +359,21 @@ class GlobalState(object):
         # Commands like font commands aren't exactly boxes, but they go through
         # as DVI commands. Just put them in the box for now to deal with later.
         elif type_ == 'font_selection':
-            self.scoped_font_state.set_current_font(v['global'], v['font_id'])
-            font_select_item = FontSelection(font_nr=v['font_id'])
-            self.append_to_list(font_select_item)
+            self.select_font(v['global'], v['font_id'])
         elif type_ == 'font_definition':
             new_font_id = self.define_new_font(
-                v['global'], v['control_sequence_name'],
                 v['file_name'].value, v['at_clause'],
             )
-            font_info = self.global_font_state.fonts[new_font_id]
-            font_define_item = FontDefinition(font_nr=new_font_id,
-                                              font_name=font_info.font_name,
-                                              file_name=font_info.file_name,
-                                              at_clause=font_info.at_clause)
-            self.append_to_list(font_define_item)
+            # Make a control sequence pointing to it.
+            self.router.define_new_font_control_sequence(
+                v['global'], v['control_sequence_name'], new_font_id)
         elif type_ == 'family_assignment':
             family_nr = v['family_nr']
             family_nr_eval = evaler.evaluate_number(self, family_nr)
             self.scoped_font_state.set_font_family(v['global'],
-                                                         family_nr_eval,
-                                                         v['font_range'],
-                                                         v['font_id'])
+                                                   family_nr_eval,
+                                                   v['font_range'],
+                                                   v['font_id'])
         elif type_ == 'input':
             reader.insert_file(command.value['file_name'])
         # I think technically only this should cause the program to end, not
