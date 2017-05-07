@@ -286,30 +286,94 @@ class CSRouter(object):
         for name, instruction in primitive_control_sequences.items():
             self._set_primitive(name, instruction)
 
-    def _set_route_token(self, name, route_token):
-        self.control_sequences[name] = route_token
+    def lookup_control_sequence(self, name, position_like=None):
+        route_token = self._resolve_control_sequence_to_route_token(name)
+        canon_token = self._resolve_route_token_to_raw_value(route_token)
+        token = canon_token.copy(position_like=position_like)
+        # Amend tokens to give them the proper control sequence name.
+        if isinstance(token.value, dict) and 'name' in token.value:
+            token.value['name'] = name
+        return token
+
+    def set_macro(self, name, replacement_text, parameter_text,
+                  def_type, prefixes=None):
+        if prefixes is None:
+            prefixes = set()
+
+        route_id = self._set_route_token(name, ControlSequenceType.macro)
+
+        macro_token = make_macro_token(name,
+                                       replacement_text=replacement_text,
+                                       parameter_text=parameter_text,
+                                       def_type=def_type, prefixes=prefixes)
+        self.macros[route_id] = macro_token
+
+    def do_short_hand_definition(self, name, def_type, code):
+        def_token_instr = short_hand_def_type_to_token_instr[def_type]
+        instr_token = InstructionToken(
+            def_token_instr,
+            value=code,
+            line_nr='abstract'
+        )
+        self.set_macro(name, replacement_text=[instr_token],
+                       parameter_text=[], def_type='sdef', prefixes=None)
+
+    def do_let_assignment(self, new_name, target_token):
+        if target_token.value['lex_type'] == control_sequence_lex_type:
+            target_name = target_token.value['name']
+            self._copy_control_sequence(target_name, new_name)
+        elif target_token.value['lex_type'] == char_cat_lex_type:
+            self._set_let_character(new_name, target_token)
+        else:
+            import pdb; pdb.set_trace()
+
+    def define_new_font_control_sequence(self, name, font_id):
+        route_id = self._set_route_token(name, ControlSequenceType.font)
+
+        # Note, this token just records the font id; the information
+        # is stored in the global font state, because it has internal
+        # state that might be modified later; we need to know where to get
+        # at it.
+        font_id_token = InstructionToken(
+            Instructions.font_def_token,
+            value=font_id,
+            line_nr='abstract'
+        )
+        self.font_ids[route_id] = font_id_token
 
     def _set_primitive(self, name, instruction):
-        # Add a route from the name to the primitive.
-        route_id = name
-        route_token = RouteToken(ControlSequenceType.primitive, route_id)
-        self._set_route_token(name, route_token)
-
+        # Get a route from the name to a primitive.
+        route_id = self._set_route_token(name, ControlSequenceType.primitive)
         # Make that route resolve to the instruction token.
         token = make_primitive_control_sequence_instruction(
             name=name, instruction=instruction)
         self.primitives[route_id] = token
 
     def _set_parameter(self, name, parameter):
-        # Add a route from the control sequence name to the parameter.
-        route_id = name
-        route_token = RouteToken(ControlSequenceType.parameter, route_id)
-        self._set_route_token(name, route_token)
+        # Get a route from the name to a parameter.
+        route_id = self._set_route_token(name, ControlSequenceType.parameter)
 
-        # Make that route resolve to the instruction token.
+        # Make that route resolve to the parameter token.
         token = make_parameter_control_sequence_instruction(
             name=name, parameter=parameter)
         self.parameters[route_id] = token
+
+    def _copy_control_sequence(self, target_name, new_name):
+        # Make a new control sequence that is routed to the same spot as the
+        # current one.
+        target_route_token = self._resolve_control_sequence_to_route_token(target_name)
+        self.control_sequences[new_name] = target_route_token
+
+    def _set_let_character(self, name, char_cat_token):
+        route_id = self._set_route_token(name,
+                                         ControlSequenceType.let_character)
+        self.let_chars[route_id] = char_cat_token
+
+    def _set_route_token(self, name, cs_type):
+        route_id = get_unique_id()
+        route_token = RouteToken(cs_type, route_id)
+        self.control_sequences[name] = route_token
+        return route_id
 
     def _resolve_control_sequence_to_route_token(self, name):
         # If the route token exists in this scope, return it.
@@ -339,74 +403,3 @@ class CSRouter(object):
         except KeyError:
             v = self.enclosing_scope.cs_router._resolve_route_token_to_raw_value(r)
         return v
-
-    def lookup_control_sequence(self, name, position_like=None):
-        route_token = self._resolve_control_sequence_to_route_token(name)
-        canon_token = self._resolve_route_token_to_raw_value(route_token)
-        token = canon_token.copy(position_like=position_like)
-        # Amend tokens to give them the proper control sequence name.
-        if isinstance(token.value, dict) and 'name' in token.value:
-            token.value['name'] = name
-        return token
-
-    def _copy_control_sequence(self, target_name, new_name):
-        # Make a new control sequence that is routed to the same spot as the
-        # current one.
-        target_route_token = self._resolve_control_sequence_to_route_token(target_name)
-        self._set_route_token(new_name, target_route_token)
-
-    def do_let_assignment(self, new_name, target_token):
-        if target_token.value['lex_type'] == control_sequence_lex_type:
-            target_name = target_token.value['name']
-            self._copy_control_sequence(target_name, new_name)
-        elif target_token.value['lex_type'] == char_cat_lex_type:
-            self._set_let_character(new_name, target_token)
-        else:
-            import pdb; pdb.set_trace()
-
-    def set_macro(self, name, replacement_text, parameter_text,
-                  def_type, prefixes=None):
-        route_id = get_unique_id()
-        route_token = RouteToken(ControlSequenceType.macro, route_id)
-        self._set_route_token(name, route_token)
-
-        if prefixes is None:
-            prefixes = set()
-
-        macro_token = make_macro_token(name,
-                                       replacement_text=replacement_text,
-                                       parameter_text=parameter_text,
-                                       def_type=def_type, prefixes=prefixes)
-        self.macros[route_id] = macro_token
-
-    def do_short_hand_definition(self, name, def_type, code):
-        def_token_instr = short_hand_def_type_to_token_instr[def_type]
-        instr_token = InstructionToken(
-            def_token_instr,
-            value=code,
-            line_nr='abstract'
-        )
-        self.set_macro(name, replacement_text=[instr_token],
-                       parameter_text=[], def_type='sdef', prefixes=None)
-
-    def _set_let_character(self, name, char_cat_token):
-        route_id = get_unique_id()
-        route_token = RouteToken(ControlSequenceType.let_character, route_id)
-        self._set_route_token(name, route_token)
-        self.let_chars[route_id] = char_cat_token
-
-    def define_new_font_control_sequence(self, name, font_id):
-        route_id = get_unique_id()
-        route_token = RouteToken(ControlSequenceType.font, route_id)
-        self._set_route_token(name, route_token)
-
-        # Note, this token just records the font id; the information
-        # is stored in the global font state, because it has internal
-        # state that might be modified later; we need to know where to get
-        # at it.
-        font_id_token = InstructionToken(
-            Instructions.font_def_token,
-            value=font_id,
-            line_nr='abstract'
-        )
-        self.font_ids[route_id] = font_id_token

@@ -38,6 +38,16 @@ def test_parameter_resolution():
     assert t.value['name'] == 'ho'
     assert t.value['parameter'] == Parameters.med_mu_skip
 
+
+# def test_macro_definition():
+#     r = CSRouter(param_control_sequences={},
+#                  primitive_control_sequences={},
+#                  enclosing_scope=None)
+#     r.set_macro(name='hi', replacement_text=repl, parameter_text=par,
+#                 def_type=None, prefixes=None)
+#     assert t.value['name'] == 'ho'
+#     assert t.value['parameter'] == Parameters.med_mu_skip
+
 # def prepare_control_sequences(type_map, route_id):
 #     control_sequences = {}
 #     for type_, t_map in type_map.items():
