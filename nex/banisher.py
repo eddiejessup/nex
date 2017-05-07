@@ -362,7 +362,7 @@ class Banisher:
     def _handle_if(self, first_token):
         with safe_chunk_grabber(self, condition_parser,
                                 initial=[first_token]) as condition_grabber:
-            condition_token = condition_grabber.get_chunk()
+            condition_token = next(condition_grabber)
         outcome = execute_condition(condition_token, self.global_state)
 
         # TODO: Move inside executor? Not sure.
@@ -467,7 +467,7 @@ class Banisher:
         with safe_chunk_grabber(self,
                                 general_text_parser) as general_text_grabber:
             with context_mode(self, ContextMode.awaiting_balanced_text_start):
-                general_text_token = general_text_grabber.get_chunk()
+                general_text_token = next(general_text_grabber)
 
         case_funcs_map = {
             Instructions.lower_case: self.global_state.get_lower_case_code,

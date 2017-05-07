@@ -362,7 +362,7 @@ def execute_commands(chunk_grabber, state, banisher, reader):
     _cs = []
     while True:
         try:
-            command = chunk_grabber.get_chunk()
+            command = next(chunk_grabber)
         except EndOfFile:
             break
         _cs.append(command)

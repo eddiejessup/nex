@@ -57,7 +57,10 @@ class ChunkGrabber(object):
         self.out_queue = GetBuffer(getter=banisher.get_next_output_list,
                                    initial=initial)
 
-    def get_chunk(self):
+    def __iter__(self):
+        return self
+
+    def __next__(self):
         # Want to extend the queue-to-be-parsed one token at a time,
         # so we can break as soon as we have all we need.
         chunk_token_queue = deque()
