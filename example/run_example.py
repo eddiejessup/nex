@@ -6,7 +6,7 @@ from nex.reader import Reader
 from nex.lexer import Lexer
 from nex.instructioner import Instructioner
 from nex.banisher import Banisher
-from nex.executor import execute_commands
+from nex.executor import Executor
 from nex.box_writer import write_to_file
 from nex.parsing.command_parser import command_parser
 from nex.parsing.utils import safe_chunk_grabber
@@ -33,8 +33,8 @@ def run_file(in_path, font_search_paths):
     )
 
     with safe_chunk_grabber(banisher, command_parser) as command_grabber:
-        execute_commands(command_grabber, state=state, banisher=banisher,
-                         reader=reader)
+        executor = Executor(command_grabber, state, banisher, reader)
+        executor.advance_to_end()
     return state
 
 

@@ -20,7 +20,7 @@ from .instructioner import (make_unexpanded_control_sequence_instruction,
                             char_cat_instr_tok)
 from .state import Mode, Group
 from .expander import substitute_params_with_args
-from .executor import execute_commands
+from .executor import Executor
 from .if_executor import execute_condition
 from .parsing.utils import GetBuffer, safe_chunk_grabber
 from .parsing.command_parser import command_parser
@@ -360,6 +360,8 @@ class Banisher:
         return tokens, []
 
     def _handle_if(self, first_token):
+        # TODO: Can we, and should we, do this grab-then-execute logic with
+        # some kind of Executor-like class?
         with safe_chunk_grabber(self, condition_parser,
                                 initial=[first_token]) as condition_grabber:
             condition_token = next(condition_grabber)
@@ -407,9 +409,10 @@ class Banisher:
 
         box_parser = command_parser
         with safe_chunk_grabber(self, parser=box_parser) as chunk_grabber:
+            executor = Executor(chunk_grabber, self.global_state,
+                                self, self.reader)
             # Matching right brace should trigger EndOfSubExecutor and return.
-            execute_commands(chunk_grabber, self.global_state,
-                             banisher=self, reader=self.reader)
+            executor.advance_to_end()
 
         # [After ending the group, then TeX] packages the hbox (using the
         # size that was saved on the stack), and completes the setbox
