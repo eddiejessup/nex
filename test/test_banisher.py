@@ -1,6 +1,6 @@
-import pytest
-
 from string import ascii_letters
+
+import pytest
 
 from nex.codes import CatCode
 from nex.banisher import Banisher, BanisherError

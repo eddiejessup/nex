@@ -21,7 +21,6 @@ from .instructioner import (Instructioner,
                             char_cat_instr_tok)
 from .state import Mode, Group
 from .expander import substitute_params_with_args
-from .executor import Executor
 from .if_executor import execute_condition
 from .parsing.utils import GetBuffer, safe_chunk_grabber
 from .parsing.command_parser import command_parser
@@ -415,10 +414,10 @@ class Banisher:
 
         box_parser = command_parser
         with safe_chunk_grabber(self, parser=box_parser) as chunk_grabber:
-            executor = Executor(chunk_grabber, self.global_state,
-                                self, self.reader)
             # Matching right brace should trigger EndOfSubExecutor and return.
-            executor.advance_to_end()
+            self.global_state.execute_commands(chunk_grabber,
+                                               banisher=self,
+                                               reader=self.reader)
 
         # [After ending the group, then TeX] packages the hbox (using the
         # size that was saved on the stack), and completes the setbox

@@ -6,7 +6,6 @@ from nex.reader import Reader
 from nex.lexer import Lexer
 from nex.instructioner import Instructioner
 from nex.banisher import Banisher
-from nex.executor import Executor
 from nex.box_writer import write_to_file
 from nex.parsing.command_parser import command_parser
 from nex.parsing.utils import safe_chunk_grabber
@@ -23,9 +22,9 @@ logger.addHandler(ch)
 
 
 def run_file(in_path, font_search_paths):
-    state = GlobalState.from_defaults(font_search_paths)
     reader = Reader()
     reader.insert_file(in_path)
+    state = GlobalState.from_defaults(font_search_paths)
     lexer = Lexer(reader, get_cat_code_func=state.codes.get_cat_code)
     instructioner = Instructioner(lexer)
     banisher = Banisher(
@@ -33,8 +32,7 @@ def run_file(in_path, font_search_paths):
     )
 
     with safe_chunk_grabber(banisher, command_parser) as command_grabber:
-        executor = Executor(command_grabber, state, banisher, reader)
-        executor.advance_to_end()
+        state.execute_commands(command_grabber, banisher, reader)
     return state
 
 
