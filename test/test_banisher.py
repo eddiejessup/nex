@@ -1,7 +1,6 @@
 import pytest
 
 from string import ascii_letters
-from enum import Enum
 
 from nex.codes import CatCode
 from nex.banisher import Banisher, BanisherError
@@ -14,9 +13,7 @@ from nex.instructioner import (Instructioner,
 from nex.router import make_macro_token
 from nex.utils import ascii_characters
 
-
-class DummyInstructions(Enum):
-    test = 'TEST'
+from common import DummyInstructions
 
 
 test_char_to_cat = {}
@@ -30,13 +27,6 @@ test_char_to_cat.update({
     '[': CatCode.begin_group,
     ']': CatCode.end_group,
 })
-
-
-def string_to_banisher(s, cs_map, char_to_cat=None, param_map=None):
-    state = DummyState(cs_map=cs_map,
-                       param_map=param_map, char_to_cat=char_to_cat)
-    instrs = Instructioner.from_string(s, get_cat_code_func=state.get_cat_code)
-    return Banisher(instrs, state, instrs.lexer.reader)
 
 
 class DummyState:
@@ -65,6 +55,13 @@ class DummyState:
 
     def get_upper_case_code(self, c):
         return c.upper()
+
+
+def string_to_banisher(s, cs_map, char_to_cat=None, param_map=None):
+    state = DummyState(cs_map=cs_map,
+                       param_map=param_map, char_to_cat=char_to_cat)
+    instrs = Instructioner.from_string(s, get_cat_code_func=state.get_cat_code)
+    return Banisher(instrs, state, instrs.lexer.reader)
 
 
 def test_resolver():

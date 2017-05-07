@@ -259,74 +259,57 @@ def make_macro_token(name, replacement_text, parameter_text,
 
 
 def get_initial_router():
-    control_sequences = {}
-
-    macros = {}
-    let_chars = {}
-    parameters = {}
-    primitives = {}
-    font_ids = {}
-
-    for param_cs, param in param_control_sequence_map.items():
-        # Add a route from the control sequence name to the primitive.
-        route_id = param_cs
-        route_token = RouteToken(ControlSequenceType.parameter, route_id)
-        control_sequences[param_cs] = route_token
-
-        # Make that route resolve to the instruction token.
-        token = make_parameter_control_sequence_instruction(
-            name=param_cs, parameter=param)
-        parameters[route_id] = token
-
-    for cs_name, instruction in primitive_control_sequence_map.items():
-        # Add a route from the name to the primitive.
-        route_id = cs_name
-        route_token = RouteToken(ControlSequenceType.primitive, route_id)
-        control_sequences[cs_name] = route_token
-
-        # Make that route resolve to the instruction token.
-        token = make_primitive_control_sequence_instruction(
-            name=cs_name, instruction=instruction)
-        primitives[route_id] = token
-
-    router = CSRouter(control_sequences,
-                      macros, let_chars, parameters, primitives, font_ids,
-                      enclosing_scope=None)
-    return router
+    return CSRouter(param_control_sequences=param_control_sequence_map,
+                    primitive_control_sequences=primitive_control_sequence_map,
+                    enclosing_scope=None)
 
 
 def get_local_router(enclosing_scope):
-    control_sequences = {}
-
-    macros = {}
-    let_chars = {}
-    parameters = {}
-    primitives = {}
-    font_ids = {}
-
-    router = CSRouter(control_sequences,
-                      macros, let_chars, parameters, primitives, font_ids,
-                      enclosing_scope)
-    return router
+    return CSRouter(param_control_sequences={}, primitive_control_sequences={},
+                    enclosing_scope=enclosing_scope)
 
 
 class CSRouter(object):
 
-    def __init__(self, control_sequences,
-                 macros, let_chars, parameters, primitives, font_ids,
+    def __init__(self, param_control_sequences, primitive_control_sequences,
                  enclosing_scope=None):
-        self.control_sequences = control_sequences
-
-        self.macros = macros
-        self.let_chars = let_chars
-        self.parameters = parameters
-        self.primitives = primitives
-        self.font_ids = font_ids
-
+        self.control_sequences = {}
+        self.macros = {}
+        self.let_chars = {}
+        self.parameters = {}
+        self.primitives = {}
+        self.font_ids = {}
         self.enclosing_scope = enclosing_scope
+
+        for name, parameter in param_control_sequences.items():
+            self._set_parameter(name, parameter)
+        for name, instruction in primitive_control_sequences.items():
+            self._set_primitive(name, instruction)
 
     def _set_route_token(self, name, route_token):
         self.control_sequences[name] = route_token
+
+    def _set_primitive(self, name, instruction):
+        # Add a route from the name to the primitive.
+        route_id = name
+        route_token = RouteToken(ControlSequenceType.primitive, route_id)
+        self._set_route_token(name, route_token)
+
+        # Make that route resolve to the instruction token.
+        token = make_primitive_control_sequence_instruction(
+            name=name, instruction=instruction)
+        self.primitives[route_id] = token
+
+    def _set_parameter(self, name, parameter):
+        # Add a route from the control sequence name to the parameter.
+        route_id = name
+        route_token = RouteToken(ControlSequenceType.parameter, route_id)
+        self._set_route_token(name, route_token)
+
+        # Make that route resolve to the instruction token.
+        token = make_parameter_control_sequence_instruction(
+            name=name, parameter=parameter)
+        self.parameters[route_id] = token
 
     def _resolve_control_sequence_to_route_token(self, name):
         # If the route token exists in this scope, return it.

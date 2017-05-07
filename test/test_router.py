@@ -1,6 +1,6 @@
 import pytest
 
-from nex.router import CSRouter, RouteToken
+from nex.router import CSRouter, RouteToken, ControlSequenceType
 from nex.utils import NoSuchControlSequence
 from nex.instructioner import make_unexpanded_control_sequence_instruction
 
@@ -21,15 +21,15 @@ def test_router_non_exist():
         e.do_let_assignment(target_token=dummy_token, new_name='test_2')
 
 
-# def test_router_resolution():
-#     r_tok = RouteToken('macro')
-#     e = CSRouter(control_sequences={'a': },
-#                  macros={},
-#                  let_chars={},
-#                  parameters={},
-#                  primitives={},
-#                  font_ids={},
-#                  enclosing_scope=None)
+def test_router_resolution():
+    r_tok = RouteToken('macro')
+    e = CSRouter(control_sequences={'a': },
+                 macros={},
+                 let_chars={},
+                 parameters={},
+                 primitives={},
+                 font_ids={},
+                 enclosing_scope=None)
 
 
 # def prepare_control_sequences(type_map, route_id):
@@ -43,6 +43,34 @@ def test_router_non_exist():
 #         tok.value['attribute'] = attr_value
 #         t_map[route_id] = tok
 #     return control_sequences
+
+
+# def test_router_resolve_name():
+#     route_id = 1
+#     macros, parameters, primitives = {}, {}, {}
+#     type_map = {
+#         'macro': macros,
+#         'parameter': parameters,
+#         'primitive': primitives,
+#     }
+#     control_sequences = prepare_control_sequences(type_map, route_id)
+#     r = CSRouter(control_sequences=control_sequences,
+#                  macros=macros,
+#                  let_chars={},
+#                  parameters=parameters,
+#                  primitives=primitives,
+#                  enclosing_scope=None)
+#     name_to_expected_token_map = {
+#         'test_macro': macros[route_id],
+#         'test_parameter': parameters[route_id],
+#         'test_primitive': primitives[route_id],
+#     }
+#     for name in control_sequences:
+#         d = r.resolve_control_sequence_to_token(name=name)
+#         # Check 'name' matches the call, not the underlying token name.
+#         assert d.value['name'] == name
+#         # But is in other ways identical.
+#         assert d.equal_contents_to(name_to_expected_token_map[name])
 
 
 # def test_router_resolve_name():
