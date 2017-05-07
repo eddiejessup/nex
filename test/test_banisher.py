@@ -39,7 +39,7 @@ class DummyState:
         self.cs_map = cs_map
         self.param_map = param_map
 
-    def resolve_control_sequence_to_token(self, name, *args, **kwargs):
+    def lookup_control_sequence(self, name, *args, **kwargs):
         canon_token = self.cs_map[name]
         token = canon_token.copy(*args, **kwargs)
         return token

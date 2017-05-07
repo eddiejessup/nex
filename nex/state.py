@@ -175,8 +175,8 @@ class Scope(object):
         f = getattr(self.cs_router, func_name)
         return f(*args, **kwargs)
 
-    def resolve_control_sequence_to_token(self, *args, **kwargs):
-        return self.defer_to_router('resolve_control_sequence_to_token',
+    def lookup_control_sequence(self, *args, **kwargs):
+        return self.defer_to_router('lookup_control_sequence',
                                     *args, **kwargs)
 
     def set_macro(self, *args, **kwargs):
@@ -399,10 +399,12 @@ class GlobalState(object):
     # Router.
 
     def expand_macro_to_token_list(self, *args, **kwargs):
-        return self.try_scope_func_until_success('expand_macro_to_token_list', *args, **kwargs)
+        return self.try_scope_func_until_success('expand_macro_to_token_list',
+                                                 *args, **kwargs)
 
-    def resolve_control_sequence_to_token(self, *args, **kwargs):
-        return self.try_scope_func_until_success('resolve_control_sequence_to_token', *args, **kwargs)
+    def lookup_control_sequence(self, *args, **kwargs):
+        return self.try_scope_func_until_success('lookup_control_sequence',
+                                                 *args, **kwargs)
 
     def set_macro(self, name, replacement_text, parameter_text, def_type, prefixes):
         # TODO: Consider \globaldefs integer parameter.

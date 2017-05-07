@@ -340,7 +340,7 @@ class CSRouter(object):
             v = self.enclosing_scope.cs_router._resolve_route_token_to_raw_value(r)
         return v
 
-    def resolve_control_sequence_to_token(self, name, position_like=None):
+    def lookup_control_sequence(self, name, position_like=None):
         route_token = self._resolve_control_sequence_to_route_token(name)
         canon_token = self._resolve_route_token_to_raw_value(route_token)
         token = canon_token.copy(position_like=position_like)

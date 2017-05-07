@@ -539,7 +539,7 @@ class Banisher:
         if (self._expanding_control_sequences and
                 first_token.instruction in unexpanded_cs_instructions):
             name = first_token.value['name']
-            first_token = self.global_state.resolve_control_sequence_to_token(
+            first_token = self.global_state.lookup_control_sequence(
                 name, position_like=first_token)
 
         instr = first_token.instruction

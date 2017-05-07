@@ -1,36 +1,42 @@
 import pytest
 
-from nex.router import CSRouter, RouteToken, ControlSequenceType
+from nex.router import CSRouter
 from nex.utils import NoSuchControlSequence
 from nex.instructioner import make_unexpanded_control_sequence_instruction
+from nex.tex_parameters import Parameters
+
+from common import DummyInstructions
 
 dummy_token = make_unexpanded_control_sequence_instruction('dummy')
 
 
-def test_router_non_exist():
-    e = CSRouter(control_sequences={},
-                 macros={},
-                 let_chars={},
-                 parameters={},
-                 primitives={},
-                 font_ids={},
+def test_undefined_control_sequence():
+    r = CSRouter(param_control_sequences={},
+                 primitive_control_sequences={},
                  enclosing_scope=None)
     with pytest.raises(NoSuchControlSequence):
-        e.resolve_control_sequence_to_token(name='test')
+        r.lookup_control_sequence(name='test')
     with pytest.raises(NoSuchControlSequence):
-        e.do_let_assignment(target_token=dummy_token, new_name='test_2')
+        r.do_let_assignment(target_token=dummy_token, new_name='test_2')
 
 
-def test_router_resolution():
-    r_tok = RouteToken('macro')
-    e = CSRouter(control_sequences={'a': },
-                 macros={},
-                 let_chars={},
-                 parameters={},
-                 primitives={},
-                 font_ids={},
+def test_primitive_resolution():
+    r = CSRouter(param_control_sequences={},
+                 primitive_control_sequences={'hi': DummyInstructions.test},
                  enclosing_scope=None)
+    t = r.lookup_control_sequence('hi')
+    assert t.value['name'] == 'hi'
+    assert t.instruction == DummyInstructions.test
+    print(t)
 
+
+def test_parameter_resolution():
+    r = CSRouter(param_control_sequences={'ho': Parameters.med_mu_skip},
+                 primitive_control_sequences={},
+                 enclosing_scope=None)
+    t = r.lookup_control_sequence('ho')
+    assert t.value['name'] == 'ho'
+    assert t.value['parameter'] == Parameters.med_mu_skip
 
 # def prepare_control_sequences(type_map, route_id):
 #     control_sequences = {}
@@ -66,7 +72,7 @@ def test_router_resolution():
 #         'test_primitive': primitives[route_id],
 #     }
 #     for name in control_sequences:
-#         d = r.resolve_control_sequence_to_token(name=name)
+#         d = r.lookup_control_sequence(name=name)
 #         # Check 'name' matches the call, not the underlying token name.
 #         assert d.value['name'] == name
 #         # But is in other ways identical.
@@ -94,7 +100,7 @@ def test_router_resolution():
 #         'test_primitive': primitives[route_id],
 #     }
 #     for name in control_sequences:
-#         d = r.resolve_control_sequence_to_token(name=name)
+#         d = r.lookup_control_sequence(name=name)
 #         # Check 'name' matches the call, not the underlying token name.
 #         assert d.value['name'] == name
 #         # But is in other ways identical.
@@ -122,8 +128,8 @@ def test_router_resolution():
 #         new_let_name = name + '_let'
 #         call_token = get_call_token(name)
 #         r.do_let_assignment(new_name=new_let_name, target_token=call_token)
-#         d_old = r.resolve_control_sequence_to_token(name=name)
-#         d_new = r.resolve_control_sequence_to_token(name=new_let_name)
+#         d_old = r.lookup_control_sequence(name=name)
+#         d_new = r.lookup_control_sequence(name=new_let_name)
 #         assert d_old.equal_contents_to(d_new)
 
 #     # Alias some things to overwrite and check they stay correct.
@@ -132,18 +138,18 @@ def test_router_resolution():
 #     r.do_let_assignment(new_name='test_macro',
 #                         target_token=get_call_token('test_primitive'))
 #     # Check 'test_macro' now returns the primitive token.
-#     d_1 = r.resolve_control_sequence_to_token(name='test_macro')
+#     d_1 = r.lookup_control_sequence(name='test_macro')
 #     assert d_1.equal_contents_to(primitives[route_id])
 #     # Check so does the original call, 'test_primitive'.
-#     d_2 = r.resolve_control_sequence_to_token(name='test_primitive')
+#     d_2 = r.lookup_control_sequence(name='test_primitive')
 #     assert d_2.equal_contents_to(primitives[route_id])
 #     assert d_2.equal_contents_to(d_1)
 #     # And so does the let primitive version.
-#     d_4 = r.resolve_control_sequence_to_token(name='test_primitive_let')
+#     d_4 = r.lookup_control_sequence(name='test_primitive_let')
 #     assert d_4.equal_contents_to(primitives[route_id])
 #     assert d_4.equal_contents_to(d_1)
 #     assert d_4.equal_contents_to(d_2)
 #     # But the let version, 'test_macro_let', still returns the macro token.
-#     d_3 = r.resolve_control_sequence_to_token(name='test_macro_let')
+#     d_3 = r.lookup_control_sequence(name='test_macro_let')
 #     assert d_3.equal_contents_to(macros[route_id])
 #     assert not d_3.equal_contents_to(primitives[route_id])
