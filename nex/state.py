@@ -554,7 +554,7 @@ class GlobalState:
                 # the horizontal list with an empty hbox whose width is
                 # \parindent. The \everypar tokens are inserted into TeX's
                 # input. The page builder is exercised."
-                if not (self.mode == Mode.internal_vertical):
+                if self.mode != Mode.internal_vertical:
                     par_skip_glue = self.parameters.get(Parameters.par_skip)
                     par_skip_glue_item = UnSetGlue(**par_skip_glue)
                     self.append_to_list(par_skip_glue_item)

@@ -24,19 +24,21 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
                 item = item.set(item.natural_dimen)
             amount = item.dimen
             if horizontal:
-                # doc.put_rule(height=1000, width=amount)
                 doc.right(amount)
             else:
                 doc.down(amount)
         elif isinstance(item, box.SetGlue):
             amount = item.dimen
             if horizontal:
-                # doc.put_rule(height=1000, width=amount)
                 doc.right(amount)
             else:
                 doc.down(amount)
         elif isinstance(item, box.Rule):
-            doc.set_rule(item.height, item.width)
+            doc.put_rule(item.height, item.width)
+            if horizontal:
+                doc.right(item.width)
+            else:
+                doc.down(item.height)
         else:
             import pdb; pdb.set_trace()
 
