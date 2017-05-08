@@ -592,7 +592,6 @@ def rule_specification_empty(p):
 @pg.production('rule_dimension : height dimen')
 @pg.production('rule_dimension : depth dimen')
 def rule_dimension(p):
-    print(p[0])
     return BuiltToken(type_='rule_dimension',
                       value={'axis': p[0].value, 'dimen': p[1]},
                       position_like=p)

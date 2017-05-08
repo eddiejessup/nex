@@ -83,7 +83,6 @@ class Lexer:
         while True:
             token = self._process_next_character()
             if token is not None:
-                # print(token.get_position_str(self.reader))
                 return token
 
     def advance_to_end(self):

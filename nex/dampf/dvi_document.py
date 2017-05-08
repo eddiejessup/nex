@@ -42,12 +42,6 @@ denominator = int(7227 * 2 ** 16)
 dvi_format = 2
 
 
-def get_font_info(font_name, font_path):
-    font_parser = TfmParser(font_name, font_path)
-    font_info = font_parser.tfm
-    return font_info
-
-
 class DVIDocument:
 
     def __init__(self, magnification):
@@ -109,7 +103,7 @@ class DVIDocument:
 
     def define_font(self, font_nr, font_name, font_path,
                     scale_factor_ratio=1.0):
-        font_info = get_font_info(font_name, font_path)
+        font_info = TfmParser.parse(font_name, font_path)
         design_size = int(pt2sp(font_info.design_font_size))
         scale_factor = int(design_size * scale_factor_ratio)
         font_path = font_info.font_name

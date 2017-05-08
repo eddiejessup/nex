@@ -30,7 +30,6 @@ def test_primitive_resolution():
     t = r.lookup_control_sequence('hi')
     assert t.value['name'] == 'hi'
     assert t.instruction == DummyInstructions.test
-    print(t)
 
 
 def test_parameter_resolution():
@@ -128,4 +127,3 @@ def test_let_to_character():
     targ = char_cat_instr_tok('c', CatCode.letter)
     r.do_let_assignment('c', targ)
     t_let = r.lookup_control_sequence('c')
-    print(t_let)

@@ -2,7 +2,7 @@ import os
 from enum import Enum
 
 from .pydvi.TeXUnit import pt2sp
-from .dampf.dvi_document import get_font_info
+from .pydvi.Font.TfmParser import TfmParser
 
 from .instructions import Instructions
 from .utils import ensure_extension, find_file
@@ -14,8 +14,8 @@ class FontInfo:
         if file_name is None:
             self.font_info = None
         else:
-            self.font_info = get_font_info(font_name=file_name,
-                                           font_path=file_path)
+            self.font_info = TfmParser.parse(font_name=file_name,
+                                             filename=file_path)
         self.at_clause = at_clause
 
         self.at_size = None

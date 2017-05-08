@@ -134,7 +134,6 @@ def test_let():
 
     b_maximal = string_to_banisher('$letrill $cheese= a', cs_map)
     out_maximal = b_maximal._iterate()
-    # print(out_maximal)
     assert len(out_maximal) == 5
 
     assert out_minimal[-1] == out_equals[-1] == out_maximal[-1]
