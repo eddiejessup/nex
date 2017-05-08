@@ -43,7 +43,6 @@ class PositionToken(BaseToken):
             return ''
 
         if self.line_nr is not None:
-
             s_line = '{:d}'.format(self.line_nr)
         else:
             s_line = '?'

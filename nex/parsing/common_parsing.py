@@ -175,9 +175,7 @@ def stretch_or_shrink_non_stated(p):
 @pg.production('mu_stretch : optional_spaces')
 @pg.production('mu_shrink : optional_spaces')
 def stretch_or_shrink_omitted(p):
-    return BuiltToken(type_='dimen',
-                      value={'sign': '+',
-                             'size': BuiltToken(type_='size', value=0)},
+    return BuiltToken(type_='dimen', value=0,
                       position_like=p)
 
 
