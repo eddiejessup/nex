@@ -13,12 +13,18 @@ class EncodedValue:
     def nr_bytes(self):
         return len(self.encode())
 
+    def __repr__(self):
+        return '{}(name={}, value={})'.format(self.__class__.__name__,
+                                              self.name, self.value)
+
 
 class EncodedInteger(EncodedValue):
 
     def __init__(self, length, signed=False, allow_unsigned_4_byte=False,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not isinstance(self.value, int):
+            raise TypeError('Trying to encode non-integer as integer')
         self.length = length
         self.signed = signed
         self.allow_unsigned_4_byte = allow_unsigned_4_byte
@@ -76,6 +82,10 @@ class EncodedInstruction(EncodedValue):
         self.arguments = list(arguments)
 
     @property
+    def name(self):
+        return self.op_code.name
+
+    @property
     def encoded_op_code(self):
         return EncodedOperation(self.op_code)
 
@@ -85,6 +95,11 @@ class EncodedInstruction(EncodedValue):
 
     def encode(self):
         return b''.join(b.encode() for b in self.op_and_args)
+
+    def __repr__(self):
+        return '{}(name={}, arguments={})'.format(self.__class__.__name__,
+                                                  self.name,
+                                                  self.arguments)
 
 
 def _encode_integer_to_bytes(length, value, signed=False,
@@ -190,7 +205,7 @@ OpCode = Enum('OpCode', op_codes)
 
 def get_simple_instruction_func(op_code, *string_getters):
     def get_instruction(*values):
-        if not len(values) == len(string_getters):
+        if len(values) != len(string_getters):
             raise ValueError
         encodeds = []
         for string_getter, value in zip(string_getters, values):
