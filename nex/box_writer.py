@@ -1,5 +1,6 @@
-from nex.dampf.dvi_document import DVIDocument
+import subprocess
 
+from .dampf.dvi_document import DVIDocument
 from .tex_parameters import Parameters
 from . import box
 
@@ -43,9 +44,13 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
             import pdb; pdb.set_trace()
 
 
-def write_to_file(state, out_stream):
+def write_to_dvi_file(state, out_stream, write_pdf=False):
     magnification = state.parameters.get(Parameters.mag)
     doc = DVIDocument(magnification)
     total_layout_list = state.pop_mode()
     write_box_to_doc(doc, total_layout_list)
     doc.write(out_stream)
+    if write_pdf:
+        if not isinstance(out_stream, str):
+            raise ValueError('Cannot convert non-file-name to PDF')
+        subprocess.run(['dvipdf', out_stream], check=True)

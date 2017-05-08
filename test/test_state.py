@@ -4,13 +4,14 @@ from nex.state import GlobalState, Mode
 from nex.tex_parameters import Parameters
 from nex.fonts import GlobalFontState
 from nex import box
-from nex.box_writer import write_to_file
+from nex.box_writer import write_to_dvi_file
 
 from test_banisher import test_char_to_cat
 
 
-do_output = True
+do_output = False
 font_path = '/Users/ejm/projects/nex/example/fonts'
+
 
 class DummyCodes:
     def __init__(self, char_to_cat):
@@ -131,7 +132,7 @@ def test_single_letter():
     assert isinstance(lst[1], box.FontSelection)
     assert isinstance(lst[2], box.Character)
     if do_output:
-        write_to_file(state, 'test_single_letter.dvi')
+        write_to_dvi_file(state, 'test_single_letter.dvi')
 
 
 def test_rule():
@@ -145,4 +146,4 @@ def test_rule():
     assert isinstance(lst[2], box.Rule)
     assert isinstance(lst[3], box.Rule)
     if do_output:
-        write_to_file(state, 'test_v_rule.dvi')
+        write_to_dvi_file(state, 'test_v_rule.dvi')

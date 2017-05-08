@@ -1,3 +1,4 @@
+import os
 from os import path as opath
 import base64
 import uuid
@@ -28,6 +29,13 @@ class ExecuteCommandError(Exception):
 
 class TidyEnd(Exception):
     pass
+
+
+def get_default_font_paths():
+    return [
+        os.getcwd(),
+        opath.join(os.getcwd(), 'fonts'),
+    ]
 
 
 def sum_infinities(ds):
