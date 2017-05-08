@@ -29,7 +29,7 @@ def evaluate_size(state, size_token):
     elif isinstance(size_token, BuiltToken):
         if size_token.type == 'backtick_integer':
             unexpanded_token = size_token.value
-            if unexpanded_token.type == 'UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE':
+            if unexpanded_token.type == 'UNEXPANDED_CONTROL_SYMBOL':
                 # If we have a single character control sequence in this context,
                 # it is just a way of specifying a character in a way that
                 # won't invoke its special effects.

@@ -75,7 +75,7 @@ command_terminal_instructions = (
     # I.v_box,
     # I.v_top,
     I.active_character,
-    I.unexpanded_many_char_control_sequence,
+    I.unexpanded_control_word,
 )
 command_terminal_instructions += message_instructions
 command_terminal_instructions += hyphenation_instructions
@@ -447,8 +447,8 @@ def font_definition(p):
                       position_like=p)
 
 
-@pg.production('control_sequence : UNEXPANDED_MANY_CHAR_CONTROL_SEQUENCE')
-@pg.production('control_sequence : UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE')
+@pg.production('control_sequence : UNEXPANDED_CONTROL_WORD')
+@pg.production('control_sequence : UNEXPANDED_CONTROL_SYMBOL')
 def control_sequence(p):
     return p[0]
 

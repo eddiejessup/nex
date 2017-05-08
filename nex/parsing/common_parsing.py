@@ -58,7 +58,7 @@ common_terminal_instructions = (
     I.skip_def_token,
     I.mu_skip_def_token,
     I.toks_def_token,
-    I.unexpanded_one_char_control_sequence,
+    I.unexpanded_control_symbol,
 )
 # Add ordinary character literals.
 char_instructions = tuple(I['non_active_uncased_{}'.format(c.lower())]
@@ -437,7 +437,7 @@ def normal_integer_character(p):
                       position_like=p)
 
 
-@pg.production('character_token : UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE')
+@pg.production('character_token : UNEXPANDED_CONTROL_SYMBOL')
 @pg.production('character_token : character')
 # TODO: make this possible.
 # @pg.production('character_token : ACTIVE_CHARACTER')

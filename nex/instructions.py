@@ -160,8 +160,8 @@ instructions = (
     # Strange internal instructions that are produced by the banisher.
     'LET_TARGET',
     # Control sequence names produced as part of a definition and such.
-    'UNEXPANDED_ONE_CHAR_CONTROL_SEQUENCE',
-    'UNEXPANDED_MANY_CHAR_CONTROL_SEQUENCE',
+    'UNEXPANDED_CONTROL_SYMBOL',
+    'UNEXPANDED_CONTROL_WORD',
     # Parameter placeholder in macro definitions.
     'DELIMITED_PARAM',
     'UNDELIMITED_PARAM',
@@ -233,8 +233,8 @@ Instructions = Enum('Instructions', {s.lower(): s for s in instructions})
 I = Instructions
 
 unexpanded_cs_instructions = (
-    I.unexpanded_one_char_control_sequence,
-    I.unexpanded_many_char_control_sequence,
+    I.unexpanded_control_symbol,
+    I.unexpanded_control_word,
 )
 
 message_instructions = (

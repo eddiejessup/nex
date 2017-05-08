@@ -111,9 +111,9 @@ def make_primitive_control_sequence_instruction(name, instruction):
 
 def make_unexpanded_control_sequence_instruction(name, position_like=None):
     if len(name) == 1:
-        instruction = Instructions.unexpanded_one_char_control_sequence
+        instruction = Instructions.unexpanded_control_symbol
     else:
-        instruction = Instructions.unexpanded_many_char_control_sequence
+        instruction = Instructions.unexpanded_control_word
     return InstructionToken(
         instruction,
         value={'name': name, 'lex_type': control_sequence_lex_type},
