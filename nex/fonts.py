@@ -1,11 +1,17 @@
 import os
 from enum import Enum
+from functools import lru_cache
 
 from .pydvi.TeXUnit import pt2sp
 from .pydvi.Font.TfmParser import TfmParser
 
 from .instructions import Instructions
 from .utils import ensure_extension, find_file
+
+
+@lru_cache(maxsize=512)
+def scale(design_size, d):
+    return int(round(pt2sp(d * design_size)))
 
 
 class FontInfo:
@@ -38,7 +44,7 @@ class FontInfo:
         return self.font_info.design_font_size
 
     def scale(self, d):
-        return int(round(pt2sp(d * self.design_size)))
+        return scale(self.design_size, d)
 
     @property
     def extra_space(self):
@@ -71,9 +77,11 @@ class FontInfo:
     def char_info(self, code):
         return self.font_info[code]
 
+    @lru_cache(maxsize=512)
     def width(self, code):
         return self.scale(self.char_info(code).width)
 
+    @lru_cache(maxsize=512)
     def height(self, code):
         return self.scale(self.char_info(code).height)
 

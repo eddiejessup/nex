@@ -162,8 +162,8 @@ class Instructioner:
         else:
             new_lex_token = next(self.lexer)
             t = lex_token_to_instruction_token(new_lex_token)
-        if t.char_nr is not None:
-            print(t.get_position_str(self.lexer.reader))
+        # if t.char_nr is not None:
+        #     print(t.get_position_str(self.lexer.reader))
         return t
 
     def advance_to_end(self):
