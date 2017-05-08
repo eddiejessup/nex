@@ -1,7 +1,7 @@
 from enum import Enum
 from collections import deque
 
-from .utils import ExecuteCommandError
+from .utils import ExecuteCommandError, TidyEnd
 from .reader import EndOfFile
 from .registers import is_register_type
 from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
@@ -225,7 +225,7 @@ class GlobalState:
         command = next(commands)
         try:
             self.execute_command(command, banisher, reader)
-        except (EndOfFile, EndOfSubExecutor):
+        except (EndOfFile, EndOfSubExecutor, TidyEnd):
             raise
         except Exception as e:
             raise ExecuteCommandError(command, e)
@@ -390,7 +390,8 @@ class GlobalState:
         # I think technically only this should cause the program to end, not
         # EndOfFile anywhere. But for now, whatever.
         elif type_ == 'END':
-            raise EndOfFile
+            self.do_paragraph()
+            raise TidyEnd
         elif type_ == 'short_hand_definition':
             code_eval = evaler.evaluate_number(self, v['code'])
             self.router.do_short_hand_definition(

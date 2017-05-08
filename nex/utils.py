@@ -26,6 +26,10 @@ class ExecuteCommandError(Exception):
         self.exception = exception
 
 
+class TidyEnd(Exception):
+    pass
+
+
 def sum_infinities(ds):
     order_sums = [0]
     for d in ds:
