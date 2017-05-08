@@ -307,13 +307,48 @@ class GlobalState:
             import pdb; pdb.set_trace()
 
     def add_rule(self, width, height, depth):
-        if width is not None:
-            width = evaler.evaluate_dimen(self, width)
-        if height is not None:
-            height = evaler.evaluate_dimen(self, height)
-        if depth is not None:
-            depth = evaler.evaluate_dimen(self, depth)
         self.append_to_list(Rule(width, height, depth))
+
+    def add_v_rule(self, width, height, depth):
+        from .pydvi.TeXUnit import pt2sp
+        if width is None:
+            width = pt2sp(0.4)
+        else:
+            width = evaler.evaluate_dimen(self, width)
+        if height is None:
+            if self.mode == Mode.vertical:
+                height = self.parameters.get(Parameters.v_size)
+            else:
+                raise NotImplementedError
+        else:
+            height = evaler.evaluate_dimen(self, height)
+        if depth is None:
+            if self.mode == Mode.vertical:
+                depth = self.parameters.get(Parameters.v_size)
+            else:
+                raise NotImplementedError
+        else:
+            depth = evaler.evaluate_dimen(self, depth)
+        self.add_rule(width, height, depth)
+
+    def add_h_rule(self, width, height, depth):
+        from .pydvi.TeXUnit import pt2sp
+        if width is None:
+            if self.mode in (Mode.horizontal, Mode.vertical):
+                width = self.parameters.get(Parameters.h_size)
+            else:
+                raise NotImplementedError
+        else:
+            width = evaler.evaluate_dimen(self, width)
+        if height is None:
+            height = int(pt2sp(0.4))
+        else:
+            height = evaler.evaluate_dimen(self, height)
+        if depth is None:
+            depth = 0
+        else:
+            depth = evaler.evaluate_dimen(self, depth)
+        self.add_rule(width, height, depth)
 
     def execute_command(self, command, banisher, reader):
         # Reader needed to allow us to insert new input in response to
@@ -349,7 +384,9 @@ class GlobalState:
         elif type_ == 'character':
             self.add_character(v['char'])
         elif type_ == 'V_RULE':
-            self.add_rule(**v)
+            self.add_v_rule(**v)
+        elif type_ == 'H_RULE':
+            self.add_h_rule(**v)
         # The box already has its contents in the correct way, built using this
         # very method. Recursion still amazes me sometimes.
         elif type_ == 'h_box':
