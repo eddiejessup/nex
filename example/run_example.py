@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 
+from nex.utils import TidyEnd
 from nex.state import GlobalState
 from nex.reader import Reader
 from nex.lexer import Lexer
@@ -31,10 +32,11 @@ def run_file(in_path, font_search_paths):
     banisher = Banisher(
         instructions=instructioner, state=state, reader=reader,
     )
-
     with safe_chunk_grabber(banisher, command_parser) as command_grabber:
-        state.execute_commands(command_grabber, banisher, reader)
-    return state
+        try:
+            state.execute_commands(command_grabber, banisher, reader)
+        except TidyEnd:
+            return state
 
 
 if __name__ == '__main__':
