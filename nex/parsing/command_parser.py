@@ -1,3 +1,4 @@
+import warnings
 import logging
 
 from ..tokens import BuiltToken, instructions_to_types
@@ -669,5 +670,7 @@ def literal(p):
     return make_literal_token(p)
 
 
-# Build the parser
-command_parser = pg.build()
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    # Build the parser
+    command_parser = pg.build()

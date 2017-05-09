@@ -1,8 +1,11 @@
 import os
 from os import path as opath
+import logging
 
 from .utils import (get_unique_id,
                     ensure_extension, find_file, file_path_to_chars)
+
+logger = logging.getLogger(__name__)
 
 
 class EndOfFile(Exception):
@@ -19,16 +22,17 @@ class ReaderBuffer:
     The alternative might be less error-prone, but I'm sticking with this for
     now."""
 
-    def __init__(self, chars):
+    def __init__(self, chars, name=''):
         self.i = -1
         self.chars = chars
+        self.name = name
 
         self.line_nr = 1
         self.col_nr = 1
 
     @classmethod
-    def from_string(cls, s):
-        return cls(list(s))
+    def from_string(cls, s, *args, **kwargs):
+        return cls(list(s), *args, **kwargs)
 
     @property
     def at_last_char(self):
@@ -67,12 +71,16 @@ class ReaderBuffer:
         except IndexError:
             raise EndOfFile
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}(Line {self.line_nr})'
+
     def increment_loc(self):
         """Advance the current position in the buffer by one character."""
         self.i += 1
         c = self.peek_ahead(0)
         if c == '\n':
             self.line_nr += 1
+            logger.debug('Read buffer f{self} moved to line f{self.line_nr}')
             self.col_nr = 0
         else:
             self.col_nr += 1
@@ -103,24 +111,25 @@ class Reader:
         """Access a buffer by its hash."""
         return self.buffer_map[buffer_hash]
 
-    def _insert_buffer(self, buff, name=''):
+    def _insert_buffer(self, buff):
         """Make a new buffer, and add it to the active stack. An optional name
         can be given to the buffer, for debugging information."""
         # The buffer's hash key is a combination of the buffer name and
         # a unique hash, so that duplicate names do not collide.
-        new_hash = (name, get_unique_id())
+        new_hash = (buff.name, get_unique_id())
+        logger.info(f'Adding new buffer {buff}')
         self.buffer_map[new_hash] = buff
         self.active_buffer_hash_stack.append(new_hash)
 
     def insert_chars(self, chars, name=''):
         """Add a list of characters to the reading stack. An optional name can
         be given to the buffer, for debugging information."""
-        self._insert_buffer(ReaderBuffer(chars), name=name)
+        self._insert_buffer(ReaderBuffer(chars, name=name))
 
     def insert_string(self, s, name=''):
         """Add a string of characters to the reading stack. An optional name
         can be given to the buffer, for debugging information."""
-        self._insert_buffer(ReaderBuffer.from_string(s), name=name)
+        self._insert_buffer(ReaderBuffer.from_string(s, name=name))
 
     def insert_file(self, file_name):
         """Add the contents of a file to the reading stack. An optional name

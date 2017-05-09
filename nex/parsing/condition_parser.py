@@ -1,3 +1,5 @@
+import warnings
+
 from ..instructions import if_instructions
 from ..tokens import BuiltToken, instructions_to_types
 
@@ -66,4 +68,7 @@ def error(look_ahead):
     else:
         import pdb; pdb.set_trace()
 
-condition_parser = pg.build()
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    condition_parser = pg.build()
