@@ -1,5 +1,6 @@
 import colorama
 
+from .utils import strep
 
 colorama.init()
 
@@ -118,7 +119,7 @@ class PositionToken(BaseToken):
             here_len = self.char_len
         here_i_end = here_i + here_len
         here = ''.join(cs[here_i:here_i_end])
-        here = here.replace(' ', '␣')
+        # here = here.replace(' ', '␣')
         here = colorama.Fore.RED + here + colorama.Style.RESET_ALL
 
         end_i = min(here_i_end + context_len, len(cs))
@@ -131,8 +132,9 @@ class PositionToken(BaseToken):
                 post_context = post_context + '…'
 
         s = pre_context + here + post_context
-        s = s.replace('\n', '⏎ ')
-        s = s.replace('\t', '⇥')
+        s = strep(s)
+        # s = s.replace('\n', '⏎ ')
+        # s = s.replace('\t', '⇥')
         intro = 'Line {:d}: '.format(self.line_nr, self.col_nr)
         return intro + s
 

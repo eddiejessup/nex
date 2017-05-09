@@ -38,6 +38,14 @@ def get_default_font_paths():
     ]
 
 
+def strep(s):
+    return (s
+            .replace(' ', '␣')
+            .replace('\n', '⏎ ')
+            .replace('\t', '⇥')
+            )
+
+
 def sum_infinities(ds):
     order_sums = [0]
     for d in ds:

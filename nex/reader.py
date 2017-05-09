@@ -72,7 +72,12 @@ class ReaderBuffer:
             raise EndOfFile
 
     def __repr__(self):
-        return f'{self.__class__.__name__}(Line {self.line_nr})'
+        args = []
+        if self.name:
+            args.append(self.name)
+        args.append(f'Line {self.line_nr}')
+        p = ', '.join(args)
+        return f'{self.__class__.__name__}({p})'
 
     def increment_loc(self):
         """Advance the current position in the buffer by one character."""
@@ -80,7 +85,7 @@ class ReaderBuffer:
         c = self.peek_ahead(0)
         if c == '\n':
             self.line_nr += 1
-            logger.debug('Read buffer f{self} moved to line f{self.line_nr}')
+            logger.debug(f'Read buffer {self} moved to line {self.line_nr}')
             self.col_nr = 0
         else:
             self.col_nr += 1

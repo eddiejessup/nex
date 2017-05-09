@@ -4,6 +4,7 @@ import logging
 from .reader import Reader, EndOfFile
 from .tokens import LexToken
 from .codes import CatCode
+from .utils import strep
 
 logger = logging.getLogger(__name__)
 
@@ -113,16 +114,12 @@ class Lexer:
             self.reader.advance_loc()
         return c
 
-    def _chomp_next_char_trio(self, peek=False, current=False):
-        if current:
-            start_char, start_cat = self._cur_char_cat
-            peek_offset = 0
+    def _chomp_next_char_trio(self, peek=False):
+        if peek:
+            peek_offset = 1
         else:
-            start_char, start_cat = self._chomp_next_char(peek=peek)
-            if peek:
-                peek_offset = 1
-            else:
-                peek_offset = 0
+            peek_offset = 0
+        start_char, start_cat = self._chomp_next_char(peek=peek)
         char, cat = start_char, start_cat
         char_len = 1
         if start_cat == CatCode.superscript:
@@ -165,17 +162,12 @@ class Lexer:
         char, cat, total_char_len = self._chomp_next_char_trio()
         pos_info['char_len'] = total_char_len
 
-        logger.debug('Chomped {}_{}'.format(char, cat))
         if cat == CatCode.comment:
-            logger.info('Comment')
+            logger.debug('Lexing comment')
             while self._chomp_next_char()[1] != CatCode.end_of_line:
-                logger.debug('Chomped comment character {}_{}'
-                             .format(*self._cur_char_cat))
                 pass
-            logger.debug('Chomped end_of_line in comment')
             self.reading_state = ReadingState.line_begin
         elif cat == CatCode.escape:
-            logger.debug('Chomped escape character {}_{}'.format(char, cat))
             first_char, first_cat, first_char_len = self._chomp_next_char_trio()
             pos_info['char_len'] += first_char_len
             control_sequence_chars = [first_char]
@@ -205,71 +197,54 @@ class Lexer:
                         break
                 self.reading_state = ReadingState.skipping_blanks
             control_sequence_name = ''.join(control_sequence_chars)
-            logger.debug('Got control sequence {}'.format(control_sequence_name))
+            logger.debug(f'Lexed control sequence "{control_sequence_name}"')
             return make_control_sequence_lex_token(control_sequence_name,
                                                    **pos_info)
         elif cat in tokenise_cats:
+            logger.debug(f'Tokenizing "{strep(char)}" of category {cat.name}')
             token = make_char_cat_lex_token(char, cat, **pos_info)
             self.reading_state = ReadingState.line_middle
             return token
-        # If TeX sees a character of category 10 (space), the action
+        # If TeX sees a character of category [space], the action
         # depends on the current state.
         elif cat == CatCode.space:
-            # If TeX is in state N or S
+            # If TeX is in state [new line] or [skipping blanks]
             if self.reading_state in (ReadingState.line_begin,
                                       ReadingState.skipping_blanks):
                 # The character is simply passed by, and TeX remains in the
                 # same state.
+                logger.debug('Ignoring space-category character')
                 pass
-            # Otherwise TeX is in state M
+            # Otherwise TeX is in state [line middle]
             else:
                 # the character is converted to a token of category 10 whose
-                # character code is 32, and TeX enters state S. The character
-                # code in a space token is always 32.
+                # character code is 32, and TeX enters state [skipping blanks].
+                # The character code in a space token is always 32.
+                logger.debug('Tokenizing space-category character')
                 token = make_char_cat_lex_token(' ', cat, **pos_info)
                 self.reading_state = ReadingState.skipping_blanks
                 return token
         elif cat == CatCode.end_of_line:
-            # NOTE: I'm very confused about TeX's concept of lines.
-            # I am going to implement a sort of mishmash of these two
-            # explanations below.
-
-            # 1. This bit of explanation is mixed in with the code, for
-            #    clarity. I do not know what this bit really means.
-
-            # If TeX sees an end-of-line character (category 5), it throws away
-            # any other information that might remain on the current line.
-
-            # Then if TeX is in state N (new line),
+            # [...] if TeX is in state [new line],
             if self.reading_state == ReadingState.line_begin:
                 # the end-of-line character is converted to the control
                 # sequence token 'par' (end of paragraph).
+                logger.debug('Lexing end-of-line character to \par')
                 token = make_control_sequence_lex_token('par', **pos_info)
-            # if TeX is in state M (mid-line),
+            # if TeX is in state [mid-line],
             elif self.reading_state == ReadingState.line_middle:
                 # the end-of-line character is converted to a token for
-                # character 32 (' ') of category 10 (space).
+                # character 32 (' ') of category [space].
+                logger.debug('Lexing end-of-line character to space')
                 token = make_char_cat_lex_token(' ', CatCode.space, **pos_info)
-            # and if TeX is in state S (skipping blanks),
+            # and if TeX is in state [skipping blanks],
             elif self.reading_state == ReadingState.skipping_blanks:
                 # the end-of-line character is simply dropped.
+                logger.debug('Ignoring end-of-line character')
                 token = None
-            # "At the beginning of every line [TeX is] in state N".
+            # "At the beginning of every line [TeX is] in state [new line]".
             self.reading_state = ReadingState.line_begin
             if token is not None:
                 return token
-            # 2.
-            # TeX deletes any <space> characters (number 32) that occur at the
-            # right end of an input line.
-            # Then it inserts a <return> character
-            # (number 13) at the right end of the line, except that it places
-            # nothing additional at the end of a line that you inserted with
-            # |I|' during error recovery. Note that <return> is considered to
-            # be an actual character that is part of the line; you can obtain
-            # special effects by changing its catcode.
-            # cr_char = WeirdChar.carriage_return
-            # cr_cat = self.char_to_cat[cr_char]
-            # token = {'type': 'char_cat_pair', 'char': cr_char, 'cat': cr_cat}
-            # return token
         else:
             import pdb; pdb.set_trace()

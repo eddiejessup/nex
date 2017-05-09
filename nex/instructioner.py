@@ -1,3 +1,4 @@
+import logging
 from string import ascii_letters
 from collections import deque
 
@@ -8,6 +9,7 @@ from .instructions import Instructions
 from .tex_parameters import param_to_instr
 from .codes import CatCode
 
+logger = logging.getLogger(__name__)
 
 literals_map = {
     ('<', CatCode.other): Instructions.less_than,
@@ -162,8 +164,8 @@ class Instructioner:
         else:
             new_lex_token = next(self.lexer)
             t = lex_token_to_instruction_token(new_lex_token)
-        # if t.char_nr is not None:
-        #     print(t.get_position_str(self.lexer.reader))
+        if t.char_nr is not None:
+            logger.info(t.get_position_str(self.lexer.reader))
         return t
 
     def advance_to_end(self):
