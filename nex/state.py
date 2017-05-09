@@ -591,6 +591,20 @@ class GlobalState:
                 raise EndOfSubExecutor
             else:
                 import pdb; pdb.set_trace()
+        elif type_ == 'V_SKIP':
+            glue = evaler.evaluate_glue(self, v)
+            item = UnSetGlue(**glue)
+            self.append_to_list(item)
+        elif type_ == 'H_STRETCH_OR_SHRINK':
+            from .units import PhysicalUnit
+            from .tokens import BuiltToken
+            unit = {'unit': PhysicalUnit.fil,
+                    'true': True,
+                    'number_of_fils': 1,
+                    'factor': 1}
+            fil = BuiltToken(type_='fil_unit', value=unit)
+            item = UnSetGlue(dimen=0, stretch=fil, shrink=fil)
+            self.append_to_list(item)
         else:
             # print(type_)
             # pass
