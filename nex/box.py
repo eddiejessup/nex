@@ -407,7 +407,7 @@ class FontDefinition(ListElement):
         self.file_name = file_name
         self.at_clause = at_clause
 
-    width = height = 0
+    width = height = natural_width = natural_height = 0
 
 
 class FontSelection(ListElement):
@@ -416,4 +416,4 @@ class FontSelection(ListElement):
     def __init__(self, font_nr):
         self.font_nr = font_nr
 
-    width = height = 0
+    width = height = natural_width = natural_height = 0

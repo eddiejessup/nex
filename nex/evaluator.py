@@ -18,14 +18,18 @@ def get_integer_constant(collection):
     return int(s, base=collection.base)
 
 
+def eval_instruction(state, tok):
+    if is_parameter_type(tok.type):
+        return state.parameters.get(tok.value['parameter'])
+    elif tok.type in ('CHAR_DEF_TOKEN', 'MATH_CHAR_DEF_TOKEN'):
+        return tok.value
+    else:
+        import pdb; pdb.set_trace()
+
+
 def evaluate_size(state, size_token):
     if isinstance(size_token, InstructionToken):
-        if is_parameter_type(size_token.type):
-            return state.parameters.get(size_token.value['parameter'])
-        elif size_token.type in ('CHAR_DEF_TOKEN', 'MATH_CHAR_DEF_TOKEN'):
-            return size_token.value
-        else:
-            import pdb; pdb.set_trace()
+        return eval_instruction(state, size_token)
     elif isinstance(size_token, BuiltToken):
         if size_token.type == 'backtick_integer':
             unexpanded_token = size_token.value
@@ -80,38 +84,41 @@ def evaluate_dimen(state, dimen_token):
     size_token, sign = dimen_value['size'], dimen_value['sign']
     if isinstance(size_token, int):
         number_of_scaled_points = size_token
-    size_value = size_token.value
-    if isinstance(size_value, int):
-        number_of_scaled_points = size_token.value
+    elif isinstance(size_token, InstructionToken):
+        number_of_scaled_points = eval_instruction(state, size_token)
     else:
-        number_of_units_token = size_token.value['factor']
-        number_of_units = evaluate_size(state, number_of_units_token)
-        unit_token = size_token.value['unit']
-        unit = unit_token['unit']
-        if unit == PhysicalUnit.fil:
-            # TODO: This doesn't pay attention to the sign, is this wrong?
-            return BuiltToken(
-                type_='fil_dimension',
-                value={'factor': number_of_units,
-                       'number_of_fils': unit_token['number_of_fils']}
-            )
-        # Only one unit in mu units, a mu. I don't know what a mu is though...
-        elif unit == MuUnit.mu:
-            number_of_scaled_points = number_of_units
-        elif unit == InternalUnit.em:
-            number_of_scaled_points = state.current_font.em_size
-        elif unit == InternalUnit.ex:
-            number_of_scaled_points = state.current_font.ex_size
+        size_value = size_token.value
+        if isinstance(size_value, int):
+            number_of_scaled_points = size_token.value
         else:
-            number_of_scaled_points = units_in_scaled_points[unit] * number_of_units
-            is_true_unit = unit_token['true']
-            if is_true_unit:
-                magnification = state.parameters.get(Parameters.mag)
-                # ['true'] unmagnifies the units, so that the subsequent
-                # magnification will cancel out. For example, `\vskip 0.5 true
-                # cm' is equivalent to `\vskip 0.25 cm' if you have previously
-                # said `\magnification=2000'.
-                number_of_scaled_points *= 1000.0 / magnification
+            number_of_units_token = size_token.value['factor']
+            number_of_units = evaluate_size(state, number_of_units_token)
+            unit_token = size_token.value['unit']
+            unit = unit_token['unit']
+            if unit == PhysicalUnit.fil:
+                # TODO: This doesn't pay attention to the sign, is this wrong?
+                return BuiltToken(
+                    type_='fil_dimension',
+                    value={'factor': number_of_units,
+                           'number_of_fils': unit_token['number_of_fils']}
+                )
+            # Only one unit in mu units, a mu. I don't know what a mu is though...
+            elif unit == MuUnit.mu:
+                number_of_scaled_points = number_of_units
+            elif unit == InternalUnit.em:
+                number_of_scaled_points = state.current_font.em_size
+            elif unit == InternalUnit.ex:
+                number_of_scaled_points = state.current_font.ex_size
+            else:
+                number_of_scaled_points = units_in_scaled_points[unit] * number_of_units
+                is_true_unit = unit_token['true']
+                if is_true_unit:
+                    magnification = state.parameters.get(Parameters.mag)
+                    # ['true'] unmagnifies the units, so that the subsequent
+                    # magnification will cancel out. For example, `\vskip 0.5 true
+                    # cm' is equivalent to `\vskip 0.25 cm' if you have previously
+                    # said `\magnification=2000'.
+                    number_of_scaled_points *= 1000.0 / magnification
     if sign == '-':
         number_of_scaled_points *= -1
     return int(round(number_of_scaled_points))
