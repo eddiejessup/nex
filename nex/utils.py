@@ -46,6 +46,19 @@ def strep(s):
             )
 
 
+def csep(args):
+    args = [a for a in args if a != '' and a is not None]
+    return ', '.join(args)
+
+
+def clsn(obj):
+    return obj.__class__.__name__
+
+
+def drep(obj, a):
+    return f'{clsn(obj)}({csep(a)})'
+
+
 def sum_infinities(ds):
     order_sums = [0]
     for d in ds:

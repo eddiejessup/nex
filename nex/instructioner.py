@@ -159,17 +159,27 @@ class Instructioner:
         return self
 
     def __next__(self):
-        if self.input_tokens_queue:
+        retrieving = self.input_tokens_queue
+        if retrieving:
             t = self.input_tokens_queue.popleft()
         else:
             new_lex_token = next(self.lexer)
             t = lex_token_to_instruction_token(new_lex_token)
-        if t.char_nr is not None:
-            logger.info(t.get_position_str(self.lexer.reader))
+        if t.char_nr is not None and logger.isEnabledFor(logging.INFO):
+            source = 'Retrieved' if retrieving else 'Read'
+            logger.info(f'{source}: {t.get_position_str(self.lexer.reader)}')
         return t
 
     def advance_to_end(self):
         yield from self.lexer.advance_to_end()
 
     def replace_tokens_on_input(self, tokens):
+        if logger.isEnabledFor(logging.DEBUG):
+            if len(tokens) == 1:
+                s = tokens[0]
+            elif len(tokens) > 3:
+                s = f'[{tokens[0]} … {tokens[-1]}]'
+            else:
+                s = tokens
+            logger.debug(f'Replacing "{s}" on input instruction queue')
         self.input_tokens_queue.extendleft(reversed(tokens))

@@ -1,8 +1,43 @@
 import colorama
 
-from .utils import strep
+from .utils import strep, csep
 
 colorama.init()
+
+
+def get_position_str(chars, char_nr, char_len, line_nr):
+    here_i = char_nr
+    context_len = 60
+
+    before_i = max(here_i - context_len, 0)
+    pre_context = ''.join(chars[before_i:here_i])
+    if '\n' in pre_context:
+        pre_context = pre_context[pre_context.rfind('\n'):]
+    else:
+        if before_i > 0:
+            pre_context = '…' + pre_context
+
+    if char_len is None:
+        here_len = 1
+    else:
+        here_len = char_len
+    here_i_end = here_i + here_len
+    here = ''.join(chars[here_i:here_i_end])
+    here = colorama.Fore.RED + here + colorama.Style.RESET_ALL
+
+    end_i = min(here_i_end + context_len, len(chars))
+
+    post_context = ''.join(chars[here_i_end:end_i])
+    if '\n' in post_context:
+        post_context = post_context[:post_context.find('\n') + 1]
+    else:
+        if end_i != len(chars):
+            post_context = post_context + '…'
+
+    s = pre_context + here + post_context
+    s = strep(s)
+    intro = f'Line {line_nr}: '
+    return intro + s
 
 
 class BaseToken:
@@ -20,8 +55,8 @@ class BaseToken:
         return self.value if self.value is not None else ''
 
     def __repr__(self):
-        return '<{}({}): {}>'.format(self.__class__.__name__,
-                                     self.type, self.value_repr)
+        return '{}({}): {}'.format(self.__class__.__name__,
+                                   self.type, self.value_repr)
 
     def __str__(self):
         return self.__repr__()
@@ -67,23 +102,8 @@ class PositionToken(BaseToken):
             s = 'Line {}, Col {}, Index {}, Length {}'.format(s_line, s_col,
                                                               s_pos, s_len)
         else:
-            s = 'L{}:{}'.format(s_line, s_col)
+            s = f'L{s_line}'
         return s
-
-    def __repr__(self):
-        pos_summary = self.pos_summary()
-        if pos_summary:
-            pos = ' {}'.format(pos_summary)
-        else:
-            pos = ''
-        val_r = self.value_repr
-        if val_r:
-            val = ': {}'.format(val_r)
-        else:
-            val = ''
-        return '<{}({}){}{}>'.format(self.__class__.__name__,
-                                     self.type,
-                                     pos, val)
 
     def set_position(self, line_nr, col_nr, char_nr, char_len, file_hash):
         self.line_nr = line_nr
@@ -102,41 +122,7 @@ class PositionToken(BaseToken):
 
     def get_position_str(self, reader):
         cs = reader.get_buffer(self.file_hash).chars
-        here_i = self.char_nr
-        context_len = 60
-
-        before_i = max(here_i - context_len, 0)
-        pre_context = ''.join(cs[before_i:here_i])
-        if '\n' in pre_context:
-            pre_context = pre_context[pre_context.rfind('\n'):]
-        else:
-            if before_i > 0:
-                pre_context = '…' + pre_context
-
-        if self.char_len is None:
-            here_len = 1
-        else:
-            here_len = self.char_len
-        here_i_end = here_i + here_len
-        here = ''.join(cs[here_i:here_i_end])
-        # here = here.replace(' ', '␣')
-        here = colorama.Fore.RED + here + colorama.Style.RESET_ALL
-
-        end_i = min(here_i_end + context_len, len(cs))
-
-        post_context = ''.join(cs[here_i_end:end_i])
-        if '\n' in post_context:
-            post_context = post_context[:post_context.find('\n') + 1]
-        else:
-            if end_i != len(cs):
-                post_context = post_context + '…'
-
-        s = pre_context + here + post_context
-        s = strep(s)
-        # s = s.replace('\n', '⏎ ')
-        # s = s.replace('\t', '⇥')
-        intro = 'Line {:d}: '.format(self.line_nr, self.col_nr)
-        return intro + s
+        return get_position_str(cs, self.char_nr, self.char_len, self.line_nr)
 
 
 class BuiltToken(PositionToken):
@@ -214,19 +200,20 @@ class InstructionToken(PositionToken):
             import pdb; pdb.set_trace()
 
     def __repr__(self):
+        a = [f'I={self.instruction.name}']
         pos_summary = self.pos_summary()
         if pos_summary:
-            pos = ' {}'.format(pos_summary)
+            pos = '@{}'.format(pos_summary)
         else:
             pos = ''
+        a.append(pos)
         val_r = self.value_repr
         if val_r:
-            val = ': {}'.format(val_r)
+            val = f'v={val_r}'
         else:
             val = ''
-        return '<{}(I.{}){}{}>'.format(self.__class__.__name__,
-                                       self.instruction.name,
-                                       pos, val)
+        a.append(val)
+        return f'IT({csep(a)})'
 
     # Token interface.
 

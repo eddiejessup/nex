@@ -2,7 +2,7 @@ import os
 from os import path as opath
 import logging
 
-from .utils import (get_unique_id,
+from .utils import (get_unique_id, drep,
                     ensure_extension, find_file, file_path_to_chars)
 
 logger = logging.getLogger(__name__)
@@ -72,12 +72,11 @@ class ReaderBuffer:
             raise EndOfFile
 
     def __repr__(self):
-        args = []
+        a = []
         if self.name:
-            args.append(self.name)
-        args.append(f'Line {self.line_nr}')
-        p = ', '.join(args)
-        return f'{self.__class__.__name__}({p})'
+            a.append(self.name)
+        a.append(f'Line {self.line_nr}')
+        return drep(self, a)
 
     def increment_loc(self):
         """Advance the current position in the buffer by one character."""
