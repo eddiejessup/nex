@@ -1,3 +1,4 @@
+import logging
 from enum import Enum
 from collections import deque
 
@@ -15,6 +16,8 @@ from . import evaluator as evaler
 from .fonts import GlobalFontState
 from .scopes import (ScopedCodes, ScopedRegisters, ScopedRouter,
                      ScopedParameters, ScopedFontState, Operation)
+
+logger = logging.getLogger(__name__)
 
 
 class Mode(Enum):
@@ -155,10 +158,12 @@ class GlobalState:
         return self.modes[-1][1]
 
     def push_mode(self, mode):
+        logger.info(f'Entering {mode}')
         self.modes.append((mode, []))
 
     def pop_mode(self):
         mode, layout_list = self.modes.pop()
+        logger.info(f'Exited {mode}')
         return layout_list
 
     def append_to_list(self, item):
@@ -247,6 +252,8 @@ class GlobalState:
             # \TeX, does nothing in restricted horizontal mode.
             return
         elif self.mode == Mode.horizontal:
+            logger.info(f'Adding paragraph')
+
             # "But it terminates horizontal mode: The current list is
             # finished off by doing, '\unskip \penalty10000
             # \hskip\parfillskip' then it is broken into lines as explained
@@ -363,6 +370,7 @@ class GlobalState:
         # char-cat pair might end up as part of a filename or something.
         if (self.mode in vertical_modes and
                 command_shifts_to_horizontal(command)):
+            logger.info(f'"{type_}" causing shift to horizontal mode')
             # "If any of these tokens occurs as a command in vertical mode or
             # internal vertical mode, TeX automatically performs an \indent
             # command as explained above. This leads into horizontal mode with
@@ -382,14 +390,19 @@ class GlobalState:
         elif type_ == 'PAR':
             self.do_paragraph()
         elif type_ == 'character':
+            logger.debug(f'Adding character')
             self.add_character(v['char'])
         elif type_ == 'V_RULE':
+            logger.debug(f'Adding vertical rule')
             self.add_v_rule(**v)
         elif type_ == 'H_RULE':
+            logger.debug(f'Adding horizontal rule')
             self.add_h_rule(**v)
         # The box already has its contents in the correct way, built using this
         # very method. Recursion still amazes me sometimes.
         elif type_ == 'h_box':
+            logger.info(f'Adding horizontal box')
+
             conts = v['contents'].value
             spec = v['specification']
             to = None
@@ -407,36 +420,48 @@ class GlobalState:
         # Commands like font commands aren't exactly boxes, but they go through
         # as DVI commands. Just put them in the box for now to deal with later.
         elif type_ == 'font_selection':
+            logger.info(f"Selecting font {v['font_id']}")
             self.select_font(v['global'], v['font_id'])
         elif type_ == 'font_definition':
+            file_name = v['file_name'].value
+            logger.info(f"Defining font at \"{file_name}\" as \"{v['control_sequence_name']}\"")
             new_font_id = self.define_new_font(
-                v['file_name'].value, v['at_clause'],
+                file_name, v['at_clause'],
             )
             # Make a control sequence pointing to it.
             self.router.define_new_font_control_sequence(
                 v['global'], v['control_sequence_name'], new_font_id)
         elif type_ == 'family_assignment':
-            family_nr = v['family_nr']
-            family_nr_eval = evaler.evaluate_number(self, family_nr)
+            family_nr_uneval = v['family_nr']
+            family_nr_eval = evaler.evaluate_number(self, family_nr_uneval)
+            logger.info(f"Setting font family {family_nr_eval}")
             self.scoped_font_state.set_font_family(v['global'],
                                                    family_nr_eval,
                                                    v['font_range'],
                                                    v['font_id'])
         elif type_ == 'input':
-            reader.insert_file(command.value['file_name'])
+            file_name = command.value['file_name']
+            logger.info(f"Inserting new file '{file_name}'")
+            reader.insert_file(file_name)
         # I think technically only this should cause the program to end, not
         # EndOfFile anywhere. But for now, whatever.
         elif type_ == 'END':
+            logger.info(f"Doing paragraph if needed, then ending")
             self.do_paragraph()
             raise TidyEnd
         elif type_ == 'short_hand_definition':
-            code_eval = evaler.evaluate_number(self, v['code'])
+            code_uneval = v['code']
+            code_eval = evaler.evaluate_number(self, code_uneval)
+            cs_name = v['control_sequence_name']
+            # TODO: Log symbolic argument too.
+            logger.info(f'Defining short macro "{cs_name}" as {code_eval}')
             self.router.do_short_hand_definition(
-                v['global'], v['control_sequence_name'], v['def_type'],
+                v['global'], cs_name, v['def_type'],
                 code_eval
             )
         elif type_ == 'macro_assignment':
             name = v['name']
+            logger.info(f'Defining macro "{name}"')
             self.router.set_macro(
                 name, parameter_text=v['parameter_text'],
                 replacement_text=v['replacement_text'],
@@ -539,7 +564,10 @@ class GlobalState:
             self.global_font_state.set_hyphen_char(v['font_id'],
                                                          code_eval)
         elif type_ == 'message':
-            # print(command.value)
+            conts = v['content'].value
+            s = ''.join(t.value['char'] for t in conts)
+            print(f'MESSAGE: {s}')
+            # print(v.keys())
             pass
         elif type_ == 'write':
             # print(command.value)

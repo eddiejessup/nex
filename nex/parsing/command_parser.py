@@ -18,7 +18,6 @@ from .utils import (ExpectedParsingError, ExhaustedTokensError,
 from .general_text_parser import gen_txt_pg
 
 logger = logging.getLogger(__name__)
-logger.setLevel('DEBUG')
 
 
 command_terminal_instructions = (

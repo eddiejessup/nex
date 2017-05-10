@@ -11,10 +11,12 @@ from nex.nex import run_file
 from nex.reader import logger as read_logger
 from nex.lexer import logger as lex_logger
 from nex.instructioner import logger as instr_logger
+from nex.banisher import logger as banish_logger
 
 read_logger.setLevel(logging.INFO)
 lex_logger.setLevel(logging.INFO)
 instr_logger.setLevel(logging.WARNING)
+banish_logger.setLevel(logging.INFO)
 
 dir_path = opath.dirname(opath.realpath(__file__))
 

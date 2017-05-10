@@ -1,8 +1,11 @@
+import logging
 from contextlib import contextmanager
 from collections import deque
 
 from ..reader import EndOfFile
 from ..utils import NoSuchControlSequence
+
+logger = logging.getLogger(__name__)
 
 
 class ExpectedParsingError(Exception):
@@ -96,12 +99,13 @@ class ChunkGrabber:
                 # This is only possible if we have already parsed the chunk-so-
                 # far.
                 if have_parsed:
+                    # This might always be fine, but log it anyway.
+                    logger.warning('Ignoring failed expansion in chunk grabber')
                     break
                 # Otherwise, indeed something is wrong.
                 else:
                     raise
             except Exception as e:
-                import pdb; pdb.set_trace()
                 raise
             chunk_token_queue.append(t)
             try:
@@ -112,6 +116,7 @@ class ChunkGrabber:
                 # If we have already parsed a chunk, then we use this as our
                 # result.
                 if have_parsed:
+                    logger.debug(f'Got chunk "{chunk.type}", through failure')
                     # We got one token of fluff due to extra read, to make the
                     # parse queue not-parse. So put it back on the buffer.
                     self.out_queue.queue.appendleft(chunk_token_queue.pop())
@@ -132,6 +137,7 @@ class ChunkGrabber:
                 # must handle bad handling of the post- chunk tokens caused by
                 # not acting on this chunk.
                 if chunk._could_only_end:
+                    logger.debug(f'Got chunk "{chunk.type}", through inevitability')
                     break
                 have_parsed = True
         # We might want to reverse the composition of terminal tokens we just
@@ -140,4 +146,5 @@ class ChunkGrabber:
         return chunk
 
     def clean_up(self):
+        logger.info(f"Cleaning up {len(self.out_queue.queue)} on chunk grabber's queue")
         self.banisher.instructions.replace_tokens_on_input(self.out_queue.queue)
