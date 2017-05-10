@@ -8,6 +8,13 @@ import sys
 from nex.utils import ensure_extension, get_default_font_paths
 from nex.box_writer import write_to_dvi_file
 from nex.nex import run_file
+from nex.reader import logger as read_logger
+from nex.lexer import logger as lex_logger
+from nex.instructioner import logger as instr_logger
+
+read_logger.setLevel(logging.INFO)
+lex_logger.setLevel(logging.INFO)
+instr_logger.setLevel(logging.WARNING)
 
 dir_path = opath.dirname(opath.realpath(__file__))
 

@@ -48,23 +48,26 @@ class ContextMode(Enum):
     awaiting_make_h_box_start = 3
     awaiting_make_v_box_start = 4
     awaiting_make_v_top_start = 5
-    # Inhibited expansion contexts. I have listed the corresponding entry in
-    # the list of cases where expansion is suppressed, in the TeXbook, page
-    # 215.
-    # Entry 2.
-    absorbing_conditional_text = 12
-    # Entry 3.
-    absorbing_macro_arguments = 13
-    # Entry 4.
-    absorbing_new_control_sequence_name = 14
-    # Entry 5, and the latter part of entry 7.
-    absorbing_misc_unexpanded_arguments = 15
-    # Entry 6.
-    absorbing_macro_parameter_text = 16
-    # First part of entry 7.
-    absorbing_macro_replacement_text = 17
-    # Entry 10.
-    absorbing_backtick_argument = 20
+    # These contexts are not used in practice, because the contextual grabbing
+    # can be handled in the same call as the context-initiating instruction is
+    # seen.
+    # # Inhibited expansion contexts. I have listed the corresponding entry in
+    # # the list of cases where expansion is suppressed, in the TeXbook, page
+    # # 215.
+    # # Entry 2.
+    # absorbing_conditional_text = 12
+    # # Entry 3.
+    # absorbing_macro_arguments = 13
+    # # Entry 4.
+    # absorbing_new_control_sequence_name = 14
+    # # Entry 5, and the latter part of entry 7.
+    # absorbing_misc_unexpanded_arguments = 15
+    # # Entry 6.
+    # absorbing_macro_parameter_text = 16
+    # # First part of entry 7.
+    # absorbing_macro_replacement_text = 17
+    # # Entry 10.
+    # absorbing_backtick_argument = 20
 
 
 @contextmanager
@@ -365,6 +368,7 @@ class Banisher:
         return tokens, []
 
     def _handle_if(self, first_token):
+        logger.debug(f'Handling condition "{first_token.instruction.name} …"')
         # TODO: Can we, and should we, do this grab-then-execute logic with
         # some kind of Executor-like class?
         with safe_chunk_grabber(self, condition_parser,
@@ -506,6 +510,7 @@ class Banisher:
     def _handle_string(self, first_token):
         # TeX first reads the [next] token without expansion.
         target_token = next(self.instructions)
+        logger.debug(f'Doing "string" instruction to {target_token}')
         escape_char_code = self.global_state.parameters.get(Parameters.escape_char)
         return [], get_string_instr_repr(target_token, escape_char_code)
 
@@ -558,6 +563,7 @@ class Banisher:
         elif (self.context_mode in (ContextMode.awaiting_balanced_text_start,
                                     ContextMode.awaiting_balanced_text_or_token_variable_start)
                 and instr == Instructions.left_brace):
+            logger.debug('Grabbing balanced text')
             bal_tok = get_balanced_text_token(self.instructions)
             # Done getting balanced text, so pop context.
             self._pop_context()
@@ -567,6 +573,7 @@ class Banisher:
         # see a token variable.
         elif (self.context_mode == ContextMode.awaiting_balanced_text_or_token_variable_start and
               instr in token_variable_start_instructions):
+            logger.debug('Passing on token variable')
             # We can handle this sort of token-list argument in the parser; we
             # only had this context in case a balanced text needed to be got,
             # so we can just pop the context and put the token on the output
@@ -576,25 +583,31 @@ class Banisher:
         # Waiting to absorb some box contents, and see a "{".
         elif (self.context_mode in box_context_mode_map.values() and
                 instr == Instructions.left_brace):
+            logger.debug(f'Grabbing box after {self.context_mode}')
             return self._handle_making_box(first_token)
         # Such as \chardef, or \font, or a "`".
         elif (instr in short_hand_def_instructions +
                 (Instructions.font, Instructions.backtick)):
             # Add an unexpanded control sequence as an instruction token to the
             # output.
+            logger.debug(f'Grabbing {instr} argument')
             return [], [first_token, next(self.instructions)]
         # Such as \def.
         elif instr in def_instructions:
+            logger.debug(f'Grabbing macro definition')
             return self._handle_def(first_token)
         # \let.
         elif instr == Instructions.let:
+            logger.debug(f'Grabbing let arguments')
             return self._handle_let(first_token)
         # Such as \toks.
         elif instr in token_variable_start_instructions:
+            logger.debug(f'Adding "awaiting balanced text or token variable" context for "{instr.name}" argument')
             self._push_context(ContextMode.awaiting_balanced_text_or_token_variable_start)
             return [], [first_token]
         # \expandafter.
         elif instr == Instructions.expand_after:
+            logger.debug(f'Evaluating expand-after')
             # Read a token without expansion.
             unexpanded_token = next(self.instructions)
             # Then get the next token *with* expansion.
@@ -607,6 +620,7 @@ class Banisher:
             return replace, []
         # Such as \message.
         elif instr in message_instructions + hyphenation_instructions:
+            logger.debug(f'Adding "awaiting balanced-text" context for "{instr.name}" argument')
             # TODO: I think the balanced text contents *are* expanded, at least
             # for \[err]message. Unlike upper/lower-case. Not sure how best to
             # implement this. I guess the same way \edef works, when that's
@@ -621,12 +635,15 @@ class Banisher:
             return self._handle_string(first_token)
         # \csname.
         elif instr == Instructions.cs_name:
+            logger.debug(f'Doing "cs-name" instruction')
             return self._handle_cs_name(first_token)
         # \upper.
         elif instr in (Instructions.upper_case, Instructions.lower_case):
+            logger.debug(f'Doing "{instr.name}" instruction')
             return self._handle_change_case(first_token)
         # Such as \hbox.
         elif instr in explicit_box_instructions:
+            logger.debug(f'Adding "box-specification" context')
             # Read until box specification is finished,
             # then we will do actual group and scope changes and so on.
             self._push_context(box_context_mode_map[instr])
@@ -634,4 +651,5 @@ class Banisher:
         # Just some semantic bullshit, stick it on the output queue
         # for the parser to deal with.
         else:
+            logger.debug(f'Passing on instruction "{instr.name}"')
             return [], [first_token]
