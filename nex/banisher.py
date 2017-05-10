@@ -309,9 +309,11 @@ class Banisher:
         return cls(instrs, state, instrs.lexer.reader)
 
     def _push_context(self, context_mode):
+        logger.info(f'Entering {context_mode}')
         self.context_mode_stack.append(context_mode)
 
     def _pop_context(self):
+        logger.info(f'Exiting {self.context_mode}')
         return self.context_mode_stack.pop()
 
     @property
@@ -474,6 +476,7 @@ class Banisher:
         # Get the succeeding general text token for processing.
         with safe_chunk_grabber(self,
                                 general_text_parser) as general_text_grabber:
+            logger.info(f'Adding context due to {first_token.instruction}')
             self._push_context(ContextMode.awaiting_balanced_text_start)
             general_text_token = next(general_text_grabber)
 
@@ -598,9 +601,8 @@ class Banisher:
             return self._handle_let(first_token)
         # Such as \toks.
         elif instr in token_variable_start_instructions:
-            c = ContextMode.awaiting_balanced_text_or_token_variable_start
-            logger.info(f'Entering {c} for "{instr.name}" argument')
-            self._push_context(c)
+            logger.info(f'Adding context due to {instr}')
+            self._push_context(ContextMode.awaiting_balanced_text_or_token_variable_start)
             return [], [first_token]
         # \expandafter.
         elif instr == Instructions.expand_after:
@@ -617,13 +619,12 @@ class Banisher:
             return replace, []
         # Such as \message.
         elif instr in message_instructions + hyphenation_instructions:
-            c = ContextMode.awaiting_balanced_text_start
-            logger.info(f'Entering {c} for "{instr.name}" argument')
+            logger.info(f'Adding context due to {instr}')
             # TODO: I think the balanced text contents *are* expanded, at least
             # for \[err]message. Unlike upper/lower-case. Not sure how best to
             # implement this. I guess the same way \edef works, when that's
             # implemented.
-            self._push_context(c)
+            self._push_context(ContextMode.awaiting_balanced_text_start)
             return [], [first_token]
         # Such as \ifnum.
         elif instr in if_instructions:
@@ -641,11 +642,10 @@ class Banisher:
             return self._handle_change_case(first_token)
         # Such as \hbox.
         elif instr in explicit_box_instructions:
-            c = box_context_mode_map[instr]
-            logger.info(f'Entering {c}')
+            logger.info(f'Adding context due to {instr}')
             # Read until box specification is finished,
             # then we will do actual group and scope changes and so on.
-            self._push_context(c)
+            self._push_context(box_context_mode_map[instr])
             return [], [first_token]
         # Just some semantic bullshit, stick it on the output queue
         # for the parser to deal with.
