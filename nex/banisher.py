@@ -26,6 +26,7 @@ from .parsing.utils import GetBuffer, safe_chunk_grabber
 from .parsing.command_parser import command_parser
 from .parsing.condition_parser import condition_parser
 from .parsing.general_text_parser import general_text_parser
+from .feedback import stringify_instr_list
 
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,9 @@ token_variable_start_instructions = (
     Instructions.toks_def_token,
     Instructions.toks,
 )
+
+
+shorties = short_hand_def_instructions + (Instructions.font, Instructions.backtick)
 
 
 class BanisherError(Exception):
@@ -361,6 +365,10 @@ class Banisher:
         params = first_token.value['parameter_text']
         replace_text = first_token.value['replacement_text']
         arguments = get_macro_arguments(params, tokens=self.instructions)
+        if len(replace_text) > 1:
+            logger.info(f"Expanding macro \"{first_token.value['name']}\" to \"{stringify_instr_list(replace_text)}\"")
+            for i, arg in enumerate(arguments):
+                logger.info(f"Macro argument {i + 1}: \"{stringify_instr_list(arg)}\"")
         tokens = substitute_params_with_args(replace_text, arguments)
         # Note that these tokens might themselves need more expansion.
         return tokens, []
@@ -585,8 +593,7 @@ class Banisher:
             logger.debug(f'Grabbing box after {self.context_mode}')
             return self._handle_making_box(first_token)
         # Such as \chardef, or \font, or a "`".
-        elif (instr in short_hand_def_instructions +
-                (Instructions.font, Instructions.backtick)):
+        elif instr in shorties:
             # Add an unexpanded control sequence as an instruction token to the
             # output.
             logger.debug(f'Grabbing {instr} argument')
