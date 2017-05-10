@@ -301,7 +301,7 @@ class Banisher:
         self.reader = reader
         # Context is not a TeX concept; it's used when doing this messy bit of
         # parsing.
-        self.context_mode_stack = []
+        self.context_mode_stack = [ContextMode.normal]
 
     @classmethod
     def from_string(cls, s, state):
@@ -312,15 +312,11 @@ class Banisher:
         self.context_mode_stack.append(context_mode)
 
     def _pop_context(self):
-        if self.context_mode_stack:
-            return self.context_mode_stack.pop()
+        return self.context_mode_stack.pop()
 
     @property
     def context_mode(self):
-        if self.context_mode_stack:
-            return self.context_mode_stack[-1]
-        else:
-            return ContextMode.normal
+        return self.context_mode_stack[-1]
 
     @property
     def _expanding_control_sequences(self):
@@ -478,8 +474,8 @@ class Banisher:
         # Get the succeeding general text token for processing.
         with safe_chunk_grabber(self,
                                 general_text_parser) as general_text_grabber:
-            with context_mode(self, ContextMode.awaiting_balanced_text_start):
-                general_text_token = next(general_text_grabber)
+            self._push_context(ContextMode.awaiting_balanced_text_start)
+            general_text_token = next(general_text_grabber)
 
         case_funcs_map = {
             Instructions.lower_case: self.global_state.codes.get_lower_case_code,
@@ -602,8 +598,9 @@ class Banisher:
             return self._handle_let(first_token)
         # Such as \toks.
         elif instr in token_variable_start_instructions:
-            logger.debug(f'Adding "awaiting balanced text or token variable" context for "{instr.name}" argument')
-            self._push_context(ContextMode.awaiting_balanced_text_or_token_variable_start)
+            c = ContextMode.awaiting_balanced_text_or_token_variable_start
+            logger.info(f'Entering {c} for "{instr.name}" argument')
+            self._push_context(c)
             return [], [first_token]
         # \expandafter.
         elif instr == Instructions.expand_after:
@@ -620,12 +617,13 @@ class Banisher:
             return replace, []
         # Such as \message.
         elif instr in message_instructions + hyphenation_instructions:
-            logger.debug(f'Adding "awaiting balanced-text" context for "{instr.name}" argument')
+            c = ContextMode.awaiting_balanced_text_start
+            logger.info(f'Entering {c} for "{instr.name}" argument')
             # TODO: I think the balanced text contents *are* expanded, at least
             # for \[err]message. Unlike upper/lower-case. Not sure how best to
             # implement this. I guess the same way \edef works, when that's
             # implemented.
-            self._push_context(ContextMode.awaiting_balanced_text_start)
+            self._push_context(c)
             return [], [first_token]
         # Such as \ifnum.
         elif instr in if_instructions:
@@ -643,10 +641,11 @@ class Banisher:
             return self._handle_change_case(first_token)
         # Such as \hbox.
         elif instr in explicit_box_instructions:
-            logger.debug(f'Adding "box-specification" context')
+            c = box_context_mode_map[instr]
+            logger.info(f'Entering {c}')
             # Read until box specification is finished,
             # then we will do actual group and scope changes and so on.
-            self._push_context(box_context_mode_map[instr])
+            self._push_context(c)
             return [], [first_token]
         # Just some semantic bullshit, stick it on the output queue
         # for the parser to deal with.
