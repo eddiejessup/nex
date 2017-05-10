@@ -16,6 +16,8 @@ from . import evaluator as evaler
 from .fonts import GlobalFontState
 from .scopes import (ScopedCodes, ScopedRegisters, ScopedRouter,
                      ScopedParameters, ScopedFontState, Operation)
+from .units import PhysicalUnit
+from .tokens import BuiltToken
 
 logger = logging.getLogger(__name__)
 
@@ -390,7 +392,7 @@ class GlobalState:
         elif type_ == 'PAR':
             self.do_paragraph()
         elif type_ == 'character':
-            logger.debug(f'Adding character')
+            logger.info(f"Adding character \"{v['char']}\"")
             self.add_character(v['char'])
         elif type_ == 'V_RULE':
             logger.debug(f'Adding vertical rule')
@@ -542,27 +544,27 @@ class GlobalState:
             if is_register_type(variable.type):
                 evaled_i = evaler.evaluate_size(self, variable.value)
                 self.registers.modify_register_value(type_=variable.type,
-                                                           i=evaled_i, **kwargs)
+                                                     i=evaled_i, **kwargs)
             elif is_parameter_type(variable.type):
                 self.registers.modify_parameter_value(parameter=variable.value['parameter'],
-                                                            **kwargs)
+                                                      **kwargs)
             else:
                 import pdb; pdb.set_trace()
         elif type_ == 'let_assignment':
             self.router.do_let_assignment(v['global'], new_name=v['name'],
-                                                target_token=v['target_token'])
+                                          target_token=v['target_token'])
         elif type_ == 'skew_char_assignment':
             # TODO: can we make this nicer by storing the char instead of the
             # number?
             code_eval = evaler.evaluate_number(self, v['code'])
             self.global_font_state.set_hyphen_char(v['font_id'],
-                                                         code_eval)
+                                                   code_eval)
         elif type_ == 'hyphen_char_assignment':
             # TODO: can we make this nicer by storing the char instead of the
             #         number?
             code_eval = evaler.evaluate_number(self, v['code'])
             self.global_font_state.set_hyphen_char(v['font_id'],
-                                                         code_eval)
+                                                   code_eval)
         elif type_ == 'message':
             conts = v['content'].value
             s = ''.join(t.value['char'] for t in conts)
@@ -622,16 +624,16 @@ class GlobalState:
         elif type_ == 'V_SKIP':
             glue = evaler.evaluate_glue(self, v)
             item = UnSetGlue(**glue)
+            logger.info(f'Adding vertical glue {item}')
             self.append_to_list(item)
         elif type_ == 'H_STRETCH_OR_SHRINK':
-            from .units import PhysicalUnit
-            from .tokens import BuiltToken
             unit = {'unit': PhysicalUnit.fil,
                     'true': True,
                     'number_of_fils': 1,
                     'factor': 1}
             fil = BuiltToken(type_='fil_unit', value=unit)
             item = UnSetGlue(dimen=0, stretch=fil, shrink=fil)
+            logger.info(f'Adding horizontal super-elastic glue {item}')
             self.append_to_list(item)
         else:
             # print(type_)
