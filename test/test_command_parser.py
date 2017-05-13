@@ -9,7 +9,7 @@ from nex.instructioner import (Instructioner,
                                char_cat_instr_tok)
 from nex.utils import ascii_characters
 from nex.banisher import Banisher
-from nex.parsing.command_parser import command_parser
+from nex.parsing.parsing import command_parser
 
 
 from common import ITok

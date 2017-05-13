@@ -4,7 +4,7 @@ from .reader import Reader
 from .lexer import Lexer
 from .instructioner import Instructioner
 from .banisher import Banisher
-from .parsing.command_parser import command_parser
+from .parsing.parsing import command_parser
 from .parsing.utils import safe_chunk_grabber
 
 
