@@ -201,9 +201,12 @@ class GlobalState:
         return new_font_id
 
     @property
+    def current_font_id(self):
+        return self.scoped_font_state.current_font_id
+
+    @property
     def current_font(self):
-        current_font_id = self.scoped_font_state.current_font_id
-        return self.global_font_state.get_font(current_font_id)
+        return self.global_font_state.get_font(self.current_font_id)
 
     # Scope
 
@@ -219,6 +222,8 @@ class GlobalState:
     def pop_scope(self):
         for acc in self._scoped_accessors:
             acc.pop_scope()
+        if self.current_font_id != GlobalFontState.null_font_id:
+            self.select_font(is_global=False, font_id=self.current_font_id)
 
     def execute_commands(self, commands, banisher, reader):
         while True:
