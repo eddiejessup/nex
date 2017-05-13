@@ -5,18 +5,15 @@ from . import utils as pu
 
 def process_integer_digits(p, base):
     if len(p) > 1:
-        size_token = p[1]
-        constant_token = size_token.value
+        constant_token = p[1]
         collection = constant_token.value
     else:
         collection = pu.DigitCollection(base=base)
     # We work right-to-left, so the new digit should be added on the left.
     new_digit = p[0]
     collection.digits = [new_digit] + collection.digits
-    new_constant_token = BuiltToken(type_='integer_constant', value=collection,
-                                    position_like=p)
-    new_size_token = BuiltToken(type_='size', value=new_constant_token)
-    return new_size_token
+    return BuiltToken(type_='integer_constant', value=collection,
+                      position_like=p)
 
 
 def add_number_rules(pg):
@@ -45,15 +42,12 @@ def add_number_rules(pg):
 
     @pg.production('normal_integer : integer_constant one_optional_space')
     def normal_integer_integer(p):
-        # TODO: Make size token here, rather than in integer_constant
-        return p[0]
+        return BuiltToken(type_='size', value=p[0], position_like=p)
 
     @pg.production('normal_integer : SINGLE_QUOTE octal_constant one_optional_space')
     @pg.production('normal_integer : DOUBLE_QUOTE hexadecimal_constant one_optional_space')
     def normal_integer_weird_base(p):
-        t = p[1]
-        t._copy_position_from_token(p)
-        return t
+        return BuiltToken(type_='size', value=p[1], position_like=p)
 
     @pg.production('normal_integer : BACKTICK character_token one_optional_space')
     def normal_integer_character(p):
