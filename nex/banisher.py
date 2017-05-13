@@ -23,9 +23,7 @@ from .state import Mode, Group
 from .expander import substitute_params_with_args
 from .if_executor import execute_condition
 from .parsing.utils import GetBuffer, safe_chunk_grabber
-from .parsing.command_parser import command_parser
-from .parsing.condition_parser import condition_parser
-from .parsing.general_text_parser import general_text_parser
+from .parsing import command_parser as command_parsing
 from .feedback import stringify_instr_list
 
 
@@ -37,6 +35,10 @@ token_variable_start_instructions = (
     Instructions.toks,
 )
 
+
+command_parser = command_parsing.command_parser
+condition_parser = command_parsing.get_parser(start='condition_wrap')
+general_text_parser = command_parsing.get_parser(start='general_text')
 
 shorties = short_hand_def_instructions + (Instructions.font, Instructions.backtick)
 

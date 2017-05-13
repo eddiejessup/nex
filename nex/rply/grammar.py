@@ -70,8 +70,9 @@ class Grammar(object):
             )
         self.precedence[term] = (assoc, level)
 
-    def set_start(self):
-        start = self.productions[1].name
+    def set_start(self, start=None):
+        if start is None:
+            start = self.productions[1].name
         self.productions[0] = Production(0, "S'", [start], ("right", 0), None)
         self.nonterminals[start].append(0)
         self.start = start

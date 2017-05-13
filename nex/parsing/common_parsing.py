@@ -68,7 +68,10 @@ common_terminal_instructions += register_instructions
 
 common_terminal_types = instructions_to_types(common_terminal_instructions)
 
-pg = ParserGenerator(common_terminal_types, cache_id="changeme")
+
+def get_common_pg():
+    pg = ParserGenerator(common_terminal_types, cache_id="changeme")
+    return pg
 
 
 def add_variable_rules(pg):
@@ -118,13 +121,13 @@ def add_variable_rules(pg):
         return BuiltToken(type_=reg_type, value=nr_tok, position_like=p)
 
 
-add_variable_rules(pg)
-glue_rules.add_glue_rules(pg)
-dimen_rules.add_dimen_rules(pg)
-number_rules.add_number_rules(pg)
-character_rules.add_character_rules(pg)
+def add_common_rules(pg):
+    add_variable_rules(pg)
+    glue_rules.add_glue_rules(pg)
+    dimen_rules.add_dimen_rules(pg)
+    number_rules.add_number_rules(pg)
+    character_rules.add_character_rules(pg)
 
-
-@pg.production('empty :')
-def empty(p):
-    return None
+    @pg.production('empty :')
+    def empty(p):
+        return None
