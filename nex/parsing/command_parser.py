@@ -1,18 +1,26 @@
+from string import ascii_lowercase
 import warnings
 import logging
 
+from ..rply import ParserGenerator
 from ..tokens import BuiltToken, instructions_to_types
+from ..registers import short_hand_reg_def_token_type_to_reg_type
 from ..fonts import FontRange
 from ..instructions import (Instructions as I,
                             message_instructions,
                             hyphenation_instructions,
+                            register_instructions,
                             h_add_glue_instructions,
                             v_add_glue_instructions,
                             short_hand_def_instructions,
                             def_instructions,
                             if_instructions
                             )
-from . import common_parsing
+
+from . import number_rules
+from . import dimen_rules
+from . import glue_rules
+from . import character_rules
 from .utils import (ExpectedParsingError, ExhaustedTokensError,
                     is_end_token,
                     make_literal_token,
@@ -21,7 +29,62 @@ from .utils import (ExpectedParsingError, ExhaustedTokensError,
 logger = logging.getLogger(__name__)
 
 
-command_terminal_instructions = (
+terminal_instructions = (
+    I.box_dimen_height,
+    I.box_dimen_width,
+    I.box_dimen_depth,
+    I.less_than,
+    I.greater_than,
+    I.equals,
+    I.plus_sign,
+    I.minus_sign,
+    I.zero,
+    I.one,
+    I.two,
+    I.three,
+    I.four,
+    I.five,
+    I.six,
+    I.seven,
+    I.eight,
+    I.nine,
+    I.single_quote,
+    I.double_quote,
+    I.backtick,
+    I.point,
+    I.comma,
+    I.a,
+    I.b,
+    I.c,
+    I.d,
+    I.e,
+    I.f,
+    I.space,
+    I.misc_char_cat_pair,
+    I.integer_parameter,
+    I.dimen_parameter,
+    I.glue_parameter,
+    I.mu_glue_parameter,
+    I.token_parameter,
+    I.special_integer,
+    I.special_dimen,
+
+    I.char_def_token,
+    I.math_char_def_token,
+    I.count_def_token,
+    I.dimen_def_token,
+    I.skip_def_token,
+    I.mu_skip_def_token,
+    I.toks_def_token,
+    I.unexpanded_control_symbol,
+)
+# Add ordinary character literals.
+char_instructions = tuple(I['non_active_uncased_{}'.format(c.lower())]
+                          for c in ascii_lowercase)
+terminal_instructions += char_instructions
+terminal_instructions += register_instructions
+
+terminal_instructions += (
     I.cat_code,
     I.math_code,
     I.upper_case_code,
@@ -78,12 +141,14 @@ command_terminal_instructions = (
     I.active_character,
     I.unexpanded_control_word,
 )
-command_terminal_instructions += message_instructions
-command_terminal_instructions += hyphenation_instructions
-command_terminal_instructions += h_add_glue_instructions
-command_terminal_instructions += v_add_glue_instructions
-command_terminal_instructions += short_hand_def_instructions
-command_terminal_instructions += def_instructions
+terminal_instructions += message_instructions
+terminal_instructions += hyphenation_instructions
+terminal_instructions += h_add_glue_instructions
+terminal_instructions += v_add_glue_instructions
+terminal_instructions += short_hand_def_instructions
+terminal_instructions += def_instructions
+terminal_instructions += if_instructions
+terminal_types = instructions_to_types(terminal_instructions)
 
 
 def add_command_rules(pg):
@@ -633,14 +698,66 @@ def add_condition_rules(pg):
         return p[0].value['char']
 
 
-pg = common_parsing.get_common_pg()
-common_parsing.add_common_rules(pg)
-if_terminal_types = instructions_to_types(if_instructions)
-pg.tokens += if_terminal_types
-add_condition_rules(pg)
-command_terminal_types = instructions_to_types(command_terminal_instructions)
-pg.tokens += command_terminal_types
+def add_variable_rules(pg):
+    @pg.production('token_variable : token_register')
+    @pg.production('mu_glue_variable : mu_skip_register')
+    @pg.production('glue_variable : skip_register')
+    @pg.production('dimen_variable : dimen_register')
+    @pg.production('integer_variable : count_register')
+    def quantity_variable_register(p):
+        return p[0]
+
+    @pg.production('token_variable : TOKEN_PARAMETER')
+    @pg.production('mu_glue_variable : MU_GLUE_PARAMETER')
+    @pg.production('glue_variable : GLUE_PARAMETER')
+    @pg.production('dimen_variable : DIMEN_PARAMETER')
+    @pg.production('integer_variable : INTEGER_PARAMETER')
+    def quantity_variable_parameter(p):
+        return p[0]
+
+    @pg.production('token_register : TOKS number')
+    @pg.production('mu_skip_register : MU_SKIP number')
+    @pg.production('skip_register : SKIP number')
+    @pg.production('dimen_register : DIMEN number')
+    @pg.production('count_register : COUNT number')
+    def quantity_register_explicit(p):
+        return BuiltToken(type_=p[0].type, value=p[1], position_like=p)
+
+    @pg.production('token_register : TOKS_DEF_TOKEN')
+    @pg.production('mu_skip_register : MU_SKIP_DEF_TOKEN')
+    @pg.production('skip_register : SKIP_DEF_TOKEN')
+    @pg.production('dimen_register : DIMEN_DEF_TOKEN')
+    @pg.production('count_register : COUNT_DEF_TOKEN')
+    def register_token(p):
+        reg_type = short_hand_reg_def_token_type_to_reg_type[p[0].type]
+        number = p[0].value
+
+        # A bit of token wrangling to make the result look the same as, for
+        # example, `SKIP number`.
+
+        sign = '+' if number >= 0 else '-'
+        sign_tok = BuiltToken(type_='sign', value=sign)
+
+        size_value_tok = BuiltToken(type_='internal', value=abs(number))
+        size_tok = BuiltToken(type_='size', value=size_value_tok)
+        nr_tok = BuiltToken(type_='number', value={'sign': sign_tok,
+                                                   'size': size_tok})
+        return BuiltToken(type_=reg_type, value=nr_tok, position_like=p)
+
+
+pg = ParserGenerator(terminal_types, cache_id="changeme")
 add_command_rules(pg)
+add_condition_rules(pg)
+add_variable_rules(pg)
+glue_rules.add_glue_rules(pg)
+dimen_rules.add_dimen_rules(pg)
+number_rules.add_number_rules(pg)
+character_rules.add_character_rules(pg)
+
+
+@pg.production('empty :')
+def empty(p):
+    return None
 
 
 def get_parser(start='command'):
