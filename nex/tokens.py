@@ -121,8 +121,13 @@ class PositionToken(BaseToken):
                           token.char_len, token.file_hash)
 
     def get_position_str(self, reader):
-        cs = reader.get_buffer(self.file_hash).chars
-        return get_position_str(cs, self.char_nr, self.char_len, self.line_nr)
+        buff = reader.get_buffer(self.file_hash)
+        cs = buff.chars
+        name = buff.name
+        s = get_position_str(cs, self.char_nr, self.char_len, self.line_nr)
+        if name:
+            s = f'{name}, {s}'
+        return s
 
 
 class BuiltToken(PositionToken):

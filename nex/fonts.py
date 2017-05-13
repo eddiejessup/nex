@@ -6,7 +6,7 @@ from .pydvi.TeXUnit import pt2sp
 from .pydvi.Font.TfmParser import TfmParser
 
 from .instructions import Instructions
-from .utils import ensure_extension, find_file, NotInScopeError
+from .utils import ensure_extension, find_file, NotInScopeError, drep
 
 
 @lru_cache(maxsize=512)
@@ -86,10 +86,11 @@ class FontInfo:
         return self.scale(self.char_info(code).height)
 
     def __repr__(self):
-        fields = ('font_info',)
-        field_args = ((f, self.__dict__[f]) for f in fields)
-        args = (','.join('{}={}'.format(k, v) for k, v in field_args))
-        return '{}<{}>'.format(self.__class__.__name__, args)
+        a = [
+            f'file_name="{self.file_name}"',
+            f'font_name="{self.font_name}"',
+        ]
+        return drep(self, a)
 
     @property
     def em_size(self):
@@ -135,6 +136,12 @@ class FontState:
     def __init__(self, font_families):
         self._current_font_id = None
         self.font_families = font_families
+
+    def __repr__(self):
+        a = [
+            f'font_id={self._current_font_id}',
+        ]
+        return drep(self, a)
 
     def set_font_family(self, family_nr, font_range, font_id):
         self.font_families[family_nr][font_range] = font_id

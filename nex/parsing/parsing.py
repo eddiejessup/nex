@@ -251,9 +251,12 @@ def empty(p):
 
 
 def get_parser(start='command'):
+    """Build and return a parser that tries to construct the `start` token. By
+    default this is `command`, the usual target of the program. Other values
+    can be passed to get smaller semantic units, for detailed parsing and
+    testing."""
     with warnings.catch_warnings():
-        # warnings.simplefilter("ignore")
-        # Build the parser
+        warnings.simplefilter("ignore")
         command_parser = pg.build(start=start)
     return command_parser
 

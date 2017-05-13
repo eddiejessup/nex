@@ -177,8 +177,6 @@ class ParserGenerator(object):
         for prod_name, syms, func, precedence in self.productions:
             g.add_production(prod_name, syms, func, precedence)
 
-        if start is not None:
-            print(f'Using {start} as target')
         g.set_start(start=start)
 
         for unused_term in g.unused_terminals():
