@@ -3,17 +3,12 @@ from string import ascii_lowercase
 from ..rply import ParserGenerator
 
 from ..tokens import BuiltToken, instructions_to_types
-from ..units import PhysicalUnit
-from ..tex_parameters import glue_keys
 from ..registers import short_hand_reg_def_token_type_to_reg_type
-from ..instructions import (Instructions as I,
-                            unexpanded_cs_instructions,
-                            register_instructions)
+from ..instructions import Instructions as I, register_instructions
 
 from . import number_parsing
 from . import dimen_parsing
 from . import character_parsing
-from . import utils as pu
 
 common_terminal_instructions = (
     I.box_dimen_height,
@@ -130,70 +125,7 @@ def glue_internal(p):
     return BuiltToken(type_='glue', value=p[0], position_like=p)
 
 
-@pg.production('mu_glue : mu_dimen mu_stretch mu_shrink')
-@pg.production('glue : dimen stretch shrink')
-def glue_explicit(p):
-    # Wrap up arguments in a dict.
-    dimens = dict(zip(glue_keys, tuple(p)))
-    glue_spec = BuiltToken(type_='explicit', value=dimens, position_like=p)
-    return BuiltToken(type_='glue', value=glue_spec, position_like=p)
-
-
-@pg.production('shrink : minus dimen')
-@pg.production('shrink : minus fil_dimen')
-@pg.production('stretch : plus dimen')
-@pg.production('stretch : plus fil_dimen')
-@pg.production('mu_shrink : minus mu_dimen')
-@pg.production('mu_shrink : minus fil_dimen')
-@pg.production('mu_stretch : plus mu_dimen')
-@pg.production('mu_stretch : plus fil_dimen')
-def stretch_or_shrink(p):
-    return p[1]
-
-
-@pg.production('stretch : optional_spaces')
-@pg.production('shrink : optional_spaces')
-@pg.production('mu_stretch : optional_spaces')
-@pg.production('mu_shrink : optional_spaces')
-def stretch_or_shrink_omitted(p):
-    dimen_size_token = BuiltToken(type_='internal',
-                                  value=0,
-                                  position_like=p)
-    size_token = BuiltToken(type_='size',
-                            value=dimen_size_token,
-                            position_like=p)
-    sign_token = BuiltToken(type_='sign', value='+', position_like=p)
-    return BuiltToken(type_='dimen', value={'sign': sign_token,
-                                            'size': size_token},
-                      position_like=p)
-
-
-@pg.production('fil_dimen : optional_signs factor fil_unit optional_spaces')
-def fil_dimen(p):
-    dimen_size_token = BuiltToken(type_='dimen',
-                                  value={'factor': p[1], 'unit': p[2].value},
-                                  position_like=p)
-    size_token = BuiltToken(type_='size',
-                            value=dimen_size_token,
-                            position_like=p)
-    return BuiltToken(type_='dimen', value={'sign': p[0], 'size': size_token},
-                      position_like=p)
-
-
-@pg.production('fil_unit : fil_unit NON_ACTIVE_UNCASED_l')
-def fil_unit_append(p):
-    # Add one infinity for every letter 'l'.
-    unit = p[0]
-    unit.value['number_of_fils'] += 1
-    return unit
-
-
-@pg.production('fil_unit : fil')
-def fil_unit(p):
-    unit = {'unit': PhysicalUnit.fil, 'number_of_fils': 1}
-    return BuiltToken(type_='fil_unit',
-                      value=unit,
-                      position_like=p)
+dimen_parsing.add_glue_literals(pg)
 
 
 def _make_scalar_quantity_token(type_, p):
@@ -275,18 +207,11 @@ def internal_glue(p):
 # Parameters.
 @pg.production('internal_dimen : DIMEN_PARAMETER')
 @pg.production('internal_integer : INTEGER_PARAMETER')
+# Box dimension.
+@pg.production('internal_dimen : box_dimension number')
 def internal_scalar_quantity(p):
     return BuiltToken(type_='size',
                       value=p[0],
-                      position_like=p)
-
-
-@pg.production('internal_dimen : box_dimension number')
-def internal_dimen_box_dimension(p):
-    # TODO: Implement this.
-    raise NotImplementedError
-    box_dimen_type = p[0].type
-    return BuiltToken(type_='box_dimen', value=1,
                       position_like=p)
 
 
@@ -294,14 +219,11 @@ def internal_dimen_box_dimension(p):
 @pg.production('box_dimension : BOX_DIMEN_WIDTH')
 @pg.production('box_dimension : BOX_DIMEN_DEPTH')
 def box_dimension(p):
-    return p[0]
-
-
-@pg.production(pu.get_literal_production_rule('minus'))
-@pg.production(pu.get_literal_production_rule('plus'))
-@pg.production(pu.get_literal_production_rule('fil'))
-def literal(p):
-    return pu.make_literal_token(p)
+    # TODO: Implement this.
+    raise NotImplementedError
+    box_dimen_type = p[0].type
+    return BuiltToken(type_='box_dimen', value=1,
+                      position_like=p)
 
 
 dimen_parsing.add_dimen_literals(pg)

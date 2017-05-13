@@ -1,5 +1,6 @@
 from ..tokens import BuiltToken
 from ..units import PhysicalUnit, MuUnit, InternalUnit
+from ..tex_parameters import glue_keys
 
 from . import utils as pu
 
@@ -117,3 +118,71 @@ def add_dimen_literals(pg):
         return BuiltToken(type_='physical_unit',
                           value=unit,
                           position_like=p)
+
+
+def add_glue_literals(pg):
+    @pg.production('mu_glue : mu_dimen mu_stretch mu_shrink')
+    @pg.production('glue : dimen stretch shrink')
+    def glue_explicit(p):
+        # Wrap up arguments in a dict.
+        dimens = dict(zip(glue_keys, tuple(p)))
+        glue_spec = BuiltToken(type_='explicit', value=dimens, position_like=p)
+        return BuiltToken(type_='glue', value=glue_spec, position_like=p)
+
+    @pg.production('shrink : minus dimen')
+    @pg.production('shrink : minus fil_dimen')
+    @pg.production('stretch : plus dimen')
+    @pg.production('stretch : plus fil_dimen')
+    @pg.production('mu_shrink : minus mu_dimen')
+    @pg.production('mu_shrink : minus fil_dimen')
+    @pg.production('mu_stretch : plus mu_dimen')
+    @pg.production('mu_stretch : plus fil_dimen')
+    def stretch_or_shrink(p):
+        return p[1]
+
+    @pg.production('stretch : optional_spaces')
+    @pg.production('shrink : optional_spaces')
+    @pg.production('mu_stretch : optional_spaces')
+    @pg.production('mu_shrink : optional_spaces')
+    def stretch_or_shrink_omitted(p):
+        dimen_size_token = BuiltToken(type_='internal',
+                                      value=0,
+                                      position_like=p)
+        size_token = BuiltToken(type_='size',
+                                value=dimen_size_token,
+                                position_like=p)
+        sign_token = BuiltToken(type_='sign', value='+', position_like=p)
+        return BuiltToken(type_='dimen', value={'sign': sign_token,
+                                                'size': size_token},
+                          position_like=p)
+
+    @pg.production('fil_dimen : optional_signs factor fil_unit optional_spaces')
+    def fil_dimen(p):
+        dimen_size_token = BuiltToken(type_='dimen',
+                                      value={'factor': p[1], 'unit': p[2].value},
+                                      position_like=p)
+        size_token = BuiltToken(type_='size',
+                                value=dimen_size_token,
+                                position_like=p)
+        return BuiltToken(type_='dimen', value={'sign': p[0], 'size': size_token},
+                          position_like=p)
+
+    @pg.production('fil_unit : fil_unit NON_ACTIVE_UNCASED_l')
+    def fil_unit_append(p):
+        # Add one infinity for every letter 'l'.
+        unit = p[0]
+        unit.value['number_of_fils'] += 1
+        return unit
+
+    @pg.production('fil_unit : fil')
+    def fil_unit(p):
+        unit = {'unit': PhysicalUnit.fil, 'number_of_fils': 1}
+        return BuiltToken(type_='fil_unit',
+                          value=unit,
+                          position_like=p)
+
+    @pg.production(pu.get_literal_production_rule('minus'))
+    @pg.production(pu.get_literal_production_rule('plus'))
+    @pg.production(pu.get_literal_production_rule('fil'))
+    def literal(p):
+        return pu.make_literal_token(p)
