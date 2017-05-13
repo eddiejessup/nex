@@ -3,9 +3,53 @@ from contextlib import contextmanager
 from collections import deque
 
 from ..reader import EndOfFile
+from ..tokens import BuiltToken
 from ..utils import NoSuchControlSequence
+from ..instructioner import non_active_letters_map
 
 logger = logging.getLogger(__name__)
+
+# Stuff specific to *my parsing*.
+
+letter_to_non_active_uncased_type_map = {}
+for c, instr in non_active_letters_map.items():
+    type_ = instr.value
+    #  For hex characters, need to look for the composite production, not the
+    #  terminal production, because could be, for example, 'A' or
+    #  'NON_ACTIVE_UNCASED_a', so we should look for the composite production,
+    #  'non_active_uncased_a'.
+    if c in ('A', 'B', 'C', 'D', 'E', 'F'):
+        type_ = type_.lower()
+    letter_to_non_active_uncased_type_map[c] = type_
+
+
+def make_literal_token(p):
+    s = ''.join(t.value['char'] for t in p)
+    return BuiltToken(type_='literal', value=s, position_like=p)
+
+
+def get_literal_production_rule(word, target=None):
+    if target is None:
+        target = word
+    rule = ' '.join(letter_to_non_active_uncased_type_map[c] for c in word)
+    return '{} : {}'.format(target, rule)
+
+
+class DigitCollection:
+
+    def __init__(self, base):
+        self.base = base
+        self.digits = []
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(base {self.base}: {self.digits})'
+
+
+# More generic utilities.
+
+def wrap(pg, func, rule):
+    f = pg.production(rule)
+    return f(func)
 
 
 class ExpectedParsingError(Exception):

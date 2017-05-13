@@ -11,10 +11,11 @@ from ..instructions import (Instructions as I,
                             short_hand_def_instructions,
                             def_instructions,
                             )
-from .common_parsing import (pg as common_pg,
-                             make_literal_token, get_literal_production_rule)
+from .common_parsing import pg as common_pg
 from .utils import (ExpectedParsingError, ExhaustedTokensError,
-                    is_end_token)
+                    is_end_token,
+                    make_literal_token,
+                    get_literal_production_rule)
 from .general_text_parser import gen_txt_pg
 
 logger = logging.getLogger(__name__)
@@ -670,6 +671,6 @@ def literal(p):
 
 
 with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
+    # warnings.simplefilter("ignore")
     # Build the parser
     command_parser = pg.build()

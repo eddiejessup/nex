@@ -1,14 +1,22 @@
 from ..tokens import BuiltToken
 
+from . import utils as pu
 
-class DigitCollection:
 
-    def __init__(self, base):
-        self.base = base
-        self.digits = []
-
-    def __repr__(self):
-        return f'{self.__class__.__name__}(base {self.base}: {self.digits})'
+def process_integer_digits(p, base):
+    if len(p) > 1:
+        size_token = p[1]
+        constant_token = size_token.value
+        collection = constant_token.value
+    else:
+        collection = pu.DigitCollection(base=base)
+    # We work right-to-left, so the new digit should be added on the left.
+    new_digit = p[0]
+    collection.digits = [new_digit] + collection.digits
+    new_constant_token = BuiltToken(type_='integer_constant', value=collection,
+                                    position_like=p)
+    new_size_token = BuiltToken(type_='size', value=new_constant_token)
+    return new_size_token
 
 
 def add_nr_literals(pg):
@@ -35,21 +43,6 @@ def add_nr_literals(pg):
     # @pg.production('character_token : ACTIVE_CHARACTER')
     def character_token_character(p):
         return p[0]
-
-    def process_integer_digits(p, base):
-        if len(p) > 1:
-            size_token = p[1]
-            constant_token = size_token.value
-            collection = constant_token.value
-        else:
-            collection = DigitCollection(base=base)
-        # We work right-to-left, so the new digit should be added on the left.
-        new_digit = p[0]
-        collection.digits = [new_digit] + collection.digits
-        new_constant_token = BuiltToken(type_='integer_constant', value=collection,
-                                        position_like=p)
-        new_size_token = BuiltToken(type_='size', value=new_constant_token)
-        return new_size_token
 
     @pg.production('hexadecimal_constant : hexadecimal_digit')
     @pg.production('hexadecimal_constant : hexadecimal_digit hexadecimal_constant')
