@@ -55,7 +55,7 @@ class BaseToken:
         return self.value if self.value is not None else ''
 
     def __repr__(self):
-        return '{}({}): {}'.format(self.__class__.__name__,
+        return '{}({}: {})'.format(self.__class__.__name__,
                                    self.type, self.value_repr)
 
     def __str__(self):

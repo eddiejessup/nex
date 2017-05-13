@@ -395,10 +395,10 @@ class GlobalState:
             logger.info(f"Adding character \"{v['char']}\"")
             self.add_character(v['char'])
         elif type_ == 'V_RULE':
-            logger.debug(f'Adding vertical rule')
+            logger.info(f"Adding vertical rule")
             self.add_v_rule(**v)
         elif type_ == 'H_RULE':
-            logger.debug(f'Adding horizontal rule')
+            logger.info(f"Adding horizontal rule")
             self.add_h_rule(**v)
         # The box already has its contents in the correct way, built using this
         # very method. Recursion still amazes me sometimes.
@@ -566,7 +566,6 @@ class GlobalState:
             conts = v['content'].value
             s = ''.join(t.value['char'] for t in conts)
             print(f'MESSAGE: {s}')
-            # print(v.keys())
             pass
         elif type_ == 'write':
             # print(command.value)

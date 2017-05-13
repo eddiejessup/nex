@@ -119,7 +119,9 @@ class ChunkGrabber:
                     logger.debug(f'Got chunk "{chunk.type}", through failure')
                     # We got one token of fluff due to extra read, to make the
                     # parse queue not-parse. So put it back on the buffer.
-                    self.out_queue.queue.appendleft(chunk_token_queue.pop())
+                    fluff_tok = chunk_token_queue.pop()
+                    logger.debug(f'Replacing fluff token {fluff_tok} on to-parse queue.')
+                    self.out_queue.queue.appendleft(fluff_tok)
                     break
                 # If we have not yet parsed, then something is wrong.
                 else:
