@@ -19,7 +19,7 @@ def process_integer_digits(p, base):
     return new_size_token
 
 
-def add_nr_literals(pg):
+def add_number_rules(pg):
     @pg.production('number : optional_signs unsigned_number')
     def number(p):
         return BuiltToken(type_='number',

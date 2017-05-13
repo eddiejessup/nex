@@ -3,7 +3,7 @@ from ..tokens import BuiltToken
 from . import utils as pu
 
 
-def add_character_literals(pg):
+def add_character_rules(pg):
     @pg.production('one_optional_space : SPACE')
     @pg.production('one_optional_space : empty')
     def one_optional_space(p):

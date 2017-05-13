@@ -6,10 +6,10 @@ from ..tokens import BuiltToken, instructions_to_types
 from ..registers import short_hand_reg_def_token_type_to_reg_type
 from ..instructions import Instructions as I, register_instructions
 
-from . import number_parsing
-from . import dimen_parsing
-from . import glue_parsing
-from . import character_parsing
+from . import number_rules
+from . import dimen_rules
+from . import glue_rules
+from . import character_rules
 
 common_terminal_instructions = (
     I.box_dimen_height,
@@ -71,7 +71,7 @@ common_terminal_types = instructions_to_types(common_terminal_instructions)
 pg = ParserGenerator(common_terminal_types, cache_id="changeme")
 
 
-def add_variable_parsing(pg):
+def add_variable_rules(pg):
     @pg.production('token_variable : token_register')
     @pg.production('mu_glue_variable : mu_skip_register')
     @pg.production('glue_variable : skip_register')
@@ -118,11 +118,11 @@ def add_variable_parsing(pg):
         return BuiltToken(type_=reg_type, value=nr_tok, position_like=p)
 
 
-add_variable_parsing(pg)
-glue_parsing.add_glue_literals(pg)
-dimen_parsing.add_dimen_literals(pg)
-number_parsing.add_nr_literals(pg)
-character_parsing.add_character_literals(pg)
+add_variable_rules(pg)
+glue_rules.add_glue_rules(pg)
+dimen_rules.add_dimen_rules(pg)
+number_rules.add_number_rules(pg)
+character_rules.add_character_rules(pg)
 
 
 @pg.production('empty :')

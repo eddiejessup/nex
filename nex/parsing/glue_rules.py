@@ -5,7 +5,7 @@ from ..tex_parameters import glue_keys
 from . import utils as pu
 
 
-def add_glue_literals(pg):
+def add_glue_rules(pg):
     @pg.production('mu_glue : internal_mu_glue')
     @pg.production('glue : internal_glue')
     def glue_internal(p):

@@ -13,7 +13,7 @@ def digit_coll_to_size_tok(dc, position_like):
     return new_size_tok
 
 
-def add_dimen_literals(pg):
+def add_dimen_rules(pg):
     @pg.production('mu_dimen : optional_signs unsigned_mu_dimen')
     @pg.production('dimen : optional_signs unsigned_dimen')
     def maybe_mu_dimen(p):
