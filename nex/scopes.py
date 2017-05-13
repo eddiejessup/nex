@@ -6,6 +6,7 @@ from .tex_parameters import get_initial_parameters, get_local_parameters
 from .fonts import (get_initial_font_state,
                     get_local_font_state)
 from .router import get_initial_router, get_local_router
+from .utils import NotInScopeError
 
 
 class Operation(Enum):
@@ -18,10 +19,6 @@ def operate(object_operand, by_operand, operation):
     else:
         raise NotImplementedError
     return result
-
-
-class NotInScopeError(Exception):
-    pass
 
 
 class ScopedAccessor:
@@ -60,21 +57,19 @@ class ScopedAccessor:
             f = getattr(scope, func_name)
             try:
                 v = f(*args, **kwargs)
-            except (NotInScopeError, KeyError):
+            except NotInScopeError:
                 pass
             else:
                 return v
-        import pdb; pdb.set_trace()
 
     def try_scope_attr_until_success(self, attr_name):
         for scope in reversed(self.scopes):
             try:
                 a = getattr(scope, attr_name)
-            except (NotInScopeError, AttributeError):
+            except NotInScopeError:
                 pass
             else:
                 return a
-        import pdb; pdb.set_trace()
 
 
 class ScopedCodes(ScopedAccessor):

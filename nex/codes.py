@@ -2,7 +2,7 @@ from collections import namedtuple
 from enum import Enum
 from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
 
-from .utils import ascii_characters
+from .utils import ascii_characters, NotInScopeError
 
 
 cat_codes = [
@@ -185,6 +185,9 @@ class Codes:
 
     def set(self, code_type, char, code):
         char_map = self.code_type_to_char_map[code_type]
+        # TODO: Initialize all sensible keys, pointing to 'None' for local
+        # scopes. Only allow setting keys that already exist, and
+        # raise a NotInScopeError if None is returned.
         char_map[char] = code
 
     def set_cat_code(self, char, cat):
@@ -207,7 +210,12 @@ class Codes:
 
     def get(self, code_type, char):
         char_map = self.code_type_to_char_map[code_type]
-        return char_map[char]
+        try:
+            return char_map[char]
+        # TODO: Distinguish KeyErrors caused by key not making any sense, from
+        # KeyErrors caused by value not being defined in this scope.
+        except KeyError:
+            raise NotInScopeError
 
     def get_cat_code(self, char):
         return self.get('cat', char)

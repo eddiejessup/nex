@@ -474,20 +474,16 @@ class GlobalState:
             # The value might be a variable reference or something, so we must
             # evaluate it to its contents first before assigning a variable to
             # it.
-            # TODO: Could we evaluate the value inside the state call?
-            # Might reduce duplication?
-            # TODO: We could actually have a 'set_variable' function in state.
             value_evaluate_map = {
                 'number': evaler.evaluate_number,
                 'dimen': evaler.evaluate_dimen,
                 'glue': evaler.evaluate_glue,
-                'mu_glue': evaler.evaluate_glue,
                 'token_list': evaler.evaluate_token_list,
             }
             value_evaluate_func = value_evaluate_map[value.type]
             evaled_value = value_evaluate_func(self, value)
-            evaled_i = evaler.evaluate_size(self, variable.value)
             if is_register_type(variable.type):
+                evaled_i = evaler.evaluate_number(self, variable.value)
                 self.registers.set(
                     is_global=v['global'], type_=variable.type,
                     i=evaled_i, value=evaled_value
@@ -498,6 +494,22 @@ class GlobalState:
                     is_global=v['global'], parameter=parameter,
                     value=evaled_value
                 )
+        elif type_ == 'advance':
+            variable, value = v['variable'], v['value']
+            # See 'variable_assignment' case.
+            evaled_value = evaler.evaluate_number(self, v['value'])
+            kwargs = {'is_global': v['global'],
+                      'by_operand': evaled_value,
+                      'operation': Operation.advance}
+            if is_register_type(variable.type):
+                evaled_i = evaler.evaluate_number(self, variable.value)
+                self.registers.modify_register_value(type_=variable.type,
+                                                     i=evaled_i, **kwargs)
+            elif is_parameter_type(variable.type):
+                self.parameters.modify_parameter_value(parameter=variable.value['parameter'],
+                                                       **kwargs)
+            else:
+                import pdb; pdb.set_trace()
         elif type_ == 'set_box_assignment':
             # TODO: Implement.
             pass
@@ -535,21 +547,6 @@ class GlobalState:
                 large_glyph_code = GlyphCode(large_family, large_position)
                 code = DelimiterCode(small_glyph_code, large_glyph_code)
             self.codes.set(v['global'], code_type, char, code)
-        elif type_ == 'advance':
-            value_eval = evaler.evaluate_number(self, v['value'])
-            variable = v['variable']
-            kwargs = {'is_global': v['global'],
-                      'by_operand': value_eval,
-                      'operation': Operation.advance}
-            if is_register_type(variable.type):
-                evaled_i = evaler.evaluate_size(self, variable.value)
-                self.registers.modify_register_value(type_=variable.type,
-                                                     i=evaled_i, **kwargs)
-            elif is_parameter_type(variable.type):
-                self.registers.modify_parameter_value(parameter=variable.value['parameter'],
-                                                      **kwargs)
-            else:
-                import pdb; pdb.set_trace()
         elif type_ == 'let_assignment':
             self.router.do_let_assignment(v['global'], new_name=v['name'],
                                           target_token=v['target_token'])

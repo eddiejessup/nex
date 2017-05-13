@@ -4,6 +4,7 @@ from datetime import datetime
 from .tokens import InstructionToken
 from .instructions import Instructions
 from .registers import check_type
+from .utils import NotInScopeError
 
 
 params = {
@@ -192,16 +193,19 @@ class TexParameterValues:
     def __init__(self, parameter_value_map):
         self.parameter_values = parameter_value_map
 
-    def _get_type(self, parameter):
-        for parameter_type, parameter_map in self.parameter_maps.items():
-            if parameter in parameter_map:
-                return parameter_type
-        raise KeyError(f'Parameter ''{name}'' not known')
-
     def get(self, parameter):
-        return self.parameter_values[parameter]
+        try:
+            return self.parameter_values[parameter]
+        # TODO: Distinguish KeyErrors caused by key not making any sense, from
+        # KeyErrors caused by value not being defined in this scope.
+        except KeyError:
+            raise NotInScopeError
 
     def set(self, parameter, value):
+        # TODO: Initialize all sensible keys, pointing to 'None' for local
+        # scopes. Only allow setting keys that already exist, and
+        # raise a NotInScopeError if None is returned.
+        # Will avoid having to lookup from this global dict.
         parameter_instr = param_to_instr[parameter]
         parameter_type = parameter_instr.value
         check_type(parameter_type, value)

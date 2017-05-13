@@ -1,5 +1,6 @@
 from .tokens import BuiltToken, InstructionToken
 from .registers import is_register_type
+from .instructions import Instructions
 from .units import PhysicalUnit, MuUnit, InternalUnit, units_in_scaled_points
 from .tex_parameters import glue_keys, is_parameter_type, Parameters
 
@@ -18,21 +19,30 @@ def get_integer_constant(collection):
     return int(s, base=collection.base)
 
 
-def eval_instruction(state, tok):
-    if is_parameter_type(tok.type):
-        return state.parameters.get(tok.value['parameter'])
-    elif tok.type in ('CHAR_DEF_TOKEN', 'MATH_CHAR_DEF_TOKEN'):
-        return tok.value
-    else:
-        import pdb; pdb.set_trace()
-
-
 def evaluate_size(state, size_token):
-    if isinstance(size_token, InstructionToken):
-        return eval_instruction(state, size_token)
-    elif isinstance(size_token, BuiltToken):
-        if size_token.type == 'backtick_integer':
-            unexpanded_token = size_token.value
+    # This is the true route, that eventually all should take.
+    if isinstance(size_token, BuiltToken) and size_token.type == 'size':
+        v = size_token.value
+        # If the size is the contents of an integer or dimen parameter.
+        if isinstance(v, InstructionToken) and v.type in (Instructions.integer_parameter.value,
+                                                          Instructions.dimen_parameter.value):
+            return state.parameters.get(v.value['parameter'])
+        # If the size is the contents of a count or dimen register.
+        elif isinstance(v, BuiltToken) and v.type in (Instructions.count.value,
+                                                      Instructions.dimen.value):
+            # The register number is a generic 'number' token, so evaluate this
+            # first.
+            evaled_i = evaluate_number(state, v.value)
+            v = state.registers.get(v.type, i=evaled_i)
+            return v
+        # If the size is the short-hand character token. This is different to,
+        # for example, a count_def_token, because that represents a register
+        # containing a variable. A char_def_token represents a constant value.
+        elif isinstance(v, InstructionToken) and v.type in ('CHAR_DEF_TOKEN', 'MATH_CHAR_DEF_TOKEN'):
+            return v.value
+        # If the size is the code of the target of a backtick instruction.
+        elif isinstance(v, BuiltToken) and v.type == 'backtick':
+            unexpanded_token = v.value
             if unexpanded_token.type == 'UNEXPANDED_CONTROL_SYMBOL':
                 # If we have a single character control sequence in this context,
                 # it is just a way of specifying a character in a way that
@@ -43,28 +53,65 @@ def evaluate_size(state, size_token):
             else:
                 import pdb; pdb.set_trace()
             return ord(char)
-        elif size_token.type == 'control_sequence':
-            raise NotImplementedError
-        elif is_register_type(size_token.type):
-            evaled_i = evaluate_size(state, size_token.value)
-            v = state.registers.get(size_token.type, i=evaled_i)
-            if size_token.type == 'SKIP':
-                import pdb; pdb.set_trace()
-            return v
-        elif size_token.type == 'integer_constant':
-            collection = size_token.value
+        # If the size is the integer represented by an integer literal.
+        elif isinstance(v, BuiltToken) and v.type == 'integer_constant':
+            collection = v.value
             return get_integer_constant(collection)
-        elif size_token.type == 'decimal_constant':
-            collection = size_token.value
+        # If the size is the real number represented by a decimal number
+        # literal.
+        elif isinstance(v, BuiltToken) and v.type == 'decimal_constant':
+            collection = v.value
             return get_real_decimal_constant(collection)
+        # If the size is the value represented by a short-hand def token.
+        elif isinstance(v, BuiltToken) and v.type == 'internal':
+            return v.value
+        # If the size is a specification of a dimension (this is different to a
+        # call to retrieve the contents of a dimen register).
+        elif isinstance(v, BuiltToken) and v.type == 'dimen':
+            d_v = v.value
+            nr_units_token, unit_token = d_v['factor'], d_v['unit']
+            nr_units = evaluate_size(state, nr_units_token)
+
+            unit = unit_token['unit']
+
+            if unit == PhysicalUnit.fil:
+                return BuiltToken(
+                    type_='fil_dimension',
+                    value={'factor': nr_units,
+                           'number_of_fils': unit_token['number_of_fils']}
+                )
+            # Only one unit in mu units, a mu. I don't know what a mu is
+            # though...
+            elif unit == MuUnit.mu:
+                unit_scale = 1
+            elif unit == InternalUnit.em:
+                unit_scale = state.current_font.em_size
+            elif unit == InternalUnit.ex:
+                unit_scale = state.current_font.ex_size
+            else:
+                unit_scale = units_in_scaled_points[unit]
+                is_true_unit = unit_token['true']
+                if is_true_unit:
+                    magnification = state.parameters.get(Parameters.mag)
+                    # ['true'] unmagnifies the units, so that the subsequent
+                    # magnification will cancel out. For example, `\vskip 0.5 true
+                    # cm' is equivalent to `\vskip 0.25 cm' if you have previously
+                    # said `\magnification=2000'.
+                    unit_scale *= 1000.0 / magnification
+            size = int(round(nr_units * unit_scale))
+            return size
         else:
             import pdb; pdb.set_trace()
     else:
-        return size_token
+        import pdb; pdb.set_trace()
 
 
 def evaluate_number(state, number_token):
+    # TODO: Check if the sign is stored and retrieved in numbers, dimens, glues
+    # and so on.
     number_value = number_token.value
+    if isinstance(number_value, int):
+        import pdb; pdb.set_trace()
     size_token = number_value['size']
     number = evaluate_size(state, size_token)
     sign = number_value['sign'].value
@@ -74,66 +121,35 @@ def evaluate_number(state, number_token):
 
 
 def evaluate_dimen(state, dimen_token):
-    # TODO: Check if the sign is stored and retrieved in numbers, dimens, glues
-    # and so on.
-    if isinstance(dimen_token, int):
-        return dimen_token
-    dimen_value = dimen_token.value
-    if isinstance(dimen_value, int):
-        return dimen_value
-    size_token, sign = dimen_value['size'], dimen_value['sign']
-    if isinstance(size_token, int):
-        number_of_scaled_points = size_token
-    elif isinstance(size_token, InstructionToken):
-        number_of_scaled_points = eval_instruction(state, size_token)
-    else:
-        size_value = size_token.value
-        if isinstance(size_value, int):
-            number_of_scaled_points = size_token.value
-        else:
-            number_of_units_token = size_token.value['factor']
-            number_of_units = evaluate_size(state, number_of_units_token)
-            unit_token = size_token.value['unit']
-            unit = unit_token['unit']
-            if unit == PhysicalUnit.fil:
-                # TODO: This doesn't pay attention to the sign, is this wrong?
-                return BuiltToken(
-                    type_='fil_dimension',
-                    value={'factor': number_of_units,
-                           'number_of_fils': unit_token['number_of_fils']}
-                )
-            # Only one unit in mu units, a mu. I don't know what a mu is though...
-            elif unit == MuUnit.mu:
-                number_of_scaled_points = number_of_units
-            elif unit == InternalUnit.em:
-                number_of_scaled_points = state.current_font.em_size
-            elif unit == InternalUnit.ex:
-                number_of_scaled_points = state.current_font.ex_size
-            else:
-                number_of_scaled_points = units_in_scaled_points[unit] * number_of_units
-                is_true_unit = unit_token['true']
-                if is_true_unit:
-                    magnification = state.parameters.get(Parameters.mag)
-                    # ['true'] unmagnifies the units, so that the subsequent
-                    # magnification will cancel out. For example, `\vskip 0.5 true
-                    # cm' is equivalent to `\vskip 0.25 cm' if you have previously
-                    # said `\magnification=2000'.
-                    number_of_scaled_points *= 1000.0 / magnification
-    if sign == '-':
-        number_of_scaled_points *= -1
-    return int(round(number_of_scaled_points))
+    return evaluate_number(state, dimen_token)
 
 
 def evaluate_glue(state, glue_token):
-    glue_value = glue_token.value
-    evaluated_glue = {}
-    for k in glue_keys:
-        dimen_token = glue_value[k]
-        if dimen_token is None:
-            evaluated_dimen = None
-        else:
-            evaluated_dimen = evaluate_dimen(state, dimen_token)
-        evaluated_glue[k] = evaluated_dimen
+    v = glue_token.value
+    if isinstance(v, BuiltToken) and v.type == 'explicit':
+        # Should contain a dict specifying three dimens (in the general sense
+        # of 'physical length'), a 'dimen' (in the narrow sense), 'shrink' and
+        # 'stretch'.
+        dimens = v.value
+        evaluated_glue = {}
+        for dimen_name, dimen_tok in dimens.items():
+            if dimen_tok is None:
+                evaluated_dimen = None
+            else:
+                evaluated_dimen = evaluate_dimen(state, dimen_tok)
+            evaluated_glue[dimen_name] = evaluated_dimen
+    # If the size is the contents of a glue or mu glue register.
+    elif isinstance(v, BuiltToken) and v.type in (Instructions.skip.value,
+                                                  Instructions.mu_skip.value):
+        # The register number is a generic 'number' token, so evaluate this
+        # first.
+        evaled_i = evaluate_number(state, v.value)
+        v = state.registers.get(v.type, i=evaled_i)
+        return v
+    # If the size is the contents of a parameter.
+    elif isinstance(v, InstructionToken) and v.type in (Instructions.glue_parameter.value,
+                                                        Instructions.mu_glue_parameter.value):
+        return state.parameters.get(v.value['parameter'])
     return evaluated_glue
 
 

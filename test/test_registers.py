@@ -2,6 +2,7 @@ import pytest
 
 from nex.registers import Registers
 from nex.instructions import Instructions
+from nex.utils import NotInScopeError
 
 
 def test_registers_empty():
@@ -17,7 +18,7 @@ def test_registers_empty():
                                      test_i, test_val)
         # Check we can't access registers that should not be there.
         for test_type in ('NOT_A_REGISTER', None):
-            with pytest.raises(KeyError):
+            with pytest.raises(ValueError):
                 r.get(test_type, test_i)
 
 
@@ -25,7 +26,7 @@ def test_registers_uninitialized():
     r = Registers(1, 0, 0, 0, 0)
 
     # Check we can't retrieve values that are not initialized.
-    with pytest.raises(ValueError):
+    with pytest.raises(NotInScopeError):
         r.get(Instructions.count.value, 0)
     # But that once we set them, we can.
     test_val = 2

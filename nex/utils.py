@@ -27,6 +27,10 @@ class ExecuteCommandError(Exception):
         self.exception = exception
 
 
+class NotInScopeError(Exception):
+    pass
+
+
 class TidyEnd(Exception):
     pass
 

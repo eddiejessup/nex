@@ -1,4 +1,5 @@
 from .instructions import Instructions, register_instructions
+from .utils import NotInScopeError
 
 
 short_hand_reg_def_token_type_to_reg_type = {
@@ -61,22 +62,30 @@ class Registers:
             Instructions.toks.value: init_register(nr_token_lists),
         }
 
+    def _get_register(self, type_):
+        if type_ not in self.register_map:
+            raise ValueError(f'No register of type {type_}')
+        return self.register_map[type_]
+
     def get(self, type_, i):
-        register = self.register_map[type_]
-        try:
-            r = register[i]
-        except KeyError:
-            raise ValueError('No register number {} of type {}'
-                             .format(i, type_))
+        register = self._get_register(type_)
+        # Check address exists in register. This should not depend on anything
+        # to do with scopes.
+        if i not in register:
+            raise ValueError(f'No register number {i} of type {type_}')
+
+        r = register[i]
         if r is None:
-            raise ValueError('No value in register number {} of type {}'
-                             .format(i, type_))
+            raise NotInScopeError('No value in register number {i} of type {type_}')
         return r
 
     def set(self, type_, i, value):
+        # Check value matches what register is meant to hold.
         check_type(type_, value)
-        register = self.register_map[type_]
+        register = self._get_register(type_)
+
+        # Check address exists in register. This should not depend on anything
+        # to do with scopes.
         if i not in register:
-            raise ValueError('No register number {} of type {}'
-                             .format(i, type_))
+            raise ValueError(f'No register number {i} of type {type_}')
         register[i] = value

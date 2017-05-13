@@ -125,9 +125,8 @@ def quantity_variable_parameter(p):
 @pg.production('skip_register : SKIP number')
 @pg.production('dimen_register : DIMEN number')
 @pg.production('count_register : COUNT number')
-def register_explicit(p):
-    return BuiltToken(type_=p[0].type, value=p[1].value['size'],
-                      position_like=p)
+def quantity_register_explicit(p):
+    return BuiltToken(type_=p[0].type, value=p[1], position_like=p)
 
 
 @pg.production('token_register : TOKS_DEF_TOKEN')
@@ -136,26 +135,35 @@ def register_explicit(p):
 @pg.production('dimen_register : DIMEN_DEF_TOKEN')
 @pg.production('count_register : COUNT_DEF_TOKEN')
 def register_token(p):
-    type_ = short_hand_reg_def_token_type_to_reg_type[p[0].type]
-    return BuiltToken(type_=type_, value=p[0].value,
-                      position_like=p)
+    reg_type = short_hand_reg_def_token_type_to_reg_type[p[0].type]
+    number = p[0].value
+
+    # A bit of token wrangling to make the result look the same as, for
+    # example, `SKIP number`.
+
+    sign = '+' if number >= 0 else '-'
+    sign_tok = BuiltToken(type_='sign', value=sign)
+
+    size_value_tok = BuiltToken(type_='internal', value=abs(number))
+    size_tok = BuiltToken(type_='size', value=size_value_tok)
+    nr_tok = BuiltToken(type_='number', value={'sign': sign_tok,
+                                               'size': size_tok})
+    return BuiltToken(type_=reg_type, value=nr_tok, position_like=p)
 
 
-def _make_maybe_mu_glue_token(type_, p):
-    # Wrap up arguments in a dict.
-    dimens = dict(zip(glue_keys, tuple(p)))
-    return BuiltToken(type_=type_, value=dimens,
-                      position_like=p)
+@pg.production('mu_glue : internal_mu_glue')
+@pg.production('glue : internal_glue')
+def glue_internal(p):
+    return BuiltToken(type_='glue', value=p[0], position_like=p)
 
 
 @pg.production('mu_glue : mu_dimen mu_stretch mu_shrink')
-def mu_glue(p):
-    return _make_maybe_mu_glue_token('mu_glue', p)
-
-
 @pg.production('glue : dimen stretch shrink')
-def glue(p):
-    return _make_maybe_mu_glue_token('glue', p)
+def glue_explicit(p):
+    # Wrap up arguments in a dict.
+    dimens = dict(zip(glue_keys, tuple(p)))
+    glue_spec = BuiltToken(type_='explicit', value=dimens, position_like=p)
+    return BuiltToken(type_='glue', value=glue_spec, position_like=p)
 
 
 @pg.production('shrink : minus dimen')
@@ -166,7 +174,7 @@ def glue(p):
 @pg.production('mu_shrink : minus fil_dimen')
 @pg.production('mu_stretch : plus mu_dimen')
 @pg.production('mu_stretch : plus fil_dimen')
-def stretch_or_shrink_non_stated(p):
+def stretch_or_shrink(p):
     return p[1]
 
 
@@ -175,14 +183,25 @@ def stretch_or_shrink_non_stated(p):
 @pg.production('mu_stretch : optional_spaces')
 @pg.production('mu_shrink : optional_spaces')
 def stretch_or_shrink_omitted(p):
-    return BuiltToken(type_='dimen', value=0,
+    dimen_size_token = BuiltToken(type_='internal',
+                                  value=0,
+                                  position_like=p)
+    size_token = BuiltToken(type_='size',
+                            value=dimen_size_token,
+                            position_like=p)
+    sign_token = BuiltToken(type_='sign', value='+', position_like=p)
+    return BuiltToken(type_='dimen', value={'sign': sign_token,
+                                            'size': size_token},
                       position_like=p)
 
 
 @pg.production('fil_dimen : optional_signs factor fil_unit optional_spaces')
 def fil_dimen(p):
-    size_token = BuiltToken(type_='fil_size',
-                            value={'factor': p[1], 'unit': p[2].value},
+    dimen_size_token = BuiltToken(type_='dimen',
+                                  value={'factor': p[1], 'unit': p[2].value},
+                                  position_like=p)
+    size_token = BuiltToken(type_='size',
+                            value=dimen_size_token,
                             position_like=p)
     return BuiltToken(type_='dimen', value={'sign': p[0], 'size': size_token},
                       position_like=p)
@@ -198,34 +217,27 @@ def fil_unit_append(p):
 
 @pg.production('fil_unit : fil')
 def fil_unit(p):
-    # I don't think true matters, but we add it for compatibility
-    # with non-weird units.
-    unit = {'unit': PhysicalUnit.fil, 'true': True,
-            'number_of_fils': 1}
+    unit = {'unit': PhysicalUnit.fil, 'number_of_fils': 1}
     return BuiltToken(type_='fil_unit',
                       value=unit,
                       position_like=p)
 
 
-def _make_quantity_token(type_, p):
+def _make_scalar_quantity_token(type_, p):
     '''Small helper to avoid repetition.'''
     return BuiltToken(type_=type_, value={'sign': p[0], 'size': p[1]},
                       position_like=p)
 
 
 @pg.production('mu_dimen : optional_signs unsigned_mu_dimen')
-def mu_dimen(p):
-    return _make_quantity_token('mu_dimen', p)
-
-
 @pg.production('dimen : optional_signs unsigned_dimen')
-def dimen(p):
-    return _make_quantity_token('dimen', p)
+def maybe_mu_dimen(p):
+    return _make_scalar_quantity_token('dimen', p)
 
 
 @pg.production('number : optional_signs unsigned_number')
 def number(p):
-    return _make_quantity_token('number', p)
+    return _make_scalar_quantity_token('number', p)
 
 
 @pg.production('unsigned_mu_dimen : normal_mu_dimen')
@@ -239,7 +251,7 @@ def maybe_mu_unsigned_dimen(p):
 @pg.production('coerced_dimen : internal_glue')
 @pg.production('coerced_mu_dimen : internal_mu_glue')
 def maybe_mu_coerced_dimen(p):
-    return p[0]
+    raise NotImplementedError
 
 
 @pg.production('unsigned_number : normal_integer')
@@ -255,7 +267,7 @@ def coerced_integer_dimen(p):
 
 @pg.production('coerced_integer : internal_glue')
 def coerced_integer_glue(p):
-    import pdb; pdb.set_trace()
+    raise NotImplementedError
 
 
 @pg.production('normal_integer : internal_integer')
@@ -268,40 +280,38 @@ def normal_dimen_internal_dimen(p):
     return p[0]
 
 
-# Special quantities.
-
-@pg.production('internal_integer : SPECIAL_INTEGER')
-@pg.production('internal_dimen : SPECIAL_DIMEN')
-def internal_quantity_special(p):
-    return p[0]
-
-
+# Registers.
 @pg.production('internal_mu_glue : mu_skip_register')
 @pg.production('internal_glue : skip_register')
-@pg.production('internal_dimen : dimen_register')
-@pg.production('internal_integer : count_register')
-def internal_quantity_register(p):
-    return p[0]
-
-
-@pg.production('internal_integer : CHAR_DEF_TOKEN')
-@pg.production('internal_integer : MATH_CHAR_DEF_TOKEN')
-def internal_integer_weird_short_hand_token(p):
-    # TODO: add other kinds of internal integer.
-    return p[0]
-
-
+# Parameters.
 @pg.production('internal_mu_glue : MU_GLUE_PARAMETER')
 @pg.production('internal_glue : GLUE_PARAMETER')
+def internal_glue(p):
+    return p[0]
+
+
+# Special quantities.
+@pg.production('internal_integer : SPECIAL_INTEGER')
+@pg.production('internal_dimen : SPECIAL_DIMEN')
+# Registers.
+@pg.production('internal_dimen : dimen_register')
+@pg.production('internal_integer : count_register')
+# Character codes.
+@pg.production('internal_integer : CHAR_DEF_TOKEN')
+@pg.production('internal_integer : MATH_CHAR_DEF_TOKEN')
+# Parameters.
 @pg.production('internal_dimen : DIMEN_PARAMETER')
 @pg.production('internal_integer : INTEGER_PARAMETER')
-def internal_quantity_parameter(p):
-    return p[0]
+def internal_scalar_quantity(p):
+    return BuiltToken(type_='size',
+                      value=p[0],
+                      position_like=p)
 
 
 @pg.production('internal_dimen : box_dimension number')
 def internal_dimen_box_dimension(p):
     # TODO: Implement this.
+    raise NotImplementedError
     box_dimen_type = p[0].type
     return BuiltToken(type_='box_dimen', value=1,
                       position_like=p)
@@ -316,13 +326,18 @@ def box_dimension(p):
 
 @pg.production('normal_integer : integer_constant one_optional_space')
 def normal_integer_integer(p):
+    # TODO: Make size token here, rather than in integer_constant
     return p[0]
 
 
 @pg.production('normal_mu_dimen : factor mu_unit')
-def normal_mu_dimen_explicit(p):
-    return BuiltToken(type_='normal_mu_dimen',
-                      value={'factor': p[0], 'unit': p[1].value},
+@pg.production('normal_dimen : factor unit_of_measure')
+def normal_maybe_mu_dimen_explicit(p):
+    dimen = BuiltToken(type_='dimen',
+                       value={'factor': p[0], 'unit': p[1].value},
+                       position_like=p)
+    return BuiltToken(type_='size',
+                      value=dimen,
                       position_like=p)
 
 
@@ -330,13 +345,6 @@ def normal_mu_dimen_explicit(p):
 def unit_of_mu_measure(p):
     return BuiltToken(type_='unit_of_measure',
                       value={'unit': MuUnit.mu},
-                      position_like=p)
-
-
-@pg.production('normal_dimen : factor unit_of_measure')
-def normal_dimen_explicit(p):
-    return BuiltToken(type_='normal_dimen',
-                      value={'factor': p[0], 'unit': p[1].value},
                       position_like=p)
 
 
@@ -350,35 +358,44 @@ def factor_decimal_constant(p):
     return p[0]
 
 
+def digit_coll_to_size_tok(dc, position_like):
+    new_dec_const_tok = BuiltToken(type_='decimal_constant',
+                                   value=dc,
+                                   position_like=position_like)
+    new_size_tok = BuiltToken(type_='size', value=new_dec_const_tok,
+                              position_like=position_like)
+    return new_size_tok
+
+
 @pg.production('decimal_constant : COMMA')
 def decimal_constant_comma(p):
-    dc = DigitCollection(base=10)
-    return BuiltToken(type_='decimal_constant', value=dc,
-                      position_like=p)
+    digit_coll = DigitCollection(base=10)
+    return digit_coll_to_size_tok(digit_coll, position_like=p)
 
 
 @pg.production('decimal_constant : POINT')
 def decimal_constant_point(p):
-    dc = DigitCollection(base=10)
-    dc.digits = [p[0]]
-    return BuiltToken(type_='decimal_constant', value=dc,
-                      position_like=p)
+    digit_coll = DigitCollection(base=10)
+    digit_coll.digits = [p[0]]
+    return digit_coll_to_size_tok(digit_coll, position_like=p)
 
 
 @pg.production('decimal_constant : digit decimal_constant')
 def decimal_constant_prepend(p):
-    dc = p[1].value
-    dc.digits = [p[0]] + dc.digits
-    return BuiltToken(type_='decimal_constant', value=dc,
-                      position_like=p)
+    size_tok = p[1]
+    dec_const_tok = size_tok.value
+    digit_coll = dec_const_tok.value
+    digit_coll.digits = [p[0]] + digit_coll.digits
+    return digit_coll_to_size_tok(digit_coll, position_like=p)
 
 
 @pg.production('decimal_constant : decimal_constant digit')
 def decimal_constant_append(p):
-    dc = p[0].value
-    dc.digits = dc.digits + [p[1]]
-    return BuiltToken(type_='decimal_constant', value=dc,
-                      position_like=p)
+    size_tok = p[0]
+    dec_const_tok = size_tok.value
+    digit_coll = dec_const_tok.value
+    digit_coll.digits = digit_coll.digits + [p[1]]
+    return digit_coll_to_size_tok(digit_coll, position_like=p)
 
 
 @pg.production('unit_of_measure : optional_spaces internal_unit')
@@ -433,8 +450,8 @@ def normal_integer_weird_base(p):
 
 @pg.production('normal_integer : BACKTICK character_token one_optional_space')
 def normal_integer_character(p):
-    return BuiltToken(type_='backtick_integer', value=p[1],
-                      position_like=p)
+    bt = BuiltToken(type_='backtick', value=p[1], position_like=p)
+    return BuiltToken(type_='size', value=bt, position_like=p)
 
 
 @pg.production('character_token : UNEXPANDED_CONTROL_SYMBOL')
@@ -447,15 +464,18 @@ def character_token_character(p):
 
 def process_integer_digits(p, base):
     if len(p) > 1:
-        token = p[1]
-        collection = token.value
+        size_token = p[1]
+        constant_token = size_token.value
+        collection = constant_token.value
     else:
         collection = DigitCollection(base=base)
     # We work right-to-left, so the new digit should be added on the left.
-    collection.digits = [p[0]] + collection.digits
-    new_token = BuiltToken(type_='integer_constant', value=collection,
-                           position_like=p)
-    return new_token
+    new_digit = p[0]
+    collection.digits = [new_digit] + collection.digits
+    new_constant_token = BuiltToken(type_='integer_constant', value=collection,
+                                    position_like=p)
+    new_size_token = BuiltToken(type_='size', value=new_constant_token)
+    return new_size_token
 
 
 @pg.production('hexadecimal_constant : hexadecimal_digit')

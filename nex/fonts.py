@@ -6,7 +6,7 @@ from .pydvi.TeXUnit import pt2sp
 from .pydvi.Font.TfmParser import TfmParser
 
 from .instructions import Instructions
-from .utils import ensure_extension, find_file
+from .utils import ensure_extension, find_file, NotInScopeError
 
 
 @lru_cache(maxsize=512)
@@ -151,7 +151,7 @@ class FontState:
         # we know to do when a KeyError is raised.
         if self._current_font_id is not None:
             return self._current_font_id
-        raise AttributeError
+        raise NotInScopeError
 
 
 class GlobalFontState:
