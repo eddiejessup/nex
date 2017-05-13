@@ -4,8 +4,7 @@ from ..instructions import if_instructions
 from ..tokens import BuiltToken, instructions_to_types
 
 from .common_parsing import pg as common_pg
-from .utils import (ExpectedParsingError, ExhaustedTokensError,
-                    is_end_token)
+from . import utils as pu
 
 
 cond_terminal_instructions = if_instructions
@@ -52,22 +51,7 @@ def relation(p):
     return p[0].value['char']
 
 
-@pg.error
-def error(look_ahead):
-    # TODO: remove duplication of this function with command parser.
-    # If we have exhausted the list of tokens while still
-    # having a valid command, we should read more tokens until we get a syntax
-    # error.
-    if is_end_token(look_ahead):
-        raise ExhaustedTokensError
-    # Assume we have an actual syntax error, which we interpret to mean the
-    # current command has finished being parsed and we are looking at tokens
-    # for the next command.
-    elif look_ahead is not None:
-        raise ExpectedParsingError
-    else:
-        import pdb; pdb.set_trace()
-
+pu.add_chunky_error(pg)
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")

@@ -8,6 +8,7 @@ from ..instructions import Instructions as I, register_instructions
 
 from . import number_parsing
 from . import dimen_parsing
+from . import glue_parsing
 from . import character_parsing
 
 common_terminal_instructions = (
@@ -118,111 +119,12 @@ def add_variable_parsing(pg):
 
 
 add_variable_parsing(pg)
-
-
-@pg.production('mu_glue : internal_mu_glue')
-@pg.production('glue : internal_glue')
-def glue_internal(p):
-    return BuiltToken(type_='glue', value=p[0], position_like=p)
-
-
-dimen_parsing.add_glue_literals(pg)
-
-
-def _make_scalar_quantity_token(type_, p):
-    '''Small helper to avoid repetition.'''
-    return BuiltToken(type_=type_, value={'sign': p[0], 'size': p[1]},
-                      position_like=p)
-
-
-@pg.production('mu_dimen : optional_signs unsigned_mu_dimen')
-@pg.production('dimen : optional_signs unsigned_dimen')
-def maybe_mu_dimen(p):
-    return _make_scalar_quantity_token('dimen', p)
-
-
-@pg.production('number : optional_signs unsigned_number')
-def number(p):
-    return _make_scalar_quantity_token('number', p)
-
-
-@pg.production('unsigned_mu_dimen : normal_mu_dimen')
-@pg.production('unsigned_mu_dimen : coerced_mu_dimen')
-@pg.production('unsigned_dimen : normal_dimen')
-@pg.production('unsigned_dimen : coerced_dimen')
-def maybe_mu_unsigned_dimen(p):
-    return p[0]
-
-
-@pg.production('coerced_dimen : internal_glue')
-@pg.production('coerced_mu_dimen : internal_mu_glue')
-def maybe_mu_coerced_dimen(p):
-    raise NotImplementedError
-
-
-@pg.production('unsigned_number : normal_integer')
-@pg.production('unsigned_number : coerced_integer')
-def unsigned_number(p):
-    return p[0]
-
-
-@pg.production('coerced_integer : internal_dimen')
-def coerced_integer_dimen(p):
-    return p[0]
-
-
-@pg.production('coerced_integer : internal_glue')
-def coerced_integer_glue(p):
-    raise NotImplementedError
-
-
-@pg.production('normal_dimen : internal_dimen')
-@pg.production('normal_integer : internal_integer')
-def normal_scalar_internal_scalar(p):
-    return p[0]
-
-
-# Registers.
-@pg.production('internal_mu_glue : mu_skip_register')
-@pg.production('internal_glue : skip_register')
-# Parameters.
-@pg.production('internal_mu_glue : MU_GLUE_PARAMETER')
-@pg.production('internal_glue : GLUE_PARAMETER')
-def internal_glue(p):
-    return p[0]
-
-
-# Special quantities.
-@pg.production('internal_integer : SPECIAL_INTEGER')
-@pg.production('internal_dimen : SPECIAL_DIMEN')
-# Registers.
-@pg.production('internal_dimen : dimen_register')
-@pg.production('internal_integer : count_register')
-# Character codes.
-@pg.production('internal_integer : CHAR_DEF_TOKEN')
-@pg.production('internal_integer : MATH_CHAR_DEF_TOKEN')
-# Parameters.
-@pg.production('internal_dimen : DIMEN_PARAMETER')
-@pg.production('internal_integer : INTEGER_PARAMETER')
-# Box dimension.
-@pg.production('internal_dimen : box_dimension number')
-def internal_scalar_quantity(p):
-    return BuiltToken(type_='size',
-                      value=p[0],
-                      position_like=p)
-
-
-@pg.production('box_dimension : BOX_DIMEN_HEIGHT')
-@pg.production('box_dimension : BOX_DIMEN_WIDTH')
-@pg.production('box_dimension : BOX_DIMEN_DEPTH')
-def box_dimension(p):
-    # TODO: Implement this.
-    raise NotImplementedError
-    box_dimen_type = p[0].type
-    return BuiltToken(type_='box_dimen', value=1,
-                      position_like=p)
-
-
+glue_parsing.add_glue_literals(pg)
 dimen_parsing.add_dimen_literals(pg)
 number_parsing.add_nr_literals(pg)
 character_parsing.add_character_literals(pg)
+
+
+@pg.production('empty :')
+def empty(p):
+    return None

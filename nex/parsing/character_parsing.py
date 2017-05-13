@@ -60,7 +60,3 @@ def add_character_literals(pg):
     @pg.production('optional_spaces : empty')
     def optional_spaces(p):
         return None
-
-    @pg.production('empty :')
-    def empty(p):
-        return None

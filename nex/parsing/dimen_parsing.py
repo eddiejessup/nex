@@ -1,6 +1,5 @@
 from ..tokens import BuiltToken
 from ..units import PhysicalUnit, MuUnit, InternalUnit
-from ..tex_parameters import glue_keys
 
 from . import utils as pu
 
@@ -15,6 +14,28 @@ def digit_coll_to_size_tok(dc, position_like):
 
 
 def add_dimen_literals(pg):
+    @pg.production('mu_dimen : optional_signs unsigned_mu_dimen')
+    @pg.production('dimen : optional_signs unsigned_dimen')
+    def maybe_mu_dimen(p):
+        return BuiltToken(type_='dimen',
+                          value={'sign': p[0], 'size': p[1]},
+                          position_like=p)
+
+    @pg.production('unsigned_mu_dimen : normal_mu_dimen')
+    @pg.production('unsigned_mu_dimen : coerced_mu_dimen')
+    @pg.production('unsigned_dimen : normal_dimen')
+    @pg.production('unsigned_dimen : coerced_dimen')
+    def maybe_mu_unsigned_dimen(p):
+        return p[0]
+
+    @pg.production('coerced_dimen : internal_glue')
+    @pg.production('coerced_mu_dimen : internal_mu_glue')
+    def maybe_mu_coerced_dimen(p):
+        raise NotImplementedError
+
+    @pg.production('normal_dimen : internal_dimen')
+    def normal_dimen_internal(p):
+        return p[0]
 
     @pg.production('normal_mu_dimen : factor mu_unit')
     @pg.production('normal_dimen : factor unit_of_measure')
@@ -26,10 +47,23 @@ def add_dimen_literals(pg):
                           value=dimen,
                           position_like=p)
 
-    @pg.production(pu.get_literal_production_rule('mu', target='mu_unit') + ' one_optional_space')
-    def unit_of_mu_measure(p):
-        return BuiltToken(type_='unit_of_measure',
-                          value={'unit': MuUnit.mu},
+    @pg.production('internal_dimen : DIMEN_PARAMETER')
+    @pg.production('internal_dimen : dimen_register')
+    @pg.production('internal_dimen : SPECIAL_DIMEN')
+    @pg.production('internal_dimen : box_dimension number')
+    def internal_scalar_quantity(p):
+        return BuiltToken(type_='size',
+                          value=p[0],
+                          position_like=p)
+
+    @pg.production('box_dimension : BOX_DIMEN_HEIGHT')
+    @pg.production('box_dimension : BOX_DIMEN_WIDTH')
+    @pg.production('box_dimension : BOX_DIMEN_DEPTH')
+    def box_dimension(p):
+        # TODO: Implement this.
+        raise NotImplementedError
+        box_dimen_type = p[0].type
+        return BuiltToken(type_='box_dimen', value=1,
                           position_like=p)
 
     @pg.production('factor : normal_integer')
@@ -63,6 +97,12 @@ def add_dimen_literals(pg):
         digit_coll = dec_const_tok.value
         digit_coll.digits = digit_coll.digits + [p[1]]
         return digit_coll_to_size_tok(digit_coll, position_like=p)
+
+    @pg.production(pu.get_literal_production_rule('mu', target='mu_unit') + ' one_optional_space')
+    def unit_of_mu_measure(p):
+        return BuiltToken(type_='unit_of_measure',
+                          value={'unit': MuUnit.mu},
+                          position_like=p)
 
     @pg.production('unit_of_measure : optional_spaces internal_unit')
     def unit_of_measure_internal(p):
@@ -101,7 +141,7 @@ def add_dimen_literals(pg):
         return p[0]
 
     @pg.production(pu.get_literal_production_rule('true'))
-    def literal(p):
+    def literal_true(p):
         return pu.make_literal_token(p)
 
     @pg.production(pu.get_literal_production_rule('pt', target='physical_unit'))
@@ -118,71 +158,3 @@ def add_dimen_literals(pg):
         return BuiltToken(type_='physical_unit',
                           value=unit,
                           position_like=p)
-
-
-def add_glue_literals(pg):
-    @pg.production('mu_glue : mu_dimen mu_stretch mu_shrink')
-    @pg.production('glue : dimen stretch shrink')
-    def glue_explicit(p):
-        # Wrap up arguments in a dict.
-        dimens = dict(zip(glue_keys, tuple(p)))
-        glue_spec = BuiltToken(type_='explicit', value=dimens, position_like=p)
-        return BuiltToken(type_='glue', value=glue_spec, position_like=p)
-
-    @pg.production('shrink : minus dimen')
-    @pg.production('shrink : minus fil_dimen')
-    @pg.production('stretch : plus dimen')
-    @pg.production('stretch : plus fil_dimen')
-    @pg.production('mu_shrink : minus mu_dimen')
-    @pg.production('mu_shrink : minus fil_dimen')
-    @pg.production('mu_stretch : plus mu_dimen')
-    @pg.production('mu_stretch : plus fil_dimen')
-    def stretch_or_shrink(p):
-        return p[1]
-
-    @pg.production('stretch : optional_spaces')
-    @pg.production('shrink : optional_spaces')
-    @pg.production('mu_stretch : optional_spaces')
-    @pg.production('mu_shrink : optional_spaces')
-    def stretch_or_shrink_omitted(p):
-        dimen_size_token = BuiltToken(type_='internal',
-                                      value=0,
-                                      position_like=p)
-        size_token = BuiltToken(type_='size',
-                                value=dimen_size_token,
-                                position_like=p)
-        sign_token = BuiltToken(type_='sign', value='+', position_like=p)
-        return BuiltToken(type_='dimen', value={'sign': sign_token,
-                                                'size': size_token},
-                          position_like=p)
-
-    @pg.production('fil_dimen : optional_signs factor fil_unit optional_spaces')
-    def fil_dimen(p):
-        dimen_size_token = BuiltToken(type_='dimen',
-                                      value={'factor': p[1], 'unit': p[2].value},
-                                      position_like=p)
-        size_token = BuiltToken(type_='size',
-                                value=dimen_size_token,
-                                position_like=p)
-        return BuiltToken(type_='dimen', value={'sign': p[0], 'size': size_token},
-                          position_like=p)
-
-    @pg.production('fil_unit : fil_unit NON_ACTIVE_UNCASED_l')
-    def fil_unit_append(p):
-        # Add one infinity for every letter 'l'.
-        unit = p[0]
-        unit.value['number_of_fils'] += 1
-        return unit
-
-    @pg.production('fil_unit : fil')
-    def fil_unit(p):
-        unit = {'unit': PhysicalUnit.fil, 'number_of_fils': 1}
-        return BuiltToken(type_='fil_unit',
-                          value=unit,
-                          position_like=p)
-
-    @pg.production(pu.get_literal_production_rule('minus'))
-    @pg.production(pu.get_literal_production_rule('plus'))
-    @pg.production(pu.get_literal_production_rule('fil'))
-    def literal(p):
-        return pu.make_literal_token(p)

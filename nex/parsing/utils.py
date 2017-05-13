@@ -52,6 +52,23 @@ def wrap(pg, func, rule):
     return f(func)
 
 
+def add_chunky_error(pg):
+    @pg.error
+    def error(look_ahead):
+        # If we have exhausted the list of tokens while still
+        # having a valid command, we should read more tokens until we get a syntax
+        # error.
+        if is_end_token(look_ahead):
+            raise ExhaustedTokensError
+        # Assume we have an actual syntax error, which we interpret to mean the
+        # current command has finished being parsed and we are looking at tokens
+        # for the next command.
+        elif look_ahead is not None:
+            raise ExpectedParsingError
+        else:
+            raise Exception
+
+
 class ExpectedParsingError(Exception):
     pass
 

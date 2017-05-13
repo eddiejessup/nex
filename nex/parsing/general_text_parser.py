@@ -2,8 +2,7 @@ from ..rply import ParserGenerator
 
 from ..tokens import BuiltToken
 
-from .utils import (ExpectedParsingError, ExhaustedTokensError,
-                    is_end_token)
+from . import utils as pu
 
 term_types = ['SPACE', 'RELAX', 'LEFT_BRACE', 'BALANCED_TEXT_AND_RIGHT_BRACE']
 gen_txt_pg = ParserGenerator(term_types, cache_id="general_text")
@@ -32,21 +31,7 @@ def empty(p):
     return None
 
 
-@gen_txt_pg.error
-def error(look_ahead):
-    # TODO: remove duplication of this function with command parser.
-    # If we have exhausted the list of tokens while still
-    # having a valid command, we should read more tokens until we get a syntax
-    # error.
-    if is_end_token(look_ahead):
-        raise ExhaustedTokensError
-    # Assume we have an actual syntax error, which we interpret to mean the
-    # current command has finished being parsed and we are looking at tokens
-    # for the next command.
-    elif look_ahead is not None:
-        raise ExpectedParsingError
-    else:
-        raise Exception
+pu.add_chunky_error(gen_txt_pg)
 
 
 general_text_parser = gen_txt_pg.build()

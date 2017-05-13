@@ -20,6 +20,29 @@ def process_integer_digits(p, base):
 
 
 def add_nr_literals(pg):
+    @pg.production('number : optional_signs unsigned_number')
+    def number(p):
+        return BuiltToken(type_='number',
+                          value={'sign': p[0], 'size': p[1]},
+                          position_like=p)
+
+    @pg.production('unsigned_number : normal_integer')
+    @pg.production('unsigned_number : coerced_integer')
+    def unsigned_number(p):
+        return p[0]
+
+    @pg.production('coerced_integer : internal_dimen')
+    def coerced_integer_dimen(p):
+        return p[0]
+
+    @pg.production('coerced_integer : internal_glue')
+    def coerced_integer_glue(p):
+        raise NotImplementedError
+
+    @pg.production('normal_integer : internal_integer')
+    def normal_integer_internal(p):
+        return p[0]
+
     @pg.production('normal_integer : integer_constant one_optional_space')
     def normal_integer_integer(p):
         # TODO: Make size token here, rather than in integer_constant
@@ -36,6 +59,16 @@ def add_nr_literals(pg):
     def normal_integer_character(p):
         bt = BuiltToken(type_='backtick', value=p[1], position_like=p)
         return BuiltToken(type_='size', value=bt, position_like=p)
+
+    @pg.production('internal_integer : INTEGER_PARAMETER')
+    @pg.production('internal_integer : count_register')
+    @pg.production('internal_integer : SPECIAL_INTEGER')
+    @pg.production('internal_integer : CHAR_DEF_TOKEN')
+    @pg.production('internal_integer : MATH_CHAR_DEF_TOKEN')
+    def internal_integer(p):
+        return BuiltToken(type_='size',
+                          value=p[0],
+                          position_like=p)
 
     @pg.production('character_token : UNEXPANDED_CONTROL_SYMBOL')
     @pg.production('character_token : character')
