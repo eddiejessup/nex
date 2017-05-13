@@ -48,8 +48,8 @@ def add_glue_rules(pg):
         size_token = BuiltToken(type_='size',
                                 value=dimen_size_token,
                                 position_like=p)
-        sign_token = BuiltToken(type_='sign', value='+', position_like=p)
-        return BuiltToken(type_='dimen', value={'sign': sign_token,
+        sign_token = BuiltToken(type_='signs', value=[], position_like=p)
+        return BuiltToken(type_='dimen', value={'signs': sign_token,
                                                 'size': size_token},
                           position_like=p)
 
@@ -61,7 +61,7 @@ def add_glue_rules(pg):
         size_token = BuiltToken(type_='size',
                                 value=dimen_size_token,
                                 position_like=p)
-        return BuiltToken(type_='dimen', value={'sign': p[0], 'size': size_token},
+        return BuiltToken(type_='dimen', value={'signs': p[0], 'size': size_token},
                           position_like=p)
 
     @pg.production('fil_unit : fil_unit NON_ACTIVE_UNCASED_l')

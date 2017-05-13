@@ -18,7 +18,7 @@ def add_dimen_rules(pg):
     @pg.production('dimen : optional_signs unsigned_dimen')
     def maybe_mu_dimen(p):
         return BuiltToken(type_='dimen',
-                          value={'sign': p[0], 'size': p[1]},
+                          value={'signs': p[0], 'size': p[1]},
                           position_like=p)
 
     @pg.production('unsigned_mu_dimen : normal_mu_dimen')

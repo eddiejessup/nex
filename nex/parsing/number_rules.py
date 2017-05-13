@@ -23,7 +23,7 @@ def add_number_rules(pg):
     @pg.production('number : optional_signs unsigned_number')
     def number(p):
         return BuiltToken(type_='number',
-                          value={'sign': p[0], 'size': p[1]},
+                          value={'signs': p[0], 'size': p[1]},
                           position_like=p)
 
     @pg.production('unsigned_number : normal_integer')
@@ -72,8 +72,7 @@ def add_number_rules(pg):
 
     @pg.production('character_token : UNEXPANDED_CONTROL_SYMBOL')
     @pg.production('character_token : character')
-    # TODO: make this possible.
-    # @pg.production('character_token : ACTIVE_CHARACTER')
+    @pg.production('character_token : ACTIVE_CHARACTER')
     def character_token_character(p):
         return p[0]
 
@@ -120,26 +119,20 @@ def add_number_rules(pg):
         return p[0]
 
     @pg.production('optional_signs : optional_spaces')
+    def optional_signs_omitted(p):
+        return BuiltToken(type_='signs', value=[],
+                          position_like=p)
+
     @pg.production('optional_signs : optional_signs plus_or_minus optional_spaces')
     def optional_signs(p):
-        def flip_sign(s):
-            return '+' if s == '-' else '-'
-
-        if len(p) > 1:
-            added_s = p[1].value
-            if added_s == '-':
-                current_s = p[0].value
-                s = flip_sign(current_s)
-        else:
-            s = '+'
-        return BuiltToken(type_='sign', value=s,
-                          position_like=p)
+        t = p[0]
+        t.value.append(p[1])
+        return t
 
     @pg.production('plus_or_minus : PLUS_SIGN')
     @pg.production('plus_or_minus : MINUS_SIGN')
     def plus_or_minus(p):
-        return BuiltToken(type_='sign', value=p[0].value['char'],
-                          position_like=p)
+        return p[0]
 
     @pg.production('equals : optional_spaces')
     @pg.production('equals : optional_spaces EQUALS')

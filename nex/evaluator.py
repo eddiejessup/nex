@@ -1,8 +1,8 @@
 from .tokens import BuiltToken, InstructionToken
-from .registers import is_register_type
 from .instructions import Instructions
+from .codes import CatCode
 from .units import PhysicalUnit, MuUnit, InternalUnit, units_in_scaled_points
-from .tex_parameters import glue_keys, is_parameter_type, Parameters
+from .tex_parameters import Parameters
 
 
 def get_real_decimal_constant(collection):
@@ -106,18 +106,36 @@ def evaluate_size(state, size_token):
         import pdb; pdb.set_trace()
 
 
+def evaluate_signs(signs_token):
+    sign = 1
+    for t in signs_token.value:
+        if t.value['char'] == '-' and t.value['cat'] == CatCode.other:
+            sign *= -1
+        elif t.value['char'] == '+' and t.value['cat'] == CatCode.other:
+            pass
+        else:
+            raise ValueError
+    return sign
+
+
 def evaluate_number(state, number_token):
-    # TODO: Check if the sign is stored and retrieved in numbers, dimens, glues
-    # and so on.
     number_value = number_token.value
-    if isinstance(number_value, int):
-        import pdb; pdb.set_trace()
-    size_token = number_value['size']
-    number = evaluate_size(state, size_token)
-    sign = number_value['sign'].value
-    if sign == '-':
-        number *= -1
-    return number
+    # Occurs if the number is a register-def-token.
+    if isinstance(number_value, BuiltToken) and number_value.type == 'internal_number':
+        return number_value.value
+    elif isinstance(number_value, dict):
+        size_token = number_value['size']
+        size = evaluate_size(state, size_token)
+        if 'signs' not in number_value:
+            import pdb; pdb.set_trace()
+        sign = evaluate_signs(number_value['signs'])
+        if isinstance(size, BuiltToken) and size.type == 'fil_dimension':
+            size.value['factor'] *= -1
+        else:
+            size *= sign
+        return size
+    else:
+        raise ValueError
 
 
 def evaluate_dimen(state, dimen_token):

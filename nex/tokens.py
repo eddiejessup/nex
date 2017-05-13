@@ -167,7 +167,28 @@ class LexToken(PositionToken):
     pass
 
 
-class InstructionToken(PositionToken):
+class PLYTokenMixin:
+    """Token interface."""
+
+    def gettokentype(self):
+        return self.type
+
+    def getsourcepos(self):
+        return (self.line_nr, self.col_nr)
+
+    def getstr(self):
+        return self.__repr__()
+
+    @property
+    def lineno(self):
+        return self.line_nr
+
+    @property
+    def lexpos(self):
+        return None
+
+
+class InstructionToken(PositionToken, PLYTokenMixin):
 
     def __init__(self, instruction, *args, **kwargs):
         super().__init__(type_=None, *args, **kwargs)
@@ -214,25 +235,6 @@ class InstructionToken(PositionToken):
             val = ''
         a.append(val)
         return f'IT({csep(a)})'
-
-    # Token interface.
-
-    def gettokentype(self):
-        return self.type
-
-    def getsourcepos(self):
-        return (self.line_nr, self.col_nr)
-
-    def getstr(self):
-        return self.__repr__()
-
-    @property
-    def lineno(self):
-        return self.line_nr
-
-    @property
-    def lexpos(self):
-        return None
 
 
 def instructions_to_types(instructions):

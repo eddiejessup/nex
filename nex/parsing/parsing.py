@@ -212,18 +212,9 @@ def add_variable_rules(pg):
     @pg.production('count_register : COUNT_DEF_TOKEN')
     def register_token(p):
         reg_type = short_hand_reg_def_token_type_to_reg_type[p[0].type]
-        number = p[0].value
-
-        # A bit of token wrangling to make the result look the same as, for
-        # example, `SKIP number`.
-
-        sign = '+' if number >= 0 else '-'
-        sign_tok = BuiltToken(type_='sign', value=sign)
-
-        size_value_tok = BuiltToken(type_='internal', value=abs(number))
-        size_tok = BuiltToken(type_='size', value=size_value_tok)
-        nr_tok = BuiltToken(type_='number', value={'sign': sign_tok,
-                                                   'size': size_tok})
+        internal_nr_tok = BuiltToken(type_='internal_number',
+                                     value=p[0].value)
+        nr_tok = BuiltToken(type_='number', value=internal_nr_tok)
         return BuiltToken(type_=reg_type, value=nr_tok, position_like=p)
 
 
