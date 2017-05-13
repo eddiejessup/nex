@@ -74,6 +74,7 @@ terminal_instructions = (
     I.mu_skip_def_token,
     I.toks_def_token,
     I.unexpanded_control_symbol,
+    I.accent,
 )
 # Add ordinary character literals.
 char_instructions = tuple(I['non_active_uncased_{}'.format(c.lower())]

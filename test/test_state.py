@@ -122,7 +122,7 @@ params = {
 
 def test_single_letter():
     state = get_state(test_char_to_cat, {}, params)
-    state.add_character('a')
+    state.add_character_char('a')
     state.do_paragraph()
     assert len(state.modes) == 1
     assert state.mode == Mode.vertical
@@ -133,6 +133,14 @@ def test_single_letter():
     assert isinstance(lst[2], box.Character)
     if do_output:
         write_to_dvi_file(state, 'test_single_letter.dvi')
+
+
+def test_solo_accent():
+    state = get_state(test_char_to_cat, {}, params)
+    state.add_character_code(23)
+    state.do_paragraph()
+    if do_output:
+        write_to_dvi_file(state, 'test_accent.dvi')
 
 
 def test_rule():

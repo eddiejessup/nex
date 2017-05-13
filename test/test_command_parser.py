@@ -86,3 +86,12 @@ def test_h_rule():
     }
     b = string_to_banisher('$hRule height 20pt width 10pt depth 30pt', cs_map)
     command = command_parser.parse(b.advance_to_end())
+
+
+def test_accent():
+    cs_map = {
+        'alloAllo': ITok(Instructions.accent),
+    }
+    b = string_to_banisher('$alloAllo22', cs_map)
+    command = command_parser.parse(b.advance_to_end())
+    print(command)

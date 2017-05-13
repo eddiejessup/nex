@@ -3,6 +3,12 @@ from os import path as opath
 import base64
 import uuid
 
+from .pydvi.TeXUnit import pt2sp
+
+
+def pt_to_sp(pt):
+    return int(round(pt2sp(pt)))
+
 
 ascii_characters = ''.join(chr(i) for i in range(128))
 

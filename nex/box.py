@@ -301,12 +301,22 @@ class SetGlue(ListElement):
     height = width
 
 
-class Leaders(ListElement):
-    discardable = True
-    pass
-
-
 class Kern(ListElement):
+    discardable = True
+
+    def __init__(self, dimen):
+        self.dimen = dimen
+
+    def __repr__(self):
+        return 'K({})'.format(repr_dimen(self.dimen))
+
+    @property
+    def width(self):
+        return self.dimen
+    natural_height = height = natural_width = width
+
+
+class Leaders(ListElement):
     discardable = True
     pass
 
@@ -341,17 +351,13 @@ class Insertion(ListElement):
 class Character(ListElement):
     discardable = False
 
-    def __init__(self, char, font):
-        self.char = char
+    def __init__(self, code, font):
+        self.code = code
         self.font = font
 
     def __repr__(self):
         return self.char
         # return '{}({})'.format(self.__class__.__name__, self.char)
-
-    @property
-    def code(self):
-        return ord(self.char)
 
     @property
     def width(self):

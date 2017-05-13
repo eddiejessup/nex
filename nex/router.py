@@ -103,6 +103,7 @@ primitive_control_sequence_map = {
     'else': I.else_,
     'fi': I.end_if,
     'or': I.or_,
+    'accent': I.accent,
 }
 
 P = Parameters

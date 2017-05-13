@@ -28,7 +28,7 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
                 doc.right(amount)
             else:
                 doc.down(amount)
-        elif isinstance(item, box.SetGlue):
+        elif isinstance(item, (box.SetGlue, box.Kern)):
             amount = item.dimen
             if horizontal:
                 doc.right(amount)

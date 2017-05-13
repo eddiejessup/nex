@@ -3,7 +3,7 @@ import logging
 from enum import Enum
 from collections import deque
 
-from .utils import ExecuteCommandError, TidyEnd
+from .utils import ExecuteCommandError, TidyEnd, pt_to_sp
 from .reader import EndOfFile
 from .registers import is_register_type
 from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
@@ -11,7 +11,7 @@ from .instructions import Instructions, h_add_glue_instructions
 from .instructioner import make_primitive_control_sequence_instruction
 from .tex_parameters import is_parameter_type, Parameters
 from .box import (HBox, Rule, UnSetGlue, Character, FontDefinition,
-                  FontSelection)
+                  FontSelection, Kern)
 from .paragraphs import h_list_to_best_h_boxes
 from . import evaluator as evaler
 from .fonts import GlobalFontState
@@ -101,7 +101,7 @@ shift_to_horizontal_instructions = (
     Instructions.un_h_copy,
     # Instructions.v_align
     Instructions.v_rule,
-    # Instructions.accent,
+    Instructions.accent,
     # Instructions.discretionary,
     # Instructions.control_hyphen,
     # TODO: Add control-space primitive, parsing and control sequence.
@@ -295,9 +295,24 @@ class GlobalState:
         else:
             import pdb; pdb.set_trace()
 
-    def add_character(self, char):
-        character_item = Character(char, self.current_font)
+    def add_character_char(self, char):
+        return self.add_character_code(ord(char))
+
+    def add_character_code(self, code):
+        character_item = Character(code, self.current_font)
         self.append_to_list(character_item)
+
+    def add_accented_character(self, accent_code, char_code):
+        self.add_character_code(char_code)
+        w = self.current_font.width(char_code)
+        w_half = int(round(w / 2))
+        c = self.current_font.width(accent_code)
+        c_half = int(round(c / 2))
+        self.add_kern(-w_half - c_half)
+        self.add_character_code(accent_code)
+
+    def add_kern(self, length):
+        return self.append_to_list(Kern(length))
 
     def do_space(self):
         if self.mode in vertical_modes:
@@ -450,8 +465,6 @@ class GlobalState:
         elif isinstance(number_value, dict):
             size_token = number_value['size']
             size = self.evaluate_size(size_token)
-            if 'signs' not in number_value:
-                import pdb; pdb.set_trace()
             sign = evaler.evaluate_signs(number_value['signs'])
             if isinstance(size, BuiltToken) and size.type == 'fil_dimension':
                 size.value['factor'] *= -1
@@ -565,7 +578,23 @@ class GlobalState:
             self.do_paragraph()
         elif type_ == 'character':
             logger.info(f"Adding character \"{v['char']}\"")
-            self.add_character(v['char'])
+            self.add_character_char(v['char'])
+        elif type_ == 'ACCENT':
+            assignments = v['assignments'].value
+            accent_code_eval = self.evaluate_number(v['accent_code'])
+            logger.info(f"Adding accent \"{accent_code_eval}\"")
+            for assignment in assignments:
+                self.execute_command(assignment, banisher, reader)
+            if 'target_char' in v:
+                char_tok = v['target_char']
+                if char_tok.type == 'character':
+                    char_code = ord(char_tok.value['char'])
+                else:
+                    raise NotImplementedError
+                self.add_accented_character(accent_code_eval, char_code)
+            else:
+                self.add_character_code(accent_code_eval)
+            # TODO: Set space factor to 1000.
         elif type_ == 'V_RULE':
             logger.info(f"Adding vertical rule")
             self.add_v_rule(**v)

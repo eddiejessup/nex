@@ -63,6 +63,8 @@ instructions = (
     'KERN',
     'MATH_KERN',
 
+    'ACCENT',
+
     'V_RULE',
     'H_RULE',
 

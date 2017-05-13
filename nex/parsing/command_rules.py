@@ -365,7 +365,6 @@ def add_command_rules(pg):
     @pg.production('command : assignment')
     @pg.production('command : add_kern')
     @pg.production('command : add_glue')
-    @pg.production('command : character')
     @pg.production('command : PAR')
     @pg.production('command : SPACE')
     @pg.production('command : message')
@@ -379,11 +378,45 @@ def add_command_rules(pg):
     @pg.production('command : RIGHT_BRACE')
     @pg.production('command : LEFT_BRACE')
     @pg.production('command : END')
-    @pg.production('command : char')
-    @pg.production('command : CHAR_DEF_TOKEN')
     @pg.production('command : INDENT')
+    @pg.production('command : solo_accent')
+    @pg.production('command : paired_accent')
+    @pg.production('command : character_like')
     def command(p):
         return p[0]
+
+    @pg.production('paired_accent : solo_accent character_like')
+    def accent_with_character(p):
+        t = BuiltToken(type_='ACCENT', value=p[0].value)
+        t.value['target_char'] = p[1]
+        return t
+
+    @pg.production('solo_accent : ACCENT number optional_assignments')
+    def accent_without_character(p):
+        return BuiltToken(type_='ACCENT', value={'assignments': p[2],
+                                                 'accent_code': p[1]},
+                          position_like=p)
+
+    @pg.production('optional_assignments : empty')
+    def optional_assignments_none(p):
+        return BuiltToken(type_='assignments', value=[], position_like=p)
+
+    @pg.production('optional_assignments : assignment optional_assignments')
+    def optional_assignments(p):
+        t = BuiltToken(type_=p[1].type, value=p[1].value, position_like=p)
+        t.value.append(p[0])
+        return t
+
+    @pg.production('character_like : character')
+    @pg.production('character_like : CHAR_DEF_TOKEN')
+    def character_like(p):
+        return p[0]
+
+    @pg.production('character_like : CHAR number')
+    def character_like_char(p):
+        return BuiltToken(type_='char',
+                          value={'code': p[1]},
+                          position_like=p)
 
     add_assignment_rules(pg)
 
@@ -488,12 +521,6 @@ def add_command_rules(pg):
             s = p[0].value['char']
         return BuiltToken(type_='file_name',
                           value=s,
-                          position_like=p)
-
-    @pg.production('char : CHAR number')
-    def char(p):
-        return BuiltToken(type_='char',
-                          value={'code': p[1]},
                           position_like=p)
 
     # TODO: I wonder if I could make a decorator to make a token of the correct
