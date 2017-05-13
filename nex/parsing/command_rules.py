@@ -4,53 +4,7 @@ from ..fonts import FontRange
 from .utils import make_literal_token, get_literal_production_rule
 
 
-def add_command_rules(pg):
-    @pg.production('command : assignment')
-    @pg.production('command : add_kern')
-    @pg.production('command : add_glue')
-    @pg.production('command : character')
-    @pg.production('command : PAR')
-    @pg.production('command : SPACE')
-    @pg.production('command : message')
-    @pg.production('command : write')
-    @pg.production('command : RELAX')
-    @pg.production('command : box')
-    @pg.production('command : un_box')
-    @pg.production('command : vertical_rule')
-    @pg.production('command : horizontal_rule')
-    @pg.production('command : input')
-    @pg.production('command : RIGHT_BRACE')
-    @pg.production('command : LEFT_BRACE')
-    @pg.production('command : END')
-    @pg.production('command : char')
-    @pg.production('command : CHAR_DEF_TOKEN')
-    @pg.production('command : INDENT')
-    def command(p):
-        return p[0]
-
-    @pg.production('write : IMMEDIATE write')
-    def immediate_write(p):
-        p[1].value['prefix'] = 'immediate'
-        return p[1]
-
-    @pg.production('write : WRITE number general_text')
-    def write(p):
-        # TODO: Implement.
-        return BuiltToken(type_='write',
-                          value={'stream_number': p[1], 'content': p[2],
-                                 'prefix': None},
-                          position_like=p)
-
-    @pg.production('message : ERROR_MESSAGE general_text')
-    @pg.production('message : MESSAGE general_text')
-    def message(p):
-        # TODO: Implement.
-        return BuiltToken(type_='message',
-                          value={'content': p[1]},
-                          position_like=p)
-
-    # Start of 'assignment', a command. This is a big section.
-
+def add_assignment_rules(pg):
     @pg.production('assignment : macro_assignment')
     @pg.production('assignment : non_macro_assignment')
     def assignment(p):
@@ -182,6 +136,10 @@ def add_command_rules(pg):
     def optional_by(p):
         return None
 
+    @pg.production(get_literal_production_rule('by'))
+    def literal_by(p):
+        return make_literal_token(p)
+
     # End of 'arithmetic', a simple assignment.
 
     # Start of 'code assignment', a simple assignment.
@@ -297,6 +255,11 @@ def add_command_rules(pg):
         return BuiltToken(type_='spread', value=p[1],
                           position_like=p)
 
+    @pg.production(get_literal_production_rule('to'))
+    @pg.production(get_literal_production_rule('spread'))
+    def literal_box_spec(p):
+        return make_literal_token(p)
+
     @pg.production('box_specification : filler')
     def box_specification_empty(p):
         return None
@@ -335,6 +298,11 @@ def add_command_rules(pg):
     def at_clause_scaled(p):
         return BuiltToken(type_='scaled_number', value=p[1],
                           position_like=p)
+
+    @pg.production(get_literal_production_rule('at'))
+    @pg.production(get_literal_production_rule('scaled'))
+    def literal_at_clause(p):
+        return make_literal_token(p)
 
     @pg.production('at_clause : optional_spaces')
     def at_clause_empty(p):
@@ -392,7 +360,53 @@ def add_command_rules(pg):
 
     # End of 'simple assignment', an assignment.
 
-    # End of 'assignment', a command.
+
+def add_command_rules(pg):
+    @pg.production('command : assignment')
+    @pg.production('command : add_kern')
+    @pg.production('command : add_glue')
+    @pg.production('command : character')
+    @pg.production('command : PAR')
+    @pg.production('command : SPACE')
+    @pg.production('command : message')
+    @pg.production('command : write')
+    @pg.production('command : RELAX')
+    @pg.production('command : box')
+    @pg.production('command : un_box')
+    @pg.production('command : vertical_rule')
+    @pg.production('command : horizontal_rule')
+    @pg.production('command : input')
+    @pg.production('command : RIGHT_BRACE')
+    @pg.production('command : LEFT_BRACE')
+    @pg.production('command : END')
+    @pg.production('command : char')
+    @pg.production('command : CHAR_DEF_TOKEN')
+    @pg.production('command : INDENT')
+    def command(p):
+        return p[0]
+
+    add_assignment_rules(pg)
+
+    @pg.production('write : IMMEDIATE write')
+    def immediate_write(p):
+        p[1].value['prefix'] = 'immediate'
+        return p[1]
+
+    @pg.production('write : WRITE number general_text')
+    def write(p):
+        # TODO: Implement.
+        return BuiltToken(type_='write',
+                          value={'stream_number': p[1], 'content': p[2],
+                                 'prefix': None},
+                          position_like=p)
+
+    @pg.production('message : ERROR_MESSAGE general_text')
+    @pg.production('message : MESSAGE general_text')
+    def message(p):
+        # TODO: Implement.
+        return BuiltToken(type_='message',
+                          value={'content': p[1]},
+                          position_like=p)
 
     @pg.production('add_kern : KERN dimen')
     @pg.production('add_kern : MATH_KERN mu_dimen')
@@ -453,6 +467,12 @@ def add_command_rules(pg):
                           value={'axis': p[0].value, 'dimen': p[1]},
                           position_like=p)
 
+    @pg.production(get_literal_production_rule('width'))
+    @pg.production(get_literal_production_rule('height'))
+    @pg.production(get_literal_production_rule('depth'))
+    def literal_dimension(p):
+        return make_literal_token(p)
+
     @pg.production('input : INPUT file_name')
     def input_file(p):
         return BuiltToken(type_='input',
@@ -491,14 +511,3 @@ def add_command_rules(pg):
     @pg.production('un_box_type : UN_V_COPY')
     def un_box_type(p):
         return p[0]
-
-    @pg.production(get_literal_production_rule('width'))
-    @pg.production(get_literal_production_rule('height'))
-    @pg.production(get_literal_production_rule('depth'))
-    @pg.production(get_literal_production_rule('by'))
-    @pg.production(get_literal_production_rule('to'))
-    @pg.production(get_literal_production_rule('spread'))
-    @pg.production(get_literal_production_rule('at'))
-    @pg.production(get_literal_production_rule('scaled'))
-    def literal(p):
-        return make_literal_token(p)
