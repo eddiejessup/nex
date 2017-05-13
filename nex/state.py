@@ -1,3 +1,4 @@
+import operator
 import logging
 from enum import Enum
 from collections import deque
@@ -16,8 +17,8 @@ from . import evaluator as evaler
 from .fonts import GlobalFontState
 from .scopes import (ScopedCodes, ScopedRegisters, ScopedRouter,
                      ScopedParameters, ScopedFontState, Operation)
-from .units import PhysicalUnit
-from .tokens import BuiltToken
+from .units import PhysicalUnit, MuUnit, InternalUnit, units_in_scaled_points
+from .tokens import BuiltToken, InstructionToken
 
 logger = logging.getLogger(__name__)
 
@@ -323,21 +324,21 @@ class GlobalState:
         if width is None:
             width = pt2sp(0.4)
         else:
-            width = evaler.evaluate_dimen(self, width)
+            width = self.evaluate_number(width)
         if height is None:
             if self.mode == Mode.vertical:
                 height = self.parameters.get(Parameters.v_size)
             else:
                 raise NotImplementedError
         else:
-            height = evaler.evaluate_dimen(self, height)
+            height = self.evaluate_number(height)
         if depth is None:
             if self.mode == Mode.vertical:
                 depth = self.parameters.get(Parameters.v_size)
             else:
                 raise NotImplementedError
         else:
-            depth = evaler.evaluate_dimen(self, depth)
+            depth = self.evaluate_number(depth)
         self.add_rule(width, height, depth)
 
     def add_h_rule(self, width, height, depth):
@@ -348,16 +349,187 @@ class GlobalState:
             else:
                 raise NotImplementedError
         else:
-            width = evaler.evaluate_dimen(self, width)
+            width = self.evaluate_number(width)
         if height is None:
             height = int(pt2sp(0.4))
         else:
-            height = evaler.evaluate_dimen(self, height)
+            height = self.evaluate_number(height)
         if depth is None:
             depth = 0
         else:
-            depth = evaler.evaluate_dimen(self, depth)
+            depth = self.evaluate_number(depth)
         self.add_rule(width, height, depth)
+
+    def evaluate_size(self, size_token):
+        v = size_token.value
+        # If the size is the contents of an integer or dimen parameter.
+        if isinstance(v, InstructionToken) and v.type in (Instructions.integer_parameter.value,
+                                                          Instructions.dimen_parameter.value):
+            return self.parameters.get(v.value['parameter'])
+        # If the size is the contents of a count or dimen register.
+        elif isinstance(v, BuiltToken) and v.type in (Instructions.count.value,
+                                                      Instructions.dimen.value):
+            # The register number is a generic 'number' token, so evaluate this
+            # first.
+            evaled_i = self.evaluate_number(v.value)
+            v = self.registers.get(v.type, i=evaled_i)
+            return v
+        # If the size is the short-hand character token. This is different to,
+        # for example, a count_def_token, because that represents a register
+        # containing a variable. A char_def_token represents a constant value.
+        elif isinstance(v, InstructionToken) and v.type in ('CHAR_DEF_TOKEN', 'MATH_CHAR_DEF_TOKEN'):
+            return v.value
+        # If the size is the code of the target of a backtick instruction.
+        elif isinstance(v, BuiltToken) and v.type == 'backtick':
+            unexpanded_token = v.value
+            if unexpanded_token.type == 'UNEXPANDED_CONTROL_SYMBOL':
+                # If we have a single character control sequence in this context,
+                # it is just a way of specifying a character in a way that
+                # won't invoke its special effects.
+                char = unexpanded_token.value['name']
+            elif unexpanded_token.type == 'character':
+                char = unexpanded_token.value['char']
+            else:
+                import pdb; pdb.set_trace()
+            return ord(char)
+        # If the size is the integer represented by an integer literal.
+        elif isinstance(v, BuiltToken) and v.type == 'integer_constant':
+            collection = v.value
+            return evaler.get_integer_constant(collection)
+        # If the size is the real number represented by a decimal number
+        # literal.
+        elif isinstance(v, BuiltToken) and v.type == 'decimal_constant':
+            collection = v.value
+            return evaler.get_real_decimal_constant(collection)
+        # If the size is the value represented by a short-hand def token.
+        elif isinstance(v, BuiltToken) and v.type == 'internal':
+            return v.value
+        # If the size is a specification of a dimension (this is different to a
+        # call to retrieve the contents of a dimen register).
+        elif isinstance(v, BuiltToken) and v.type == 'dimen':
+            d_v = v.value
+            nr_units_token, unit_token = d_v['factor'], d_v['unit']
+            nr_units = self.evaluate_size(nr_units_token)
+
+            unit = unit_token['unit']
+
+            if unit == PhysicalUnit.fil:
+                return BuiltToken(
+                    type_='fil_dimension',
+                    value={'factor': nr_units,
+                           'number_of_fils': unit_token['number_of_fils']}
+                )
+            # Only one unit in mu units, a mu. I don't know what a mu is
+            # though...
+            elif unit == MuUnit.mu:
+                unit_scale = 1
+            elif unit == InternalUnit.em:
+                unit_scale = self.current_font.em_size
+            elif unit == InternalUnit.ex:
+                unit_scale = self.current_font.ex_size
+            else:
+                unit_scale = units_in_scaled_points[unit]
+                is_true_unit = unit_token['true']
+                if is_true_unit:
+                    magnification = self.parameters.get(Parameters.mag)
+                    # ['true'] unmagnifies the units, so that the subsequent
+                    # magnification will cancel out. For example, `\vskip 0.5 true
+                    # cm' is equivalent to `\vskip 0.25 cm' if you have previously
+                    # said `\magnification=2000'.
+                    unit_scale *= 1000.0 / magnification
+            size = int(round(nr_units * unit_scale))
+            return size
+        else:
+            raise ValueError
+
+    def evaluate_number(self, number_token):
+        number_value = number_token.value
+        # Occurs if the number is a register-def-token.
+        if isinstance(number_value, BuiltToken) and number_value.type == 'internal_number':
+            return number_value.value
+        elif isinstance(number_value, dict):
+            size_token = number_value['size']
+            size = self.evaluate_size(size_token)
+            if 'signs' not in number_value:
+                import pdb; pdb.set_trace()
+            sign = evaler.evaluate_signs(number_value['signs'])
+            if isinstance(size, BuiltToken) and size.type == 'fil_dimension':
+                size.value['factor'] *= -1
+            else:
+                size *= sign
+            return size
+        else:
+            raise ValueError
+
+    def evaluate_glue(self, glue_token):
+        v = glue_token.value
+        if isinstance(v, BuiltToken) and v.type == 'explicit':
+            # Should contain a dict specifying three dimens (in the general sense
+            # of 'physical length'), a 'dimen' (in the narrow sense), 'shrink' and
+            # 'stretch'.
+            dimens = v.value
+            evaluated_glue = {}
+            for dimen_name, dimen_tok in dimens.items():
+                if dimen_tok is None:
+                    evaluated_dimen = None
+                else:
+                    evaluated_dimen = self.evaluate_number(dimen_tok)
+                evaluated_glue[dimen_name] = evaluated_dimen
+        # If the size is the contents of a glue or mu glue register.
+        elif isinstance(v, BuiltToken) and v.type in (Instructions.skip.value,
+                                                      Instructions.mu_skip.value):
+            # The register number is a generic 'number' token, so evaluate this
+            # first.
+            evaled_i = self.evaluate_number(v.value)
+            v = self.registers.get(v.type, i=evaled_i)
+            return v
+        # If the size is the contents of a parameter.
+        elif isinstance(v, InstructionToken) and v.type in (Instructions.glue_parameter.value,
+                                                            Instructions.mu_glue_parameter.value):
+            return self.parameters.get(v.value['parameter'])
+        return evaluated_glue
+
+    def evaluate_token_list(self, token_list_token):
+        token_list_value = token_list_token.value
+        if token_list_value.type == 'general_text':
+            evaluated_token_list = token_list_value.value
+        # Also could be token_register, or token parameter.
+        else:
+            raise NotImplementedError
+        return evaluated_token_list
+
+    def execute_if_num(self, if_token):
+        v = if_token.value
+        left_number = self.evaluate_number(v['left_number'])
+        right_number = self.evaluate_number(v['right_number'])
+        operator_map = {
+            '<': operator.lt,
+            '=': operator.eq,
+            '>': operator.gt,
+        }
+        op = operator_map[v['relation']]
+        outcome = op(left_number, right_number)
+        return outcome
+
+    def execute_if_case(self, if_token):
+        v = if_token.value
+        return self.evaluate_number(v['number'])
+
+    def execute_condition(self, condition_token):
+        if_token = condition_token.value
+        exec_func_map = {
+            'if_num': self.execute_if_num,
+            'if_case': self.execute_if_case,
+            'if_true': lambda *args: True,
+            'if_false': lambda *args: False,
+        }
+        exec_func = exec_func_map[if_token.type]
+        outcome = exec_func(if_token)
+        if if_token.type == 'if_case':
+            i_block_to_pick = outcome
+        else:
+            i_block_to_pick = 0 if outcome else 1
+        return i_block_to_pick
 
     def execute_command(self, command, banisher, reader):
         # Reader needed to allow us to insert new input in response to
@@ -410,7 +582,7 @@ class GlobalState:
             to = None
             spread = None
             if spec is not None:
-                d = evaler.evaluate_dimen(self, spec.value)
+                d = self.evaluate_number(spec.value)
                 if spec.type == 'to':
                     to = d
                 elif spec.type == 'spread':
@@ -435,7 +607,7 @@ class GlobalState:
                 v['global'], v['control_sequence_name'], new_font_id)
         elif type_ == 'family_assignment':
             family_nr_uneval = v['family_nr']
-            family_nr_eval = evaler.evaluate_number(self, family_nr_uneval)
+            family_nr_eval = self.evaluate_number(family_nr_uneval)
             logger.info(f"Setting font family {family_nr_eval}")
             self.scoped_font_state.set_font_family(v['global'],
                                                    family_nr_eval,
@@ -453,7 +625,7 @@ class GlobalState:
             raise TidyEnd
         elif type_ == 'short_hand_definition':
             code_uneval = v['code']
-            code_eval = evaler.evaluate_number(self, code_uneval)
+            code_eval = self.evaluate_number(code_uneval)
             cs_name = v['control_sequence_name']
             # TODO: Log symbolic argument too.
             logger.info(f'Defining short macro "{cs_name}" as {code_eval}')
@@ -475,15 +647,15 @@ class GlobalState:
             # evaluate it to its contents first before assigning a variable to
             # it.
             value_evaluate_map = {
-                'number': evaler.evaluate_number,
-                'dimen': evaler.evaluate_dimen,
-                'glue': evaler.evaluate_glue,
-                'token_list': evaler.evaluate_token_list,
+                'number': self.evaluate_number,
+                'dimen': self.evaluate_number,
+                'glue': self.evaluate_glue,
+                'token_list': self.evaluate_token_list,
             }
             value_evaluate_func = value_evaluate_map[value.type]
-            evaled_value = value_evaluate_func(self, value)
+            evaled_value = value_evaluate_func(value)
             if is_register_type(variable.type):
-                evaled_i = evaler.evaluate_number(self, variable.value)
+                evaled_i = self.evaluate_number(variable.value)
                 self.registers.set(
                     is_global=v['global'], type_=variable.type,
                     i=evaled_i, value=evaled_value
@@ -497,12 +669,12 @@ class GlobalState:
         elif type_ == 'advance':
             variable, value = v['variable'], v['value']
             # See 'variable_assignment' case.
-            evaled_value = evaler.evaluate_number(self, v['value'])
+            evaled_value = self.evaluate_number(v['value'])
             kwargs = {'is_global': v['global'],
                       'by_operand': evaled_value,
                       'operation': Operation.advance}
             if is_register_type(variable.type):
-                evaled_i = evaler.evaluate_number(self, variable.value)
+                evaled_i = self.evaluate_number(variable.value)
                 self.registers.modify_register_value(type_=variable.type,
                                                      i=evaled_i, **kwargs)
             elif is_parameter_type(variable.type):
@@ -521,8 +693,8 @@ class GlobalState:
             pass
         elif type_ == 'code_assignment':
             code_type = v['code_type']
-            char_size = evaler.evaluate_number(self, v['char'])
-            code_size = evaler.evaluate_number(self, v['code'])
+            char_size = self.evaluate_number(v['char'])
+            code_size = self.evaluate_number(v['code'])
             char = chr(char_size)
             # TODO: Move inside state? What exactly is the benefit?
             # I guess separation of routing logic from execution logic.
@@ -553,13 +725,13 @@ class GlobalState:
         elif type_ == 'skew_char_assignment':
             # TODO: can we make this nicer by storing the char instead of the
             # number?
-            code_eval = evaler.evaluate_number(self, v['code'])
+            code_eval = self.evaluate_number(v['code'])
             self.global_font_state.set_hyphen_char(v['font_id'],
                                                    code_eval)
         elif type_ == 'hyphen_char_assignment':
             # TODO: can we make this nicer by storing the char instead of the
             #         number?
-            code_eval = evaler.evaluate_number(self, v['code'])
+            code_eval = self.evaluate_number(v['code'])
             self.global_font_state.set_hyphen_char(v['font_id'],
                                                    code_eval)
         elif type_ == 'message':
@@ -618,7 +790,7 @@ class GlobalState:
             else:
                 import pdb; pdb.set_trace()
         elif type_ == 'V_SKIP':
-            glue = evaler.evaluate_glue(self, v)
+            glue = self.evaluate_glue(v)
             item = UnSetGlue(**glue)
             logger.info(f'Adding vertical glue {item}')
             self.append_to_list(item)

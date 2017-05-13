@@ -21,7 +21,6 @@ from .instructioner import (Instructioner,
                             char_cat_instr_tok)
 from .state import Mode, Group
 from .expander import substitute_params_with_args
-from .if_executor import execute_condition
 from .parsing.utils import GetBuffer, safe_chunk_grabber
 from .parsing import parsing
 from .feedback import stringify_instr_list
@@ -377,18 +376,10 @@ class Banisher:
 
     def _handle_if(self, first_token):
         logger.debug(f'Handling condition "{first_token.instruction.name} …"')
-        # TODO: Can we, and should we, do this grab-then-execute logic with
-        # some kind of Executor-like class?
         with safe_chunk_grabber(self, condition_parser,
                                 initial=[first_token]) as condition_grabber:
             condition_token = next(condition_grabber)
-        outcome = execute_condition(condition_token, self.global_state)
-
-        # TODO: Move inside executor? Not sure.
-        if first_token.instruction == Instructions.if_case:
-            i_block_to_pick = outcome
-        else:
-            i_block_to_pick = 0 if outcome else 1
+        i_block_to_pick = self.global_state.execute_condition(condition_token)
 
         # Now get the body of the condition text.
         not_skipped_tokens = get_conditional_text(self.instructions,
