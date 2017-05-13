@@ -99,7 +99,8 @@ class AbstractBox(ListElement):
 
     discardable = False
 
-    def __init__(self, contents, to=None, spread=None, set_glue=True):
+    def __init__(self, contents, to=None, spread=None, set_glue=True,
+                 offset=0):
         self.to = to
         self.spread = spread
         if to is not None and spread is not None:
@@ -108,6 +109,7 @@ class AbstractBox(ListElement):
         self.set_glue = set_glue
         if set_glue:
             self.scale_and_set()
+        self.offset = offset
 
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.contents)
@@ -296,6 +298,7 @@ class SetGlue(ListElement):
         return '|G|({})'.format(repr_dimen(self.dimen))
 
     @property
+
     def width(self):
         return self.dimen
     height = width

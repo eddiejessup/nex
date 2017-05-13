@@ -14,6 +14,7 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
             doc.select_font(item.font_nr)
         elif isinstance(item, box.HBox):
             doc.push()
+            doc.down(-item.offset)
             write_box_to_doc(doc, item.contents, horizontal=True)
             doc.pop()
             if horizontal:

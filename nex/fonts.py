@@ -85,6 +85,10 @@ class FontInfo:
     def height(self, code):
         return self.scale(self.char_info(code).height)
 
+    @lru_cache(maxsize=512)
+    def depth(self, code):
+        return self.scale(self.char_info(code).depth)
+
     def __repr__(self):
         a = [
             f'file_name="{self.file_name}"',

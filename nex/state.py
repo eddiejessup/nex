@@ -303,18 +303,30 @@ class GlobalState:
     def add_character_char(self, char):
         return self.add_character_code(ord(char))
 
+    def get_character_item(self, code):
+        return Character(code, self.current_font)
+
     def add_character_code(self, code):
-        character_item = Character(code, self.current_font)
-        self.append_to_list(character_item)
+        self.append_to_list(self.get_character_item(code))
+
+    def get_raised_item(self, item, offset):
+        return HBox(contents=[item], offset=offset)
 
     def add_accented_character(self, accent_code, char_code):
         self.add_character_code(char_code)
         w = self.current_font.width(char_code)
+        h = self.current_font.height(char_code)
+        d = self.current_font.depth(char_code)
         w_half = int(round(w / 2))
         c = self.current_font.width(accent_code)
+        ch = self.current_font.height(accent_code)
+        cd = self.current_font.depth(accent_code)
+        # import pdb; pdb.set_trace()
         c_half = int(round(c / 2))
         self.add_kern(-w_half - c_half)
-        self.add_character_code(accent_code)
+        accent_char_item = self.get_character_item(accent_code)
+        accent_item = self.get_raised_item(accent_char_item, pt_to_sp(3))
+        self.append_to_list(accent_item)
 
     def add_kern(self, length):
         return self.append_to_list(Kern(length))
