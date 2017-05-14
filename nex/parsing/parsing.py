@@ -4,7 +4,7 @@ import logging
 
 from ..rply import ParserGenerator
 from ..tokens import BuiltToken, instructions_to_types
-from ..registers import short_hand_reg_def_token_type_to_reg_type
+from ..accessors import short_hand_reg_def_token_type_to_reg_type
 from ..instructions import (Instructions as I,
                             message_instructions,
                             hyphenation_instructions,

@@ -6,15 +6,15 @@ from nex.utils import NoSuchControlSequence
 from nex.instructioner import (make_unexpanded_control_sequence_instruction,
                                char_cat_instr_tok)
 from nex.instructions import Instructions
-from nex.tex_parameters import Parameters
 
-from common import DummyInstructions, ITok
+from common import DummyInstructions, DummyParameters, ITok
 
 dummy_token = make_unexpanded_control_sequence_instruction('dummy')
 
 
 def test_undefined_control_sequence():
     r = CSRouter(param_control_sequences={},
+                 special_control_sequences={},
                  primitive_control_sequences={},
                  enclosing_scope=None)
     with pytest.raises(NoSuchControlSequence):
@@ -25,6 +25,7 @@ def test_undefined_control_sequence():
 
 def test_primitive_resolution():
     r = CSRouter(param_control_sequences={},
+                 special_control_sequences={},
                  primitive_control_sequences={'hi': DummyInstructions.test},
                  enclosing_scope=None)
     t = r.lookup_control_sequence('hi')
@@ -33,16 +34,20 @@ def test_primitive_resolution():
 
 
 def test_parameter_resolution():
-    r = CSRouter(param_control_sequences={'ho': Parameters.med_mu_skip},
+    pcs = {'ho': (DummyParameters.ptest, DummyInstructions.test)}
+    r = CSRouter(param_control_sequences=pcs,
+                 special_control_sequences={},
                  primitive_control_sequences={},
                  enclosing_scope=None)
     t = r.lookup_control_sequence('ho')
     assert t.value['name'] == 'ho'
-    assert t.value['parameter'] == Parameters.med_mu_skip
+    assert t.value['parameter'] == DummyParameters.ptest
+    assert t.instruction == DummyInstructions.test
 
 
 def test_macro_definition():
     r = CSRouter(param_control_sequences={},
+                 special_control_sequences={},
                  primitive_control_sequences={},
                  enclosing_scope=None)
     repl = [ITok(DummyInstructions.test)]
@@ -57,6 +62,7 @@ def test_macro_definition():
 
 def test_short_hand_macro_definition():
     r = CSRouter(param_control_sequences={},
+                 special_control_sequences={},
                  primitive_control_sequences={},
                  enclosing_scope=None)
     code = 200
@@ -73,6 +79,7 @@ def test_short_hand_macro_definition():
 
 def test_let_to_macro():
     r = CSRouter(param_control_sequences={},
+                 special_control_sequences={},
                  primitive_control_sequences={},
                  enclosing_scope=None)
     code = 200
@@ -97,6 +104,7 @@ def test_let_to_macro():
 
 def test_let_to_primitive():
     r = CSRouter(param_control_sequences={},
+                 special_control_sequences={},
                  primitive_control_sequences={'hi': DummyInstructions.test},
                  enclosing_scope=None)
     t = r.lookup_control_sequence('hi')
@@ -108,7 +116,9 @@ def test_let_to_primitive():
 
 
 def test_let_to_parameter():
-    r = CSRouter(param_control_sequences={'ho': Parameters.med_mu_skip},
+    pcs = {'ho': (DummyParameters.ptest, DummyInstructions.test)}
+    r = CSRouter(param_control_sequences=pcs,
+                 special_control_sequences={},
                  primitive_control_sequences={},
                  enclosing_scope=None)
     t = r.lookup_control_sequence('ho')
@@ -122,6 +132,7 @@ def test_let_to_parameter():
 
 def test_let_to_character():
     r = CSRouter(param_control_sequences={},
+                 special_control_sequences={},
                  primitive_control_sequences={},
                  enclosing_scope=None)
     targ = char_cat_instr_tok('c', CatCode.letter)

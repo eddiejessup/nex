@@ -5,11 +5,10 @@ from collections import deque
 
 from .utils import ExecuteCommandError, TidyEnd, pt_to_sp
 from .reader import EndOfFile
-from .registers import is_register_type
 from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from .instructions import Instructions, h_add_glue_instructions
 from .instructioner import make_primitive_control_sequence_instruction
-from .tex_parameters import is_parameter_type, Parameters
+from .accessors import is_parameter_type, is_register_type, Parameters
 from .box import (HBox, Rule, UnSetGlue, Character, FontDefinition,
                   FontSelection, Kern)
 from .paragraphs import h_list_to_best_h_boxes

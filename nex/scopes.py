@@ -1,8 +1,8 @@
 from enum import Enum
 
 from .codes import get_initial_codes, get_local_codes
-from .registers import get_initial_registers, get_local_registers
-from .tex_parameters import get_initial_parameters, get_local_parameters
+from .accessors import (get_initial_parameters, get_local_parameters,
+                        get_initial_registers, get_local_registers)
 from .fonts import (get_initial_font_state,
                     get_local_font_state)
 from .router import get_initial_router, get_local_router

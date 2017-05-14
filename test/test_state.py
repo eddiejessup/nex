@@ -1,7 +1,7 @@
 import pytest
 
 from nex.state import GlobalState, Mode
-from nex.tex_parameters import Parameters
+from nex.accessors import Parameters
 from nex.fonts import GlobalFontState
 from nex import box
 from nex.box_writer import write_to_dvi_file

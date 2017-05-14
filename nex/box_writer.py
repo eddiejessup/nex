@@ -1,7 +1,7 @@
 import subprocess
 
 from .dampf.dvi_document import DVIDocument
-from .tex_parameters import Parameters
+from .accessors import Parameters
 from . import box
 
 

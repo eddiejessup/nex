@@ -1,11 +1,60 @@
 from enum import Enum
 from datetime import datetime
 
-from .tokens import InstructionToken
-from .instructions import Instructions
-from .registers import check_type
+from .tokens import InstructionToken, instructions_to_types
+from .instructions import Instructions, register_instructions
 from .utils import NotInScopeError
 
+
+def check_type(type_, value):
+    # TODO: Make type checking more strict, and do in more places.
+    if type_ in (Instructions.count.value,
+                 Instructions.dimen.value,
+                 Instructions.integer_parameter.value,
+                 Instructions.dimen_parameter.value):
+        expected_type = int
+    elif type_ in (Instructions.skip.value,
+                   Instructions.mu_skip.value,
+                   Instructions.glue_parameter.value,
+                   Instructions.mu_glue_parameter.value):
+        expected_type = dict
+    elif type_ in (Instructions.toks.value,
+                   Instructions.token_parameter.value):
+        expected_type = list
+    if not isinstance(value, expected_type):
+        raise TypeError('Value has wrong type')
+
+
+class TexNamedValues:
+    """
+    Accessor for either parameters or special values.
+    names_to_values: A container mapping names to values.
+    names_to_types: A container mapping these names to their types.
+    """
+
+    def __init__(self, names_to_values, names_to_types):
+        self.names_to_values = names_to_values
+        self.names_to_types = names_to_types
+
+    def _check_and_get_value(self, name):
+        if name not in self.names_to_values:
+            raise KeyError(f'Named value "{name}" does not exist')
+        return self.names_to_values[name]
+
+    def get(self, name):
+        value = self._check_and_get_value(name)
+        if value is None:
+            raise NotInScopeError
+        return value
+
+    def set(self, name, value):
+        self._check_and_get_value(name)
+        value_type = self.names_to_types[name]
+        check_type(value_type, value)
+        self.names_to_values[name] = value
+
+
+# Start of parameters.
 
 params = {
     'PRE_TOLERANCE': Instructions.integer_parameter,
@@ -123,7 +172,7 @@ param_instrs = (
     Instructions.mu_glue_parameter,
     Instructions.token_parameter,
 )
-parameter_instr_types = tuple(i.value for i in param_instrs)
+parameter_instr_types = instructions_to_types(param_instrs)
 
 glue_keys = ('dimen', 'stretch', 'shrink')
 
@@ -193,30 +242,115 @@ def get_local_parameters(enclosing_scope):
     return TexNamedValues(parameter_values, param_to_type)
 
 
-class TexNamedValues:
-    """
-    Accessor for either parameters or special values.
-    names_to_values: A container mapping names to values.
-    names_to_types: A container mapping these names to their types.
-    """
+# End of parameters.
 
-    def __init__(self, names_to_values, names_to_types):
-        self.names_to_values = names_to_values
-        self.names_to_types = names_to_types
+# Start of specials.
 
-    def _check_and_get_value(self, name):
-        if name not in self.names_to_values:
-            raise KeyError(f'Named value "{name}" does not exist')
-        return self.names_to_values[name]
+specials = {
+    'SPACE_FACTOR': Instructions.special_integer,
+    'PREV_GRAF': Instructions.special_integer,
+    'DEAD_CYCLES': Instructions.special_integer,
+    'INSERT_PENALTIES': Instructions.special_integer,
 
-    def get(self, name):
-        value = self._check_and_get_value(name)
+    'PREV_DEPTH': Instructions.special_dimen,
+    'PAGE_GOAL': Instructions.special_dimen,
+    'PAGE_TOTAL': Instructions.special_dimen,
+    'PAGE_STRETCH': Instructions.special_dimen,
+    'PAGE_FIL_STRETCH': Instructions.special_dimen,
+    'PAGE_FILL_STRETCH': Instructions.special_dimen,
+    'PAGE_FILLL_STRETCH': Instructions.special_dimen,
+    'PAGE_SHRINK': Instructions.special_dimen,
+    'PAGE_DEPTH': Instructions.special_dimen,
+}
+Specials = Enum('Specials', {s.lower(): s for s in specials})
+special_to_instr = {p: specials[p.value] for p in Specials}
+special_to_type = {p: instr.value for p, instr in special_to_instr.items()}
+
+special_instrs = (
+    Instructions.special_integer,
+    Instructions.special_dimen,
+)
+special_instr_types = instructions_to_types(special_instrs)
+
+
+def is_special_type(type_):
+    return type_ in special_instr_types
+
+
+def get_specials():
+    return TexNamedValues(special_values, special_to_type)
+
+# End of specials.
+
+# Start of registers.
+
+
+short_hand_reg_def_token_type_to_reg_type = {
+    Instructions.count_def_token.value: Instructions.count.value,
+    Instructions.dimen_def_token.value: Instructions.dimen.value,
+    Instructions.skip_def_token.value: Instructions.skip.value,
+    Instructions.mu_skip_def_token.value: Instructions.mu_skip.value,
+    Instructions.toks_def_token.value: Instructions.toks.value,
+}
+
+
+register_types = instructions_to_types(register_instructions)
+
+
+def is_register_type(type_):
+    return type_ in register_types
+
+
+class Registers:
+
+    def __init__(self, register_map):
+        # Map of strings representing register types, to a map of keys to
+        # values.
+        self.register_map = register_map
+
+    def _check_and_get_register(self, type_):
+        if type_ not in self.register_map:
+            raise ValueError(f'No register of type {type_}')
+        return self.register_map[type_]
+
+    def _check_and_get_register_value(self, type_, i):
+        register = self._check_and_get_register(type_)
+        # Check address exists in register. This should not depend on anything
+        # to do with scopes.
+        if i not in register:
+            raise ValueError(f'No register number {i} of type {type_}')
+        return register[i]
+
+    def get(self, type_, i):
+        value = self._check_and_get_register_value(type_, i)
         if value is None:
-            raise NotInScopeError
+            raise NotInScopeError('No value in register number {i} of type {type_}')
         return value
 
-    def set(self, name, value):
-        self._check_and_get_value(name)
-        value_type = self.names_to_types[name]
-        check_type(value_type, value)
-        self.names_to_values[name] = value
+    def set(self, type_, i, value):
+        # Check value matches what register is meant to hold.
+        check_type(type_, value)
+        # Check key already exists.
+        self._check_and_get_register_value(type_, i)
+        register = self._check_and_get_register(type_)
+        register[i] = value
+
+
+# TODO: Make these and similar into classmethods.
+def get_initial_registers():
+    def init_register():
+        return {i: None for i in range(256)}
+    register_map = {
+        Instructions.count.value: init_register(),
+        Instructions.dimen.value: init_register(),
+        Instructions.skip.value: init_register(),
+        Instructions.mu_skip.value: init_register(),
+        Instructions.toks.value: init_register(),
+    }
+    return Registers(register_map)
+
+
+def get_local_registers(enclosing_scope):
+    return get_initial_registers()
+
+# End of registers.

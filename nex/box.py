@@ -298,7 +298,6 @@ class SetGlue(ListElement):
         return '|G|({})'.format(repr_dimen(self.dimen))
 
     @property
-
     def width(self):
         return self.dimen
     height = width

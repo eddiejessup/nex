@@ -15,7 +15,7 @@ from .instructions import (Instructions,
                            message_instructions,
                            unexpanded_cs_instructions,
                            hyphenation_instructions)
-from .tex_parameters import Parameters
+from .accessors import Parameters
 from .instructioner import (Instructioner,
                             make_unexpanded_control_sequence_instruction,
                             char_cat_instr_tok)

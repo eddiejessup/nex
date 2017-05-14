@@ -2,10 +2,12 @@ from enum import Enum
 
 from .tokens import InstructionToken, BaseToken
 from .utils import get_unique_id, NoSuchControlSequence
-from .tex_parameters import Parameters
+from .accessors import (Parameters, param_to_instr,
+                        Specials, special_to_instr)
 from .lexer import control_sequence_lex_type, char_cat_lex_type
 from .instructioner import (make_primitive_control_sequence_instruction,
-                            make_parameter_control_sequence_instruction)
+                            make_parameter_control_sequence_instruction,
+                            make_special_control_sequence_instruction)
 from .instructions import Instructions
 from .expander import parse_replacement_text, parse_parameter_text
 
@@ -217,6 +219,22 @@ param_control_sequence_map = {
     'errhelp': P.err_help,
 }
 
+special_control_sequence_map = {
+    'spacefactor': Specials.space_factor,
+    'prevgraf': Specials.prev_graf,
+    'deadcycles': Specials.dead_cycles,
+    'insertpenalties': Specials.insert_penalties,
+    'prevdepth': Specials.prev_depth,
+    'pagegoal': Specials.page_goal,
+    'pagetotal': Specials.page_total,
+    'pagestretch': Specials.page_stretch,
+    'pagefilstretch': Specials.page_fil_stretch,
+    'pagefillstretch': Specials.page_fill_stretch,
+    'pagefilllstretch': Specials.page_filll_stretch,
+    'pageshrink': Specials.page_shrink,
+    'pagedepth': Specials.page_depth,
+}
+
 short_hand_def_type_to_token_instr = {
     Instructions.char_def.value: Instructions.char_def_token,
     Instructions.math_char_def.value: Instructions.math_char_def_token,
@@ -235,13 +253,14 @@ class ControlSequenceType(Enum):
     parameter = 3
     primitive = 4
     font = 5
+    special = 6
 
 
 class RouteToken(BaseToken):
 
     def __init__(self, type_, value):
         if type_ not in ControlSequenceType:
-            raise ValueError('Route token type must be a ControlSequenceType')
+            raise ValueError('Route token {type_} not a ControlSequenceType')
         super().__init__(type_, value)
 
 
@@ -262,30 +281,47 @@ def make_macro_token(name, replacement_text, parameter_text,
 
 
 def get_initial_router():
-    return CSRouter(param_control_sequences=param_control_sequence_map,
+    # Router needs a map from a control sequence name, to the parameter and the
+    # instruction type of the parameter (integer, dimen and so on).
+    param_map = {n: (p, param_to_instr[p])
+                 for n, p in param_control_sequence_map.items()}
+    special_map = {n: (p, special_to_instr[p])
+                   for n, p in special_control_sequence_map.items()}
+    return CSRouter(param_control_sequences=param_map,
+                    special_control_sequences=special_map,
                     primitive_control_sequences=primitive_control_sequence_map,
                     enclosing_scope=None)
 
 
 def get_local_router(enclosing_scope):
-    return CSRouter(param_control_sequences={}, primitive_control_sequences={},
+    return CSRouter(param_control_sequences={},
+                    special_control_sequences={},
+                    primitive_control_sequences={},
                     enclosing_scope=enclosing_scope)
 
 
 class CSRouter:
 
-    def __init__(self, param_control_sequences, primitive_control_sequences,
+    def __init__(self,
+                 param_control_sequences,
+                 special_control_sequences,
+                 primitive_control_sequences,
                  enclosing_scope=None):
         self.control_sequences = {}
         self.macros = {}
         self.let_chars = {}
         self.parameters = {}
+        self.specials = {}
         self.primitives = {}
         self.font_ids = {}
         self.enclosing_scope = enclosing_scope
 
-        for name, parameter in param_control_sequences.items():
-            self._set_parameter(name, parameter)
+        for name, tpl in param_control_sequences.items():
+            parameter, instr = tpl
+            self._set_parameter(name, parameter, instr)
+        for name, tpl in special_control_sequences.items():
+            special, instr = tpl
+            self._set_special(name, special, instr)
         for name, instruction in primitive_control_sequences.items():
             self._set_primitive(name, instruction)
 
@@ -347,14 +383,23 @@ class CSRouter:
             name=name, instruction=instruction)
         self.primitives[route_id] = token
 
-    def _set_parameter(self, name, parameter):
+    def _set_parameter(self, name, parameter, instr):
         # Get a route from the name to a parameter.
         route_id = self._set_route_token(name, ControlSequenceType.parameter)
 
         # Make that route resolve to the parameter token.
         token = make_parameter_control_sequence_instruction(
-            name=name, parameter=parameter)
+            name=name, parameter=parameter, instruction=instr)
         self.parameters[route_id] = token
+
+    def _set_special(self, name, special, instr):
+        # Get a route from the name to a special.
+        route_id = self._set_route_token(name, ControlSequenceType.special)
+
+        # Make that route resolve to the special token.
+        token = make_special_control_sequence_instruction(
+            name=name, special=special, instruction=instr)
+        self.specials[route_id] = token
 
     def _copy_control_sequence(self, target_name, new_name):
         # Make a new control sequence that is routed to the same spot as the

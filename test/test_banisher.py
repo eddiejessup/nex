@@ -4,7 +4,7 @@ import pytest
 
 from nex.codes import CatCode
 from nex.banisher import Banisher, BanisherError
-from nex.tex_parameters import Parameters
+from nex.accessors import Parameters
 from nex.instructions import Instructions
 from nex.instructioner import (Instructioner,
                                make_unexpanded_control_sequence_instruction,

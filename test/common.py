@@ -16,4 +16,8 @@ class DummyInstructions(Enum):
     test = 'TEST'
 
 
+class DummyParameters(Enum):
+    ptest = 'TEST_PARAM'
+
+
 ITok = InstructionToken

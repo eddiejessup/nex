@@ -6,7 +6,6 @@ from .tokens import InstructionToken
 from .lexer import (Lexer, make_char_cat_lex_token,
                     control_sequence_lex_type, char_cat_lex_type)
 from .instructions import Instructions
-from .tex_parameters import param_to_instr
 from .codes import CatCode
 
 logger = logging.getLogger(__name__)
@@ -94,12 +93,19 @@ def make_char_cat_pair_instruction_token(char_cat_lex_token):
     return token
 
 
-def make_parameter_control_sequence_instruction(name, parameter):
-    instr = param_to_instr[parameter]
-    instr_tok = make_primitive_control_sequence_instruction(name, instr)
+def make_parameter_control_sequence_instruction(name, parameter, instruction):
+    instr_tok = make_primitive_control_sequence_instruction(name, instruction)
     # This is what is used to look up the parameter value. The  'name' just
     # records the name of the control sequence used to refer to this parameter.
     instr_tok.value['parameter'] = parameter
+    return instr_tok
+
+
+def make_special_control_sequence_instruction(name, special, instruction):
+    instr_tok = make_primitive_control_sequence_instruction(name, instruction)
+    # This is what is used to look up the special value. The  'name' just
+    # records the name of the control sequence used to refer to this special.
+    instr_tok.value['special'] = special
     return instr_tok
 
 

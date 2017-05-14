@@ -1,6 +1,6 @@
 from ..tokens import BuiltToken
 from ..units import PhysicalUnit
-from ..tex_parameters import glue_keys
+from ..accessors import glue_keys
 
 from . import utils as pu
 

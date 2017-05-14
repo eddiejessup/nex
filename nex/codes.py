@@ -176,20 +176,13 @@ class Codes:
                  space_factor_code,
                  delimiter_code,
                  ):
-        self.char_to_cat = char_to_cat
-        self.char_to_math_code = char_to_math_code
-        self.lower_case_code, self.upper_case_code = (lower_case_code,
-                                                      upper_case_code)
-        self.space_factor_code = space_factor_code
-        self.delimiter_code = delimiter_code
-
         self.code_type_to_char_map = {
-            'cat': self.char_to_cat,
-            'math': self.char_to_math_code,
-            'upper_case': self.upper_case_code,
-            'lower_case': self.lower_case_code,
-            'space_factor': self.space_factor_code,
-            'delimiter': self.delimiter_code,
+            'cat': char_to_cat,
+            'math': char_to_math_code,
+            'upper_case': upper_case_code,
+            'lower_case': lower_case_code,
+            'space_factor': space_factor_code,
+            'delimiter': delimiter_code,
         }
 
     def get(self, code_type, char):

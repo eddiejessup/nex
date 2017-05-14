@@ -1,12 +1,15 @@
 import pytest
 
-from nex.registers import Registers
+from nex.accessors import Registers
 from nex.instructions import Instructions
 from nex.utils import NotInScopeError
 
 
 def test_registers_empty():
-    r = Registers(*[0 for _ in range(5)])
+    rmap = {
+        Instructions.count.value: {},
+    }
+    r = Registers(rmap)
 
     # Check we can't retrieve or set indexes that should not be there.
     for test_i in (0, None, 5, -1):
@@ -15,7 +18,7 @@ def test_registers_empty():
         for test_val in (0, 5):
             with pytest.raises(ValueError):
                 r.set(Instructions.count.value,
-                                     test_i, test_val)
+                      test_i, test_val)
         # Check we can't access registers that should not be there.
         for test_type in ('NOT_A_REGISTER', None):
             with pytest.raises(ValueError):
@@ -23,7 +26,10 @@ def test_registers_empty():
 
 
 def test_registers_uninitialized():
-    r = Registers(1, 0, 0, 0, 0)
+    rmap = {
+        Instructions.count.value: {0: None},
+    }
+    r = Registers(rmap)
 
     # Check we can't retrieve values that are not initialized.
     with pytest.raises(NotInScopeError):
@@ -35,7 +41,14 @@ def test_registers_uninitialized():
 
 
 def test_register_types():
-    r = Registers(*[1 for _ in range(5)])
+    rmap = {
+        Instructions.count.value: {0: None},
+        Instructions.dimen.value: {0: None},
+        Instructions.skip.value: {0: None},
+        Instructions.mu_skip.value: {0: None},
+        Instructions.toks.value: {0: None},
+    }
+    r = Registers(rmap)
     tokens = ['fake_token']
     dct = {'hihi': 3}
     int_val = 5
