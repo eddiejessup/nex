@@ -280,26 +280,6 @@ def make_macro_token(name, replacement_text, parameter_text,
     )
 
 
-def get_initial_router():
-    # Router needs a map from a control sequence name, to the parameter and the
-    # instruction type of the parameter (integer, dimen and so on).
-    param_map = {n: (p, param_to_instr[p])
-                 for n, p in param_control_sequence_map.items()}
-    special_map = {n: (p, special_to_instr[p])
-                   for n, p in special_control_sequence_map.items()}
-    return CSRouter(param_control_sequences=param_map,
-                    special_control_sequences=special_map,
-                    primitive_control_sequences=primitive_control_sequence_map,
-                    enclosing_scope=None)
-
-
-def get_local_router(enclosing_scope):
-    return CSRouter(param_control_sequences={},
-                    special_control_sequences={},
-                    primitive_control_sequences={},
-                    enclosing_scope=enclosing_scope)
-
-
 class CSRouter:
 
     def __init__(self,
@@ -324,6 +304,26 @@ class CSRouter:
             self._set_special(name, special, instr)
         for name, instruction in primitive_control_sequences.items():
             self._set_primitive(name, instruction)
+
+    @classmethod
+    def default_initial(cls):
+        # Router needs a map from a control sequence name, to the parameter and the
+        # instruction type of the parameter (integer, dimen and so on).
+        param_map = {n: (p, param_to_instr[p])
+                     for n, p in param_control_sequence_map.items()}
+        special_map = {n: (p, special_to_instr[p])
+                       for n, p in special_control_sequence_map.items()}
+        return cls(param_control_sequences=param_map,
+                   special_control_sequences=special_map,
+                   primitive_control_sequences=primitive_control_sequence_map,
+                   enclosing_scope=None)
+
+    @classmethod
+    def default_local(cls, enclosing_scope):
+        return cls(param_control_sequences={},
+                   special_control_sequences={},
+                   primitive_control_sequences={},
+                   enclosing_scope=enclosing_scope)
 
     def lookup_control_sequence(self, name, position_like=None):
         route_token = self._lookup_route_token(name)

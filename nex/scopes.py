@@ -1,11 +1,10 @@
 from enum import Enum
 
 from .codes import get_initial_codes, get_local_codes
-from .accessors import (get_initial_parameters, get_local_parameters,
-                        get_initial_registers, get_local_registers)
+from .accessors import ParametersAccessor, Registers
 from .fonts import (get_initial_font_state,
                     get_local_font_state)
-from .router import get_initial_router, get_local_router
+from .router import CSRouter
 from .utils import NotInScopeError
 
 
@@ -115,7 +114,7 @@ class ScopedRegisters(ScopedAccessor):
 
     @classmethod
     def from_defaults(cls):
-        return cls(get_initial_registers(), get_local_registers)
+        return cls(Registers.default_initial(), Registers.default_local)
 
     def get(self, *args, **kwargs):
         return self.try_scope_func_until_success('get', *args, **kwargs)
@@ -165,7 +164,7 @@ class ScopedRouter(ScopedAccessor):
 
     @classmethod
     def from_defaults(cls):
-        return cls(get_initial_router(), get_local_router)
+        return cls(CSRouter.default_initial(), CSRouter.default_local)
 
     def lookup_control_sequence(self, *args, **kwargs):
         return self.try_scope_func_until_success('lookup_control_sequence',
@@ -205,7 +204,8 @@ class ScopedParameters(ScopedAccessor):
 
     @classmethod
     def from_defaults(cls):
-        return cls(get_initial_parameters(), get_local_parameters)
+        return cls(ParametersAccessor.default_initial(),
+                   ParametersAccessor.default_local)
 
     def get(self, *args, **kwargs):
         return self.try_scope_func_until_success('get', *args, **kwargs)

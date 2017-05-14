@@ -192,54 +192,56 @@ mu_glue_parameters = param_instr_subset(Instructions.mu_glue_parameter)
 token_parameters = param_instr_subset(Instructions.token_parameter)
 
 
-def get_initial_parameters():
-    now = datetime.now()
-    midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    seconds_since_midnight = (now - midnight).total_seconds()
-    minutes_since_midnight = int(seconds_since_midnight // 60)
+class ParametersAccessor(TexNamedValues):
 
-    parameter_values = {}
+    @classmethod
+    def default_initial(cls):
+        now = datetime.now()
+        midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        seconds_since_midnight = (now - midnight).total_seconds()
+        minutes_since_midnight = int(seconds_since_midnight // 60)
 
-    for p in integer_parameters:
-        parameter_values[p] = 0
-    parameter_values[Parameters.tolerance] = 10000
-    parameter_values[Parameters.max_dead_cycles] = 25
-    parameter_values[Parameters.hang_after] = 1
-    parameter_values[Parameters.mag] = 1000
-    parameter_values[Parameters.escape_char] = ord('\\')
-    parameter_values[Parameters.end_line_char] = ord('\r')
-    # These time ones will be set in get_initial_parameters.
-    parameter_values[Parameters.time] = minutes_since_midnight
-    parameter_values[Parameters.day] = now.day
-    parameter_values[Parameters.month] = now.month
-    parameter_values[Parameters.year] = now.year
+        parameter_values = {}
 
-    for p in dimen_parameters:
-        parameter_values[p] = 0
+        for p in integer_parameters:
+            parameter_values[p] = 0
+        parameter_values[Parameters.tolerance] = 10000
+        parameter_values[Parameters.max_dead_cycles] = 25
+        parameter_values[Parameters.hang_after] = 1
+        parameter_values[Parameters.mag] = 1000
+        parameter_values[Parameters.escape_char] = ord('\\')
+        parameter_values[Parameters.end_line_char] = ord('\r')
+        parameter_values[Parameters.time] = minutes_since_midnight
+        parameter_values[Parameters.day] = now.day
+        parameter_values[Parameters.month] = now.month
+        parameter_values[Parameters.year] = now.year
 
-    def get_zero_glue():
-        return {k: 0 for k in glue_keys}
-    for p in glue_parameters:
-        parameter_values[p] = get_zero_glue()
+        for p in dimen_parameters:
+            parameter_values[p] = 0
 
-    for p in mu_glue_parameters:
-        parameter_values[p] = get_zero_glue()
+        def get_zero_glue():
+            return {k: 0 for k in glue_keys}
+        for p in glue_parameters:
+            parameter_values[p] = get_zero_glue()
 
-    def get_empty_token_list():
-        return InstructionToken(
-            Instructions.balanced_text_and_right_brace,
-            value=[],
-            line_nr='abstract',
-        )
-    for p in token_parameters:
-        parameter_values[p] = get_empty_token_list()
+        for p in mu_glue_parameters:
+            parameter_values[p] = get_zero_glue()
 
-    return TexNamedValues(parameter_values, param_to_type)
+        def get_empty_token_list():
+            return InstructionToken(
+                Instructions.balanced_text_and_right_brace,
+                value=[],
+                line_nr='abstract',
+            )
+        for p in token_parameters:
+            parameter_values[p] = get_empty_token_list()
 
+        return cls(parameter_values, param_to_type)
 
-def get_local_parameters(enclosing_scope):
-    parameter_values = {p: None for p in Parameters}
-    return TexNamedValues(parameter_values, param_to_type)
+    @classmethod
+    def default_local(cls, enclosing_scope):
+        parameter_values = {p: None for p in Parameters}
+        return cls(parameter_values, param_to_type)
 
 
 # End of parameters.
@@ -308,6 +310,23 @@ class Registers:
         # values.
         self.register_map = register_map
 
+    @classmethod
+    def default_initial(cls):
+        def init_register():
+            return {i: None for i in range(256)}
+        register_map = {
+            Instructions.count.value: init_register(),
+            Instructions.dimen.value: init_register(),
+            Instructions.skip.value: init_register(),
+            Instructions.mu_skip.value: init_register(),
+            Instructions.toks.value: init_register(),
+        }
+        return cls(register_map)
+
+    @classmethod
+    def default_local(cls, enclosing_scope):
+        return cls.default_initial()
+
     def _check_and_get_register(self, type_):
         if type_ not in self.register_map:
             raise ValueError(f'No register of type {type_}')
@@ -335,22 +354,5 @@ class Registers:
         register = self._check_and_get_register(type_)
         register[i] = value
 
-
-# TODO: Make these and similar into classmethods.
-def get_initial_registers():
-    def init_register():
-        return {i: None for i in range(256)}
-    register_map = {
-        Instructions.count.value: init_register(),
-        Instructions.dimen.value: init_register(),
-        Instructions.skip.value: init_register(),
-        Instructions.mu_skip.value: init_register(),
-        Instructions.toks.value: init_register(),
-    }
-    return Registers(register_map)
-
-
-def get_local_registers(enclosing_scope):
-    return get_initial_registers()
 
 # End of registers.
