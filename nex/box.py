@@ -3,7 +3,15 @@ from functools import lru_cache
 
 from .pydvi.TeXUnit import sp2pt
 
-from .utils import sum_infinities, printable_ascii_codes
+from .utils import sum_infinities
+from .feedback import printable_ascii_codes, drep, truncate_list
+
+
+def dimrep(d):
+    if isinstance(d, int):
+        return '{:.1f}pt'.format(sp2pt(d))
+    else:
+        return d
 
 
 class LineState(Enum):
@@ -112,7 +120,14 @@ class AbstractBox(ListElement):
         self.offset = offset
 
     def __repr__(self):
-        return '{}({})'.format(self.__class__.__name__, self.contents)
+        a = [
+            truncate_list(self.contents, n=9),
+        ]
+        if self.to is not None:
+            a.append(f'to {dimrep(self.to)}')
+        elif self.spread is not None:
+            a.append(f'spread {dimrep(self.to)}')
+        return drep(self, a)
 
     @property
     def widths(self):
@@ -258,11 +273,6 @@ class WhatsIt(ListElement):
     width = height = 0
 
 
-def repr_dimen(d):
-    if isinstance(d, int):
-        return '{:.1f}pt'.format(sp2pt(d))
-    else:
-        return d
 
 
 class UnSetGlue(ListElement):
@@ -274,7 +284,7 @@ class UnSetGlue(ListElement):
         self.shrink = shrink
 
     def __repr__(self):
-        return 'G({} +{} -{})'.format(*[repr_dimen(d)
+        return 'G({} +{} -{})'.format(*[dimrep(d)
                                         for d in (self.natural_dimen,
                                                   self.stretch,
                                                   self.shrink)])
@@ -295,7 +305,7 @@ class SetGlue(ListElement):
         self.dimen = dimen
 
     def __repr__(self):
-        return '|G|({})'.format(repr_dimen(self.dimen))
+        return '|G|({})'.format(dimrep(self.dimen))
 
     @property
     def width(self):
@@ -310,7 +320,7 @@ class Kern(ListElement):
         self.dimen = dimen
 
     def __repr__(self):
-        return 'K({})'.format(repr_dimen(self.dimen))
+        return 'K({})'.format(dimrep(self.dimen))
 
     @property
     def width(self):

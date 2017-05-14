@@ -1,4 +1,3 @@
-import string
 import os
 from os import path as opath
 import base64
@@ -12,7 +11,6 @@ def pt_to_sp(pt):
 
 
 ascii_characters = ''.join(chr(i) for i in range(128))
-printable_ascii_codes = list(map(ord, string.printable))
 
 
 def get_unique_id():
@@ -48,27 +46,6 @@ def get_default_font_paths():
         os.getcwd(),
         opath.join(os.getcwd(), 'fonts'),
     ]
-
-
-def strep(s):
-    return (s
-            .replace(' ', '␣')
-            .replace('\n', '⏎ ')
-            .replace('\t', '⇥')
-            )
-
-
-def csep(args):
-    args = [a for a in args if a != '' and a is not None]
-    return ', '.join(args)
-
-
-def clsn(obj):
-    return obj.__class__.__name__
-
-
-def drep(obj, a):
-    return f'{clsn(obj)}({csep(a)})'
 
 
 def sum_infinities(ds):

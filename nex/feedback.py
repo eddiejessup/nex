@@ -1,51 +1,51 @@
-from .lexer import char_cat_lex_type
-from .instructions import (Instructions,
-                           unexpanded_cs_instructions)
-from .tokens import InstructionToken
-from .router import short_hand_def_type_to_token_instr
+import string
 
 
-n = 9
-k = 2 * n
-lim = (k - 1) // 2
+printable_ascii_codes = list(map(ord, string.printable))
 
 
-def truncate_list(ts):
+def truncate_list(ts, n=9):
+    """Truncate the elements of a list, keeping elements at each end, and
+    replacing the omitted middle with a single character, an ellipsis ('…').
+    Note that this is not '...', but the unicode character for an ellipsis
+    proper. After all, we *are* making a typesetting program."""
+    k = 2 * n
+    lim = (k - 1) // 2
     if len(ts) > k:
-        return ts[:lim] + ['…'] + ts[-lim:]
+        return list(ts[:lim]) + ['…'] + list(ts[-lim:])
     else:
         return ts
 
 
-def stringify_instrs(ts):
-    ts = truncate_list(ts)
-    in_chars = False
-    b = ''
-    for t in ts:
-        if isinstance(t, InstructionToken) and isinstance(t.value, dict) and 'lex_type' in t.value and t.value['lex_type'] == char_cat_lex_type:
-            if in_chars:
-                b += t.value['char']
-            else:
-                b = t.value['char']
-                in_chars = True
+def strep(s):
+    """Format a string for display as a line context."""
+    return (s
+            .replace(' ', '␣')
+            .replace('\n', '⏎ ')
+            .replace('\t', '⇥')
+            )
+
+
+def csep(args):
+    """Get string representations of a sequence of items. Intended for use in
+    __repr__ and such."""
+    sargs = []
+    for arg in args:
+        if arg is None or arg == '':
+            continue
+        if isinstance(arg, str):
+            sarg = arg
         else:
-            if in_chars:
-                yield b
-                in_chars = False
-
-            if isinstance(t, InstructionToken) and t.instruction in unexpanded_cs_instructions:
-                yield f"\\{t.value['name']}"
-            elif isinstance(t, InstructionToken) and t.instruction == Instructions.param_number:
-                yield f'#{t.value}'
-            elif isinstance(t, InstructionToken) and t.instruction in short_hand_def_type_to_token_instr.values():
-                yield f'{t.value}'
-            elif isinstance(t, InstructionToken):
-                yield f'I.{t.instruction.name}'
-            else:
-                yield t
-    if in_chars:
-        yield b
+            sarg = repr(arg)
+        sargs.append(sarg)
+    return ', '.join(sargs)
 
 
-def stringify_instr_list(ts):
-    return ' '.join(stringify_instrs(ts))
+def clsn(obj):
+    """Short-hand to get class name. Intended for use in __repr__ and such."""
+    return obj.__class__.__name__
+
+
+def drep(obj, a):
+    """Helper for formatting typical __repr__ return values."""
+    return f'{clsn(obj)}({csep(a)})'

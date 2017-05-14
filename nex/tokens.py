@@ -1,6 +1,7 @@
 import colorama
 
-from .utils import strep, csep
+from .instructions import Instructions
+from .feedback import strep, csep
 
 colorama.init()
 
@@ -165,6 +166,13 @@ class BuiltToken(PositionToken):
             # Now do the actual amendment.
             char_len = sum(t.char_len for t in tagged_ts)
             self.char_len = char_len
+
+    def __repr__(self):
+        if self.type == 'fil_dimension':
+            ells = 'l' * self.value['number_of_fils']
+            return f"{self.value['factor']} fi{ells}"
+        else:
+            return super().__repr__()
 
 
 class LexToken(PositionToken):

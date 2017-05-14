@@ -4,8 +4,7 @@ from enum import Enum
 
 from .tokens import InstructionToken
 from .reader import EndOfFile
-from .lexer import (is_control_sequence_call, is_char_cat,
-                    char_cat_lex_type, control_sequence_lex_type)
+from .lexer import (char_cat_lex_type, control_sequence_lex_type)
 from .codes import CatCode
 from .instructions import (Instructions,
                            explicit_box_instructions,
@@ -23,7 +22,8 @@ from .state import Mode, Group
 from .expander import substitute_params_with_args
 from .parsing.utils import GetBuffer, safe_chunk_grabber
 from .parsing import parsing
-from .feedback import stringify_instr_list
+from .feedback import truncate_list
+from .router import short_hand_def_type_to_token_instr
 
 
 logger = logging.getLogger(__name__)
@@ -40,6 +40,43 @@ condition_parser = parsing.get_parser(start='condition_wrap')
 general_text_parser = parsing.get_parser(start='general_text')
 
 shorties = short_hand_def_instructions + (Instructions.font, Instructions.backtick)
+
+
+def stringify_instrs(ts):
+    """Represent a sequence of instructions as a sequence of strings. The bit
+    about in_chars means that successive characters are represented as a single
+    string, which eases reading greatly."""
+    ts = truncate_list(ts)
+    in_chars = False
+    b = ''
+    for t in ts:
+        if isinstance(t, InstructionToken) and isinstance(t.value, dict) and 'lex_type' in t.value and t.value['lex_type'] == char_cat_lex_type:
+            if in_chars:
+                b += t.value['char']
+            else:
+                b = t.value['char']
+                in_chars = True
+        else:
+            if in_chars:
+                yield b
+                in_chars = False
+            if isinstance(t, InstructionToken) and t.instruction in unexpanded_cs_instructions:
+                yield f"\\{t.value['name']}"
+            elif isinstance(t, InstructionToken) and t.instruction == Instructions.param_number:
+                yield f'#{t.value}'
+            elif isinstance(t, InstructionToken) and t.instruction in short_hand_def_type_to_token_instr.values():
+                yield f'{t.value}'
+            elif isinstance(t, InstructionToken):
+                yield f'I.{t.instruction.name}'
+            else:
+                yield t
+    if in_chars:
+        yield b
+
+
+def stringify_instr_list(ts):
+    """Represent a sequence of instructions as a string."""
+    return ' '.join(stringify_instrs(ts))
 
 
 class BanisherError(Exception):
@@ -205,7 +242,7 @@ def get_conditional_text(instructions, i_block_to_pick):
     start_condition_names = ('ifnum', 'iftrue', 'iffalse', 'ifcase',)
 
     def get_condition_sign(token):
-        if not is_control_sequence_call(token):
+        if token.value['lex_type'] != control_sequence_lex_type:
             return 0
         name = token.value['name']
         if name in start_condition_names:
@@ -216,7 +253,7 @@ def get_conditional_text(instructions, i_block_to_pick):
             return 0
 
     def is_condition_delimiter(token):
-        return (is_control_sequence_call(token) and
+        return (token.value['lex_type'] == control_sequence_lex_type and
                 token.value['name'] in delimit_condition_block_names)
 
     nr_conditions = 1
@@ -521,7 +558,7 @@ class Banisher:
         for t in out_queue:
             if t.instruction == Instructions.end_cs_name:
                 break
-            if is_char_cat(t):
+            if t.value['lex_type'] == char_cat_lex_type:
                 chars.append(t.value['char'])
             else:
                 raise BanisherError(f'Found non-character inside '

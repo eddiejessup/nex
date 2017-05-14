@@ -2,9 +2,9 @@ import os
 from os import path as opath
 import logging
 
-from .utils import (get_unique_id, drep,
+from .utils import (get_unique_id,
                     ensure_extension, find_file, file_path_to_chars)
-
+from .feedback import drep
 logger = logging.getLogger(__name__)
 
 

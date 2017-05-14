@@ -4,7 +4,7 @@ import logging
 from .reader import Reader, EndOfFile
 from .tokens import LexToken
 from .codes import CatCode
-from .utils import strep
+from .feedback import strep
 
 logger = logging.getLogger(__name__)
 
@@ -43,18 +43,6 @@ def make_char_cat_lex_token(char, cat, *pos_args, **pos_kwargs):
 def make_control_sequence_lex_token(name, *pos_args, **pos_kwargs):
     return LexToken(type_=control_sequence_lex_type, value=name,
                     *pos_args, **pos_kwargs)
-
-
-def is_char_cat(token):
-    return (isinstance(token.value, dict) and
-            'lex_type' in token.value and
-            token.value['lex_type'] == char_cat_lex_type)
-
-
-def is_control_sequence_call(token):
-    return (isinstance(token.value, dict) and
-            'lex_type' in token.value and
-            token.value['lex_type'] == control_sequence_lex_type)
 
 
 class Lexer:
