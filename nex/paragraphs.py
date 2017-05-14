@@ -4,9 +4,6 @@ from .box import HBox, UnSetGlue
 from .feedback import truncate_list
 
 
-HListKey = namedtuple('HListKey', ('contents', 'badness'))
-
-
 def grab_word(h_list):
     chars = []
     # Loop making a word.
@@ -18,8 +15,12 @@ def grab_word(h_list):
     return chars, break_glue
 
 
+Node = namedtuple('Node', ('contents', 'badness', 'children'))
+NodeRoute = namedtuple('NodeRoute', ('sequence', 'badness'))
+
+
 def h_list_to_box_tree(remaining, w):
-    tree = {}
+    tree = []
     seen_box = HBox(contents=[], to=w, set_glue=False)
     seen_conts = seen_box.contents
     while remaining:
@@ -27,14 +28,14 @@ def h_list_to_box_tree(remaining, w):
         seen_conts.extend(grab_chars)
         seen_badness = seen_box.badness()
         if seen_badness < 1000:
-            key = HListKey(contents=tuple(seen_conts[:]),
-                           badness=seen_badness)
-            tree[key] = h_list_to_box_tree(remaining.copy(), w)
+            children = h_list_to_box_tree(remaining.copy(), w)
+            tree.append(Node(contents=seen_conts[:], badness=seen_badness,
+                             children=children))
         # If we are not breaking, put the break glue on the list.
         seen_conts.append(grab_break_glue)
     # Add possibility to never break this h-list.
-    key = HListKey(contents=tuple(seen_conts[:]), badness=seen_box.badness())
-    tree[key] = None
+    tree.append(Node(contents=seen_conts[:], badness=seen_box.badness(),
+                     children=None))
     return tree
 
 
@@ -43,47 +44,42 @@ def pp(tree, l=1):
     if tree is None:
         print(f'B: ----- ', tabs, 'end')
         return
-    for k, v in tree.items():
-        cnt = truncate_list(k.contents, 5)
-        print(f'B: {k.badness} ', tabs, cnt)
-        pp(v, l=l+1)
+    for node in tree:
+        cnt = truncate_list(node.contents, 5)
+        print(f'B: {node.badness} ', tabs, cnt)
+        pp(node.children, l=l+1)
 
 
-def get_best_route(node, tree, w):
-    route_options = []
-    for child_node, child_tree in tree.items():
-        if child_tree is None:
-            child_best_route = [child_node]
-        else:
-            child_best_route = get_best_route(child_node, child_tree, w)
-        route_options.append(child_best_route)
-    best_route = min(route_options, key=lambda x: x[0].badness)
-    # Have the best option, now need to add the sub-route's badness
-    # to this node,
-    node = HListKey(contents=node.contents,
-                    badness=node.badness + best_route[0].badness)
-    # and add it to the front of the route.
-    best_route = [node] + best_route
-    return best_route
+def get_best_route(node):
+    if node.children is None:
+        return NodeRoute(sequence=[node],
+                         badness=node.badness)
+    child_routes = []
+    for child_node in node.children:
+        best_current_child_route = get_best_route(child_node)
+        child_routes.append(best_current_child_route)
+    best_child_route = min(child_routes, key=lambda t: t.badness)
+    return NodeRoute(sequence=[node] + best_child_route.sequence,
+                     badness=node.badness + best_child_route.badness)
 
 
-def get_all_routes(node, tree, w):
-    routes = []
-    for child_node, child_tree in tree.items():
-        if child_tree is None:
-            routes.append([child_node])
-        else:
-            routes.extend(get_all_routes(child_node, child_tree, w))
-    routes = [[node] + r for r in routes]
-    return routes
+# def get_all_routes(node, tree):
+#     routes = []
+#     for child_node, child_tree in tree.items():
+#         if child_tree is None:
+#             routes.append([child_node])
+#         else:
+#             routes.extend(get_all_routes(child_node, child_tree))
+#     routes = [[node] + r for r in routes]
+#     return routes
 
 
 def h_list_to_best_h_boxes(h_list, h_size):
     box_tree = h_list_to_box_tree(h_list, h_size)
-    root_node = HListKey(contents=None, badness=0)
-    best_route = get_best_route(root_node, box_tree, h_size)
+    root_node = Node(contents=None, badness=0, children=box_tree)
+    best_route = get_best_route(root_node)
     # Ignore root node.
-    contents = best_route[1:]
-    h_boxes = [HBox(contents=c[0], to=h_size, set_glue=True)
-               for c in contents]
+    best_sequence = best_route.sequence[1:]
+    h_boxes = [HBox(contents=node.contents, to=h_size, set_glue=True)
+               for node in best_sequence]
     return h_boxes
