@@ -232,6 +232,8 @@ class GlobalState:
         if self.current_font_id != GlobalFontState.null_font_id:
             self.select_font(is_global=False, font_id=self.current_font_id)
 
+    # Driving.
+
     def execute_commands(self, commands, banisher, reader):
         while True:
             try:
@@ -250,162 +252,7 @@ class GlobalState:
         except Exception as e:
             raise ExecuteCommandError(command, e)
 
-    def select_font(self, is_global, font_id):
-        self.scoped_font_state.set_current_font(is_global, font_id)
-        font_select_item = FontSelection(font_nr=font_id)
-        self.append_to_list(font_select_item)
-
-    def do_paragraph(self):
-        if self.mode in vertical_modes:
-            # The primitive \par command has no effect when TeX is in
-            # vertical mode, except that the page builder is exercised in
-            # case something is present on the contribution list, and the
-            # paragraph shape parameters are cleared.
-            return
-        elif self.mode == Mode.restricted_horizontal:
-            # The primitive \par command, also called \endgraf in plain
-            # \TeX, does nothing in restricted horizontal mode.
-            return
-        elif self.mode == Mode.horizontal:
-            logger.info(f'Adding paragraph')
-
-            # "But it terminates horizontal mode: The current list is
-            # finished off by doing, '\unskip \penalty10000
-            # \hskip\parfillskip' then it is broken into lines as explained
-            # in Chapter 14, and TeX returns to the enclosing vertical or
-            # internal vertical mode. The lines of the paragraph are
-            # appended to the enclosing vertical list, interspersed with
-            # interline glue and interline penalties, and with the
-            # migration of vertical material that was in the horizontal
-            # list. Then TeX exercises the page builder."
-
-            # TODO: Not sure whether to do the above things as internal
-            # calls, or whether the tokens should be inserted.
-            # TODO: Do these commands before we pop.
-            # Get the horizontal list
-            horizontal_list = deque(self.pop_mode())
-            # Do \unskip.
-            if isinstance(horizontal_list[-1], UnSetGlue):
-                horizontal_list.pop()
-            # Do \hskip\parfillskip.
-            par_fill_glue = self.parameters.get(Parameters.par_fill_skip)
-            horizontal_list.append(UnSetGlue(**par_fill_glue))
-            h_size = self.parameters.get(Parameters.h_size)
-            h_boxes = h_list_to_best_h_boxes(horizontal_list, h_size)
-            # all_routes = get_all_routes(root_node, h_box_tree, h_size, outer=True)
-
-            # for best_route in all_routes:
-            for h_box in h_boxes:
-                # Add it to the enclosing vertical list.
-                self.append_to_list(h_box)
-                bl_skip = self.parameters.get(Parameters.base_line_skip)
-                line_glue_item = UnSetGlue(**bl_skip)
-                self.append_to_list(line_glue_item)
-
-            # par_glue_item = UnSetGlue(dimen=200000)
-            # self.append_to_list(par_glue_item)
-        else:
-            import pdb; pdb.set_trace()
-
-    def add_character_char(self, char):
-        return self.add_character_code(ord(char))
-
-    def get_character_item(self, code):
-        return Character(code, self.current_font)
-
-    def add_character_code(self, code):
-        self.append_to_list(self.get_character_item(code))
-
-    def get_raised_item(self, item, offset):
-        return HBox(contents=[item], offset=offset)
-
-    def add_accented_character(self, accent_code, char_code):
-        self.add_character_code(char_code)
-        w = self.current_font.width(char_code)
-        h = self.current_font.height(char_code)
-        d = self.current_font.depth(char_code)
-        w_half = int(round(w / 2))
-        c = self.current_font.width(accent_code)
-        ch = self.current_font.height(accent_code)
-        cd = self.current_font.depth(accent_code)
-        # import pdb; pdb.set_trace()
-        c_half = int(round(c / 2))
-        self.add_kern(-w_half - c_half)
-        accent_char_item = self.get_character_item(accent_code)
-        accent_item = self.get_raised_item(accent_char_item, pt_to_sp(3))
-        self.append_to_list(accent_item)
-
-    def do_accent(self, accent_code, target_code=None):
-        logger.info(f"Adding accent \"{accent_code}\"")
-        if target_code is None:
-            self.add_character_code(accent_code)
-        else:
-            self.add_accented_character(accent_code, target_code)
-        # TODO: Set space factor to 1000.
-
-    def add_kern(self, length):
-        return self.append_to_list(Kern(length))
-
-    def do_space(self):
-        if self.mode in vertical_modes:
-            # "Spaces have no effects in vertical modes".
-            pass
-        elif self.mode in horizontal_modes:
-            # Spaces append glue to the current list; the exact amount of
-            # glue depends on \spacefactor, the current font, and the
-            # \spaceskip and
-            # \xspaceskip parameters, as described in Chapter 12.
-            font = self.current_font
-            space_glue_item = UnSetGlue(dimen=font.spacing,
-                                        stretch=font.space_stretch,
-                                        shrink=font.space_shrink)
-            self.append_to_list(space_glue_item)
-        else:
-            import pdb; pdb.set_trace()
-
-    def add_rule(self, width, height, depth):
-        self.append_to_list(Rule(width, height, depth))
-
-    def add_v_rule(self, width, height, depth):
-        from .pydvi.TeXUnit import pt2sp
-        if width is None:
-            width = pt2sp(0.4)
-        else:
-            width = self.evaluate_number(width)
-        if height is None:
-            if self.mode == Mode.vertical:
-                height = self.parameters.get(Parameters.v_size)
-            else:
-                raise NotImplementedError
-        else:
-            height = self.evaluate_number(height)
-        if depth is None:
-            if self.mode == Mode.vertical:
-                depth = self.parameters.get(Parameters.v_size)
-            else:
-                raise NotImplementedError
-        else:
-            depth = self.evaluate_number(depth)
-        self.add_rule(width, height, depth)
-
-    def add_h_rule(self, width, height, depth):
-        from .pydvi.TeXUnit import pt2sp
-        if width is None:
-            if self.mode in (Mode.horizontal, Mode.vertical):
-                width = self.parameters.get(Parameters.h_size)
-            else:
-                raise NotImplementedError
-        else:
-            width = self.evaluate_number(width)
-        if height is None:
-            height = int(pt2sp(0.4))
-        else:
-            height = self.evaluate_number(height)
-        if depth is None:
-            depth = 0
-        else:
-            depth = self.evaluate_number(depth)
-        self.add_rule(width, height, depth)
+    # Boring evaluation utility methods.
 
     def evaluate_size(self, size_token):
         v = size_token.value
@@ -543,7 +390,7 @@ class GlobalState:
             raise NotImplementedError
         return evaluated_token_list
 
-    def execute_if_num(self, if_token):
+    def _execute_if_num(self, if_token):
         v = if_token.value
         left_number = self.evaluate_number(v['left_number'])
         right_number = self.evaluate_number(v['right_number'])
@@ -556,15 +403,15 @@ class GlobalState:
         outcome = op(left_number, right_number)
         return outcome
 
-    def execute_if_case(self, if_token):
+    def _execute_if_case(self, if_token):
         v = if_token.value
         return self.evaluate_number(v['number'])
 
     def execute_condition(self, condition_token):
         if_token = condition_token.value
         exec_func_map = {
-            'if_num': self.execute_if_num,
-            'if_case': self.execute_if_case,
+            'if_num': self._execute_if_num,
+            'if_case': self._execute_if_case,
             'if_true': lambda *args: True,
             'if_false': lambda *args: False,
         }
@@ -575,6 +422,195 @@ class GlobalState:
         else:
             i_block_to_pick = 0 if outcome else 1
         return i_block_to_pick
+
+    # Command handling.
+
+    def select_font(self, is_global, font_id):
+        self.scoped_font_state.set_current_font(is_global, font_id)
+        font_select_item = FontSelection(font_nr=font_id)
+        self.append_to_list(font_select_item)
+
+    def do_paragraph(self):
+        if self.mode in vertical_modes:
+            # The primitive \par command has no effect when TeX is in
+            # vertical mode, except that the page builder is exercised in
+            # case something is present on the contribution list, and the
+            # paragraph shape parameters are cleared.
+            return
+        elif self.mode == Mode.restricted_horizontal:
+            # The primitive \par command, also called \endgraf in plain
+            # \TeX, does nothing in restricted horizontal mode.
+            return
+        elif self.mode == Mode.horizontal:
+            logger.info(f'Adding paragraph')
+
+            # "But it terminates horizontal mode: The current list is
+            # finished off by doing, '\unskip \penalty10000
+            # \hskip\parfillskip' then it is broken into lines as explained
+            # in Chapter 14, and TeX returns to the enclosing vertical or
+            # internal vertical mode. The lines of the paragraph are
+            # appended to the enclosing vertical list, interspersed with
+            # interline glue and interline penalties, and with the
+            # migration of vertical material that was in the horizontal
+            # list. Then TeX exercises the page builder."
+
+            # TODO: Not sure whether to do the above things as internal
+            # calls, or whether the tokens should be inserted.
+            # TODO: Do these commands before we pop.
+            # Get the horizontal list
+            horizontal_list = deque(self.pop_mode())
+            # Do \unskip.
+            if isinstance(horizontal_list[-1], UnSetGlue):
+                horizontal_list.pop()
+            # Do \hskip\parfillskip.
+            par_fill_glue = self.parameters.get(Parameters.par_fill_skip)
+            horizontal_list.append(UnSetGlue(**par_fill_glue))
+            h_size = self.parameters.get(Parameters.h_size)
+            h_boxes = h_list_to_best_h_boxes(horizontal_list, h_size)
+            # all_routes = get_all_routes(root_node, h_box_tree, h_size, outer=True)
+
+            # for best_route in all_routes:
+            for h_box in h_boxes:
+                # Add it to the enclosing vertical list.
+                self.append_to_list(h_box)
+                bl_skip = self.parameters.get(Parameters.base_line_skip)
+                line_glue_item = UnSetGlue(**bl_skip)
+                self.append_to_list(line_glue_item)
+
+            # par_glue_item = UnSetGlue(dimen=200000)
+            # self.append_to_list(par_glue_item)
+        else:
+            import pdb; pdb.set_trace()
+
+    def add_character_char(self, char):
+        return self.add_character_code(ord(char))
+
+    def get_character_item(self, *args, **kwargs):
+        return Character(font=self.current_font, *args, **kwargs)
+
+    def add_character_code(self, code):
+        self.append_to_list(self.get_character_item(code))
+
+    def add_accented_character(self, accent_code, char_code):
+        char_item = self.get_character_item(char_code)
+        char_w = self.current_font.width(char_code)
+        acc_w = self.current_font.width(accent_code)
+        # Go back to the middle of the character, than go back half the accent
+        # width, so that the middle of the accent will be the same as that of
+        # the character.
+        kern_item = Kern(int(round(-char_w / 2 - acc_w / 2)))
+        # TeXbook page 54: The accent is assumed to be properly positioned for
+        # a character whose height equals the x-height of the current font;
+        # taller or shorter characters cause the accent to be raised or
+        # lowered, taking due account of the slantedness of the fonts of
+        # accenter and accentee.
+        # TODO: Slantedness.
+        char_h = self.current_font.height(char_code)
+        height_to_raise = char_h - self.current_font.x_height
+        acc_char_item = self.get_character_item(accent_code)
+        acc_item = HBox(contents=[acc_char_item], offset=height_to_raise)
+        # TeXbook page 54: The width of the final construction is the width of
+        # the character being accented, regardless of the width of the accent.
+        item = HBox(contents=[char_item, kern_item, acc_item],
+                    to=char_item.width)
+        self.append_to_list(item)
+
+    def do_accent(self, accent_code, target_code=None):
+        logger.info(f"Adding accent \"{accent_code}\"")
+        # TeXbook page 54: If it turns out that no suitable character is
+        # present, the accent will appear by itself as if you had said
+        # \char\<number> instead of
+        # \accent\<number>. For example, \'{} produces '.
+        if target_code is None:
+            self.add_character_code(accent_code)
+        else:
+            self.add_accented_character(accent_code, target_code)
+        # TODO: Set space factor to 1000.
+
+    def add_kern(self, length):
+        return self.append_to_list(Kern(length))
+
+    def do_space(self):
+        if self.mode in vertical_modes:
+            # "Spaces have no effects in vertical modes".
+            pass
+        elif self.mode in horizontal_modes:
+            # Spaces append glue to the current list; the exact amount of
+            # glue depends on \spacefactor, the current font, and the
+            # \spaceskip and
+            # \xspaceskip parameters, as described in Chapter 12.
+            font = self.current_font
+            space_glue_item = UnSetGlue(dimen=font.spacing,
+                                        stretch=font.space_stretch,
+                                        shrink=font.space_shrink)
+            self.append_to_list(space_glue_item)
+        else:
+            import pdb; pdb.set_trace()
+
+    def add_rule(self, width, height, depth):
+        self.append_to_list(Rule(width, height, depth))
+
+    def add_v_rule(self, width, height, depth):
+        from .pydvi.TeXUnit import pt2sp
+        if width is None:
+            width = pt2sp(0.4)
+        else:
+            width = self.evaluate_number(width)
+        if height is None:
+            if self.mode == Mode.vertical:
+                height = self.parameters.get(Parameters.v_size)
+            else:
+                raise NotImplementedError
+        else:
+            height = self.evaluate_number(height)
+        if depth is None:
+            if self.mode == Mode.vertical:
+                depth = self.parameters.get(Parameters.v_size)
+            else:
+                raise NotImplementedError
+        else:
+            depth = self.evaluate_number(depth)
+        self.add_rule(width, height, depth)
+
+    def add_h_rule(self, width, height, depth):
+        from .pydvi.TeXUnit import pt2sp
+        if width is None:
+            if self.mode in (Mode.horizontal, Mode.vertical):
+                width = self.parameters.get(Parameters.h_size)
+            else:
+                raise NotImplementedError
+        else:
+            width = self.evaluate_number(width)
+        if height is None:
+            height = int(pt2sp(0.4))
+        else:
+            height = self.evaluate_number(height)
+        if depth is None:
+            depth = 0
+        else:
+            depth = self.evaluate_number(depth)
+        self.add_rule(width, height, depth)
+
+    def do_indent(self):
+        if self.mode in vertical_modes:
+            # "The \parskip glue is appended to the current list, unless
+            # TeX is in internal vertical mode and the current list is
+            # empty. Then TeX enters unrestricted horizontal mode, starting
+            # the horizontal list with an empty hbox whose width is
+            # \parindent. The \everypar tokens are inserted into TeX's
+            # input. The page builder is exercised."
+            if self.mode != Mode.internal_vertical:
+                par_skip_glue = self.parameters.get(Parameters.par_skip)
+                par_skip_glue_item = UnSetGlue(**par_skip_glue)
+                self.append_to_list(par_skip_glue_item)
+            self.push_mode(Mode.horizontal)
+            # An empty box of width \parindent is appended to the current
+            # list, and the space factor is set to 1000.
+            par_indent_width = self.parameters.get(Parameters.par_indent)
+            par_indent_hbox_item = HBox(contents=[], to=par_indent_width)
+            self.append_to_list(par_indent_hbox_item)
+        elif self.mode in horizontal_modes:
+            import pdb; pdb.set_trace()
 
     def execute_command(self, command, banisher, reader):
         # Reader needed to allow us to insert new input in response to
@@ -621,6 +657,9 @@ class GlobalState:
                 target_char_code = ord(char_tok.value['char'])
             else:
                 raise NotImplementedError
+            # TeXbook page 54: Mode-independent commands like font changes may
+            # appear between the accent number and the character to be
+            # accented, but grouping operations must not intervene.
             for assignment in assignments:
                 self.execute_command(assignment, banisher, reader)
             self.do_accent(accent_code_eval, target_char_code)
@@ -805,25 +844,7 @@ class GlobalState:
         elif type_ == 'RELAX':
             pass
         elif type_ == 'INDENT':
-            if self.mode in vertical_modes:
-                # "The \parskip glue is appended to the current list, unless
-                # TeX is in internal vertical mode and the current list is
-                # empty. Then TeX enters unrestricted horizontal mode, starting
-                # the horizontal list with an empty hbox whose width is
-                # \parindent. The \everypar tokens are inserted into TeX's
-                # input. The page builder is exercised."
-                if self.mode != Mode.internal_vertical:
-                    par_skip_glue = self.parameters.get(Parameters.par_skip)
-                    par_skip_glue_item = UnSetGlue(**par_skip_glue)
-                    self.append_to_list(par_skip_glue_item)
-                self.push_mode(Mode.horizontal)
-                # An empty box of width \parindent is appended to the current
-                # list, and the space factor is set to 1000.
-                par_indent_width = self.parameters.get(Parameters.par_indent)
-                par_indent_hbox_item = HBox(contents=[], to=par_indent_width)
-                self.append_to_list(par_indent_hbox_item)
-            elif self.mode in horizontal_modes:
-                import pdb; pdb.set_trace()
+            self.do_indent()
         elif type_ == 'LEFT_BRACE':
             # A character token of category 1, or a control sequence like \bgroup
             # that has been \let equal to such a character token, causes TeX to
