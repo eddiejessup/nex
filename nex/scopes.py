@@ -2,8 +2,7 @@ from enum import Enum
 
 from .codes import Codes
 from .accessors import ParametersAccessor, Registers
-from .fonts import (get_initial_font_state,
-                    get_local_font_state)
+from .fonts import FontState
 from .router import CSRouter
 from .utils import NotInScopeError
 
@@ -143,7 +142,7 @@ class ScopedFontState(ScopedAccessor):
 
     @classmethod
     def from_defaults(cls):
-        return cls(get_initial_font_state(), get_local_font_state)
+        return cls(FontState.default_initial(), FontState.default_local)
 
     @property
     def current_font_id(self, *args, **kwargs):

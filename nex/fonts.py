@@ -111,35 +111,30 @@ class FontRange(Enum):
     scriptscript = Instructions.script_script_font.value
 
 
-get_empty_font_family = lambda: {font_range: None for font_range in FontRange}
-
-
-def get_initial_font_families():
-    font_families = {i: get_empty_font_family() for i in range(16)}
-    return font_families
-
-
-def get_initial_font_state():
-    font_families = get_initial_font_families()
-    font_state = FontState(font_families)
-    font_state.set_current_font(GlobalFontState.null_font_id)
-    return font_state
-
-
-def get_local_font_state(enclosing_scope):
-    # Much like global, because I think we need to define the data structure so
-    # we can read and write to it easily. But we should make it so that if the
-    # entry is None, we raise a KeyError.
-    font_families = get_initial_font_families()
-    font_state = FontState(font_families)
-    return font_state
-
-
 class FontState:
 
     def __init__(self, font_families):
         self._current_font_id = None
         self.font_families = font_families
+
+    @staticmethod
+    def default_initial_font_families():
+        def get_empty_font_family():
+            return {font_range: None for font_range in FontRange}
+        font_families = {i: get_empty_font_family() for i in range(16)}
+        return font_families
+
+    @classmethod
+    def default_initial(cls):
+        font_families = cls.default_initial_font_families()
+        font_state = cls(font_families)
+        font_state.set_current_font(GlobalFontState.null_font_id)
+        return font_state
+
+    @classmethod
+    def default_local(cls, enclosing_scope):
+        font_families = cls.default_initial_font_families()
+        return cls(font_families)
 
     def __repr__(self):
         a = [

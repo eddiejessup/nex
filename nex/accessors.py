@@ -279,8 +279,13 @@ def is_special_type(type_):
     return type_ in special_instr_types
 
 
-def get_specials():
-    return TexNamedValues(special_values, special_to_type)
+class SpecialsAccessor(TexNamedValues):
+
+    @classmethod
+    def default(cls):
+
+        return cls(special_values, special_to_type)
+
 
 # End of specials.
 
