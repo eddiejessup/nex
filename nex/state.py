@@ -703,14 +703,14 @@ class GlobalState:
             if is_register_type(variable.type):
                 evaled_i = self.evaluate_number(variable.value)
                 self.registers.set(
-                    is_global=v['global'], type_=variable.type,
-                    i=evaled_i, value=evaled_value
+                    type_=variable.type, i=evaled_i, value=evaled_value,
+                    is_global=v['global'],
                 )
             elif is_parameter_type(variable.type):
                 parameter = variable.value['parameter']
                 self.parameters.set_parameter(
-                    is_global=v['global'], parameter=parameter,
-                    value=evaled_value
+                    name=parameter, value=evaled_value,
+                    is_global=v['global'],
                 )
         elif type_ == 'advance':
             variable, value = v['variable'], v['value']
@@ -721,11 +721,13 @@ class GlobalState:
                       'operation': Operation.advance}
             if is_register_type(variable.type):
                 evaled_i = self.evaluate_number(variable.value)
-                self.registers.modify_register_value(type_=variable.type,
-                                                     i=evaled_i, **kwargs)
+                self.registers.modify_register_value(
+                    type_=variable.type, i=evaled_i, **kwargs
+                )
             elif is_parameter_type(variable.type):
-                self.parameters.modify_parameter_value(parameter=variable.value['parameter'],
-                                                       **kwargs)
+                self.parameters.modify_parameter_value(
+                    name=variable.value['parameter'], **kwargs
+                )
             else:
                 import pdb; pdb.set_trace()
         elif type_ == 'set_box_assignment':

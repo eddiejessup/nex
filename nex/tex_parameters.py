@@ -114,6 +114,7 @@ params = {
 }
 Parameters = Enum('Parameters', {s.lower(): s for s in params})
 param_to_instr = {p: params[p.value] for p in Parameters}
+param_to_type = {p: instr.value for p, instr in param_to_instr.items()}
 
 param_instrs = (
     Instructions.integer_parameter,
@@ -184,33 +185,38 @@ def get_initial_parameters():
     for p in token_parameters:
         parameter_values[p] = get_empty_token_list()
 
-    return TexParameterValues(parameter_values)
+    return TexNamedValues(parameter_values, param_to_type)
 
 
 def get_local_parameters(enclosing_scope):
     parameter_values = {p: None for p in Parameters}
-    return TexParameterValues(parameter_values)
+    return TexNamedValues(parameter_values, param_to_type)
 
 
-class TexParameterValues:
+class TexNamedValues:
+    """
+    Accessor for either parameters or special values.
+    names_to_values: A container mapping names to values.
+    names_to_types: A container mapping these names to their types.
+    """
 
-    def __init__(self, parameter_values):
-        self.parameter_values = parameter_values
+    def __init__(self, names_to_values, names_to_types):
+        self.names_to_values = names_to_values
+        self.names_to_types = names_to_types
 
-    def _check_and_get_param(self, p):
-        if p not in self.parameter_values:
-            raise KeyError(f'Parameter name "{parameter}" is not a parameter')
-        return self.parameter_values[p]
+    def _check_and_get_value(self, name):
+        if name not in self.names_to_values:
+            raise KeyError(f'Named value "{name}" does not exist')
+        return self.names_to_values[name]
 
-    def get(self, parameter):
-        value = self._check_and_get_param(parameter)
+    def get(self, name):
+        value = self._check_and_get_value(name)
         if value is None:
             raise NotInScopeError
         return value
 
-    def set(self, parameter, value):
-        self._check_and_get_param(parameter)
-        parameter_instr = param_to_instr[parameter]
-        parameter_type = parameter_instr.value
-        check_type(parameter_type, value)
-        self.parameter_values[parameter] = value
+    def set(self, name, value):
+        self._check_and_get_value(name)
+        value_type = self.names_to_types[name]
+        check_type(value_type, value)
+        self.names_to_values[name] = value
