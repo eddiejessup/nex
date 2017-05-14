@@ -70,8 +70,13 @@ ignored_delimiter_code = DelimiterCode(
 )
 
 
+def get_unset_ascii_char_dict():
+    return {c: None for c in ascii_characters}
+
+
 def get_initial_char_cats():
-    char_to_cat = {c: CatCode.other for c in ascii_characters}
+    char_to_cat = get_unset_ascii_char_dict()
+    char_to_cat.update({c: CatCode.other for c in ascii_characters})
     char_to_cat.update({let: CatCode.letter for let in ascii_letters})
 
     char_to_cat['\\'] = CatCode.escape
@@ -86,7 +91,7 @@ def get_initial_char_cats():
 
 
 def get_initial_char_math_codes():
-    char_to_math_code = {}
+    char_to_math_code = get_unset_ascii_char_dict()
     for i, c in enumerate(ascii_characters):
         if c in ascii_letters:
             family = 1
@@ -104,10 +109,11 @@ def get_initial_char_math_codes():
 
 
 def get_initial_case_codes():
-    lower_case_code, upper_case_code = [
-        {c: chr(0) for c in ascii_characters}
-        for _ in range(2)
-    ]
+    lower_case_code = get_unset_ascii_char_dict()
+    upper_case_code = get_unset_ascii_char_dict()
+    initial_vals = {c: chr(0) for c in ascii_characters}
+    lower_case_code.update(initial_vals)
+    upper_case_code.update(initial_vals)
     for lower, upper in zip(ascii_lowercase, ascii_uppercase):
         lower_case_code[lower] = lower
         upper_case_code[upper] = upper
@@ -117,13 +123,15 @@ def get_initial_case_codes():
 
 
 def get_initial_space_factor_codes():
-    space_factor_code = {c: (999 if c in ascii_uppercase else 1000)
-                         for c in ascii_characters}
+    space_factor_code = get_unset_ascii_char_dict()
+    for c in ascii_characters:
+        space_factor_code[c] = 999 if c in ascii_uppercase else 1000
     return space_factor_code
 
 
 def get_initial_delimiter_codes():
-    delimiter_code = {c: not_a_delimiter_code for c in ascii_characters}
+    delimiter_code = get_unset_ascii_char_dict()
+    delimiter_code.update({c: not_a_delimiter_code for c in ascii_characters})
     delimiter_code['.'] = ignored_delimiter_code
     return delimiter_code
 
@@ -144,11 +152,12 @@ def get_initial_codes():
 
 
 def get_local_codes(enclosing_scope):
-    char_to_cat = {}
-    char_to_math_code = {}
-    lower_case_code, upper_case_code = {}, {}
-    space_factor_code = {}
-    delimiter_code = {}
+    char_to_cat = get_unset_ascii_char_dict()
+    char_to_math_code = get_unset_ascii_char_dict()
+    lower_case_code = get_unset_ascii_char_dict()
+    upper_case_code = get_unset_ascii_char_dict()
+    space_factor_code = get_unset_ascii_char_dict()
+    delimiter_code = get_unset_ascii_char_dict()
     codes = Codes(char_to_cat,
                   char_to_math_code,
                   lower_case_code,
@@ -183,12 +192,28 @@ class Codes:
             'delimiter': self.delimiter_code,
         }
 
+    def get(self, code_type, char):
+        value = self._check_and_get_char_map_value(code_type, char)
+        if value is None:
+            raise NotInScopeError('No value in codes {code_type}, character {char}')
+        return value
+
     def set(self, code_type, char, code):
-        char_map = self.code_type_to_char_map[code_type]
-        # TODO: Initialize all sensible keys, pointing to 'None' for local
-        # scopes. Only allow setting keys that already exist, and
-        # raise a NotInScopeError if None is returned.
+        # Check key already exists.
+        self._check_and_get_char_map_value(code_type, char)
+        char_map = self._check_and_get_char_map(code_type)
         char_map[char] = code
+
+    def _check_and_get_char_map(self, code_type):
+        if code_type not in self.code_type_to_char_map:
+            raise ValueError(f'No codes of type {code_type}')
+        return self.code_type_to_char_map[code_type]
+
+    def _check_and_get_char_map_value(self, code_type, char):
+        char_map = self._check_and_get_char_map(code_type)
+        if char not in char_map:
+            raise ValueError(f'Character {char} not in codes {code_type}')
+        return char_map[char]
 
     def set_cat_code(self, char, cat):
         self.set('cat', char, cat)
@@ -207,15 +232,6 @@ class Codes:
 
     def set_delimiter_code(self, char, code):
         self.set('delimiter', char, code)
-
-    def get(self, code_type, char):
-        char_map = self.code_type_to_char_map[code_type]
-        try:
-            return char_map[char]
-        # TODO: Distinguish KeyErrors caused by key not making any sense, from
-        # KeyErrors caused by value not being defined in this scope.
-        except KeyError:
-            raise NotInScopeError
 
     def get_cat_code(self, char):
         return self.get('cat', char)

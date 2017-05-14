@@ -85,6 +85,7 @@ class Registers:
     def set(self, type_, i, value):
         # Check value matches what register is meant to hold.
         check_type(type_, value)
+        # Check key already exists.
         self._check_and_get_register_value(type_, i)
         register = self._check_and_get_register(type_)
         register[i] = value
