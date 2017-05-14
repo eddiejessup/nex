@@ -1,6 +1,6 @@
 from enum import Enum
 
-from .codes import get_initial_codes, get_local_codes
+from .codes import Codes
 from .accessors import ParametersAccessor, Registers
 from .fonts import (get_initial_font_state,
                     get_local_font_state)
@@ -75,7 +75,7 @@ class ScopedCodes(ScopedAccessor):
 
     @classmethod
     def from_defaults(cls):
-        return cls(get_initial_codes(), get_local_codes)
+        return cls(Codes.default_initial(), Codes.default_local)
 
     def set(self, is_global, code_type, char, code):
         code_type_to_func_map = {

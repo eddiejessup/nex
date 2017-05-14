@@ -74,99 +74,6 @@ def get_unset_ascii_char_dict():
     return {c: None for c in ascii_characters}
 
 
-def get_initial_char_cats():
-    char_to_cat = get_unset_ascii_char_dict()
-    char_to_cat.update({c: CatCode.other for c in ascii_characters})
-    char_to_cat.update({let: CatCode.letter for let in ascii_letters})
-
-    char_to_cat['\\'] = CatCode.escape
-    char_to_cat[' '] = CatCode.space
-    char_to_cat['%'] = CatCode.comment
-    char_to_cat[WeirdChar.null.value] = CatCode.ignored
-    # NON-STANDARD
-    char_to_cat[WeirdChar.line_feed.value] = CatCode.end_of_line
-    char_to_cat[WeirdChar.carriage_return.value] = CatCode.end_of_line
-    char_to_cat[WeirdChar.delete.value] = CatCode.invalid
-    return char_to_cat
-
-
-def get_initial_char_math_codes():
-    char_to_math_code = get_unset_ascii_char_dict()
-    for i, c in enumerate(ascii_characters):
-        if c in ascii_letters:
-            family = 1
-        else:
-            family = 0
-        if c in (ascii_letters + digits):
-            math_class = MathClass.variable_family
-        else:
-            math_class = MathClass.ordinary
-        glyph_code = GlyphCode(family=family, position=i)
-        char_to_math_code[i] = MathCode(math_class, glyph_code)
-        # TODO: handle special active_math_code value,
-        # page 155 of The TeXbook.
-    return char_to_math_code
-
-
-def get_initial_case_codes():
-    lower_case_code = get_unset_ascii_char_dict()
-    upper_case_code = get_unset_ascii_char_dict()
-    initial_vals = {c: chr(0) for c in ascii_characters}
-    lower_case_code.update(initial_vals)
-    upper_case_code.update(initial_vals)
-    for lower, upper in zip(ascii_lowercase, ascii_uppercase):
-        lower_case_code[lower] = lower
-        upper_case_code[upper] = upper
-        lower_case_code[upper] = lower
-        upper_case_code[lower] = upper
-    return lower_case_code, upper_case_code
-
-
-def get_initial_space_factor_codes():
-    space_factor_code = get_unset_ascii_char_dict()
-    for c in ascii_characters:
-        space_factor_code[c] = 999 if c in ascii_uppercase else 1000
-    return space_factor_code
-
-
-def get_initial_delimiter_codes():
-    delimiter_code = get_unset_ascii_char_dict()
-    delimiter_code.update({c: not_a_delimiter_code for c in ascii_characters})
-    delimiter_code['.'] = ignored_delimiter_code
-    return delimiter_code
-
-
-def get_initial_codes():
-    char_to_cat = get_initial_char_cats()
-    char_to_math_code = get_initial_char_math_codes()
-    lower_case_code, upper_case_code = get_initial_case_codes()
-    space_factor_code = get_initial_space_factor_codes()
-    delimiter_code = get_initial_delimiter_codes()
-    codes = Codes(char_to_cat,
-                  char_to_math_code,
-                  lower_case_code,
-                  upper_case_code,
-                  space_factor_code,
-                  delimiter_code)
-    return codes
-
-
-def get_local_codes(enclosing_scope):
-    char_to_cat = get_unset_ascii_char_dict()
-    char_to_math_code = get_unset_ascii_char_dict()
-    lower_case_code = get_unset_ascii_char_dict()
-    upper_case_code = get_unset_ascii_char_dict()
-    space_factor_code = get_unset_ascii_char_dict()
-    delimiter_code = get_unset_ascii_char_dict()
-    codes = Codes(char_to_cat,
-                  char_to_math_code,
-                  lower_case_code,
-                  upper_case_code,
-                  space_factor_code,
-                  delimiter_code)
-    return codes
-
-
 class Codes:
 
     def __init__(self,
@@ -184,6 +91,97 @@ class Codes:
             'space_factor': space_factor_code,
             'delimiter': delimiter_code,
         }
+
+    @staticmethod
+    def default_initial_cat_codes():
+        char_to_cat = get_unset_ascii_char_dict()
+        char_to_cat.update({c: CatCode.other for c in ascii_characters})
+        char_to_cat.update({let: CatCode.letter for let in ascii_letters})
+
+        char_to_cat['\\'] = CatCode.escape
+        char_to_cat[' '] = CatCode.space
+        char_to_cat['%'] = CatCode.comment
+        char_to_cat[WeirdChar.null.value] = CatCode.ignored
+        # NON-STANDARD
+        char_to_cat[WeirdChar.line_feed.value] = CatCode.end_of_line
+        char_to_cat[WeirdChar.carriage_return.value] = CatCode.end_of_line
+        char_to_cat[WeirdChar.delete.value] = CatCode.invalid
+        return char_to_cat
+
+    @staticmethod
+    def default_initial_math_codes():
+        char_to_math_code = get_unset_ascii_char_dict()
+        for i, c in enumerate(ascii_characters):
+            if c in ascii_letters:
+                family = 1
+            else:
+                family = 0
+            if c in (ascii_letters + digits):
+                math_class = MathClass.variable_family
+            else:
+                math_class = MathClass.ordinary
+            glyph_code = GlyphCode(family=family, position=i)
+            char_to_math_code[i] = MathCode(math_class, glyph_code)
+            # TODO: handle special active_math_code value,
+            # page 155 of The TeXbook.
+        return char_to_math_code
+
+    @staticmethod
+    def default_initial_case_codes():
+        lower_case_code = get_unset_ascii_char_dict()
+        upper_case_code = get_unset_ascii_char_dict()
+        initial_vals = {c: chr(0) for c in ascii_characters}
+        lower_case_code.update(initial_vals)
+        upper_case_code.update(initial_vals)
+        for lower, upper in zip(ascii_lowercase, ascii_uppercase):
+            lower_case_code[lower] = lower
+            upper_case_code[upper] = upper
+            lower_case_code[upper] = lower
+            upper_case_code[lower] = upper
+        return lower_case_code, upper_case_code
+
+    @staticmethod
+    def default_initial_space_factor_codes():
+        space_factor_code = get_unset_ascii_char_dict()
+        for c in ascii_characters:
+            space_factor_code[c] = 999 if c in ascii_uppercase else 1000
+        return space_factor_code
+
+    @staticmethod
+    def default_initial_delimiter_codes():
+        delimiter_code = get_unset_ascii_char_dict()
+        delimiter_code.update({c: not_a_delimiter_code for c in ascii_characters})
+        delimiter_code['.'] = ignored_delimiter_code
+        return delimiter_code
+
+    @classmethod
+    def default_initial(cls):
+        char_to_cat = cls.default_initial_cat_codes()
+        char_to_math_code = cls.default_initial_math_codes()
+        lower_case_code, upper_case_code = cls.default_initial_case_codes()
+        space_factor_code = cls.default_initial_space_factor_codes()
+        delimiter_code = cls.default_initial_delimiter_codes()
+        return cls(char_to_cat,
+                   char_to_math_code,
+                   lower_case_code,
+                   upper_case_code,
+                   space_factor_code,
+                   delimiter_code)
+
+    @classmethod
+    def default_local(cls, enclosing_scope):
+        char_to_cat = get_unset_ascii_char_dict()
+        char_to_math_code = get_unset_ascii_char_dict()
+        lower_case_code = get_unset_ascii_char_dict()
+        upper_case_code = get_unset_ascii_char_dict()
+        space_factor_code = get_unset_ascii_char_dict()
+        delimiter_code = get_unset_ascii_char_dict()
+        return cls(char_to_cat,
+                   char_to_math_code,
+                   lower_case_code,
+                   upper_case_code,
+                   space_factor_code,
+                   delimiter_code)
 
     def get(self, code_type, char):
         value = self._check_and_get_char_map_value(code_type, char)

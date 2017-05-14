@@ -1,11 +1,11 @@
-from nex.codes import get_initial_char_cats, CatCode
+from nex.codes import Codes, CatCode
 from nex.lexer import Lexer
 
 
 class DummyCatCodeGetter:
 
     def __init__(self):
-        self.char_to_cat = get_initial_char_cats()
+        self.char_to_cat = Codes.default_initial_cat_codes()
 
     def get(self, char):
         return self.char_to_cat[char]
