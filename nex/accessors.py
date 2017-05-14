@@ -250,19 +250,38 @@ class ParametersAccessor(TexNamedValues):
 
 specials = {
     'SPACE_FACTOR': Instructions.special_integer,
+    # The number of lines in the paragraph most recently completed or partially
+    # completed.
     'PREV_GRAF': Instructions.special_integer,
+    # The number of times \output was called since the last \shipout.
     'DEAD_CYCLES': Instructions.special_integer,
+    # Means different things:
+    # 1. In the ouput routine, the total number of held-over insertions. For
+    #    each class of insertions this includes the unused part of a split
+    #    insertion and all other insertions which don't appear on the current
+    #    page.
+    # 2. In the page-making routine, the total of the \floatingpenalty for each
+    #    unsplit insertion which is carried over to the next page.
     'INSERT_PENALTIES': Instructions.special_integer,
 
+    # The depth of the last box added to the current vertical list.
     'PREV_DEPTH': Instructions.special_dimen,
-    'PAGE_GOAL': Instructions.special_dimen,
-    'PAGE_TOTAL': Instructions.special_dimen,
-    'PAGE_STRETCH': Instructions.special_dimen,
-    'PAGE_FIL_STRETCH': Instructions.special_dimen,
-    'PAGE_FILL_STRETCH': Instructions.special_dimen,
-    'PAGE_FILLL_STRETCH': Instructions.special_dimen,
-    'PAGE_SHRINK': Instructions.special_dimen,
+    # The actual depth of the last box on the main page.
     'PAGE_DEPTH': Instructions.special_dimen,
+    # The desired height of the current page.
+    'PAGE_GOAL': Instructions.special_dimen,
+    # The accumulated height of the current page.
+    'PAGE_TOTAL': Instructions.special_dimen,
+    # The amount of finite stretchability in the current page.
+    'PAGE_STRETCH': Instructions.special_dimen,
+    # The amount of first-order infinite stretchability in the current page.
+    'PAGE_FIL_STRETCH': Instructions.special_dimen,
+    # The amount of second-order infinite stretchability in the current page.
+    'PAGE_FILL_STRETCH': Instructions.special_dimen,
+    # The amount of third-order infinite stretchability in the current page.
+    'PAGE_FILLL_STRETCH': Instructions.special_dimen,
+    # The amount of finite shrinkability in the current page.
+    'PAGE_SHRINK': Instructions.special_dimen,
 }
 Specials = Enum('Specials', {s.lower(): s for s in specials})
 special_to_instr = {p: specials[p.value] for p in Specials}
@@ -282,8 +301,14 @@ def is_special_type(type_):
 class SpecialsAccessor(TexNamedValues):
 
     @classmethod
-    def default(cls):
-
+    def from_defaults(cls):
+        special_values = {s: None for s in Specials}
+        # Guesses.
+        special_values[Specials.space_factor] = 1000
+        special_values[Specials.prev_graf] = 0
+        special_values[Specials.dead_cycles] = 0
+        special_values[Specials.insert_penalties] = 0
+        special_values[Specials.page_total] = 0
         return cls(special_values, special_to_type)
 
 

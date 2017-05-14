@@ -8,7 +8,8 @@ from .reader import EndOfFile
 from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from .instructions import Instructions, h_add_glue_instructions
 from .instructioner import make_primitive_control_sequence_instruction
-from .accessors import is_parameter_type, is_register_type, Parameters
+from .accessors import (is_parameter_type, is_register_type,
+                        Parameters, SpecialsAccessor)
 from .box import (HBox, Rule, UnSetGlue, Character, FontDefinition,
                   FontSelection, Kern)
 from .paragraphs import h_list_to_best_h_boxes
@@ -126,8 +127,11 @@ def command_shifts_to_horizontal(command):
 class GlobalState:
 
     def __init__(self, global_font_state,
+                 specials,
                  codes, registers, scoped_font_state, router, parameters):
         self.global_font_state = global_font_state
+        self.specials = specials
+
         self.codes = codes
         self.registers = registers
         self.scoped_font_state = scoped_font_state
@@ -141,12 +145,13 @@ class GlobalState:
     @classmethod
     def from_defaults(cls, font_search_paths):
         global_font_state = GlobalFontState(font_search_paths)
+        specials = SpecialsAccessor.from_defaults()
         codes = ScopedCodes.from_defaults()
         registers = ScopedRegisters.from_defaults()
         scoped_font_state = ScopedFontState.from_defaults()
         router = ScopedRouter.from_defaults()
         parameters = ScopedParameters.from_defaults()
-        return cls(global_font_state,
+        return cls(global_font_state, specials,
                    codes, registers, scoped_font_state, router, parameters)
 
     # Mode.

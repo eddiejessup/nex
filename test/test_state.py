@@ -53,7 +53,7 @@ class DummyFontState:
         return self._current_font_id
 
 
-class DummyParameters:
+class DummyNamedValues:
 
     def __init__(self, param_map):
         self.param_map = param_map
@@ -90,7 +90,8 @@ font_path = '/Users/ejm/projects/nex/example/fonts'
 
 def get_state(char_to_cat, cs_map, param_map):
     router = DummyRouter(cs_map)
-    parameters = DummyParameters(param_map)
+    parameters = DummyNamedValues(param_map)
+    specials = DummyNamedValues({})
     codes = DummyCodes(char_to_cat)
     font = DummyFontState()
     if do_output:
@@ -98,6 +99,7 @@ def get_state(char_to_cat, cs_map, param_map):
     else:
         global_font_state = DummyGlobalFontState()
     state = GlobalState(global_font_state=global_font_state,
+                        specials=specials,
                         codes=codes, registers=None,
                         scoped_font_state=font, router=router,
                         parameters=parameters)
