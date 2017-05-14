@@ -131,18 +131,25 @@ def is_parameter_type(type_):
     return type_ in parameter_instr_types
 
 
+def param_instr_subset(instr):
+    return filter(lambda p: param_to_instr[p] == instr, Parameters)
+
+
+integer_parameters = param_instr_subset(Instructions.integer_parameter)
+dimen_parameters = param_instr_subset(Instructions.dimen_parameter)
+glue_parameters = param_instr_subset(Instructions.glue_parameter)
+mu_glue_parameters = param_instr_subset(Instructions.mu_glue_parameter)
+token_parameters = param_instr_subset(Instructions.token_parameter)
+
+
 def get_initial_parameters():
     now = datetime.now()
     midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
     seconds_since_midnight = (now - midnight).total_seconds()
     minutes_since_midnight = int(seconds_since_midnight // 60)
 
-    def param_instr_subset(instr):
-        return filter(lambda p: param_to_instr[p] == instr, Parameters)
-
     parameter_values = {}
 
-    integer_parameters = param_instr_subset(Instructions.integer_parameter)
     for p in integer_parameters:
         parameter_values[p] = 0
     parameter_values[Parameters.tolerance] = 10000
@@ -157,17 +164,14 @@ def get_initial_parameters():
     parameter_values[Parameters.month] = now.month
     parameter_values[Parameters.year] = now.year
 
-    dimen_parameters = param_instr_subset(Instructions.dimen_parameter)
     for p in dimen_parameters:
         parameter_values[p] = 0
 
     def get_zero_glue():
         return {k: 0 for k in glue_keys}
-    glue_parameters = param_instr_subset(Instructions.glue_parameter)
     for p in glue_parameters:
         parameter_values[p] = get_zero_glue()
 
-    mu_glue_parameters = param_instr_subset(Instructions.mu_glue_parameter)
     for p in mu_glue_parameters:
         parameter_values[p] = get_zero_glue()
 
@@ -177,7 +181,6 @@ def get_initial_parameters():
             value=[],
             line_nr='abstract',
         )
-    token_parameters = param_instr_subset(Instructions.token_parameter)
     for p in token_parameters:
         parameter_values[p] = get_empty_token_list()
 
@@ -185,27 +188,28 @@ def get_initial_parameters():
 
 
 def get_local_parameters(enclosing_scope):
-    return TexParameterValues({})
+    parameter_values = {p: None for p in Parameters}
+    return TexParameterValues(parameter_values)
 
 
 class TexParameterValues:
 
-    def __init__(self, parameter_value_map):
-        self.parameter_values = parameter_value_map
+    def __init__(self, parameter_values):
+        self.parameter_values = parameter_values
+
+    def _check_and_get_param(self, p):
+        if p not in self.parameter_values:
+            raise KeyError(f'Parameter name "{parameter}" is not a parameter')
+        return self.parameter_values[p]
 
     def get(self, parameter):
-        try:
-            return self.parameter_values[parameter]
-        # TODO: Distinguish KeyErrors caused by key not making any sense, from
-        # KeyErrors caused by value not being defined in this scope.
-        except KeyError:
+        value = self._check_and_get_param(parameter)
+        if value is None:
             raise NotInScopeError
+        return value
 
     def set(self, parameter, value):
-        # TODO: Initialize all sensible keys, pointing to 'None' for local
-        # scopes. Only allow setting keys that already exist, and
-        # raise a NotInScopeError if None is returned.
-        # Will avoid having to lookup from this global dict.
+        self._check_and_get_param(parameter)
         parameter_instr = param_to_instr[parameter]
         parameter_type = parameter_instr.value
         check_type(parameter_type, value)

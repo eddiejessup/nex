@@ -53,7 +53,8 @@ class Registers:
 
     def __init__(self, nr_counts, nr_dimens,
                  nr_skips, nr_mu_skips, nr_token_lists):
-        init_register = lambda n: {i: None for i in range(n)}
+        def init_register(n):
+            return {i: None for i in range(n)}
         self.register_map = {
             Instructions.count.value: init_register(nr_counts),
             Instructions.dimen.value: init_register(nr_dimens),
@@ -62,30 +63,28 @@ class Registers:
             Instructions.toks.value: init_register(nr_token_lists),
         }
 
-    def _get_register(self, type_):
+    def _check_and_get_register(self, type_):
         if type_ not in self.register_map:
             raise ValueError(f'No register of type {type_}')
         return self.register_map[type_]
 
-    def get(self, type_, i):
-        register = self._get_register(type_)
+    def _check_and_get_register_value(self, type_, i):
+        register = self._check_and_get_register(type_)
         # Check address exists in register. This should not depend on anything
         # to do with scopes.
         if i not in register:
             raise ValueError(f'No register number {i} of type {type_}')
+        return register[i]
 
-        r = register[i]
-        if r is None:
+    def get(self, type_, i):
+        value = self._check_and_get_register_value(type_, i)
+        if value is None:
             raise NotInScopeError('No value in register number {i} of type {type_}')
-        return r
+        return value
 
     def set(self, type_, i, value):
         # Check value matches what register is meant to hold.
         check_type(type_, value)
-        register = self._get_register(type_)
-
-        # Check address exists in register. This should not depend on anything
-        # to do with scopes.
-        if i not in register:
-            raise ValueError(f'No register number {i} of type {type_}')
+        self._check_and_get_register_value(type_, i)
+        register = self._check_and_get_register(type_)
         register[i] = value
