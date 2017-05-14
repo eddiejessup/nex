@@ -1,3 +1,4 @@
+import string
 import os
 from os import path as opath
 import base64
@@ -11,6 +12,7 @@ def pt_to_sp(pt):
 
 
 ascii_characters = ''.join(chr(i) for i in range(128))
+printable_ascii_codes = list(map(ord, string.printable))
 
 
 def get_unique_id():

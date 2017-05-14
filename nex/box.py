@@ -3,7 +3,7 @@ from functools import lru_cache
 
 from .pydvi.TeXUnit import sp2pt
 
-from .utils import sum_infinities
+from .utils import sum_infinities, printable_ascii_codes
 
 
 class LineState(Enum):
@@ -358,7 +358,10 @@ class Character(ListElement):
         self.font = font
 
     def __repr__(self):
-        return self.char
+        if self.code in printable_ascii_codes:
+            return f"'{chr(self.code)}'"
+        else:
+            return f"C({self.code})"
         # return '{}({})'.format(self.__class__.__name__, self.char)
 
     @property
