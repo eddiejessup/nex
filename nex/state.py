@@ -143,8 +143,11 @@ class GlobalState:
         self.groups = [Group.outside]
 
     @classmethod
-    def from_defaults(cls, font_search_paths):
-        global_font_state = GlobalFontState(font_search_paths)
+    def from_defaults(cls, font_search_paths=None, global_font_state=None):
+        # We allow passing this in for testing purposes, because it touches the
+        # outside world (the file system, to search for fonts).
+        if global_font_state is None:
+            global_font_state = GlobalFontState(font_search_paths)
         specials = SpecialsAccessor.from_defaults()
         codes = ScopedCodes.from_defaults()
         registers = ScopedRegisters.from_defaults()
@@ -331,6 +334,14 @@ class GlobalState:
         accent_char_item = self.get_character_item(accent_code)
         accent_item = self.get_raised_item(accent_char_item, pt_to_sp(3))
         self.append_to_list(accent_item)
+
+    def do_accent(self, accent_code, target_code=None):
+        logger.info(f"Adding accent \"{accent_code}\"")
+        if target_code is None:
+            self.add_character_code(accent_code)
+        else:
+            self.add_accented_character(accent_code, target_code)
+        # TODO: Set space factor to 1000.
 
     def add_kern(self, length):
         return self.append_to_list(Kern(length))
@@ -603,19 +614,16 @@ class GlobalState:
         elif type_ == 'ACCENT':
             assignments = v['assignments'].value
             accent_code_eval = self.evaluate_number(v['accent_code'])
-            logger.info(f"Adding accent \"{accent_code_eval}\"")
+            char_tok = v['target_char']
+            if char_tok is None:
+                target_char_code = None
+            elif char_tok.type == 'character':
+                target_char_code = ord(char_tok.value['char'])
+            else:
+                raise NotImplementedError
             for assignment in assignments:
                 self.execute_command(assignment, banisher, reader)
-            if 'target_char' in v:
-                char_tok = v['target_char']
-                if char_tok.type == 'character':
-                    char_code = ord(char_tok.value['char'])
-                else:
-                    raise NotImplementedError
-                self.add_accented_character(accent_code_eval, char_code)
-            else:
-                self.add_character_code(accent_code_eval)
-            # TODO: Set space factor to 1000.
+            self.do_accent(accent_code_eval, target_char_code)
         elif type_ == 'V_RULE':
             logger.info(f"Adding vertical rule")
             self.add_v_rule(**v)

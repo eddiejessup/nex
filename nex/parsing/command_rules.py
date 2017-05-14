@@ -387,14 +387,15 @@ def add_command_rules(pg):
 
     @pg.production('paired_accent : solo_accent character_like')
     def accent_with_character(p):
-        t = BuiltToken(type_='ACCENT', value=p[0].value)
+        t = BuiltToken(type_='ACCENT', value=p[0].value, position_like=p)
         t.value['target_char'] = p[1]
         return t
 
     @pg.production('solo_accent : ACCENT number optional_assignments')
     def accent_without_character(p):
         return BuiltToken(type_='ACCENT', value={'assignments': p[2],
-                                                 'accent_code': p[1]},
+                                                 'accent_code': p[1],
+                                                 'target_char': None},
                           position_like=p)
 
     @pg.production('optional_assignments : empty')

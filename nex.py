@@ -6,8 +6,7 @@ import os.path as opath
 import sys
 
 from nex.utils import ensure_extension, get_default_font_paths
-from nex.box_writer import write_to_dvi_file
-from nex.nex import run_file
+from nex.nex import run_and_write
 from nex.reader import logger as read_logger
 from nex.lexer import logger as lex_logger
 from nex.instructioner import logger as instr_logger
@@ -15,7 +14,7 @@ from nex.banisher import logger as banish_logger
 
 read_logger.setLevel(logging.INFO)
 lex_logger.setLevel(logging.INFO)
-instr_logger.setLevel(logging.WARNING)
+# instr_logger.setLevel(logging.WARNING)
 banish_logger.setLevel(logging.INFO)
 
 dir_path = opath.dirname(opath.realpath(__file__))
@@ -76,12 +75,12 @@ if __name__ == '__main__':
     in_dir_path = opath.dirname(args.input)
     font_search_paths += [in_dir_path, opath.join(in_dir_path, 'fonts')]
 
-    if args.stdout:
+    if args.test:
+        dvi_path = None
+    elif args.stdout:
         dvi_path = sys.stdout.buffer
     elif args.output:
         dvi_path = ensure_extension(args.output, 'dvi')
-    elif args.test:
-        pass
     else:
         dvi_path = opath.splitext(opath.basename(args.input))[0]
         dvi_path = ensure_extension(dvi_path, 'dvi')
@@ -91,6 +90,5 @@ if __name__ == '__main__':
         print('Not writing output in test mode')
     else:
         print(f'Writing DVI to {dvi_path}')
-    state = run_file(args.input, font_search_paths)
-    if not args.test:
-        write_to_dvi_file(state, dvi_path, args.pdf)
+    run_and_write(args.input, dvi_path, font_search_paths,
+                  convert_to_pdf=args.pdf)
