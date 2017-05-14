@@ -39,6 +39,9 @@ class FontInfo:
     def font_name(self):
         return self.font_info.font_name
 
+    def char_info(self, code):
+        return self.font_info[code]
+
     @property
     def design_size(self):
         return self.font_info.design_font_size
@@ -47,16 +50,19 @@ class FontInfo:
         return scale(self.design_size, d)
 
     @property
+    def slant(self):
+        # 'Slant per point'. See TeXbook page 375.
+        # Disable until I understand what it means and its units.
+        raise NotImplementedError
+        return self.font_info.slant
+
+    @property
     def extra_space(self):
-        return pt2sp(self.font_info.extra_space)
+        return self.scale(self.font_info.extra_space)
 
     @property
     def quad(self):
-        return self.font_info.quad
-
-    @property
-    def slant(self):
-        return self.font_info.slant
+        return self.scale(self.font_info.quad)
 
     @property
     def space_shrink(self):
@@ -72,10 +78,7 @@ class FontInfo:
 
     @property
     def x_height(self):
-        return self.font_info.x_height
-
-    def char_info(self, code):
-        return self.font_info[code]
+        return self.scale(self.font_info.x_height)
 
     @lru_cache(maxsize=512)
     def width(self, code):
@@ -98,11 +101,11 @@ class FontInfo:
 
     @property
     def em_size(self):
-        return 1
+        return self.font_info.em_size
 
     @property
     def ex_size(self):
-        return 1
+        return self.font_info.ex_size
 
 
 class FontRange(Enum):
