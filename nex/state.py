@@ -3,7 +3,7 @@ import logging
 from enum import Enum
 from collections import deque
 
-from .utils import ExecuteCommandError, TidyEnd, pt_to_sp
+from .utils import ExecuteCommandError, TidyEnd
 from .reader import EndOfFile
 from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from .instructions import Instructions, h_add_glue_instructions
@@ -346,7 +346,7 @@ class GlobalState:
             size = self.evaluate_size(size_token)
             sign = evaler.evaluate_signs(number_value['signs'])
             if isinstance(size, BuiltToken) and size.type == 'fil_dimension':
-                size.value['factor'] *= -1
+                size.value['factor'] *= sign
             else:
                 size *= sign
             return size
