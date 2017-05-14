@@ -17,7 +17,7 @@ def make_input_chain(in_path, state):
     banisher = Banisher(
         instructions=instructioner, state=state, reader=reader,
     )
-    return banisher
+    return banisher, reader
 
 
 def run_file(in_path, font_search_paths):
