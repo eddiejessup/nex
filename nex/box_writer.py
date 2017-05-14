@@ -20,7 +20,8 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
             if horizontal:
                 doc.right(item.width)
         elif isinstance(item, box.Character):
-            doc.set_char(item.code)
+            doc.put_char(item.code)
+            doc.right(item.width)
         elif isinstance(item, box.UnSetGlue):
             if not horizontal:
                 item = item.set(item.natural_dimen)

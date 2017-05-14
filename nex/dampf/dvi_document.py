@@ -186,6 +186,9 @@ class DVIDocument:
     def set_char(self, char):
         self.mundane_instructions.append(get_set_char_instruction(char))
 
+    def put_char(self, char):
+        self.mundane_instructions.append(get_put_char_instruction(char))
+
     def write(self, stream):
         self._end_page()
         self._end_document()
