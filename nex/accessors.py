@@ -177,25 +177,29 @@ parameter_instr_types = instructions_to_types(param_instrs)
 glue_keys = ('dimen', 'stretch', 'shrink')
 
 
-def is_parameter_type(type_):
-    return type_ in parameter_instr_types
-
-
 def param_instr_subset(instr):
     return filter(lambda p: param_to_instr[p] == instr, Parameters)
 
 
-integer_parameters = param_instr_subset(Instructions.integer_parameter)
-dimen_parameters = param_instr_subset(Instructions.dimen_parameter)
-glue_parameters = param_instr_subset(Instructions.glue_parameter)
-mu_glue_parameters = param_instr_subset(Instructions.mu_glue_parameter)
-token_parameters = param_instr_subset(Instructions.token_parameter)
+def is_parameter_type(type_):
+    return type_ in parameter_instr_types
 
 
 class ParametersAccessor(TexNamedValues):
 
     @classmethod
     def default_initial(cls):
+        # WARNING: If you think these variables might be useful in global
+        # scope, beware. They are 'filter' objects, so they will only generate
+        # their values once. If you want to use them repeatedly, cast them to a
+        # suitable type. Otherwise they might break your tests in a way that is
+        # not funny at all.
+        integer_parameters = param_instr_subset(Instructions.integer_parameter)
+        dimen_parameters = param_instr_subset(Instructions.dimen_parameter)
+        glue_parameters = param_instr_subset(Instructions.glue_parameter)
+        mu_glue_parameters = param_instr_subset(Instructions.mu_glue_parameter)
+        token_parameters = param_instr_subset(Instructions.token_parameter)
+
         now = datetime.now()
         midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
         seconds_since_midnight = (now - midnight).total_seconds()
