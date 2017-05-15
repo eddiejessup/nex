@@ -50,21 +50,19 @@ def add_dimen_rules(pg):
     @pg.production('internal_dimen : DIMEN_PARAMETER')
     @pg.production('internal_dimen : dimen_register')
     @pg.production('internal_dimen : SPECIAL_DIMEN')
+    def internal_dimen(p):
+        return BuiltToken(type_='size', value=p[0], position_like=p)
+
     @pg.production('internal_dimen : box_dimension number')
-    def internal_scalar_quantity(p):
-        return BuiltToken(type_='size',
-                          value=p[0],
-                          position_like=p)
+    def internal_dimen_box_dimen(p):
+        box_reg_token = BuiltToken(type_=p[0].type, value=p[1], position_like=p)
+        return BuiltToken(type_='size', value=box_reg_token, position_like=p)
 
     @pg.production('box_dimension : BOX_DIMEN_HEIGHT')
     @pg.production('box_dimension : BOX_DIMEN_WIDTH')
     @pg.production('box_dimension : BOX_DIMEN_DEPTH')
     def box_dimension(p):
-        # TODO: Implement this.
-        raise NotImplementedError
-        box_dimen_type = p[0].type
-        return BuiltToken(type_='box_dimen', value=1,
-                          position_like=p)
+        return p[0]
 
     @pg.production('factor : normal_integer')
     @pg.production('factor : decimal_constant')
