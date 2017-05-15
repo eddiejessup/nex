@@ -4,7 +4,8 @@ from enum import Enum
 
 from .tokens import InstructionToken
 from .reader import EndOfFile
-from .lexer import (char_cat_lex_type, control_sequence_lex_type)
+from .lexer import (is_control_sequence_call, is_char_cat,
+                    char_cat_lex_type, control_sequence_lex_type)
 from .codes import CatCode
 from .instructions import (Instructions,
                            explicit_box_instructions,
@@ -242,7 +243,7 @@ def get_conditional_text(instructions, i_block_to_pick):
     start_condition_names = ('ifnum', 'iftrue', 'iffalse', 'ifcase',)
 
     def get_condition_sign(token):
-        if token.value['lex_type'] != control_sequence_lex_type:
+        if not is_control_sequence_call(token):
             return 0
         name = token.value['name']
         if name in start_condition_names:
@@ -253,7 +254,7 @@ def get_conditional_text(instructions, i_block_to_pick):
             return 0
 
     def is_condition_delimiter(token):
-        return (token.value['lex_type'] == control_sequence_lex_type and
+        return (is_control_sequence_call(token) and
                 token.value['name'] in delimit_condition_block_names)
 
     nr_conditions = 1
@@ -557,7 +558,7 @@ class Banisher:
         for t in out_queue:
             if t.instruction == Instructions.end_cs_name:
                 break
-            if t.value['lex_type'] == char_cat_lex_type:
+            if is_char_cat(t):
                 chars.append(t.value['char'])
             else:
                 raise BanisherError(f'Found non-character inside '
