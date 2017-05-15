@@ -26,7 +26,7 @@ def run_file(in_path, font_search_paths):
 
     with safe_chunk_grabber(banisher, command_parser) as command_grabber:
         try:
-            state.execute_commands(command_grabber, banisher, reader)
+            state.execute_command_tokens(command_grabber, banisher, reader)
         except TidyEnd:
             return state
     return state

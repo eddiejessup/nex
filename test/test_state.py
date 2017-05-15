@@ -4,6 +4,9 @@ from nex.state import GlobalState, Mode
 from nex.fonts import GlobalFontState
 from nex import box
 from nex.box_writer import write_to_dvi_file
+from nex.utils import ExecuteCommandError
+
+from common import ITok, DummyInstructions
 
 
 do_output = True
@@ -57,11 +60,26 @@ def test_single_letter():
     assert len(state.modes) == 1
     assert state.mode == Mode.vertical
     lst = state._layout_list
-    assert len(lst) == 3
+    assert len(lst) == 5
     assert isinstance(lst[0], box.FontDefinition)
     assert isinstance(lst[1], box.FontSelection)
-    assert isinstance(lst[2], box.Character)
+    assert isinstance(lst[2], box.UnSetGlue)
+    assert isinstance(lst[3], box.HBox)
+    assert isinstance(lst[4], box.UnSetGlue)
+    hbox = lst[3]
+    assert isinstance(hbox.contents[1], box.Character)
     write(state, 'test_single_letter.dvi')
+
+
+def test_token_executor():
+    state = get_state()
+    tok = ITok(instruction=DummyInstructions.test, value=None)
+    with pytest.raises(ValueError):
+        state.execute_command_token(tok, banisher=None, reader=None)
+    with pytest.raises(ExecuteCommandError):
+        state.execute_command_tokens(iter([tok]), banisher=None, reader=None)
+    with pytest.raises(ExecuteCommandError):
+        state.execute_next_command_token(iter([tok]), banisher=None, reader=None)
 
 
 def test_solo_accent():
@@ -81,7 +99,6 @@ def test_paired_accent():
     state.add_character_char('o')
     state.do_paragraph()
     lst = state._layout_list
-    import pdb; pdb.set_trace()
     write(state, 'test_accent.dvi')
 
 

@@ -415,9 +415,8 @@ class Banisher:
         logger.debug(f'Handling condition "{first_token.instruction.name} …"')
         with safe_chunk_grabber(self, condition_parser,
                                 initial=[first_token]) as condition_grabber:
-            condition_token = next(condition_grabber)
-        i_block_to_pick = self.global_state.execute_condition(condition_token)
-
+            if_token = next(condition_grabber)
+        i_block_to_pick = self.global_state.evaluate_if_token_to_block(if_token)
         # Now get the body of the condition text.
         not_skipped_tokens = get_conditional_text(self.instructions,
                                                   i_block_to_pick)
@@ -455,9 +454,9 @@ class Banisher:
         box_parser = command_parser
         with safe_chunk_grabber(self, parser=box_parser) as chunk_grabber:
             # Matching right brace should trigger EndOfSubExecutor and return.
-            self.global_state.execute_commands(chunk_grabber,
-                                               banisher=self,
-                                               reader=self.reader)
+            self.global_state.execute_command_tokens(chunk_grabber,
+                                                     banisher=self,
+                                                     reader=self.reader)
 
         # [After ending the group, then TeX] packages the hbox (using the
         # size that was saved on the stack), and completes the setbox

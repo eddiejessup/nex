@@ -20,7 +20,7 @@ banisher = Banisher(instructioner, state, reader)
 command_grabber = ChunkGrabber(banisher, command_parser)
 
 reader.insert_file('/Users/ejm/projects/nex/tex/plain.tex')
-state.execute_commands(command_grabber, banisher, reader)
+state.execute_command_tokens(command_grabber, banisher, reader)
 
 while True:
     s = input('In: ')

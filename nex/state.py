@@ -191,30 +191,6 @@ class GlobalState:
     def pop_group(self):
         return self.groups.pop()
 
-    # Affects both global and scoped state: fonts are stored in the global
-    # state, but the current font and control sequences to access them are
-    # scoped.
-
-    def define_new_font(self, file_name, at_clause):
-        # Load the font
-        new_font_id = self.global_font_state.define_new_font(file_name, at_clause)
-        # Add an instruction in the layout list to define a font.
-        font_info = self.global_font_state.get_font(new_font_id)
-        font_define_item = FontDefinition(font_nr=new_font_id,
-                                          font_name=font_info.font_name,
-                                          file_name=font_info.file_name,
-                                          at_clause=font_info.at_clause)
-        self.append_to_list(font_define_item)
-        return new_font_id
-
-    @property
-    def current_font_id(self):
-        return self.scoped_font_state.current_font_id
-
-    @property
-    def current_font(self):
-        return self.global_font_state.get_font(self.current_font_id)
-
     # Scope
 
     @property
@@ -232,27 +208,38 @@ class GlobalState:
         if self.current_font_id != GlobalFontState.null_font_id:
             self.select_font(is_global=False, font_id=self.current_font_id)
 
-    # Driving.
+    # Fonts.
 
-    def execute_commands(self, commands, banisher, reader):
-        while True:
-            try:
-                self.execute_next_command(commands, banisher, reader)
-            except EndOfFile:
-                return
-            except EndOfSubExecutor:
-                return
+    def define_new_font(self, file_name, at_clause):
+        # Affects both global and scoped state: fonts are stored in the global
+        # state, but the current font and control sequences to access them are
+        # scoped.
+        # Load the font.
+        new_font_id = self.global_font_state.define_new_font(file_name,
+                                                             at_clause)
+        # Add an instruction in the layout list to define a font.
+        font_info = self.global_font_state.get_font(new_font_id)
+        font_define_item = FontDefinition(font_nr=new_font_id,
+                                          font_name=font_info.font_name,
+                                          file_name=font_info.file_name,
+                                          at_clause=font_info.at_clause)
+        self.append_to_list(font_define_item)
+        return new_font_id
 
-    def execute_next_command(self, commands, banisher, reader):
-        command = next(commands)
-        try:
-            self.execute_command(command, banisher, reader)
-        except (EndOfFile, EndOfSubExecutor, TidyEnd):
-            raise
-        except Exception as e:
-            raise ExecuteCommandError(command, e)
+    @property
+    def current_font_id(self):
+        return self.scoped_font_state.current_font_id
 
-    # Boring evaluation utility methods.
+    @property
+    def current_font(self):
+        return self.global_font_state.get_font(self.current_font_id)
+
+    def select_font(self, is_global, font_id):
+        self.scoped_font_state.set_current_font(is_global, font_id)
+        font_select_item = FontSelection(font_nr=font_id)
+        self.append_to_list(font_select_item)
+
+    # Evaluate quantities.
 
     def evaluate_size(self, size_token):
         v = size_token.value
@@ -390,45 +377,24 @@ class GlobalState:
             raise NotImplementedError
         return evaluated_token_list
 
-    def _execute_if_num(self, if_token):
-        v = if_token.value
-        left_number = self.evaluate_number(v['left_number'])
-        right_number = self.evaluate_number(v['right_number'])
+    # Evaluate conditions.
+
+    def execute_if_num(self, left_number, right_number, relation):
+        left_number = self.evaluate_number(left_number)
+        right_number = self.evaluate_number(right_number)
         operator_map = {
             '<': operator.lt,
             '=': operator.eq,
             '>': operator.gt,
         }
-        op = operator_map[v['relation']]
+        op = operator_map[relation]
         outcome = op(left_number, right_number)
         return outcome
 
-    def _execute_if_case(self, if_token):
-        v = if_token.value
-        return self.evaluate_number(v['number'])
+    def execute_if_case(self, number):
+        return self.evaluate_number(number)
 
-    def execute_condition(self, condition_token):
-        if_token = condition_token.value
-        exec_func_map = {
-            'if_num': self._execute_if_num,
-            'if_case': self._execute_if_case,
-            'if_true': lambda *args: True,
-            'if_false': lambda *args: False,
-        }
-        exec_func = exec_func_map[if_token.type]
-        outcome = exec_func(if_token)
-        if if_token.type == 'if_case':
-            i_block_to_pick = outcome
-        else:
-            i_block_to_pick = 0 if outcome else 1
-        return i_block_to_pick
-
-    # Command handling.
-
-    def select_font(self, is_global, font_id):
-        self.scoped_font_state.set_current_font(is_global, font_id)
-        font_select_item = FontSelection(font_nr=font_id)
-        self.append_to_list(font_select_item)
+    # Do chunky commands.
 
     def do_paragraph(self):
         if self.mode in vertical_modes:
@@ -482,14 +448,14 @@ class GlobalState:
         else:
             import pdb; pdb.set_trace()
 
-    def add_character_char(self, char):
-        return self.add_character_code(ord(char))
-
     def get_character_item(self, *args, **kwargs):
         return Character(font=self.current_font, *args, **kwargs)
 
     def add_character_code(self, code):
         self.append_to_list(self.get_character_item(code))
+
+    def add_character_char(self, char):
+        return self.add_character_code(ord(char))
 
     def add_accented_character(self, accent_code, char_code):
         char_item = self.get_character_item(char_code)
@@ -612,7 +578,27 @@ class GlobalState:
         elif self.mode in horizontal_modes:
             import pdb; pdb.set_trace()
 
-    def execute_command(self, command, banisher, reader):
+    # Driving with tokens.
+
+    def execute_command_tokens(self, commands, banisher, reader):
+        while True:
+            try:
+                self.execute_next_command_token(commands, banisher, reader)
+            except EndOfFile:
+                return
+            except EndOfSubExecutor:
+                return
+
+    def execute_next_command_token(self, commands, banisher, reader):
+        command = next(commands)
+        try:
+            self.execute_command_token(command, banisher, reader)
+        except (EndOfFile, EndOfSubExecutor, TidyEnd):
+            raise
+        except Exception as e:
+            raise ExecuteCommandError(command, e)
+
+    def execute_command_token(self, command, banisher, reader):
         # Reader needed to allow us to insert new input in response to
         # commands.
         # Banisher needed to allow us to put output back on the queue in
@@ -661,7 +647,7 @@ class GlobalState:
             # appear between the accent number and the character to be
             # accented, but grouping operations must not intervene.
             for assignment in assignments:
-                self.execute_command(assignment, banisher, reader)
+                self.execute_command_token(assignment, banisher, reader)
             self.do_accent(accent_code_eval, target_char_code)
         elif type_ == 'V_RULE':
             logger.info(f"Adding vertical rule")
@@ -885,6 +871,26 @@ class GlobalState:
             logger.info(f'Adding horizontal super-elastic glue {item}')
             self.append_to_list(item)
         else:
-            # print(type_)
-            # pass
-            import pdb; pdb.set_trace()
+            raise ValueError
+
+    # This method has a long name to emphasize that it will return the index of
+    # the token block to pick, not the result of the condition.
+    def evaluate_if_token_to_block(self, if_token):
+        v = if_token.value
+        t = if_token.type
+        if t in ('if_num', 'if_dimen'):
+            outcome = self.execute_if_num(v['left_number'], v['right_number'],
+                                          v['relation'])
+        elif t == 'if_case':
+            outcome = self.execute_if_case(v['number'])
+        elif t == 'if_true':
+            outcome = True
+        elif t == 'if_false':
+            outcome = False
+        else:
+            raise NotImplementedError
+        if t == 'if_case':
+            i_block_to_pick = outcome
+        else:
+            i_block_to_pick = 0 if outcome else 1
+        return i_block_to_pick

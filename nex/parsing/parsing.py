@@ -150,7 +150,7 @@ terminal_types = instructions_to_types(terminal_instructions)
 def add_condition_rules(pg):
     @pg.production('condition_wrap : condition')
     def condition_wrap(p):
-        return BuiltToken(type_='condition', value=p[0])
+        return p[0]
 
     @pg.production('condition : IF_TRUE')
     def condition_if_true(p):
