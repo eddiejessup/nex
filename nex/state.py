@@ -41,6 +41,9 @@ class Mode(Enum):
 
 vertical_modes = (Mode.vertical, Mode.internal_vertical)
 horizontal_modes = (Mode.horizontal, Mode.restricted_horizontal)
+math_modes = (Mode.math, Mode.display_math)
+# Defined for \ifinner, TeXBook page 209.
+inner_modes = (Mode.internal_vertical, Mode.restricted_horizontal, Mode.math)
 
 
 class Group(Enum):
@@ -404,6 +407,51 @@ class GlobalState:
         op = operator_map[relation]
         outcome = op(left_number, right_number)
         return outcome
+
+    def evaluate_if_odd(self, number):
+        number_eval = self.evaluate_number(number)
+        return number_eval % 2
+
+    def evaluate_if_v_mode(self):
+        return self.mode in vertical_modes
+
+    def evaluate_if_h_mode(self):
+        return self.mode in horizontal_modes
+
+    def evaluate_if_m_mode(self):
+        return self.mode in math_modes
+
+    def evaluate_if_inner_mode(self):
+        return self.mode in inner_modes
+
+    def evaluate_if_chars_equal(self, tok_1, tok_2):
+        # TODO: we will assume tokens are not expandable. Maybe check for this?
+        # Instructions in TeXBook page 209.
+        raise NotImplementedError
+
+    def evaluate_if_cats_equal(self, tok_1, tok_2):
+        # Instructions in TeXBook page 209.
+        raise NotImplementedError
+
+    def evaluate_if_tokens_equal(self, tok_1, tok_2):
+        # Instructions in TeXBook page 210.
+        raise NotImplementedError
+
+    def evaluate_if_box_register_void(self, reg_nr):
+        # Instructions in TeXBook page 210.
+        raise NotImplementedError
+
+    def evaluate_if_box_register_h_box(self, reg_nr):
+        # Instructions in TeXBook page 210.
+        raise NotImplementedError
+
+    def evaluate_if_box_register_v_box(self, reg_nr):
+        # Instructions in TeXBook page 210.
+        raise NotImplementedError
+
+    def evaluate_if_end_of_file(self, input_stream_nr):
+        # Instructions in TeXBook page 210.
+        raise NotImplementedError
 
     def evaluate_if_case(self, number):
         number_eval = self.evaluate_number(number)

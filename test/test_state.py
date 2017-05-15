@@ -5,11 +5,12 @@ from nex.fonts import GlobalFontState
 from nex import box
 from nex.box_writer import write_to_dvi_file
 from nex.utils import ExecuteCommandError
+from nex.tokens import BuiltToken
 
 from common import ITok, DummyInstructions
 
 
-do_output = True
+do_output = False
 font_path = '/Users/ejm/projects/nex/fonts'
 
 
@@ -112,3 +113,47 @@ def test_v_rule(state):
     assert isinstance(lst[2], box.Rule)
     assert isinstance(lst[3], box.Rule)
     write(state, 'test_v_rule.dvi')
+
+
+def nr_tok(n):
+    v = BuiltToken(type_='internal_number', value=n)
+    return BuiltToken(type_='number', value=v)
+
+
+def test_if_num(state):
+    assert state.evaluate_if_num(nr_tok(2), nr_tok(2), '=')
+    assert state.evaluate_if_num(nr_tok(5), nr_tok(0), '>')
+    assert not state.evaluate_if_num(nr_tok(-6), nr_tok(-10), '<')
+
+
+def test_if_dimen(state):
+    assert state.evaluate_if_dim(nr_tok(2), nr_tok(2), '=')
+    assert state.evaluate_if_dim(nr_tok(5), nr_tok(0), '>')
+    assert not state.evaluate_if_dim(nr_tok(-6), nr_tok(-10), '<')
+
+
+def test_if_odd(state):
+    assert not state.evaluate_if_odd(nr_tok(2))
+    assert state.evaluate_if_odd(nr_tok(5))
+    assert not state.evaluate_if_odd(nr_tok(-6))
+    assert state.evaluate_if_odd(nr_tok(-1))
+    assert not state.evaluate_if_odd(nr_tok(0))
+
+
+def test_if_mode(state):
+    assert state.evaluate_if_v_mode()
+    assert not state.evaluate_if_h_mode()
+    assert not state.evaluate_if_m_mode()
+    assert not state.evaluate_if_inner_mode()
+    state.do_indent()
+    assert not state.evaluate_if_v_mode()
+    assert state.evaluate_if_h_mode()
+    assert not state.evaluate_if_m_mode()
+    assert not state.evaluate_if_inner_mode()
+
+
+def test_if_case(state):
+    assert state.evaluate_if_case(nr_tok(2)) == 2
+    assert state.evaluate_if_case(nr_tok(5)) == 5
+    with pytest.raises(ValueError):
+        state.evaluate_if_case(nr_tok(-6))
