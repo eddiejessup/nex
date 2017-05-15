@@ -20,6 +20,10 @@ class DummyFontInfo:
         self.file_name = file_name
         self.file_path = file_path
         self.at_clause = at_clause
+        self.width = lambda code: 1
+        self.height = lambda code: 1
+        self.depth = lambda code: 1
+        self.x_height = 1
 
 
 class DummyGlobalFontState(GlobalFontState):
@@ -95,7 +99,6 @@ def test_paired_accent(state):
     state.add_character_char('O')
     state.add_character_char('o')
     state.do_paragraph()
-    lst = state._layout_list
     write(state, 'test_accent.dvi')
 
 
