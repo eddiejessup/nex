@@ -379,7 +379,7 @@ class GlobalState:
 
     # Evaluate conditions.
 
-    def execute_if_num(self, left_number, right_number, relation):
+    def evaluate_if_num(self, left_number, right_number, relation):
         left_number = self.evaluate_number(left_number)
         right_number = self.evaluate_number(right_number)
         operator_map = {
@@ -391,7 +391,7 @@ class GlobalState:
         outcome = op(left_number, right_number)
         return outcome
 
-    def execute_if_case(self, number):
+    def evaluate_if_case(self, number):
         return self.evaluate_number(number)
 
     # Do chunky commands.
@@ -879,10 +879,10 @@ class GlobalState:
         v = if_token.value
         t = if_token.type
         if t in ('if_num', 'if_dimen'):
-            outcome = self.execute_if_num(v['left_number'], v['right_number'],
-                                          v['relation'])
+            outcome = self.evaluate_if_num(v['left_number'], v['right_number'],
+                                           v['relation'])
         elif t == 'if_case':
-            outcome = self.execute_if_case(v['number'])
+            outcome = self.evaluate_if_case(v['number'])
         elif t == 'if_true':
             outcome = True
         elif t == 'if_false':
