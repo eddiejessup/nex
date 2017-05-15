@@ -945,8 +945,9 @@ class GlobalState:
         v = if_token.value
         t = if_token.type
         if t == 'if_num':
+            relation_str = v['relation'].value['char']
             outcome = self.evaluate_if_num(v['left_number'], v['right_number'],
-                                           v['relation'])
+                                           relation_str)
         elif t == 'if_dimen':
             outcome = self.evaluate_if_dim(v['left_dimen'], v['right_dimen'],
                                            v['relation'])

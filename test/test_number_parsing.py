@@ -1,25 +1,15 @@
-from nex.tokens import PLYTokenMixin
-from nex.parsing import parsing
-
-
 import pytest
 
+from nex.parsing import parsing
 
-class T(PLYTokenMixin):
-    def __init__(self, type_, v=None):
-        self.type = type_
-        self.value = v
-
-    def __repr__(self):
-        v = self.value if self.value is not None else ''
-        return f'T<{self.type}>({v})'
+from common import str_to_toks as stoks, str_to_lit_str
 
 
 def test_numbers():
-    parser = parsing.get_parser(start='number')
+    parser = parsing.get_parser(start='number', chunking=False)
 
     def p(s):
-        return parser.parse(iter(s))
+        return parser.parse(iter(stoks(s)))
 
     def basic_check(r):
         assert r.type == 'number'
@@ -27,7 +17,7 @@ def test_numbers():
         assert sz.type == 'size'
         return sgns, sz
 
-    r = parser.parse(iter([T('ZERO'), T('ONE'), T('TWO')]))
+    r = p('ZERO ONE TWO')
     sgns, sz = basic_check(r)
     assert len(sgns.value) == 0
     szv = sz.value
@@ -37,31 +27,36 @@ def test_numbers():
 
     number_makers = [
         # Check signs.
-        [T('MINUS_SIGN'), T('MINUS_SIGN'), T('ONE'), T('TWO')],
+        'MINUS_SIGN MINUS_SIGN ONE TWO',
         # Check optional space.
-        [T('ONE'), T('TWO'), T('SPACE')],
+        'ONE TWO SPACE',
         # Check hex and octal constants.
-        [T('SINGLE_QUOTE'), T('TWO')],
-        [T('DOUBLE_QUOTE'), T('TWO')],
+        'SINGLE_QUOTE TWO',
+        'DOUBLE_QUOTE TWO',
 
-        [T('BACKTICK'), T('UNEXPANDED_CONTROL_SYMBOL')],
-        [T('BACKTICK'), T('EQUALS')],
-        [T('BACKTICK'), T('ACTIVE_CHARACTER')],
+        'BACKTICK UNEXPANDED_CONTROL_SYMBOL',
+        'BACKTICK EQUALS',
+        'BACKTICK ACTIVE_CHARACTER',
 
-        [T('INTEGER_PARAMETER')],
-        [T('SPECIAL_INTEGER')],
-        [T('CHAR_DEF_TOKEN')],
-        [T('MATH_CHAR_DEF_TOKEN')],
-        [T('COUNT_DEF_TOKEN')],
-        [T('COUNT'), T('ONE')]
+        'INTEGER_PARAMETER',
+        'SPECIAL_INTEGER',
+        'CHAR_DEF_TOKEN',
+        'MATH_CHAR_DEF_TOKEN',
+        'COUNT_DEF_TOKEN',
+        'COUNT ONE'
     ]
 
     for number_maker in number_makers:
-        r = parser.parse(iter(number_maker))
+        r = p(number_maker)
         basic_check(r)
 
-    s = [T('COUNT')]
+    s = 'COUNT'
     for number_maker in number_makers:
-        cs = s + number_maker
-        r = parser.parse(iter(cs))
+        cs = ' '.join([s, number_maker])
+        r = p(cs)
         basic_check(r)
+
+
+def test_dimens():
+    parser = parsing.get_parser(start='dimen', chunking=False)
+    parser.parse(iter(stoks(f'ONE {str_to_lit_str("pt")}')))

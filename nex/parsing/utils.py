@@ -28,10 +28,14 @@ def make_literal_token(p):
     return BuiltToken(type_='literal', value=s, position_like=p)
 
 
+def str_to_char_types(s):
+    return (letter_to_non_active_uncased_type_map[c] for c in s)
+
+
 def get_literal_production_rule(word, target=None):
     if target is None:
         target = word
-    rule = ' '.join(letter_to_non_active_uncased_type_map[c] for c in word)
+    rule = ' '.join(str_to_char_types(word))
     return '{} : {}'.format(target, rule)
 
 
@@ -50,23 +54,6 @@ class DigitCollection:
 def wrap(pg, func, rule):
     f = pg.production(rule)
     return f(func)
-
-
-def add_chunky_error(pg):
-    @pg.error
-    def error(look_ahead):
-        # If we have exhausted the list of tokens while still
-        # having a valid command, we should read more tokens until we get a syntax
-        # error.
-        if is_end_token(look_ahead):
-            raise ExhaustedTokensError
-        # Assume we have an actual syntax error, which we interpret to mean the
-        # current command has finished being parsed and we are looking at tokens
-        # for the next command.
-        elif look_ahead is not None:
-            raise ExpectedParsingError
-        else:
-            raise Exception
 
 
 class ExpectedParsingError(Exception):

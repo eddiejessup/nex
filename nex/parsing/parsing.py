@@ -174,16 +174,16 @@ def add_condition_rules(pg):
                                  'right_dimen': p[3],
                                  'relation': p[2]})
 
-    @pg.production('condition : IF_CASE number')
-    def condition_if_case(p):
-        return BuiltToken(type_='if_case',
-                          value={'number': p[1]})
-
     @pg.production('relation : LESS_THAN')
     @pg.production('relation : EQUALS')
     @pg.production('relation : GREATER_THAN')
     def relation(p):
-        return p[0].value['char']
+        return p[0]
+
+    @pg.production('condition : IF_CASE number')
+    def condition_if_case(p):
+        return BuiltToken(type_='if_case',
+                          value={'number': p[1]})
 
 
 def add_variable_rules(pg):
@@ -234,8 +234,12 @@ number_rules.add_number_rules(pg)
 character_rules.add_character_rules(pg)
 
 
-@pg.error
-def error(look_ahead):
+@pg.production('empty :')
+def empty(p):
+    return None
+
+
+def chunker_error(look_ahead):
     # If we have exhausted the list of tokens while still
     # having a valid command, we should read more tokens until we get a syntax
     # error.
@@ -250,20 +254,24 @@ def error(look_ahead):
         import pdb; pdb.set_trace()
 
 
-@pg.production('empty :')
-def empty(p):
-    return None
+def batch_error(look_ahead):
+    raise Exception
 
 
-def get_parser(start='command'):
+def get_parser(start='command', chunking=True):
     """Build and return a parser that tries to construct the `start` token. By
     default this is `command`, the usual target of the program. Other values
     can be passed to get smaller semantic units, for detailed parsing and
     testing."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        command_parser = pg.build(start=start)
-    return command_parser
+        parser = pg.build(start=start)
+    if chunking:
+        error_handler = chunker_error
+    else:
+        error_handler = batch_error
+    parser.error_handler = error_handler
+    return parser
 
 
 command_parser = get_parser()

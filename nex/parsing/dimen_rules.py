@@ -142,17 +142,41 @@ def add_dimen_rules(pg):
     def literal_true(p):
         return pu.make_literal_token(p)
 
+    def make_unit_tok(unit, p):
+        return BuiltToken(type_='physical_unit', value=unit, position_like=p)
+
     @pg.production(pu.get_literal_production_rule('pt', target='physical_unit'))
+    def physical_unit_point(p):
+        return make_unit_tok(PhysicalUnit.point, p)
+
     @pg.production(pu.get_literal_production_rule('pc', target='physical_unit'))
+    def physical_unit_pica(p):
+        return make_unit_tok(PhysicalUnit.pica, p)
+
     @pg.production(pu.get_literal_production_rule('in', target='physical_unit'))
+    def physical_unit_inch(p):
+        return make_unit_tok(PhysicalUnit.inch, p)
+
     @pg.production(pu.get_literal_production_rule('bp', target='physical_unit'))
+    def physical_unit_big_point(p):
+        return make_unit_tok(PhysicalUnit.big_point, p)
+
     @pg.production(pu.get_literal_production_rule('cm', target='physical_unit'))
+    def physical_unit_centimetre(p):
+        return make_unit_tok(PhysicalUnit.centimetre, p)
+
     @pg.production(pu.get_literal_production_rule('mm', target='physical_unit'))
+    def physical_unit_centimetre(p):
+        return make_unit_tok(PhysicalUnit.millimetre, p)
+
     @pg.production(pu.get_literal_production_rule('dd', target='physical_unit'))
+    def physical_unit_centimetre(p):
+        return make_unit_tok(PhysicalUnit.didot_point, p)
+
     @pg.production(pu.get_literal_production_rule('cc', target='physical_unit'))
+    def physical_unit_centimetre(p):
+        return make_unit_tok(PhysicalUnit.cicero, p)
+
     @pg.production(pu.get_literal_production_rule('sp', target='physical_unit'))
-    def physical_unit(p):
-        unit = PhysicalUnit(''.join([t.value['char'] for t in p]))
-        return BuiltToken(type_='physical_unit',
-                          value=unit,
-                          position_like=p)
+    def physical_unit_centimetre(p):
+        return make_unit_tok(PhysicalUnit.scaled_point, p)
