@@ -106,8 +106,7 @@ def safe_chunk_grabber(banisher, *args, **kwargs):
     c = ChunkGrabber(banisher, *args, **kwargs)
     yield c
     if c.out_queue.queue:
-        raise ValueError(f'Finished with chunk grabber but still tokens on '
-                         f'output queue: {c.out_queue.queue}')
+        c.clean_up()
 
 
 class ChunkGrabber:
@@ -209,5 +208,5 @@ class ChunkGrabber:
         return chunk
 
     def clean_up(self):
-        logger.info(f"Cleaning up {len(self.out_queue.queue)} on chunk grabber's queue")
+        logger.info(f"Cleaning up tokens on chunk grabber's queue: {self.out_queue.queue}")
         self.banisher.instructions.replace_tokens_on_input(self.out_queue.queue)
