@@ -170,8 +170,8 @@ def add_condition_rules(pg):
     @pg.production('condition : IF_DIMEN dimen relation dimen')
     def condition_if_dimen(p):
         return BuiltToken(type_='if_dimen',
-                          value={'left_number': p[1],
-                                 'right_number': p[3],
+                          value={'left_dimen': p[1],
+                                 'right_dimen': p[3],
                                  'relation': p[2]})
 
     @pg.production('condition : IF_CASE number')

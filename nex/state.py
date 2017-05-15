@@ -391,8 +391,26 @@ class GlobalState:
         outcome = op(left_number, right_number)
         return outcome
 
+    evaluate_if_dim = evaluate_if_num
+
+    def evaluate_if_num(self, left_number, right_number, relation):
+        left_number = self.evaluate_number(left_number)
+        right_number = self.evaluate_number(right_number)
+        operator_map = {
+            '<': operator.lt,
+            '=': operator.eq,
+            '>': operator.gt,
+        }
+        op = operator_map[relation]
+        outcome = op(left_number, right_number)
+        return outcome
+
     def evaluate_if_case(self, number):
-        return self.evaluate_number(number)
+        number_eval = self.evaluate_number(number)
+        if number_eval < 0:
+            raise ValueError(f'if-case should not return negative number: '
+                             f'{number_eval}')
+        return number_eval
 
     # Do chunky commands.
 
@@ -878,8 +896,11 @@ class GlobalState:
     def evaluate_if_token_to_block(self, if_token):
         v = if_token.value
         t = if_token.type
-        if t in ('if_num', 'if_dimen'):
+        if t == 'if_num':
             outcome = self.evaluate_if_num(v['left_number'], v['right_number'],
+                                           v['relation'])
+        elif t == 'if_dimen':
+            outcome = self.evaluate_if_dim(v['left_dimen'], v['right_dimen'],
                                            v['relation'])
         elif t == 'if_case':
             outcome = self.evaluate_if_case(v['number'])
