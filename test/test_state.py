@@ -36,7 +36,8 @@ class DummyGlobalFontState(GlobalFontState):
         return font_id
 
 
-def get_state():
+@pytest.fixture
+def state():
     if do_output:
         global_font_state = GlobalFontState(search_paths=[font_path])
     else:
@@ -52,8 +53,7 @@ def write(state, file_name):
         write_to_dvi_file(state, file_name, write_pdf=True)
 
 
-def test_single_letter():
-    state = get_state()
+def test_single_letter(state):
     state.do_indent()
     state.add_character_char('a')
     state.do_paragraph()
@@ -71,8 +71,7 @@ def test_single_letter():
     write(state, 'test_single_letter.dvi')
 
 
-def test_token_executor():
-    state = get_state()
+def test_token_executor(state):
     tok = ITok(instruction=DummyInstructions.test, value=None)
     with pytest.raises(ValueError):
         state.execute_command_token(tok, banisher=None, reader=None)
@@ -82,16 +81,14 @@ def test_token_executor():
         state.execute_next_command_token(iter([tok]), banisher=None, reader=None)
 
 
-def test_solo_accent():
-    state = get_state()
+def test_solo_accent(state):
     state.do_indent()
     state.do_accent(accent_code=23, target_code=None)
     state.do_paragraph()
     write(state, 'test_solo_accent.dvi')
 
 
-def test_paired_accent():
-    state = get_state()
+def test_paired_accent(state):
     state.do_indent()
     state.do_accent(accent_code=127, target_code=ord('O'))
     state.do_accent(accent_code=127, target_code=ord('o'))
@@ -102,8 +99,7 @@ def test_paired_accent():
     write(state, 'test_accent.dvi')
 
 
-def test_v_rule():
-    state = get_state()
+def test_v_rule(state):
     state.add_rule(width=int(1e7), height=int(1e2), depth=0)
     state.add_rule(width=int(1e7), height=int(1e2), depth=int(1e7))
     state.do_paragraph()
