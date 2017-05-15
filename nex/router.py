@@ -91,10 +91,25 @@ primitive_control_sequence_map = {
     'gdef': I.g_def,
     'edef': I.e_def,
     'xdef': I.x_def,
+    # If's.
     'ifnum': I.if_num,
+    'ifdim': I.if_dimen,
+    'ifodd': I.if_odd,
+    'ifvmode': I.if_v_mode,
+    'ifhmode': I.if_h_mode,
+    'ifmmode': I.if_m_mode,
+    'ifinner': I.if_inner,
+    'if': I.if_char,
+    'ifcat': I.if_cat,
+    'ifx': I.if_token,
+    'ifvoid': I.if_void,
+    'ifhbox': I.if_h_box,
+    'ifvbox': I.if_v_box,
+    'ifeof': I.if_end_of_file,
     'iftrue': I.if_true,
     'iffalse': I.if_false,
     'ifcase': I.if_case,
+    # Banisher-handled.
     'string': I.string,
     'csname': I.cs_name,
     'endcsname': I.end_cs_name,
@@ -105,6 +120,7 @@ primitive_control_sequence_map = {
     'else': I.else_,
     'fi': I.end_if,
     'or': I.or_,
+    # Other.
     'accent': I.accent,
 }
 

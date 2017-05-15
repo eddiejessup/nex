@@ -127,7 +127,24 @@ instructions = (
     'X_DEF',
 
     # Conditions
+    # \ifnum <number_1> <relation> <number_2>
+    # Compare two integers. The <relation> must be "<_12", "=_12" or ">_12".
     'IF_NUM',
+    # \ifdim <dimen_1> <relation> <dimen_2>
+    # Compare two dimensions. Otherwise, same as above.
+    'IF_DIMEN',
+    'IF_ODD',
+    'IF_V_MODE',
+    'IF_H_MODE',
+    'IF_M_MODE',
+    'IF_INNER',
+    'IF_CHAR',
+    'IF_CAT',
+    'IF_TOKEN',
+    'IF_VOID',
+    'IF_H_BOX',
+    'IF_V_BOX',
+    'IF_END_OF_FILE',
     'IF_TRUE',
     'IF_FALSE',
     'IF_CASE',
@@ -300,10 +317,21 @@ def_instructions = (
 )
 
 
-# Note: These are only terminal for the condition parser, so not added to that
-# list.
 if_instructions = (
     I.if_num,
+    I.if_dimen,
+    I.if_odd,
+    I.if_v_mode,
+    I.if_h_mode,
+    I.if_m_mode,
+    I.if_inner,
+    I.if_char,
+    I.if_cat,
+    I.if_token,
+    I.if_void,
+    I.if_h_box,
+    I.if_v_box,
+    I.if_end_of_file,
     I.if_true,
     I.if_false,
     I.if_case,
