@@ -75,14 +75,7 @@ terminal_instructions = (
     I.toks_def_token,
     I.unexpanded_control_symbol,
     I.accent,
-)
-# Add ordinary character literals.
-char_instructions = tuple(I['non_active_uncased_{}'.format(c.lower())]
-                          for c in ascii_lowercase)
-terminal_instructions += char_instructions
-terminal_instructions += register_instructions
 
-terminal_instructions += (
     I.cat_code,
     I.math_code,
     I.upper_case_code,
@@ -139,6 +132,11 @@ terminal_instructions += (
     I.active_character,
     I.unexpanded_control_word,
 )
+# Add ordinary character literals.
+char_instructions = tuple(I['non_active_uncased_{}'.format(c.lower())]
+                          for c in ascii_lowercase)
+terminal_instructions += char_instructions
+terminal_instructions += register_instructions
 terminal_instructions += message_instructions
 terminal_instructions += hyphenation_instructions
 terminal_instructions += h_add_glue_instructions
