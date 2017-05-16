@@ -1,7 +1,6 @@
 from enum import Enum
 
-from .codes import Codes
-from .accessors import ParametersAccessor, Registers
+from .accessors import ParametersAccessor, Registers, Codes
 from .fonts import FontState
 from .router import CSRouter
 from .utils import NotInScopeError

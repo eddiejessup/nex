@@ -1,4 +1,5 @@
-from nex.codes import Codes, CatCode
+from nex.codes import CatCode
+from nex.accessors import Codes
 from nex.lexer import Lexer
 
 
