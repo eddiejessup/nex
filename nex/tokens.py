@@ -1,6 +1,5 @@
 import colorama
 
-from .instructions import Instructions
 from .feedback import strep, csep
 
 colorama.init()

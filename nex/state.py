@@ -8,8 +8,8 @@ from .reader import EndOfFile
 from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from .instructions import Instructions, h_add_glue_instructions
 from .instructioner import make_primitive_control_sequence_instruction
-from .accessors import (is_parameter_type, is_register_type,
-                        Parameters, SpecialsAccessor)
+from .parameters import Parameters, is_parameter_type
+from .accessors import is_register_type, SpecialsAccessor
 from .box import (HBox, Rule, UnSetGlue, Character, FontDefinition,
                   FontSelection, Kern)
 from .paragraphs import h_list_to_best_h_boxes
@@ -834,14 +834,13 @@ class GlobalState:
             else:
                 import pdb; pdb.set_trace()
         elif type_ == 'set_box_assignment':
-            # TODO: Implement.
+            # import pdb; pdb.set_trace()
+            # raise NotImplementedError
             pass
         elif type_ == 'PATTERNS':
-            # TODO: Implement.
-            pass
+            raise NotImplementedError
         elif type_ == 'HYPHENATION':
-            # TODO: Implement.
-            pass
+            raise NotImplementedError
         elif type_ == 'code_assignment':
             code_type = v['code_type']
             char_size = self.evaluate_number(v['char'])
@@ -889,9 +888,12 @@ class GlobalState:
             conts = v['content'].value
             s = ''.join(t.value['char'] for t in conts)
             print(f'MESSAGE: {s}')
-            pass
         elif type_ == 'write':
-            # print(command.value)
+            conts = v['content'].value
+            # s = ''.join(t.value['char'] for t in conts)
+            print(f'LOG: <todo>')
+            # TODO: This should be read with expansion, but at the moment we
+            # read it unexpanded, so what we get here is not printable.
             pass
         elif type_ == 'RELAX':
             pass
