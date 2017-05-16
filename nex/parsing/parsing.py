@@ -154,37 +154,37 @@ def add_condition_rules(pg):
 
     @pg.production('condition : IF_TRUE')
     def condition_if_true(p):
-        return BuiltToken(type_='if_true', value=None)
+        return BuiltToken(type_=p[0].type, value=None)
 
     @pg.production('condition : IF_FALSE')
     def condition_if_false(p):
-        return BuiltToken(type_='if_false', value=None)
+        return BuiltToken(type_=p[0].type, value=None)
 
     @pg.production('condition : IF_NUM number relation number')
     def condition_if_num(p):
-        return BuiltToken(type_='if_num',
+        return BuiltToken(type_=p[0].type,
                           value={'left_number': p[1],
                                  'right_number': p[3],
                                  'relation': p[2]})
 
     @pg.production('condition : IF_DIMEN dimen relation dimen')
     def condition_if_dimen(p):
-        return BuiltToken(type_='if_dimen',
+        return BuiltToken(type_=p[0].type,
                           value={'left_dimen': p[1],
                                  'right_dimen': p[3],
                                  'relation': p[2]})
 
     @pg.production('condition : IF_ODD number')
     def condition_if_odd(p):
-        return BuiltToken(type_='if_odd', value={'number': p[1]})
+        return BuiltToken(type_=p[0].type, value={'number': p[1]})
 
     @pg.production('condition : IF_V_MODE')
     def condition_if_v_mode(p):
-        return BuiltToken(type_='if_v_mode', value=None)
+        return BuiltToken(type_=p[0].type, value=None)
 
     @pg.production('condition : IF_H_MODE')
     def condition_if_h_mode(p):
-        return BuiltToken(type_='if_h_mode', value=None)
+        return BuiltToken(type_=p[0].type, value=None)
 
     @pg.production('relation : LESS_THAN')
     @pg.production('relation : EQUALS')
@@ -194,7 +194,7 @@ def add_condition_rules(pg):
 
     @pg.production('condition : IF_CASE number')
     def condition_if_case(p):
-        return BuiltToken(type_='if_case', value={'number': p[1]})
+        return BuiltToken(type_=p[0].type, value={'number': p[1]})
 
 
 def add_variable_rules(pg):

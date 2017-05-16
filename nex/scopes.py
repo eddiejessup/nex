@@ -169,6 +169,18 @@ class ScopedRouter(ScopedAccessor):
         return self.try_scope_func_until_success('lookup_control_sequence',
                                                  *args, **kwargs)
 
+    def name_means_delimit_condition(self, *args, **kwargs):
+        return self.try_scope_func_until_success('name_means_delimit_condition',
+                                                 *args, **kwargs)
+
+    def name_means_end_condition(self, *args, **kwargs):
+        return self.try_scope_func_until_success('name_means_end_condition',
+                                                 *args, **kwargs)
+
+    def name_means_start_condition(self, *args, **kwargs):
+        return self.try_scope_func_until_success('name_means_start_condition',
+                                                 *args, **kwargs)
+
     def set_macro(self, name, replacement_text, parameter_text, def_type, prefixes):
         # TODO: Consider \globaldefs integer parameter.
         # TODO: do something about \outer. Although it seems a bit fussy...

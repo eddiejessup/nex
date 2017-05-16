@@ -944,22 +944,22 @@ class GlobalState:
     def evaluate_if_token_to_block(self, if_token):
         v = if_token.value
         t = if_token.type
-        if t == 'if_num':
+        if t == 'IF_NUM':
             relation_str = v['relation'].value['char']
             outcome = self.evaluate_if_num(v['left_number'], v['right_number'],
                                            relation_str)
-        elif t == 'if_dimen':
+        elif t == 'IF_DIMEN':
             outcome = self.evaluate_if_dim(v['left_dimen'], v['right_dimen'],
                                            v['relation'])
-        elif t == 'if_case':
+        elif t == 'IF_CASE':
             outcome = self.evaluate_if_case(v['number'])
-        elif t == 'if_true':
+        elif t == 'IF_TRUE':
             outcome = True
-        elif t == 'if_false':
+        elif t == 'IF_FALSE':
             outcome = False
         else:
             raise NotImplementedError
-        if t == 'if_case':
+        if t == 'IF_CASE':
             i_block_to_pick = outcome
         else:
             i_block_to_pick = 0 if outcome else 1

@@ -55,6 +55,15 @@ class DummyRouter:
         canon_token = self.cs_map[name]
         return canon_token.copy(*args, **kwargs)
 
+    def name_means_start_condition(self, name):
+        return name in ('ifYes', 'ifNo')
+
+    def name_means_end_condition(self, name):
+        return name == 'endIf'
+
+    def name_means_delimit_condition(self, name):
+        return name in ('else', 'ooor')
+
 
 class DummyParameters:
 
@@ -71,6 +80,14 @@ class DummyState:
         self.router = DummyRouter(cs_map)
         self.parameters = DummyParameters(param_map)
         self.codes = DummyCodes(char_to_cat)
+
+    def evaluate_if_token_to_block(self, tok):
+        if tok.type == Instructions.if_true.value:
+            return 0
+        elif tok.type == Instructions.if_false.value:
+            return 1
+        else:
+            raise Exception
 
 
 def string_to_banisher(s, cs_map, char_to_cat=None, param_map=None):
@@ -365,3 +382,20 @@ def test_change_case():
     b = string_to_banisher('$upper[x$makey z]', cs_map)
     out = b.advance_to_end()
     assert ''.join(t.value['char'] for t in out) == 'XyZ'
+
+
+def test_if():
+    cs_map = {
+        'ifYes': ITok(Instructions.if_true),
+        'ifNo': ITok(Instructions.if_false),
+        'else': ITok(Instructions.else_),
+        'endIf': ITok(Instructions.end_if),
+    }
+
+    b = string_to_banisher('$ifYes abc$else def $endIf', cs_map)
+    out = b.advance_to_end()
+    assert ''.join(t.value['char'] for t in out) == 'abc'
+
+    b = string_to_banisher('$ifNo abc$else def$endIf', cs_map)
+    out = b.advance_to_end()
+    assert ''.join(t.value['char'] for t in out) == 'def'

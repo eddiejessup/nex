@@ -235,51 +235,6 @@ def get_macro_arguments(params, tokens):
     return arguments
 
 
-def get_conditional_text(instructions, i_block_to_pick):
-    # I don't think I can rely on instructions, because expansion is
-    # suppressed.
-    delimit_condition_block_names = ('else', 'or')
-    end_condition_names = ('fi',)
-    start_condition_names = ('ifnum', 'iftrue', 'iffalse', 'ifcase',)
-
-    def get_condition_sign(token):
-        if not is_control_sequence_call(token):
-            return 0
-        name = token.value['name']
-        if name in start_condition_names:
-            return 1
-        elif name in end_condition_names:
-            return -1
-        else:
-            return 0
-
-    def is_condition_delimiter(token):
-        return (is_control_sequence_call(token) and
-                token.value['name'] in delimit_condition_block_names)
-
-    nr_conditions = 1
-    i_block = 0
-    not_skipped_instructions = []
-    for t in instructions:
-        # Keep track of nested conditions.
-        nr_conditions += get_condition_sign(t)
-
-        # If we get the terminal \fi, return the gathered tokens.
-        if nr_conditions == 0:
-            return not_skipped_instructions
-        # If we are at the pertinent if-nesting level, then
-        # a condition block delimiter should be kept track of.
-        elif nr_conditions == 1 and is_condition_delimiter(t):
-            i_block += 1
-        # if we're in the block the condition says we should pick,
-        # include token.
-        elif i_block == i_block_to_pick:
-            not_skipped_instructions.append(t)
-        # Otherwise we are skipping tokens.
-        else:
-            pass
-
-
 def get_parameter_instrs(instructions):
     param_instrs = []
     while True:
@@ -419,8 +374,47 @@ class Banisher:
             if_token = next(condition_grabber)
         i_block_to_pick = self.global_state.evaluate_if_token_to_block(if_token)
         # Now get the body of the condition text.
-        not_skipped_tokens = get_conditional_text(self.instructions,
-                                                  i_block_to_pick)
+
+        def get_condition_sign(token):
+            if not is_control_sequence_call(token):
+                return 0
+            name = token.value['name']
+
+            if self.global_state.router.name_means_start_condition(name):
+                return 1
+            elif self.global_state.router.name_means_end_condition(name):
+                return -1
+            else:
+                return 0
+
+        def is_condition_delimiter(token):
+            if not is_control_sequence_call(token):
+                return 0
+            name = token.value['name']
+            return self.global_state.router.name_means_delimit_condition(name)
+
+        nr_conditions = 1
+        i_block = 0
+        not_skipped_tokens = []
+        for t in self.instructions:
+            # Keep track of nested conditions.
+            nr_conditions += get_condition_sign(t)
+
+            # If we get the terminal \fi, return the gathered tokens.
+            if nr_conditions == 0:
+                break
+            # If we are at the pertinent if-nesting level, then track
+            # a condition block delimiter.
+            elif nr_conditions == 1 and is_condition_delimiter(t):
+                i_block += 1
+            # If we're in the block the condition says we should pick,
+            # include the token.
+            elif i_block == i_block_to_pick:
+                not_skipped_tokens.append(t)
+            # Otherwise we are skipping tokens.
+            else:
+                pass
+
         return not_skipped_tokens, []
 
     def _handle_making_box(self, first_token):

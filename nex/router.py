@@ -8,7 +8,7 @@ from .lexer import control_sequence_lex_type, char_cat_lex_type
 from .instructioner import (make_primitive_control_sequence_instruction,
                             make_parameter_control_sequence_instruction,
                             make_special_control_sequence_instruction)
-from .instructions import Instructions
+from .instructions import Instructions, if_instructions
 from .expander import parse_replacement_text, parse_parameter_text
 
 
@@ -340,6 +340,34 @@ class CSRouter:
                    special_control_sequences={},
                    primitive_control_sequences={},
                    enclosing_scope=enclosing_scope)
+
+    def _name_means_instruction(self, name, instructions):
+        try:
+            tok = self.lookup_control_sequence(name)
+        except NoSuchControlSequence:
+            return False
+        if isinstance(tok, InstructionToken):
+            return tok.instruction in instructions
+        else:
+            return False
+
+    def name_means_delimit_condition(self, name):
+        """Test if a control sequence corresponds to an instruction to split
+        blocks of conditional text. Concretely, this means a control sequence
+        is '\else' or '\or'."""
+        return self._name_means_instruction(name, (I.else_, I.or_))
+
+    def name_means_end_condition(self, name):
+        """Test if a control sequence corresponds to an instruction to split
+        blocks of conditional text. Concretely, this means a control sequence
+        is '\fi'."""
+        return self._name_means_instruction(name, (I.end_if,))
+
+    def name_means_start_condition(self, name):
+        """Test if a control sequence corresponds to an instruction to split
+        blocks of conditional text. Concretely, this means a control sequence
+        is one of '\ifnum', '\ifcase' and so on."""
+        return self._name_means_instruction(name, if_instructions)
 
     def lookup_control_sequence(self, name, position_like=None):
         route_token = self._lookup_route_token(name)
