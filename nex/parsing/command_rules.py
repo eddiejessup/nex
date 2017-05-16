@@ -233,17 +233,25 @@ def add_assignment_rules(pg):
                           value={'nr': p[1], 'contents': p[4]},
                           position_like=p)
 
-    # @pg.production('box : BOX number')
-    # @pg.production('box : COPY number')
-    # @pg.production('box : LAST_BOX')
-    # @pg.production('box : V_SPLIT number to dimen')
     @pg.production('box : H_BOX box_specification LEFT_BRACE HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE')
-    # @pg.production('box : V_BOX box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
-    # @pg.production('box : V_TOP box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
-    def box(p):
+    def box_h_box(p):
         return BuiltToken(type_='h_box',
                           value={'specification': p[1], 'contents': p[3]},
                           position_like=p)
+
+    @pg.production('box : BOX number')
+    @pg.production('box : COPY number')
+    def box_from_register(p):
+        return BuiltToken(type_=p[0].type, value=p[1], position_like=p)
+
+    # @pg.production('box : LAST_BOX')
+    # @pg.production('box : V_SPLIT number to dimen')
+    # @pg.production('box : V_BOX box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
+    # @pg.production('box : V_TOP box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
+    # def box(p):
+    #     return BuiltToken(type_='h_box',
+    #                       value={'specification': p[1], 'contents': p[3]},
+    #                       position_like=p)
 
     @pg.production('box_specification : to dimen filler')
     def box_specification_to(p):

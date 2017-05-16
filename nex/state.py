@@ -664,6 +664,24 @@ class GlobalState:
         except Exception as e:
             raise ExecuteCommandError(command, e)
 
+    def _parse_h_box_token(self, v):
+        logger.info(f'Adding horizontal box')
+
+        conts = v['contents'].value
+        spec = v['specification']
+        to = None
+        spread = None
+        if spec is not None:
+            d = self.evaluate_number(spec.value)
+            if spec.type == 'to':
+                to = d
+            elif spec.type == 'spread':
+                spread = d
+            else:
+                raise ValueError(f'Unknown specification type {spec.type}')
+        h_box_item = HBox(contents=conts, to=to, spread=spread)
+        self.append_to_list(h_box_item)
+
     def execute_command_token(self, command, banisher, reader):
         # Reader needed to allow us to insert new input in response to
         # commands.
@@ -724,22 +742,18 @@ class GlobalState:
         # The box already has its contents in the correct way, built using this
         # very method. Recursion still amazes me sometimes.
         elif type_ == 'h_box':
-            logger.info(f'Adding horizontal box')
-
-            conts = v['contents'].value
-            spec = v['specification']
-            to = None
-            spread = None
-            if spec is not None:
-                d = self.evaluate_number(spec.value)
-                if spec.type == 'to':
-                    to = d
-                elif spec.type == 'spread':
-                    spread = d
-                else:
-                    import pdb; pdb.set_trace()
-            h_box_item = HBox(contents=conts, to=to, spread=spread)
-            self.append_to_list(h_box_item)
+            self._parse_h_box_token(v)
+        elif type_ in (Instructions.box.value, Instructions.copy.value):
+            evaled_i = self.evaluate_number(v)
+            # \box empties the register; \copy doesn't
+            if type_ == Instructions.box.value:
+                get_method = self.registers.pop
+            elif type_ == Instructions.copy.value:
+                get_method = self.registers.get
+            else:
+                raise ValueError('Unknown type of box register retrieval')
+            h_box_token = get_method(Instructions.set_box.value, evaled_i)
+            self._parse_h_box_token(h_box_token.value)
         # Commands like font commands aren't exactly boxes, but they go through
         # as DVI commands. Just put them in the box for now to deal with later.
         elif type_ == 'font_selection':
@@ -818,7 +832,7 @@ class GlobalState:
         elif type_ == 'advance':
             variable, value = v['variable'], v['value']
             # See 'variable_assignment' case.
-            evaled_value = self.evaluate_number(v['value'])
+            evaled_value = self.evaluate_number(value)
             kwargs = {'is_global': v['global'],
                       'by_operand': evaled_value,
                       'operation': Operation.advance}
@@ -834,9 +848,14 @@ class GlobalState:
             else:
                 import pdb; pdb.set_trace()
         elif type_ == 'set_box_assignment':
-            # import pdb; pdb.set_trace()
-            # raise NotImplementedError
-            pass
+            evaled_i = self.evaluate_number(v['nr'])
+            box = v['contents']
+            self.registers.set(
+                type_=Instructions.set_box.value,
+                i=evaled_i,
+                value=box,
+                is_global=v['global'],
+            )
         elif type_ == 'PATTERNS':
             raise NotImplementedError
         elif type_ == 'HYPHENATION':
@@ -939,7 +958,7 @@ class GlobalState:
             logger.info(f'Adding horizontal super-elastic glue {item}')
             self.append_to_list(item)
         else:
-            raise ValueError
+            raise ValueError('Command type not recognised.')
 
     # This method has a long name to emphasize that it will return the index of
     # the token block to pick, not the result of the condition.

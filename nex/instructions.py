@@ -103,6 +103,7 @@ instructions = (
     'V_TOP',
 
     # Registers.
+    # Also remember SET_BOX, although it's slightly different.
     'COUNT',
     'DIMEN',
     'SKIP',

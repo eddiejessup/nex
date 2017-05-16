@@ -50,23 +50,37 @@ class ScopedAccessor:
         return self.scopes if is_global else [self.scope]
 
     def try_scope_func_until_success(self, func_name, *args, **kwargs):
-        for scope in reversed(self.scopes):
+        for i, scope in enumerate(reversed(self.scopes)):
             f = getattr(scope, func_name)
             try:
                 v = f(*args, **kwargs)
             except NotInScopeError:
-                pass
+                # If not at outer scope, pass and try the next scope outwards.
+                if i < len(self.scopes) - 1:
+                    pass
+                # If at outer scope, it really hasn't been found.
+                else:
+                    raise
             else:
                 return v
+        raise NotInScopeError
 
     def try_scope_attr_until_success(self, attr_name):
-        for scope in reversed(self.scopes):
+        """Like `try_scope_func_until_success`, but for when the target is a
+        property."""
+        for i, scope in enumerate(reversed(self.scopes)):
             try:
                 a = getattr(scope, attr_name)
             except NotInScopeError:
-                pass
+                # If not at outer scope, pass and try the next scope outwards.
+                if i < len(self.scopes) - 1:
+                    pass
+                # If at outer scope, it really hasn't been found.
+                else:
+                    raise
             else:
                 return a
+        raise NotInScopeError
 
 
 class ScopedCodes(ScopedAccessor):
@@ -116,6 +130,9 @@ class ScopedRegisters(ScopedAccessor):
 
     def get(self, *args, **kwargs):
         return self.try_scope_func_until_success('get', *args, **kwargs)
+
+    def pop(self, *args, **kwargs):
+        return self.try_scope_func_until_success('pop', *args, **kwargs)
 
     def set(self, is_global, *args, **kwargs):
         for scope in self.get_scopes(is_global):

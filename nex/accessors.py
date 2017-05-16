@@ -1,7 +1,7 @@
 from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
 from datetime import datetime
 
-from .tokens import InstructionToken, instructions_to_types
+from .tokens import BuiltToken, InstructionToken, instructions_to_types
 from .instructions import Instructions, register_instructions
 from .parameters import (Parameters, Specials,
                          param_to_type, special_to_type,
@@ -26,8 +26,11 @@ def check_type(type_, value):
     elif type_ in (Instructions.toks.value,
                    Instructions.token_parameter.value):
         expected_type = list
+    elif type_ == Instructions.set_box.value:
+        expected_type = BuiltToken
     if not isinstance(value, expected_type):
-        raise TypeError('Value has wrong type')
+        raise TypeError(f'Value "{value}" has wrong type: {type(value)}; '
+                        f'expected {expected_type}')
 
 
 class TexNamedValues:
@@ -183,6 +186,7 @@ class Registers:
             Instructions.skip.value: init_register(),
             Instructions.mu_skip.value: init_register(),
             Instructions.toks.value: init_register(),
+            Instructions.set_box.value: init_register(),
         }
         return cls(register_map)
 
@@ -206,16 +210,26 @@ class Registers:
     def get(self, type_, i):
         value = self._check_and_get_register_value(type_, i)
         if value is None:
-            raise NotInScopeError('No value in register number {i} of type {type_}')
+            raise NotInScopeError(f'No value in register number {i} of type {type_}')
         return value
+
+    def pop(self, type_, i):
+        """Like `get`, but empty the register after retrieval. It's used by
+        \box when retrieving boxes."""
+        value = self.get(type_, i)
+        self._set(type_, i, None)
+        return value
+
+    def _set(self, type_, i, value):
+        register = self._check_and_get_register(type_)
+        register[i] = value
 
     def set(self, type_, i, value):
         # Check value matches what register is meant to hold.
         check_type(type_, value)
         # Check key already exists.
         self._check_and_get_register_value(type_, i)
-        register = self._check_and_get_register(type_)
-        register[i] = value
+        self._set(type_, i, value)
 
 
 # End of registers.
