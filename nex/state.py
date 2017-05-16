@@ -710,14 +710,14 @@ class GlobalState:
             # And add it before the tokens we just read.
             banisher.instructions.replace_tokens_on_input([indent_token] +
                                                           terminal_tokens)
-        elif type_ == 'SPACE':
+        elif type_ == Instructions.space.value:
             self.do_space()
-        elif type_ == 'PAR':
+        elif type_ == Instructions.par.value:
             self.do_paragraph()
         elif type_ == 'character':
             logger.info(f"Adding character \"{v['char']}\"")
             self.add_character_char(v['char'])
-        elif type_ == 'ACCENT':
+        elif type_ == Instructions.accent.value:
             assignments = v['assignments'].value
             accent_code_eval = self.evaluate_number(v['accent_code'])
             char_tok = v['target_char']
@@ -733,10 +733,10 @@ class GlobalState:
             for assignment in assignments:
                 self.execute_command_token(assignment, banisher, reader)
             self.do_accent(accent_code_eval, target_char_code)
-        elif type_ == 'V_RULE':
+        elif type_ == Instructions.v_rule.value:
             logger.info(f"Adding vertical rule")
             self.add_v_rule(**v)
-        elif type_ == 'H_RULE':
+        elif type_ == Instructions.h_rule.value:
             logger.info(f"Adding horizontal rule")
             self.add_h_rule(**v)
         # The box already has its contents in the correct way, built using this
