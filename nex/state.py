@@ -553,7 +553,9 @@ class GlobalState:
 
     def append_register_box(self, i, copy):
         box_item = self.get_register_box(i, copy)
-        self.append_to_list(box_item)
+        # If void box, do nothing.
+        if box_item is not None:
+            self.append_to_list(box_item)
 
     def append_unboxed_register_box(self, i, copy, horizontal):
         # See TeXbook page 120.
@@ -582,6 +584,9 @@ class GlobalState:
                                 'but found horizontal box')
             else:
                 unwrapped_box_contents = box_item.contents
+        # Void box.
+        elif box_item is None:
+            unwrapped_box_contents = []
         else:
             raise ValueError(f'Box Register contains non-box: {box_item}')
         self.extend_list(unwrapped_box_contents)

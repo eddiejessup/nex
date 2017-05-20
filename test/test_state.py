@@ -141,9 +141,11 @@ def test_set_box(state):
     assert lst[-1].contents is box_item.contents
 
 
-def test_set_box_fail(state):
-    with pytest.raises(NotInScopeError):
-        state.append_register_box(i=2, copy=False)
+def test_set_box_void(state):
+    nr_elems_before = len(state._layout_list)
+    state.append_register_box(i=2, copy=False)
+    nr_elems_after = len(state._layout_list)
+    assert nr_elems_before == nr_elems_after
 
 
 def test_unbox(state):
@@ -154,8 +156,7 @@ def test_unbox(state):
     nr_elems_after = len(state._layout_list)
     assert nr_elems_after == nr_elems_before + 2
     # Should now be empty, since copy == False.
-    with pytest.raises(NotInScopeError):
-        state.get_register_box(i=2, copy=False)
+    assert state.get_register_box(i=2, copy=False) is None
 
 
 def test_unbox_bad_box_type(state):
@@ -191,8 +192,7 @@ def test_command_token_get_box(state):
     state.execute_command_token(get_box_tok, banisher=None, reader=None)
     lst = state._layout_list
     assert lst[-1].contents is box_item.contents
-    with pytest.raises(NotInScopeError):
-        state.append_register_box(i=i_reg, copy=False)
+    state.get_register_box(i=i_reg, copy=False) is None
 
 
 def test_command_token_unbox(state):
