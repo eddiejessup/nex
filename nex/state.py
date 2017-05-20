@@ -308,9 +308,9 @@ class GlobalState:
             elif unit == MuUnit.mu:
                 unit_scale = 1
             elif unit == InternalUnit.em:
-                unit_scale = self.current_font.em_size
+                unit_scale = self.current_font.quad
             elif unit == InternalUnit.ex:
-                unit_scale = self.current_font.ex_size
+                unit_scale = self.current_font.x_height
             else:
                 unit_scale = units_in_scaled_points[unit]
                 is_true_unit = unit_token['true']
