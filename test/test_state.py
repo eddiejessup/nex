@@ -4,7 +4,7 @@ from nex.state import Mode, GlobalState
 from nex import box
 from nex.instructions import Instructions
 from nex.box_writer import write_to_dvi_file
-from nex.utils import ExecuteCommandError, NotInScopeError
+from nex.utils import ExecuteCommandError, NotInScopeError, UserError
 from nex.tokens import BuiltToken
 from nex.fonts import GlobalFontState
 
@@ -136,14 +136,33 @@ def test_if_case(state):
 def test_set_box(state):
     box_item = box.HBox(contents=[])
     state.set_box_register(i=2, item=box_item, is_global=False)
-    state.append_box_register(i=2, copy=False)
+    state.append_register_box(i=2, copy=False)
     lst = state._layout_list
     assert lst[-1].contents is box_item.contents
 
 
 def test_set_box_fail(state):
     with pytest.raises(NotInScopeError):
-        state.append_box_register(i=2, copy=False)
+        state.append_register_box(i=2, copy=False)
+
+
+def test_unbox(state):
+    box_item = box.HBox(contents=[box.Rule(1, 1, 1), box.Rule(2, 2, 2)])
+    state.set_box_register(i=2, item=box_item, is_global=False)
+    nr_elems_before = len(state._layout_list)
+    state.append_unboxed_register_box(i=2, copy=False, horizontal=True)
+    nr_elems_after = len(state._layout_list)
+    assert nr_elems_after == nr_elems_before + 2
+    # Should now be empty, since copy == False.
+    with pytest.raises(NotInScopeError):
+        state.get_register_box(i=2, copy=False)
+
+
+def test_unbox_bad_box_type(state):
+    box_item = box.HBox(contents=[box.Rule(1, 1, 1), box.Rule(2, 2, 2)])
+    state.set_box_register(i=2, item=box_item, is_global=False)
+    with pytest.raises(UserError):
+        state.append_unboxed_register_box(i=2, copy=False, horizontal=False)
 
 
 def test_get_box_dimen(state):
@@ -166,10 +185,27 @@ def test_command_token_get_box(state):
     # Get a box in to retrieve.
     box_item = box.HBox(contents=[])
     state.set_box_register(i=i_reg, item=box_item, is_global=False)
+
     get_box_tok = BuiltToken(type_=Instructions.box.value,
                              value=nr_tok(i_reg))
     state.execute_command_token(get_box_tok, banisher=None, reader=None)
     lst = state._layout_list
     assert lst[-1].contents is box_item.contents
     with pytest.raises(NotInScopeError):
-        state.append_box_register(i=i_reg)
+        state.append_register_box(i=i_reg, copy=False)
+
+
+def test_command_token_unbox(state):
+    i_reg = 3
+    box_item = box.HBox(contents=[box.Rule(1, 1, 1), box.Rule(2, 2, 2)])
+    state.set_box_register(i=i_reg, item=box_item, is_global=False)
+    nr_elems_before = len(state._layout_list)
+
+    get_box_tok = BuiltToken(type_='un_box',
+                             value={'nr': nr_tok(i_reg),
+                                    'cmd_type': Instructions.un_h_copy})
+    state.execute_command_token(get_box_tok, banisher=None, reader=None)
+    nr_elems_after = len(state._layout_list)
+    assert nr_elems_after == nr_elems_before + 2
+    # Should still work, since copy == True.
+    state.get_register_box(i=i_reg, copy=False)

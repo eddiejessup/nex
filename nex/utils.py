@@ -20,6 +20,10 @@ def get_unique_id():
     return sanitised
 
 
+class UserError(Exception):
+    pass
+
+
 class NoSuchControlSequence(Exception):
 
     def __init__(self, name):

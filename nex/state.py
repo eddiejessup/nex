@@ -3,14 +3,14 @@ import logging
 from enum import Enum
 from collections import deque
 
-from .utils import ExecuteCommandError, TidyEnd
+from .utils import ExecuteCommandError, TidyEnd, UserError
 from .reader import EndOfFile
 from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from .instructions import Instructions, h_add_glue_instructions
 from .instructioner import make_primitive_control_sequence_instruction
 from .parameters import Parameters, is_parameter_type
 from .accessors import is_register_type, SpecialsAccessor
-from .box import (HBox, Rule, UnSetGlue, Character, FontDefinition,
+from .box import (HBox, VBox, Rule, UnSetGlue, Character, FontDefinition,
                   FontSelection, Kern)
 from .paragraphs import h_list_to_best_h_boxes
 from . import evaluator as evaler
@@ -181,6 +181,9 @@ class GlobalState:
 
     def append_to_list(self, item):
         self._layout_list.append(item)
+
+    def extend_list(self, items):
+        self._layout_list.extend(items)
 
     # Group.
 
@@ -533,19 +536,55 @@ class GlobalState:
             par_indent_hbox_item = HBox(contents=[], to=par_indent_width)
             self.append_to_list(par_indent_hbox_item)
         elif self.mode in horizontal_modes:
-            import pdb; pdb.set_trace()
+            raise NotImplementedError
+        else:
+            raise ValueError(f"Unknown mode '{self.mode}'")
 
     def set_box_register(self, i, item, is_global):
         self.registers.set(type_=Instructions.set_box.value, i=i,
                            value=item, is_global=is_global)
 
-    def append_box_register(self, i, copy=False):
+    def get_register_box(self, i, copy):
         if copy:
             get_func = self.registers.get
         else:
             get_func = self.registers.pop
-        box_item = get_func(Instructions.set_box.value, i)
+        return get_func(Instructions.set_box.value, i)
+
+    def append_register_box(self, i, copy):
+        box_item = self.get_register_box(i, copy)
         self.append_to_list(box_item)
+
+    def append_unboxed_register_box(self, i, copy, horizontal):
+        # See TeXbook page 120.
+        # TODO: implement global voiding:
+        # 'If you say `\global\setbox3=<box>`, register \box3 will become
+        # "globally void" when it is subsequently used or unboxed.'
+        # TODO: Unset glue:
+        # An unboxing operation 'unsets' any glue that was set at the box's
+        # outer level. For example, consider the sequence of commands:
+        #
+        # \setbox5=\hbox{A \hbox{B C}} \setbox6=\hbox to 1.05\wd5{\unhcopy5}
+        #
+        # This makes \box6 five percent wider than \box5; the glue between A
+        # and \hbox{B C} stretches to make the difference, but the glue inside
+        # the inner hbox does not change.
+        box_item = self.get_register_box(i, copy)
+        if isinstance(box_item, HBox):
+            if horizontal:
+                unwrapped_box_contents = box_item.contents
+            else:
+                raise UserError('Asked to unbox horizontal box, '
+                                'but found vertical box')
+        elif isinstance(box_item, VBox):
+            if horizontal:
+                raise UserError('Asked to unbox vertical box, '
+                                'but found horizontal box')
+            else:
+                unwrapped_box_contents = box_item.contents
+        else:
+            raise ValueError(f'Box Register contains non-box: {box_item}')
+        self.extend_list(unwrapped_box_contents)
 
     # Driving with tokens.
 
@@ -759,7 +798,15 @@ class GlobalState:
             evaled_i = self.eval_number_token(v)
             # \box empties the register; \copy doesn't
             is_copy = type_ == Instructions.copy.value
-            self.append_box_register(i=evaled_i, copy=is_copy)
+            self.append_register_box(i=evaled_i, copy=is_copy)
+        elif type_ == 'un_box':
+            reg_nr = self.eval_number_token(v['nr'])
+            is_copy = v['cmd_type'] in (Instructions.un_h_copy,
+                                        Instructions.un_v_copy)
+            is_h = v['cmd_type'] in (Instructions.un_h_copy,
+                                     Instructions.un_h_box)
+            self.append_unboxed_register_box(i=reg_nr, copy=is_copy,
+                                             horizontal=is_h)
         # Commands like font commands aren't exactly boxes, but they go through
         # as DVI commands. Just put them in the box for now to deal with later.
         elif type_ == 'font_selection':

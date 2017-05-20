@@ -94,3 +94,11 @@ def test_accent():
     }
     b = string_to_banisher('$alloAllo22', cs_map)
     command_parser.parse(b.advance_to_end())
+
+
+def test_un_h_box():
+    cs_map = {
+        'unwrapHBox': ITok(Instructions.un_h_box),
+    }
+    b = string_to_banisher('$unwrapHBox 12', cs_map)
+    command_parser.parse(b.advance_to_end())

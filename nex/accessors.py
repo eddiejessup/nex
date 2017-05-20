@@ -210,6 +210,8 @@ class Registers:
 
     def get(self, type_, i):
         value = self._check_and_get_register_value(type_, i)
+        # TODO: Correct behaviour is more subtle than this. Getting a void box
+        # should not raise an error, at least in some circumstances.
         if value is None:
             raise NotInScopeError(f'No value in register number {i} of type {type_}')
         return value
