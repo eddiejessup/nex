@@ -758,6 +758,8 @@ class GlobalState:
         elif type_ in (Instructions.box.value, Instructions.copy.value):
             evaled_i = self.eval_number_token(v)
             # \box empties the register; \copy doesn't
+            is_copy = type_ == Instructions.copy.value
+            self.append_box_register(i=evaled_i, copy=is_copy)
         # Commands like font commands aren't exactly boxes, but they go through
         # as DVI commands. Just put them in the box for now to deal with later.
         elif type_ == 'font_selection':

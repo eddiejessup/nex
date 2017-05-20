@@ -159,3 +159,17 @@ def test_command_token_set_box(state):
     set_box_tok = BuiltToken(type_=Instructions.set_box.value,
                              value={'box': box_tok, 'nr': nr_tok(i_reg), 'global': True})
     state.execute_command_token(set_box_tok, banisher=None, reader=None)
+
+
+def test_command_token_get_box(state):
+    i_reg = 5
+    # Get a box in to retrieve.
+    box_item = box.HBox(contents=[])
+    state.set_box_register(i=i_reg, item=box_item, is_global=False)
+    get_box_tok = BuiltToken(type_=Instructions.box.value,
+                             value=nr_tok(i_reg))
+    state.execute_command_token(get_box_tok, banisher=None, reader=None)
+    lst = state._layout_list
+    assert lst[-1].contents is box_item.contents
+    with pytest.raises(NotInScopeError):
+        state.append_box_register(i=i_reg)
