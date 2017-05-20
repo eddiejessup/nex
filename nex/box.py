@@ -237,7 +237,7 @@ class HBox(AbstractBox):
                     glue_diff = glue_ratio * glue_factor
                 else:
                     glue_diff = 0
-            else:
+            elif line_state == LineState.should_shrink:
                 glue_order, glue_factor = extract_dimen(g.shrink)
                 if glue_ratio == GlueRatio.no_shrinkability:
                     glue_diff = 0
@@ -247,6 +247,8 @@ class HBox(AbstractBox):
                     glue_diff = -glue_ratio * glue_factor
                 else:
                     glue_diff = 0
+            else:
+                raise ValueError(f'Unknown line state: {line_state}')
             # Notice that stretching or shrinking occurs only when the glue
             # has the highest order of infinity that doesn't cancel out.
             self.contents[i] = g.set(int(round(g.natural_width + glue_diff)))
