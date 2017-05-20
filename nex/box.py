@@ -448,11 +448,17 @@ class FontDefinition(ListElement):
 
     width = height = natural_width = natural_height = depth = 0
 
+    def __repr__(self):
+        return f'FD({self.font_nr}: {self.font_name})'
+
 
 class FontSelection(ListElement):
     discardable = False
 
     def __init__(self, font_nr):
         self.font_nr = font_nr
+
+    def __repr__(self):
+        return f'F({self.font_nr})'
 
     width = height = natural_width = natural_height = depth = 0
