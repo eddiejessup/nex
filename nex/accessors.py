@@ -1,8 +1,9 @@
 from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
 from datetime import datetime
 
-from .tokens import BuiltToken, InstructionToken, instructions_to_types
+from .tokens import InstructionToken, instructions_to_types
 from .instructions import Instructions, register_instructions
+from .box import AbstractBox
 from .parameters import (Parameters, Specials,
                          param_to_type, special_to_type,
                          param_instr_subset)
@@ -27,7 +28,7 @@ def check_type(type_, value):
                    Instructions.token_parameter.value):
         expected_type = list
     elif type_ == Instructions.set_box.value:
-        expected_type = BuiltToken
+        expected_type = AbstractBox
     if not isinstance(value, expected_type):
         raise TypeError(f'Value "{value}" has wrong type: {type(value)}; '
                         f'expected {expected_type}')

@@ -653,8 +653,6 @@ class GlobalState:
             raise ExecuteCommandError(command, e)
 
     def _parse_h_box_token(self, v):
-        logger.info(f'Adding horizontal box')
-
         conts = v['contents'].value
         spec = v['specification']
         to = None
@@ -668,7 +666,7 @@ class GlobalState:
             else:
                 raise ValueError(f'Unknown specification type {spec.type}')
         h_box_item = HBox(contents=conts, to=to, spread=spread)
-        self.append_to_list(h_box_item)
+        return h_box_item
 
     def execute_command_token(self, command, banisher, reader):
         # Reader needed to allow us to insert new input in response to
@@ -730,7 +728,9 @@ class GlobalState:
         # The box already has its contents in the correct way, built using this
         # very method. Recursion still amazes me sometimes.
         elif type_ == 'h_box':
-            self._parse_h_box_token(v)
+            logger.info(f'Adding horizontal box')
+            h_box_item = self._parse_h_box_token(v)
+            self.append_to_list(h_box_item)
         elif type_ in (Instructions.box.value, Instructions.copy.value):
             evaled_i = self.evaluate_number(v)
             # \box empties the register; \copy doesn't
@@ -740,8 +740,8 @@ class GlobalState:
                 get_method = self.registers.get
             else:
                 raise ValueError('Unknown type of box register retrieval')
-            h_box_token = get_method(Instructions.set_box.value, evaled_i)
-            self._parse_h_box_token(h_box_token.value)
+            h_box_item = get_method(Instructions.set_box.value, evaled_i)
+            self.append_to_list(h_box_item)
         # Commands like font commands aren't exactly boxes, but they go through
         # as DVI commands. Just put them in the box for now to deal with later.
         elif type_ == 'font_selection':
@@ -838,10 +838,11 @@ class GlobalState:
         elif type_ == 'set_box_assignment':
             evaled_i = self.evaluate_number(v['nr'])
             box = v['contents']
+            h_box_item = self._parse_h_box_token(box.value)
             self.registers.set(
                 type_=Instructions.set_box.value,
                 i=evaled_i,
-                value=box,
+                value=h_box_item,
                 is_global=v['global'],
             )
         elif type_ == 'PATTERNS':
