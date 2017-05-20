@@ -22,7 +22,7 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
         elif isinstance(item, box.Character):
             doc.put_char(item.code)
             doc.right(item.width)
-        elif isinstance(item, box.UnSetGlue):
+        elif isinstance(item, box.Glue) and not item.is_set:
             if not horizontal:
                 item = item.set(item.natural_dimen)
             amount = item.dimen
@@ -30,7 +30,8 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
                 doc.right(amount)
             else:
                 doc.down(amount)
-        elif isinstance(item, (box.SetGlue, box.Kern)):
+        elif (isinstance(item, box.Kern) or
+              (isinstance(item, box.SetGlue) and item.is_set)):
             amount = item.dimen
             if horizontal:
                 doc.right(amount)

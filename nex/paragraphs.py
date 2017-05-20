@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from .box import HBox, UnSetGlue
+from .box import HBox, Glue
 from .feedback import truncate_list
 
 
@@ -9,7 +9,7 @@ def grab_word(h_list):
     # Loop making a word.
     while True:
         chars.append(h_list.popleft())
-        if isinstance(chars[-1], UnSetGlue):
+        if isinstance(chars[-1], Glue):
             break_glue = chars.pop()
             break
     return chars, break_glue

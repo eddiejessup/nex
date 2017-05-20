@@ -143,7 +143,7 @@ class AbstractBox(ListElement):
 
     @property
     def un_set_glues(self):
-        return [e for e in self.contents if isinstance(e, UnSetGlue)]
+        return [e for e in self.contents if isinstance(e, Glue) and e.is_set]
 
 
 def extract_dimen(d):
@@ -222,7 +222,7 @@ class HBox(AbstractBox):
         # shrinkability z, where y is a jth order infinity and z is a kth order
         # infinity.
         for i, item in enumerate(self.contents):
-            if not isinstance(item, UnSetGlue):
+            if (not isinstance(item, Glue)) or item.is_set:
                 continue
             g = item
             if line_state == LineState.naturally_good:
@@ -284,7 +284,7 @@ class WhatsIt(ListElement):
     width = height = natural_width = natural_height = depth = 0
 
 
-class UnSetGlue(ListElement):
+class Glue(ListElement):
     discardable = True
 
     def __init__(self, dimen, stretch=None, shrink=None):
@@ -292,33 +292,37 @@ class UnSetGlue(ListElement):
         self.stretch = stretch
         self.shrink = shrink
 
+        self.set_dimen = None
+
     def __repr__(self):
-        return 'G({} +{} -{})'.format(*[dimrep(d)
-                                        for d in (self.natural_dimen,
-                                                  self.stretch,
-                                                  self.shrink)])
+        if self.set_dimen is None:
+            return 'G({} +{} -{})'.format(dimrep(self.natural_dimen),
+                                          dimrep(self.stretch),
+                                          dimrep(self.shrink))
+        else:
+            return '|G|({})'.format(dimrep(self.set_dimen))
 
     @property
     def natural_width(self):
         return self.natural_dimen
     natural_height = natural_width
 
+    @property
+    def is_set(self):
+        self.set_dimen is not None
+
     def set(self, dimen):
-        return SetGlue(dimen)
+        self.set_dimen = dimen
 
-
-class SetGlue(ListElement):
-    discardable = True
-
-    def __init__(self, dimen):
-        self.dimen = dimen
-
-    def __repr__(self):
-        return '|G|({})'.format(dimrep(self.dimen))
+    def un_set(self):
+        self.set_dimen = None
 
     @property
     def width(self):
-        return self.dimen
+        if self.set_dimen is not None:
+            return self.set_dimen
+        else:
+            raise AttributeError('Glue is not set, so has no dimensions')
     height = width
 
 

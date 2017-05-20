@@ -10,7 +10,7 @@ from .instructions import Instructions, h_add_glue_instructions
 from .instructioner import make_primitive_control_sequence_instruction
 from .parameters import Parameters, is_parameter_type
 from .accessors import is_register_type, SpecialsAccessor
-from .box import (HBox, VBox, Rule, UnSetGlue, Character, FontDefinition,
+from .box import (HBox, VBox, Rule, Glue, Character, FontDefinition,
                   FontSelection, Kern)
 from .paragraphs import h_list_to_best_h_boxes
 from . import evaluator as evaler
@@ -386,11 +386,11 @@ class GlobalState:
             # Get the horizontal list
             horizontal_list = deque(self.pop_mode())
             # Do \unskip.
-            if isinstance(horizontal_list[-1], UnSetGlue):
+            if isinstance(horizontal_list[-1], Glue):
                 horizontal_list.pop()
             # Do \hskip\parfillskip.
             par_fill_glue = self.parameters.get(Parameters.par_fill_skip)
-            horizontal_list.append(UnSetGlue(**par_fill_glue))
+            horizontal_list.append(Glue(**par_fill_glue))
             h_size = self.parameters.get(Parameters.h_size)
             h_boxes = h_list_to_best_h_boxes(horizontal_list, h_size)
             # all_routes = get_all_routes(root_node, h_box_tree, h_size, outer=True)
@@ -400,10 +400,10 @@ class GlobalState:
                 # Add it to the enclosing vertical list.
                 self.append_to_list(h_box)
                 bl_skip = self.parameters.get(Parameters.base_line_skip)
-                line_glue_item = UnSetGlue(**bl_skip)
+                line_glue_item = Glue(**bl_skip)
                 self.append_to_list(line_glue_item)
 
-            # par_glue_item = UnSetGlue(dimen=200000)
+            # par_glue_item = Glue(dimen=200000)
             # self.append_to_list(par_glue_item)
         else:
             import pdb; pdb.set_trace()
@@ -466,9 +466,9 @@ class GlobalState:
             # \spaceskip and
             # \xspaceskip parameters, as described in Chapter 12.
             font = self.current_font
-            space_glue_item = UnSetGlue(dimen=font.spacing,
-                                        stretch=font.space_stretch,
-                                        shrink=font.space_shrink)
+            space_glue_item = Glue(dimen=font.spacing,
+                                   stretch=font.space_stretch,
+                                   shrink=font.space_shrink)
             self.append_to_list(space_glue_item)
         else:
             import pdb; pdb.set_trace()
@@ -527,7 +527,7 @@ class GlobalState:
             # input. The page builder is exercised."
             if self.mode != Mode.internal_vertical:
                 par_skip_glue = self.parameters.get(Parameters.par_skip)
-                par_skip_glue_item = UnSetGlue(**par_skip_glue)
+                par_skip_glue_item = Glue(**par_skip_glue)
                 self.append_to_list(par_skip_glue_item)
             self.push_mode(Mode.horizontal)
             # An empty box of width \parindent is appended to the current
@@ -990,7 +990,7 @@ class GlobalState:
                 import pdb; pdb.set_trace()
         elif type_ == 'V_SKIP':
             glue = self.eval_glue_token(v)
-            item = UnSetGlue(**glue)
+            item = Glue(**glue)
             logger.info(f'Adding vertical glue {item}')
             self.append_to_list(item)
         elif type_ == 'H_STRETCH_OR_SHRINK':
@@ -999,7 +999,7 @@ class GlobalState:
                     'number_of_fils': 1,
                     'factor': 1}
             fil = BuiltToken(type_='fil_unit', value=unit)
-            item = UnSetGlue(dimen=0, stretch=fil, shrink=fil)
+            item = Glue(dimen=0, stretch=fil, shrink=fil)
             logger.info(f'Adding horizontal super-elastic glue {item}')
             self.append_to_list(item)
         else:
