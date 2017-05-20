@@ -15,6 +15,18 @@ def get_integer_constant(collection):
     return int(s, base=collection.base)
 
 
+def get_backtick_target_code(target):
+    if target.type == 'UNEXPANDED_CONTROL_SYMBOL':
+        # If we have a single character control sequence in this context,
+        # it is just a way of specifying a character in a way that
+        # won't invoke its special effects.
+        return ord(target.value['name'])
+    elif target.type == 'character':
+        return ord(target.value['char'])
+    else:
+        raise ValueError(f'Unknown backtick target type: {v.type}')
+
+
 def split_at(s, inds):
     inds = [0] + list(inds) + [len(s)]
     return [s[inds[i]:inds[i + 1]] for i in range(0, len(inds) - 1)]

@@ -244,164 +244,50 @@ class GlobalState:
 
     # Evaluate quantities.
 
-    def evaluate_size(self, size_token):
-        v = size_token.value
-        # If the size is the contents of an integer or dimen parameter.
-        if isinstance(v, InstructionToken) and v.type in (Instructions.integer_parameter.value,
-                                                          Instructions.dimen_parameter.value):
-            return self.parameters.get(v.value['parameter'])
-        # If the size is the contents of a count or dimen register.
-        elif isinstance(v, BuiltToken) and v.type in (Instructions.count.value,
-                                                      Instructions.dimen.value):
-            # The register number is a generic 'number' token, so evaluate
-            # this.
-            evaled_i = self.evaluate_number(v.value)
-            v = self.registers.get(v.type, i=evaled_i)
-            return v
-        elif isinstance(v, BuiltToken) and v.type in (Instructions.box_dimen_height.value,
-                                                      Instructions.box_dimen_width.value,
-                                                      Instructions.box_dimen_depth.value):
-            # The box register number is a generic 'number' token, so evaluate
-            # this.
-            evaled_i = self.evaluate_number(v.value)
-            box_item = self.registers.get(Instructions.set_box.value, i=evaled_i)
-            if v.type == Instructions.box_dimen_height.value:
-                return box_item.height
-            elif v.type == Instructions.box_dimen_width.value:
-                return box_item.width
-            elif v.type == Instructions.box_dimen_depth.value:
-                return box_item.depth
-            else:
-                raise ValueError(f'Unknown box dimension requested: {v.type}')
-        # If the size is the short-hand character token.
-        # This is different to, for example, a count_def_token. A character
-        # token has an integer that represents a character code, and is itself
-        # the value. A count-def token has an integer that represents the
-        # *location* of the actual value.
-        elif isinstance(v, InstructionToken) and v.type in ('CHAR_DEF_TOKEN', 'MATH_CHAR_DEF_TOKEN'):
-            return v.value
-        # If the size is the code of the target of a backtick instruction.
-        elif isinstance(v, BuiltToken) and v.type == 'backtick':
-            unexpanded_token = v.value
-            if unexpanded_token.type == 'UNEXPANDED_CONTROL_SYMBOL':
-                # If we have a single character control sequence in this context,
-                # it is just a way of specifying a character in a way that
-                # won't invoke its special effects.
-                char = unexpanded_token.value['name']
-            elif unexpanded_token.type == 'character':
-                char = unexpanded_token.value['char']
-            else:
-                import pdb; pdb.set_trace()
-            return ord(char)
-        # If the size is the integer represented by an integer literal.
-        elif isinstance(v, BuiltToken) and v.type == 'integer_constant':
-            collection = v.value
-            return evaler.get_integer_constant(collection)
-        # If the size is the real number represented by a decimal number
-        # literal.
-        elif isinstance(v, BuiltToken) and v.type == 'decimal_constant':
-            collection = v.value
-            return evaler.get_real_decimal_constant(collection)
-        # If the size is the value represented by a short-hand def token.
-        elif isinstance(v, BuiltToken) and v.type == 'internal':
-            return v.value
-        # If the size is a specification of a dimension (this is different to a
-        # call to retrieve the contents of a dimen register).
-        elif isinstance(v, BuiltToken) and v.type == 'dimen':
-            d_v = v.value
-            nr_units_token, unit_token = d_v['factor'], d_v['unit']
-            nr_units = self.evaluate_size(nr_units_token)
-
-            unit = unit_token['unit']
-
-            if unit == PhysicalUnit.fil:
-                return BuiltToken(
-                    type_='fil_dimension',
-                    value={'factor': nr_units,
-                           'number_of_fils': unit_token['number_of_fils']}
-                )
-            # Only one unit in mu units, a mu. I don't know what a mu is
-            # though...
-            elif unit == MuUnit.mu:
-                unit_scale = 1
-            elif unit == InternalUnit.em:
-                unit_scale = self.current_font.quad
-            elif unit == InternalUnit.ex:
-                unit_scale = self.current_font.x_height
-            else:
-                unit_scale = units_in_scaled_points[unit]
-                is_true_unit = unit_token['true']
-                if is_true_unit:
-                    magnification = self.parameters.get(Parameters.mag)
-                    # ['true'] unmagnifies the units, so that the subsequent
-                    # magnification will cancel out. For example, `\vskip 0.5 true
-                    # cm' is equivalent to `\vskip 0.25 cm' if you have previously
-                    # said `\magnification=2000'.
-                    unit_scale *= 1000.0 / magnification
-            size = int(round(nr_units * unit_scale))
-            return size
+    def get_box_dimen(self, i, type_):
+        box_item = self.registers.get(Instructions.set_box.value, i=i)
+        if type_ == Instructions.box_dimen_height.value:
+            return box_item.height
+        elif type_ == Instructions.box_dimen_width.value:
+            return box_item.width
+        elif type_ == Instructions.box_dimen_depth.value:
+            return box_item.depth
         else:
-            raise ValueError
+            raise ValueError(f'Unknown box dimension requested: {v.type}')
 
-    def evaluate_number(self, number_token):
-        number_value = number_token.value
-        # Occurs if the number is a register-def-token.
-        if isinstance(number_value, BuiltToken) and number_value.type == 'internal_number':
-            return number_value.value
-        elif isinstance(number_value, dict):
-            size_token = number_value['size']
-            size = self.evaluate_size(size_token)
-            sign = evaler.evaluate_signs(number_value['signs'])
-            if isinstance(size, BuiltToken) and size.type == 'fil_dimension':
-                size.value['factor'] *= sign
-            else:
-                size *= sign
-            return size
+    def get_infinite_dimen(self, nr_fils, nr_units):
+        return BuiltToken(
+            type_='fil_dimension',
+            value={'factor': nr_units,
+                   'number_of_fils': nr_fils}
+        )
+
+    def get_finite_dimen(self, unit, nr_units, is_true_unit):
+        # Only one unit in mu units, a mu. I don't know what a mu is
+        # though...
+        if unit == MuUnit.mu:
+            unit_scale = 1
+        elif unit == InternalUnit.em:
+            unit_scale = self.current_font.quad
+        elif unit == InternalUnit.ex:
+            unit_scale = self.current_font.x_height
         else:
-            raise ValueError
-
-    def evaluate_glue(self, glue_token):
-        v = glue_token.value
-        if isinstance(v, BuiltToken) and v.type == 'explicit':
-            # Should contain a dict specifying three dimens (in the general sense
-            # of 'physical length'), a 'dimen' (in the narrow sense), 'shrink' and
-            # 'stretch'.
-            dimens = v.value
-            evaluated_glue = {}
-            for dimen_name, dimen_tok in dimens.items():
-                if dimen_tok is None:
-                    evaluated_dimen = None
-                else:
-                    evaluated_dimen = self.evaluate_number(dimen_tok)
-                evaluated_glue[dimen_name] = evaluated_dimen
-        # If the size is the contents of a glue or mu glue register.
-        elif isinstance(v, BuiltToken) and v.type in (Instructions.skip.value,
-                                                      Instructions.mu_skip.value):
-            # The register number is a generic 'number' token, so evaluate this
-            # first.
-            evaled_i = self.evaluate_number(v.value)
-            v = self.registers.get(v.type, i=evaled_i)
-            return v
-        # If the size is the contents of a parameter.
-        elif isinstance(v, InstructionToken) and v.type in (Instructions.glue_parameter.value,
-                                                            Instructions.mu_glue_parameter.value):
-            return self.parameters.get(v.value['parameter'])
-        return evaluated_glue
-
-    def evaluate_token_list(self, token_list_token):
-        token_list_value = token_list_token.value
-        if token_list_value.type == 'general_text':
-            evaluated_token_list = token_list_value.value
-        # Also could be token_register, or token parameter.
-        else:
-            raise NotImplementedError
-        return evaluated_token_list
+            unit_scale = units_in_scaled_points[unit]
+            if is_true_unit:
+                magnification = self.parameters.get(Parameters.mag)
+                # ['true'] unmagnifies the units, so that the subsequent
+                # magnification will cancel out. For example, `\vskip 0.5
+                # true cm' is equivalent to `\vskip 0.25 cm' if you have
+                # previously said `\magnification=2000'.
+                unit_scale *= 1000.0 / magnification
+        size = int(round(nr_units * unit_scale))
+        return size
 
     # Evaluate conditions.
 
     def evaluate_if_num(self, left_number, right_number, relation):
-        left_number_eval = self.evaluate_number(left_number)
-        right_number_eval = self.evaluate_number(right_number)
+        left_number_eval = self.eval_number_token(left_number)
+        right_number_eval = self.eval_number_token(right_number)
         operator_map = {
             '<': operator.lt,
             '=': operator.eq,
@@ -414,7 +300,7 @@ class GlobalState:
     evaluate_if_dim = evaluate_if_num
 
     def evaluate_if_odd(self, number):
-        number_eval = self.evaluate_number(number)
+        number_eval = self.eval_number_token(number)
         return number_eval % 2
 
     def evaluate_if_v_mode(self):
@@ -459,7 +345,7 @@ class GlobalState:
         raise NotImplementedError
 
     def evaluate_if_case(self, number):
-        number_eval = self.evaluate_number(number)
+        number_eval = self.eval_number_token(number)
         if number_eval < 0:
             raise ValueError(f'if-case should not return negative number: '
                              f'{number_eval}')
@@ -592,21 +478,21 @@ class GlobalState:
         if width is None:
             width = pt2sp(0.4)
         else:
-            width = self.evaluate_number(width)
+            width = self.eval_number_token(width)
         if height is None:
             if self.mode == Mode.vertical:
                 height = self.parameters.get(Parameters.v_size)
             else:
                 raise NotImplementedError
         else:
-            height = self.evaluate_number(height)
+            height = self.eval_number_token(height)
         if depth is None:
             if self.mode == Mode.vertical:
                 depth = self.parameters.get(Parameters.v_size)
             else:
                 raise NotImplementedError
         else:
-            depth = self.evaluate_number(depth)
+            depth = self.eval_number_token(depth)
         self.add_rule(width, height, depth)
 
     def add_h_rule(self, width, height, depth):
@@ -617,15 +503,15 @@ class GlobalState:
             else:
                 raise NotImplementedError
         else:
-            width = self.evaluate_number(width)
+            width = self.eval_number_token(width)
         if height is None:
             height = int(pt2sp(0.4))
         else:
-            height = self.evaluate_number(height)
+            height = self.eval_number_token(height)
         if depth is None:
             depth = 0
         else:
-            depth = self.evaluate_number(depth)
+            depth = self.eval_number_token(depth)
         self.add_rule(width, height, depth)
 
     def do_indent(self):
@@ -649,6 +535,18 @@ class GlobalState:
         elif self.mode in horizontal_modes:
             import pdb; pdb.set_trace()
 
+    def set_box_register(self, i, item, is_global):
+        self.registers.set(type_=Instructions.set_box.value, i=i,
+                           value=item, is_global=is_global)
+
+    def append_box_register(self, i, copy=False):
+        if copy:
+            get_func = self.registers.get
+        else:
+            get_func = self.registers.pop
+        box_item = get_func(Instructions.set_box.value, i)
+        self.append_to_list(box_item)
+
     # Driving with tokens.
 
     def execute_command_tokens(self, commands, banisher, reader):
@@ -670,12 +568,12 @@ class GlobalState:
             raise ExecuteCommandError(command, e)
 
     def _parse_h_box_token(self, v):
-        conts = v['contents'].value
+        conts = v['contents']
         spec = v['specification']
         to = None
         spread = None
         if spec is not None:
-            d = self.evaluate_number(spec.value)
+            d = self.eval_number_token(spec.value)
             if spec.type == 'to':
                 to = d
             elif spec.type == 'spread':
@@ -684,6 +582,115 @@ class GlobalState:
                 raise ValueError(f'Unknown specification type {spec.type}')
         h_box_item = HBox(contents=conts, to=to, spread=spread)
         return h_box_item
+
+    def eval_size_token(self, size_token):
+        v = size_token.value
+        # If the size is the contents of an integer or dimen parameter.
+        if isinstance(v, InstructionToken) and v.type in (Instructions.integer_parameter.value,
+                                                          Instructions.dimen_parameter.value):
+            return self.parameters.get(v.value['parameter'])
+        # If the size is the contents of a count or dimen register.
+        elif isinstance(v, BuiltToken) and v.type in (Instructions.count.value,
+                                                      Instructions.dimen.value):
+            # The register number is a generic 'number' token, so evaluate
+            # this.
+            evaled_i = self.eval_number_token(v.value)
+            return self.registers.get(v.type, i=evaled_i)
+        elif isinstance(v, BuiltToken) and v.type in (Instructions.box_dimen_height.value,
+                                                      Instructions.box_dimen_width.value,
+                                                      Instructions.box_dimen_depth.value):
+            # The box register number is a generic 'number' token, so evaluate
+            # this.
+            evaled_i = self.eval_number_token(v.value)
+            return self.get_box_dimen(evaled_i, v.type)
+        # If the size is the short-hand character token.
+        # This is different to, for example, a count_def_token. A character
+        # token has an integer that represents a character code, and is itself
+        # the value. A count-def token has an integer that represents the
+        # *location* of the actual value.
+        elif isinstance(v, InstructionToken) and v.type in ('CHAR_DEF_TOKEN', 'MATH_CHAR_DEF_TOKEN'):
+            return v.value
+        # If the size is the code of the target of a backtick instruction.
+        elif isinstance(v, BuiltToken) and v.type == 'backtick':
+            return evaler.get_backtick_target_code(target=v.value)
+        # If the size is the integer represented by an integer literal.
+        elif isinstance(v, BuiltToken) and v.type == 'integer_constant':
+            return evaler.get_integer_constant(v.value)
+        # If the size is the real number represented by a decimal number
+        # literal.
+        elif isinstance(v, BuiltToken) and v.type == 'decimal_constant':
+            return evaler.get_real_decimal_constant(v.value)
+        # If the size is the value represented by a short-hand def token.
+        elif isinstance(v, BuiltToken) and v.type == 'internal':
+            return v.value
+        # If the size is a specification of a dimension (this is different to a
+        # call to retrieve the contents of a dimen register).
+        elif isinstance(v, BuiltToken) and v.type == 'dimen':
+            nr_units = self.eval_size_token(v.value['factor'])
+            unit_attrs = v.value['unit']
+            unit = unit_attrs['unit']
+            if unit == PhysicalUnit.fil:
+                nr_fils = unit_attrs['number_of_fils']
+                return self.get_infinite_dimen(nr_fils, nr_units)
+            else:
+                is_true_unit = unit_attrs.get('true', False)
+                return self.get_finite_dimen(unit, nr_units, is_true_unit)
+        else:
+            raise ValueError
+
+    def eval_number_token(self, number_token):
+        number_value = number_token.value
+        # Occurs if the number is a register-def-token.
+        if isinstance(number_value, BuiltToken) and number_value.type == 'internal_number':
+            return number_value.value
+        elif isinstance(number_value, dict):
+            size_token = number_value['size']
+            size = self.eval_size_token(size_token)
+            sign = evaler.evaluate_signs(number_value['signs'])
+            if isinstance(size, BuiltToken) and size.type == 'fil_dimension':
+                size.value['factor'] *= sign
+            else:
+                size *= sign
+            return size
+        else:
+            raise ValueError
+
+    def eval_glue_token(self, glue_token):
+        v = glue_token.value
+        if isinstance(v, BuiltToken) and v.type == 'explicit':
+            # Should contain a dict specifying three dimens (in the general sense
+            # of 'physical length'), a 'dimen' (in the narrow sense), 'shrink' and
+            # 'stretch'.
+            dimens = v.value
+            evaluated_glue = {}
+            for dimen_name, dimen_tok in dimens.items():
+                if dimen_tok is None:
+                    evaluated_dimen = None
+                else:
+                    evaluated_dimen = self.eval_number_token(dimen_tok)
+                evaluated_glue[dimen_name] = evaluated_dimen
+        # If the size is the contents of a glue or mu glue register.
+        elif isinstance(v, BuiltToken) and v.type in (Instructions.skip.value,
+                                                      Instructions.mu_skip.value):
+            # The register number is a generic 'number' token, so evaluate this
+            # first.
+            evaled_i = self.eval_number_token(v.value)
+            v = self.registers.get(v.type, i=evaled_i)
+            return v
+        # If the size is the contents of a parameter.
+        elif isinstance(v, InstructionToken) and v.type in (Instructions.glue_parameter.value,
+                                                            Instructions.mu_glue_parameter.value):
+            return self.parameters.get(v.value['parameter'])
+        return evaluated_glue
+
+    def eval_token_list_token(self, token_list_token):
+        token_list_value = token_list_token.value
+        if token_list_value.type == 'general_text':
+            evaluated_token_list = token_list_value.value
+        # Also could be token_register, or token parameter.
+        else:
+            raise NotImplementedError
+        return evaluated_token_list
 
     def execute_command_token(self, command, banisher, reader):
         # Reader needed to allow us to insert new input in response to
@@ -722,7 +729,7 @@ class GlobalState:
             self.add_character_char(v['char'])
         elif type_ == Instructions.accent.value:
             assignments = v['assignments'].value
-            accent_code_eval = self.evaluate_number(v['accent_code'])
+            accent_code_eval = self.eval_number_token(v['accent_code'])
             char_tok = v['target_char']
             if char_tok is None:
                 target_char_code = None
@@ -749,16 +756,8 @@ class GlobalState:
             h_box_item = self._parse_h_box_token(v)
             self.append_to_list(h_box_item)
         elif type_ in (Instructions.box.value, Instructions.copy.value):
-            evaled_i = self.evaluate_number(v)
+            evaled_i = self.eval_number_token(v)
             # \box empties the register; \copy doesn't
-            if type_ == Instructions.box.value:
-                get_method = self.registers.pop
-            elif type_ == Instructions.copy.value:
-                get_method = self.registers.get
-            else:
-                raise ValueError('Unknown type of box register retrieval')
-            h_box_item = get_method(Instructions.set_box.value, evaled_i)
-            self.append_to_list(h_box_item)
         # Commands like font commands aren't exactly boxes, but they go through
         # as DVI commands. Just put them in the box for now to deal with later.
         elif type_ == 'font_selection':
@@ -775,7 +774,7 @@ class GlobalState:
                 v['global'], v['control_sequence_name'], new_font_id)
         elif type_ == 'family_assignment':
             family_nr_uneval = v['family_nr']
-            family_nr_eval = self.evaluate_number(family_nr_uneval)
+            family_nr_eval = self.eval_number_token(family_nr_uneval)
             logger.info(f"Setting font family {family_nr_eval}")
             self.scoped_font_state.set_font_family(v['global'],
                                                    family_nr_eval,
@@ -793,7 +792,7 @@ class GlobalState:
             raise TidyEnd
         elif type_ == 'short_hand_definition':
             code_uneval = v['code']
-            code_eval = self.evaluate_number(code_uneval)
+            code_eval = self.eval_number_token(code_uneval)
             cs_name = v['control_sequence_name']
             # TODO: Log symbolic argument too.
             logger.info(f'Defining short macro "{cs_name}" as {code_eval}')
@@ -815,15 +814,15 @@ class GlobalState:
             # evaluate it to its contents first before assigning a variable to
             # it.
             value_evaluate_map = {
-                'number': self.evaluate_number,
-                'dimen': self.evaluate_number,
-                'glue': self.evaluate_glue,
-                'token_list': self.evaluate_token_list,
+                'number': self.eval_number_token,
+                'dimen': self.eval_number_token,
+                'glue': self.eval_glue_token,
+                'token_list': self.eval_token_list_token,
             }
             value_evaluate_func = value_evaluate_map[value.type]
             evaled_value = value_evaluate_func(value)
             if is_register_type(variable.type):
-                evaled_i = self.evaluate_number(variable.value)
+                evaled_i = self.eval_number_token(variable.value)
                 self.registers.set(
                     type_=variable.type, i=evaled_i, value=evaled_value,
                     is_global=v['global'],
@@ -837,12 +836,12 @@ class GlobalState:
         elif type_ == 'advance':
             variable, value = v['variable'], v['value']
             # See 'variable_assignment' case.
-            evaled_value = self.evaluate_number(value)
+            evaled_value = self.eval_number_token(value)
             kwargs = {'is_global': v['global'],
                       'by_operand': evaled_value,
                       'operation': Operation.advance}
             if is_register_type(variable.type):
-                evaled_i = self.evaluate_number(variable.value)
+                evaled_i = self.eval_number_token(variable.value)
                 self.registers.modify_register_value(
                     type_=variable.type, i=evaled_i, **kwargs
                 )
@@ -851,28 +850,25 @@ class GlobalState:
                     name=variable.value['parameter'], **kwargs
                 )
             else:
-                import pdb; pdb.set_trace()
-        elif type_ == 'set_box_assignment':
-            evaled_i = self.evaluate_number(v['nr'])
-            box = v['contents']
-            h_box_item = self._parse_h_box_token(box.value)
-            self.registers.set(
-                type_=Instructions.set_box.value,
-                i=evaled_i,
-                value=h_box_item,
-                is_global=v['global'],
-            )
+                raise ValueError(f"Unknown unknown variable type: "
+                                 f"'{variable.type}'")
+        elif type_ == Instructions.set_box.value:
+            evaled_i = self.eval_number_token(v['nr'])
+            box_type = v['box'].type
+            if box_type == 'h_box':
+                box_item = self._parse_h_box_token(v['box'].value)
+            else:
+                raise NotImplementedError
+            self.set_box_register(evaled_i, box_item, v['global'])
         elif type_ == 'PATTERNS':
             raise NotImplementedError
         elif type_ == 'HYPHENATION':
             raise NotImplementedError
         elif type_ == 'code_assignment':
             code_type = v['code_type']
-            char_size = self.evaluate_number(v['char'])
-            code_size = self.evaluate_number(v['code'])
+            char_size = self.eval_number_token(v['char'])
+            code_size = self.eval_number_token(v['code'])
             char = chr(char_size)
-            # TODO: Move inside state? What exactly is the benefit?
-            # I guess separation of routing logic from execution logic.
             if code_type == 'CAT_CODE':
                 code = CatCode(code_size)
             elif code_type == 'MATH_CODE':
@@ -898,17 +894,11 @@ class GlobalState:
             self.router.do_let_assignment(v['global'], new_name=v['name'],
                                           target_token=v['target_token'])
         elif type_ == 'skew_char_assignment':
-            # TODO: can we make this nicer by storing the char instead of the
-            # number?
-            code_eval = self.evaluate_number(v['code'])
-            self.global_font_state.set_hyphen_char(v['font_id'],
-                                                   code_eval)
+            code_eval = self.eval_number_token(v['code'])
+            self.global_font_state.set_hyphen_char(v['font_id'], code_eval)
         elif type_ == 'hyphen_char_assignment':
-            # TODO: can we make this nicer by storing the char instead of the
-            #         number?
-            code_eval = self.evaluate_number(v['code'])
-            self.global_font_state.set_hyphen_char(v['font_id'],
-                                                   code_eval)
+            code_eval = self.eval_number_token(v['code'])
+            self.global_font_state.set_hyphen_char(v['font_id'], code_eval)
         elif type_ == 'message':
             conts = v['content'].value
             s = ''.join(t.value['char'] for t in conts)
@@ -916,7 +906,7 @@ class GlobalState:
         elif type_ == 'write':
             conts = v['content'].value
             # s = ''.join(t.value['char'] for t in conts)
-            print(f'LOG: <todo>')
+            print(f'LOG: <TODO>')
             # TODO: This should be read with expansion, but at the moment we
             # read it unexpanded, so what we get here is not printable.
             pass
@@ -950,7 +940,7 @@ class GlobalState:
             else:
                 import pdb; pdb.set_trace()
         elif type_ == 'V_SKIP':
-            glue = self.evaluate_glue(v)
+            glue = self.eval_glue_token(v)
             item = UnSetGlue(**glue)
             logger.info(f'Adding vertical glue {item}')
             self.append_to_list(item)

@@ -2,6 +2,7 @@ import pytest
 
 from nex.accessors import Registers
 from nex.instructions import Instructions
+from nex.box import HBox
 from nex.utils import NotInScopeError
 
 
@@ -47,25 +48,40 @@ def test_register_types():
         Instructions.skip.value: {0: None},
         Instructions.mu_skip.value: {0: None},
         Instructions.toks.value: {0: None},
+        Instructions.set_box.value: {0: None},
     }
     r = Registers(rmap)
     tokens = ['fake_token']
     dct = {'hihi': 3}
     int_val = 5
+    box = HBox(contents=[])
     for type_ in (Instructions.count.value, Instructions.dimen.value):
+        # Good type.
         r.set(type_, 0, int_val)
+        # Bad type.
         with pytest.raises(TypeError):
             r.set(type_, 0, dct)
         with pytest.raises(TypeError):
             r.set(type_, 0, tokens)
     for type_ in (Instructions.skip.value, Instructions.mu_skip.value):
+        # Good type.
+        r.set(type_, 0, dct)
+        # Bad type.
         with pytest.raises(TypeError):
             r.set(type_, 0, int_val)
-        r.set(type_, 0, dct)
         with pytest.raises(TypeError):
             r.set(type_, 0, tokens)
+    # Good type.
+    r.set(Instructions.toks.value, 0, tokens)
+    # Bad type.
     with pytest.raises(TypeError):
         r.set(Instructions.toks.value, 0, int_val)
     with pytest.raises(TypeError):
         r.set(Instructions.toks.value, 0, dct)
-    r.set(Instructions.toks.value, 0, tokens)
+    # Good type.
+    r.set(Instructions.set_box.value, 0, box)
+    # Bad type.
+    with pytest.raises(TypeError):
+        r.set(Instructions.set_box.value, 0, int_val)
+    with pytest.raises(TypeError):
+        r.set(Instructions.set_box.value, 0, dct)

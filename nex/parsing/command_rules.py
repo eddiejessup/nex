@@ -229,14 +229,14 @@ def add_assignment_rules(pg):
 
     @pg.production('set_box_assignment : SET_BOX number equals filler box')
     def set_box_assignment(p):
-        return BuiltToken(type_='set_box_assignment',
-                          value={'nr': p[1], 'contents': p[4]},
+        return BuiltToken(type_=p[0].type,
+                          value={'nr': p[1], 'box': p[4]},
                           position_like=p)
 
     @pg.production('box : H_BOX box_specification LEFT_BRACE HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE')
     def box_h_box(p):
         return BuiltToken(type_='h_box',
-                          value={'specification': p[1], 'contents': p[3]},
+                          value={'specification': p[1], 'contents': p[3].value},
                           position_like=p)
 
     @pg.production('box : BOX number')

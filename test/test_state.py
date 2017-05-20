@@ -1,47 +1,21 @@
 import pytest
 
-from nex.state import GlobalState, Mode
-from nex.fonts import GlobalFontState
+from nex.state import Mode, GlobalState
 from nex import box
+from nex.instructions import Instructions
 from nex.box_writer import write_to_dvi_file
-from nex.utils import ExecuteCommandError
+from nex.utils import ExecuteCommandError, NotInScopeError
 from nex.tokens import BuiltToken
+from nex.fonts import GlobalFontState
 
-from common import ITok, DummyInstructions
+from common import ITok, DummyInstructions, DummyGlobalFontState
 
 
 do_output = False
 font_path = '/Users/ejm/projects/nex/fonts'
 
 
-class DummyFontInfo:
-
-    def __init__(self, file_name, file_path, at_clause):
-        self.font_name = file_name
-        self.file_name = file_name
-        self.file_path = file_path
-        self.at_clause = at_clause
-        self.width = lambda code: 1
-        self.height = lambda code: 1
-        self.depth = lambda code: 1
-        self.x_height = 1
-
-
-class DummyGlobalFontState(GlobalFontState):
-
-    FontInfo = DummyFontInfo
-
-    def define_new_font(self, file_name, at_clause):
-        font_info = DummyFontInfo(file_name=file_name,
-                                  file_path=f'/dummy/font/path/{file_name}',
-                                  at_clause=at_clause)
-        font_id = max(self.fonts.keys()) + 1
-        self.fonts[font_id] = font_info
-        # Return new font id.
-        return font_id
-
-
-@pytest.fixture
+@pytest.fixture()
 def state():
     if do_output:
         global_font_state = GlobalFontState(search_paths=[font_path])
@@ -157,3 +131,31 @@ def test_if_case(state):
     assert state.evaluate_if_case(nr_tok(5)) == 5
     with pytest.raises(ValueError):
         state.evaluate_if_case(nr_tok(-6))
+
+
+def test_set_box(state):
+    box_item = box.HBox(contents=[])
+    state.set_box_register(i=2, item=box_item, is_global=False)
+    state.append_box_register(i=2, copy=False)
+    lst = state._layout_list
+    assert lst[-1].contents is box_item.contents
+
+
+def test_set_box_fail(state):
+    with pytest.raises(NotInScopeError):
+        state.append_box_register(i=2, copy=False)
+
+
+def test_get_box_dimen(state):
+    box_item = box.HBox(contents=[], to=100)
+    state.set_box_register(i=2, item=box_item, is_global=False)
+    b = state.get_box_dimen(i=2, type_=Instructions.box_dimen_width.value)
+    assert b == 100
+
+
+def test_command_token_set_box(state):
+    i_reg = 5
+    box_tok = BuiltToken(type_='h_box', value={'contents': [], 'specification': None})
+    set_box_tok = BuiltToken(type_=Instructions.set_box.value,
+                             value={'box': box_tok, 'nr': nr_tok(i_reg), 'global': True})
+    state.execute_command_token(set_box_tok, banisher=None, reader=None)
