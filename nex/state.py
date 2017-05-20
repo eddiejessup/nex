@@ -383,30 +383,18 @@ class GlobalState:
     # Evaluate conditions.
 
     def evaluate_if_num(self, left_number, right_number, relation):
-        left_number = self.evaluate_number(left_number)
-        right_number = self.evaluate_number(right_number)
+        left_number_eval = self.evaluate_number(left_number)
+        right_number_eval = self.evaluate_number(right_number)
         operator_map = {
             '<': operator.lt,
             '=': operator.eq,
             '>': operator.gt,
         }
         op = operator_map[relation]
-        outcome = op(left_number, right_number)
+        outcome = op(left_number_eval, right_number_eval)
         return outcome
 
     evaluate_if_dim = evaluate_if_num
-
-    def evaluate_if_num(self, left_number, right_number, relation):
-        left_number = self.evaluate_number(left_number)
-        right_number = self.evaluate_number(right_number)
-        operator_map = {
-            '<': operator.lt,
-            '=': operator.eq,
-            '>': operator.gt,
-        }
-        op = operator_map[relation]
-        outcome = op(left_number, right_number)
-        return outcome
 
     def evaluate_if_odd(self, number):
         number_eval = self.evaluate_number(number)
@@ -970,8 +958,9 @@ class GlobalState:
             outcome = self.evaluate_if_num(v['left_number'], v['right_number'],
                                            relation_str)
         elif t == 'IF_DIMEN':
+            relation_str = v['relation'].value['char']
             outcome = self.evaluate_if_dim(v['left_dimen'], v['right_dimen'],
-                                           v['relation'])
+                                           relation_str)
         elif t == 'IF_CASE':
             outcome = self.evaluate_if_case(v['number'])
         elif t == 'IF_TRUE':
