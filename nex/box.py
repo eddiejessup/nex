@@ -288,7 +288,7 @@ class WhatsIt(ListElement):
 class Glue(ListElement):
     discardable = True
 
-    def __init__(self, dimen, stretch=None, shrink=None):
+    def __init__(self, dimen, stretch=0, shrink=0):
         self.natural_dimen = dimen
         self.stretch = stretch
         self.shrink = shrink
@@ -310,12 +310,12 @@ class Glue(ListElement):
 
     @property
     def is_set(self):
-        self.set_dimen is not None
+        return self.set_dimen is not None
 
     def set(self, dimen):
         self.set_dimen = dimen
 
-    def un_set(self):
+    def unset(self):
         self.set_dimen = None
 
     @property
