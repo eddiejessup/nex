@@ -999,12 +999,8 @@ class GlobalState:
             logger.info(f'Adding vertical glue {item}')
             self.append_to_list(item)
         elif type_ == 'H_STRETCH_OR_SHRINK':
-            unit = {'unit': PhysicalUnit.fil,
-                    'true': True,
-                    'number_of_fils': 1,
-                    'factor': 1}
-            fil = BuiltToken(type_='fil_unit', value=unit)
-            item = Glue(dimen=0, stretch=fil, shrink=fil)
+            fil_dimen = self.get_infinite_dimen(nr_fils=1, nr_units=1)
+            item = Glue(dimen=0, stretch=fil_dimen, shrink=fil_dimen)
             logger.info(f'Adding horizontal super-elastic glue {item}')
             self.append_to_list(item)
         else:

@@ -143,7 +143,8 @@ class AbstractBox(ListElement):
 
     @property
     def un_set_glues(self):
-        return [e for e in self.contents if isinstance(e, Glue) and e.is_set]
+        return [e for e in self.contents
+                if isinstance(e, Glue) and not e.is_set]
 
 
 def extract_dimen(d):
@@ -251,7 +252,7 @@ class HBox(AbstractBox):
                 raise ValueError(f'Unknown line state: {line_state}')
             # Notice that stretching or shrinking occurs only when the glue
             # has the highest order of infinity that doesn't cancel out.
-            self.contents[i] = g.set(int(round(g.natural_width + glue_diff)))
+            self.contents[i].set(int(round(g.natural_width + glue_diff)))
         self.set_glue = True
 
 
@@ -323,7 +324,7 @@ class Glue(ListElement):
             return self.set_dimen
         else:
             raise AttributeError('Glue is not set, so has no dimensions')
-    height = width
+    dimen = height = width
 
 
 class Kern(ListElement):
