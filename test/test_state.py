@@ -149,14 +149,31 @@ def test_set_box_void(state):
 
 
 def test_unbox(state):
-    box_item = box.HBox(contents=[box.Rule(1, 1, 1), box.Rule(2, 2, 2)])
-    state.set_box_register(i=2, item=box_item, is_global=False)
+    box_item = box.HBox([
+        box.Glue(100),
+        box.HBox([
+            box.Glue(20),
+        ]),
+    ])
+
+    i_reg = 2
+    state.set_box_register(i=i_reg, item=box_item, is_global=False)
     nr_elems_before = len(state._layout_list)
-    state.append_unboxed_register_box(i=2, copy=False, horizontal=True)
+    state.append_unboxed_register_box(i=i_reg, copy=True, horizontal=True)
     nr_elems_after = len(state._layout_list)
     assert nr_elems_after == nr_elems_before + 2
-    # Should now be empty, since copy == False.
-    assert state.get_register_box(i=2, copy=False) is None
+    unboxed_contents = state.get_unboxed_register_box(i=i_reg, copy=False,
+                                                      horizontal=True)
+    outer_glue = unboxed_contents[0]
+    assert isinstance(outer_glue, box.Glue)
+    assert not outer_glue.is_set
+
+    inner_glue = unboxed_contents[1].contents[0]
+    assert isinstance(inner_glue, box.Glue)
+    assert inner_glue.is_set
+
+    # Should be empty now, because I called with copy == False just then.
+    assert state.get_register_box(i=i_reg, copy=False) is None
 
 
 def test_unbox_bad_box_type(state):

@@ -557,20 +557,12 @@ class GlobalState:
         if box_item is not None:
             self.append_to_list(box_item)
 
-    def append_unboxed_register_box(self, i, copy, horizontal):
+    def get_unboxed_register_box(self, i, copy, horizontal):
         # See TeXbook page 120.
         # TODO: implement global voiding:
         # 'If you say `\global\setbox3=<box>`, register \box3 will become
         # "globally void" when it is subsequently used or unboxed.'
         # TODO: Unset glue:
-        # An unboxing operation 'unsets' any glue that was set at the box's
-        # outer level. For example, consider the sequence of commands:
-        #
-        # \setbox5=\hbox{A \hbox{B C}} \setbox6=\hbox to 1.05\wd5{\unhcopy5}
-        #
-        # This makes \box6 five percent wider than \box5; the glue between A
-        # and \hbox{B C} stretches to make the difference, but the glue inside
-        # the inner hbox does not change.
         box_item = self.get_register_box(i, copy)
         if isinstance(box_item, HBox):
             if horizontal:
@@ -589,6 +581,22 @@ class GlobalState:
             unwrapped_box_contents = []
         else:
             raise ValueError(f'Box Register contains non-box: {box_item}')
+        # An unboxing operation 'unsets' any glue that was set at the box's
+        # outer level. For example, consider the sequence of commands:
+        #
+        # \setbox5=\hbox{A \hbox{B C}} \setbox6=\hbox to 1.05\wd5{\unhcopy5}
+        #
+        # This makes \box6 five percent wider than \box5; the glue between A
+        # and \hbox{B C} stretches to make the difference, but the glue inside
+        # the inner hbox does not change.
+        for item in unwrapped_box_contents:
+            if isinstance(item, Glue):
+                item.unset()
+        return unwrapped_box_contents
+
+    def append_unboxed_register_box(self, i, copy, horizontal):
+        unwrapped_box_contents = self.get_unboxed_register_box(i, copy,
+                                                               horizontal)
         self.extend_list(unwrapped_box_contents)
 
     # Driving with tokens.
