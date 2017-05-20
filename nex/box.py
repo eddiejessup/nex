@@ -138,6 +138,10 @@ class AbstractBox(ListElement):
         return [e.height for e in self.contents]
 
     @property
+    def depths(self):
+        return [e.depth for e in self.contents]
+
+    @property
     def un_set_glues(self):
         return [e for e in self.contents if isinstance(e, UnSetGlue)]
 
@@ -167,9 +171,14 @@ class HBox(AbstractBox):
             raise Exception('HBox is not set yet, does not have a width')
         return self.desired_width
 
+    # TODO: I'm not sure the height and depth definitions are correct.
     @property
     def height(self):
         return max(self.heights)
+
+    @property
+    def depth(self):
+        return max(self.depths)
 
     @property
     def stretch(self):
@@ -259,8 +268,8 @@ class Rule(ListElement):
     discardable = False
 
     def __init__(self, width, height, depth):
-        self.width = width
-        self.height = height
+        self.width = self.natural_width = width
+        self.height = self.natural_height = height
         self.depth = depth
 
 
@@ -270,9 +279,7 @@ class Rule(ListElement):
 class WhatsIt(ListElement):
     discardable = False
 
-    width = height = 0
-
-
+    width = height = natural_width = natural_height = depth = 0
 
 
 class UnSetGlue(ListElement):
@@ -384,6 +391,10 @@ class Character(ListElement):
         return self.font.height(self.code)
     natural_height = height
 
+    @property
+    def depth(self):
+        return self.font.depth(self.code)
+
 
 class Ligature(ListElement):
     discardable = False
@@ -428,7 +439,7 @@ class FontDefinition(ListElement):
         self.file_name = file_name
         self.at_clause = at_clause
 
-    width = height = natural_width = natural_height = 0
+    width = height = natural_width = natural_height = depth = 0
 
 
 class FontSelection(ListElement):
@@ -437,4 +448,4 @@ class FontSelection(ListElement):
     def __init__(self, font_nr):
         self.font_nr = font_nr
 
-    width = height = natural_width = natural_height = 0
+    width = height = natural_width = natural_height = depth = 0

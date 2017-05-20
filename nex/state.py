@@ -253,14 +253,31 @@ class GlobalState:
         # If the size is the contents of a count or dimen register.
         elif isinstance(v, BuiltToken) and v.type in (Instructions.count.value,
                                                       Instructions.dimen.value):
-            # The register number is a generic 'number' token, so evaluate this
-            # first.
+            # The register number is a generic 'number' token, so evaluate
+            # this.
             evaled_i = self.evaluate_number(v.value)
             v = self.registers.get(v.type, i=evaled_i)
             return v
-        # If the size is the short-hand character token. This is different to,
-        # for example, a count_def_token, because that represents a register
-        # containing a variable. A char_def_token represents a constant value.
+        elif isinstance(v, BuiltToken) and v.type in (Instructions.box_dimen_height.value,
+                                                      Instructions.box_dimen_width.value,
+                                                      Instructions.box_dimen_depth.value):
+            # The box register number is a generic 'number' token, so evaluate
+            # this.
+            evaled_i = self.evaluate_number(v.value)
+            box_item = self.registers.get(Instructions.set_box.value, i=evaled_i)
+            if v.type == Instructions.box_dimen_height.value:
+                return box_item.height
+            elif v.type == Instructions.box_dimen_width.value:
+                return box_item.width
+            elif v.type == Instructions.box_dimen_depth.value:
+                return box_item.depth
+            else:
+                raise ValueError(f'Unknown box dimension requested: {v.type}')
+        # If the size is the short-hand character token.
+        # This is different to, for example, a count_def_token. A character
+        # token has an integer that represents a character code, and is itself
+        # the value. A count-def token has an integer that represents the
+        # *location* of the actual value.
         elif isinstance(v, InstructionToken) and v.type in ('CHAR_DEF_TOKEN', 'MATH_CHAR_DEF_TOKEN'):
             return v.value
         # If the size is the code of the target of a backtick instruction.
@@ -947,7 +964,7 @@ class GlobalState:
             logger.info(f'Adding horizontal super-elastic glue {item}')
             self.append_to_list(item)
         else:
-            raise ValueError('Command type not recognised.')
+            raise ValueError(f"Command type '{type_}' not recognised.")
 
     # This method has a long name to emphasize that it will return the index of
     # the token block to pick, not the result of the condition.
