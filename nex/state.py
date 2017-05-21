@@ -803,7 +803,7 @@ class GlobalState:
             self.add_h_rule(**v)
         # The box already has its contents in the correct way, built using this
         # very method. Recursion still amazes me sometimes.
-        elif type_ == 'h_box':
+        elif type_ == Instructions.h_box.value:
             logger.info(f'Adding horizontal box')
             h_box_item = self._parse_h_box_token(v)
             self.append_to_list(h_box_item)
@@ -917,7 +917,7 @@ class GlobalState:
         elif type_ == Instructions.set_box.value:
             evaled_i = self.eval_number_token(v['nr'])
             box_type = v['box'].type
-            if box_type == 'h_box':
+            if box_type == Instructions.h_box.value:
                 box_item = self._parse_h_box_token(v['box'].value)
             else:
                 raise NotImplementedError
