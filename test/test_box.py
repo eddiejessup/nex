@@ -1,4 +1,5 @@
-from nex import box
+from nex.dampf.dvi_document import DVIDocument
+from nex import box, box_writer
 
 
 def test_glue_flex():
@@ -15,3 +16,16 @@ def test_glue_flex_set():
                      set_glue=True)
     assert h_box.stretch == [0]
     assert h_box.shrink == [0]
+
+
+def test_box_writer():
+    doc = DVIDocument(magnification=1000)
+    lay_list = [
+        box.Rule(1, 1, 1),
+        box.Glue(1, 2, 3),
+        box.HBox([
+            box.Glue(3, 2, 1),
+            box.Rule(3, 3, 3),
+        ]),
+    ]
+    box_writer.write_box_to_doc(doc, lay_list)
