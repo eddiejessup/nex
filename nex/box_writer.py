@@ -55,7 +55,16 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
             else:
                 doc.down(item.height)
         else:
-            import pdb; pdb.set_trace()
+            raise NotImplementedError
+
+
+def pp(item, l=1):
+    tabs = '\t' * l
+    if isinstance(item, list):
+        for it in item:
+            pp(it, l + 1)
+    else:
+        print(f'{tabs} {item}')
 
 
 def write_to_dvi_file(state, out_stream, write_pdf=False):
