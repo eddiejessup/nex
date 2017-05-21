@@ -3,6 +3,7 @@ from string import ascii_letters
 from collections import deque
 
 from .tokens import InstructionToken
+from .reader import EndOfFile
 from .lexer import (Lexer, make_char_cat_lex_token,
                     control_sequence_lex_type, char_cat_lex_type)
 from .instructions import Instructions
@@ -177,7 +178,11 @@ class Instructioner:
         return t
 
     def advance_to_end(self):
-        yield from self.lexer.advance_to_end()
+        while True:
+            try:
+                yield next(self)
+            except EndOfFile:
+                return
 
     def replace_tokens_on_input(self, tokens):
         if logger.isEnabledFor(logging.DEBUG):
