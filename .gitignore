@@ -11,3 +11,5 @@ parsetab.py
 .cache/
 manmac.tex
 tex.web
+.coverage
+htmlcov/
