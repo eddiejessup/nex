@@ -292,7 +292,7 @@ class Banisher:
 
     def __init__(self, instructions, state, reader):
         self.instructions = instructions
-        self.global_state = state
+        self.state = state
         # The banisher needs the reader because it can execute commands,
         # and one possible command is '\input', which needs to modify the
         # reader.
@@ -372,7 +372,7 @@ class Banisher:
         with safe_chunk_grabber(self, condition_parser,
                                 initial=[first_token]) as condition_grabber:
             if_token = next(condition_grabber)
-        i_block_to_pick = self.global_state.evaluate_if_token_to_block(if_token)
+        i_block_to_pick = self.state.evaluate_if_token_to_block(if_token)
         # Now get the body of the condition text.
 
         def get_condition_sign(token):
@@ -380,9 +380,9 @@ class Banisher:
                 return 0
             name = token.value['name']
 
-            if self.global_state.router.name_means_start_condition(name):
+            if self.state.router.name_means_start_condition(name):
                 return 1
-            elif self.global_state.router.name_means_end_condition(name):
+            elif self.state.router.name_means_end_condition(name):
                 return -1
             else:
                 return 0
@@ -391,7 +391,7 @@ class Banisher:
             if not is_control_sequence_call(token):
                 return 0
             name = token.value['name']
-            return self.global_state.router.name_means_delimit_condition(name)
+            return self.state.router.name_means_delimit_condition(name)
 
         nr_conditions = 1
         i_block = 0
@@ -426,13 +426,13 @@ class Banisher:
         elif self.context_mode == ContextMode.awaiting_make_v_top_start:
             box_group = Group.v_top
         elif self.context_mode == ContextMode.awaiting_make_h_box_start:
-            if self.global_state.mode == Mode.vertical:
+            if self.state.mode == Mode.vertical:
                 box_group = Group.adjusted_h_box
             else:
                 box_group = Group.h_box
-        self.global_state.push_group(box_group)
+        self.state.push_group(box_group)
         # (By later context, can tell this means a new scope.)
-        self.global_state.push_new_scope()
+        self.state.push_new_scope()
 
         # Enter relevant mode.
         if self.context_mode in (ContextMode.awaiting_make_v_box_start,
@@ -441,7 +441,7 @@ class Banisher:
         elif self.context_mode == ContextMode.awaiting_make_h_box_start:
             mode = Mode.restricted_horizontal
         # TODO: Use context manager for mode.
-        self.global_state.push_mode(mode)
+        self.state.push_mode(mode)
 
         # Done with the context.
         self._pop_context()
@@ -449,7 +449,7 @@ class Banisher:
         box_parser = command_parser
         with safe_chunk_grabber(self, parser=box_parser) as chunk_grabber:
             # Matching right brace should trigger EndOfSubExecutor and return.
-            self.global_state.execute_command_tokens(chunk_grabber,
+            self.state.execute_command_tokens(chunk_grabber,
                                                      banisher=self,
                                                      reader=self.reader)
 
@@ -457,7 +457,7 @@ class Banisher:
         # size that was saved on the stack), and completes the setbox
         # command, returning to the mode it was in at the time of the
         # setbox.
-        layout_list = self.global_state.pop_mode()
+        layout_list = self.state.pop_mode()
         material_token = InstructionToken(
             mode_material_instruction_map[mode],
             value=layout_list,
@@ -513,8 +513,8 @@ class Banisher:
             general_text_token = next(general_text_grabber)
 
         case_funcs_map = {
-            Instructions.lower_case: self.global_state.codes.get_lower_case_code,
-            Instructions.upper_case: self.global_state.codes.get_upper_case_code,
+            Instructions.lower_case: self.state.codes.get_lower_case_code,
+            Instructions.upper_case: self.state.codes.get_upper_case_code,
         }
         case_func = case_funcs_map[first_token.instruction]
 
@@ -542,7 +542,7 @@ class Banisher:
         # TeX first reads the [next] token without expansion.
         target_token = next(self.instructions)
         logger.debug(f'Doing "string" instruction to {target_token}')
-        escape_char_code = self.global_state.parameters.get(Parameters.escape_char)
+        escape_char_code = self.state.parameters.get(Parameters.escape_char)
         return [], get_string_instr_repr(target_token, escape_char_code)
 
     def _handle_cs_name(self, first_token):
@@ -582,7 +582,7 @@ class Banisher:
         if (self._expanding_control_sequences and
                 first_token.instruction in unexpanded_cs_instructions):
             name = first_token.value['name']
-            first_token = self.global_state.router.lookup_control_sequence(
+            first_token = self.state.router.lookup_control_sequence(
                 name, position_like=first_token)
 
         instr = first_token.instruction
