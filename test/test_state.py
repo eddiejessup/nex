@@ -192,7 +192,8 @@ def test_get_box_dimen(state):
 
 def test_command_token_set_box(state):
     i_reg = 5
-    box_tok = BuiltToken(type_='h_box', value={'contents': [], 'specification': None})
+    box_tok = BuiltToken(type_=Instructions.h_box.value,
+                         value={'contents': [], 'specification': None})
     set_box_tok = BuiltToken(type_=Instructions.set_box.value,
                              value={'box': box_tok, 'nr': nr_tok(i_reg), 'global': True})
     state.execute_command_token(set_box_tok, banisher=None, reader=None)
