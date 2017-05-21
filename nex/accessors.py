@@ -8,8 +8,10 @@ from .parameters import (Parameters, Specials,
                          param_to_type, special_to_type,
                          param_instr_subset)
 from .codes import (CatCode, WeirdChar, MathClass, MathCode, GlyphCode,
+                    DelimiterCode,
                     not_a_delimiter_code, ignored_delimiter_code)
 from .utils import NotInScopeError, ascii_characters
+from . import evaluator as evaler
 
 
 def check_type(type_, value):
@@ -17,7 +19,9 @@ def check_type(type_, value):
     if type_ in (Instructions.count.value,
                  Instructions.dimen.value,
                  Instructions.integer_parameter.value,
-                 Instructions.dimen_parameter.value):
+                 Instructions.dimen_parameter.value,
+                 Instructions.special_integer.value,
+                 Instructions.special_dimen.value):
         expected_type = int
     elif type_ in (Instructions.skip.value,
                    Instructions.mu_skip.value,
@@ -29,6 +33,8 @@ def check_type(type_, value):
         expected_type = list
     elif type_ == Instructions.set_box.value:
         expected_type = AbstractBox
+    else:
+        raise ValueError(f'Asked to check unknown type: {type_}')
     if not isinstance(value, expected_type):
         raise TypeError(f'Value "{value}" has wrong type: {type(value)}; '
                         f'expected {expected_type}')
@@ -254,12 +260,12 @@ class Codes:
                  delimiter_code,
                  ):
         self.code_type_to_char_map = {
-            'cat': char_to_cat,
-            'math': char_to_math_code,
-            'upper_case': upper_case_code,
-            'lower_case': lower_case_code,
-            'space_factor': space_factor_code,
-            'delimiter': delimiter_code,
+            Instructions.cat_code.value: char_to_cat,
+            Instructions.math_code.value: char_to_math_code,
+            Instructions.upper_case_code.value: upper_case_code,
+            Instructions.lower_case_code.value: lower_case_code,
+            Instructions.space_factor_code.value: space_factor_code,
+            Instructions.delimiter_code.value: delimiter_code,
         }
 
     @staticmethod
@@ -365,6 +371,67 @@ class Codes:
         char_map = self._check_and_get_char_map(code_type)
         char_map[char] = code
 
+    def set_by_nrs(self, code_type, char_size, code_size):
+        """Convenience function to allow defining the character, and the target
+        code, by integers, rather than their enum members, or whatever type a
+        code's contents is."""
+        char = chr(char_size)
+        code = self._code_size_to_code(code_type, code_size)
+        self.set(code_type, char, code)
+
+    # Some inelegant but handy getters and setters.
+
+    def get_cat_code(self, char):
+        return self.get(Instructions.cat_code.value, char)
+
+    def get_upper_case_code(self, char):
+        return self.get(Instructions.upper_case_code.value, char)
+
+    def get_lower_case_code(self, char):
+        return self.get(Instructions.lower_case_code.value, char)
+
+    def get_space_factor_code(self, char):
+        return self.get(Instructions.space_factor_code.value, char)
+
+    def set_cat_code(self, char, code):
+        self.set(Instructions.cat_code.value, char, code)
+
+    def set_upper_case_code(self, char, code):
+        self.set(Instructions.upper_case_code.value, char, code)
+
+    def set_lower_case_code(self, char, code):
+        self.set(Instructions.lower_case_code.value, char, code)
+
+    def set_space_factor_code(self, char, code):
+        self.set(Instructions.space_factor_code.value, char, code)
+
+    # End of inelegance.
+
+    def _code_size_to_code(self, code_type, code_size):
+        if code_type == Instructions.cat_code.value:
+            return CatCode(code_size)
+        elif code_type == Instructions.math_code.value:
+            parts = evaler.split_hex_code(code_size,
+                                          hex_length=4, inds=(1, 2))
+            math_class_i, family, position = parts
+            math_class = MathClass(math_class_i)
+            glyph_code = GlyphCode(family, position)
+            return MathCode(math_class, glyph_code)
+        elif code_type in (Instructions.upper_case_code.value,
+                           Instructions.lower_case_code.value):
+            return chr(code_size)
+        elif code_type == Instructions.space_factor_code.value:
+            return code_size
+        elif code_type == Instructions.delimiter_code.value:
+            parts = evaler.split_hex_code(code_size,
+                                          hex_length=6, inds=(1, 3, 4))
+            small_family, small_position, large_family, large_position = parts
+            small_glyph_code = GlyphCode(small_family, small_position)
+            large_glyph_code = GlyphCode(large_family, large_position)
+            return DelimiterCode(small_glyph_code, large_glyph_code)
+        else:
+            raise ValueError(f'Unknown code type: {code_type}')
+
     def _check_and_get_char_map(self, code_type):
         if code_type not in self.code_type_to_char_map:
             raise ValueError(f'No codes of type {code_type}')
@@ -375,41 +442,5 @@ class Codes:
         if char not in char_map:
             raise ValueError(f'Character {char} not in codes {code_type}')
         return char_map[char]
-
-    def set_cat_code(self, char, cat):
-        self.set('cat', char, cat)
-
-    def set_math_code(self, char, code):
-        self.set('math', char, code)
-
-    def set_upper_case_code(self, char, up_char):
-        self.set('upper_case', char, up_char)
-
-    def set_lower_case_code(self, char, low_char):
-        self.set('lower_case', char, low_char)
-
-    def set_space_factor_code(self, char, code):
-        self.set('space_factor', char, code)
-
-    def set_delimiter_code(self, char, code):
-        self.set('delimiter', char, code)
-
-    def get_cat_code(self, char):
-        return self.get('cat', char)
-
-    def get_math_code(self, char):
-        return self.get('math', char)
-
-    def get_upper_case_code(self, char):
-        return self.get('upper_case', char)
-
-    def get_lower_case_code(self, char):
-        return self.get('lower_case', char)
-
-    def get_space_factor_code(self, char):
-        return self.get('space_factor', char)
-
-    def get_delimiter_code(self, char):
-        return self.get('delimiter', char)
 
 # End of codes.

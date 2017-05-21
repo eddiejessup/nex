@@ -25,17 +25,6 @@ class GlueRatio(Enum):
     no_shrinkability = 3
 
 
-class LayoutList:
-    pass
-
-
-class ListElement:
-
-    def __repr__(self):
-        return '{}({})'.format(self.__class__.__name__,
-                               self.__dict__.__repr__())
-
-
 @lru_cache(512)
 def glue_set_ratio(natural_length, desired_length, stretch, shrink):
     excess_length = natural_length - desired_length
@@ -95,6 +84,13 @@ def glue_set_ratio(natural_length, desired_length, stretch, shrink):
             if glue_order == 0:
                 glue_ratio = min(glue_ratio, 1.0)
     return line_state, glue_ratio, glue_order
+
+
+class ListElement:
+
+    def __repr__(self):
+        return '{}({})'.format(self.__class__.__name__,
+                               self.__dict__.__repr__())
 
 
 # All modes.

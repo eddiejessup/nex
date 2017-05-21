@@ -82,6 +82,11 @@ class ScopedAccessor:
                 return a
         raise NotInScopeError
 
+    def apply_scope_func(self, is_global, func_name, *args, **kwargs):
+        for scope in self.get_scopes(is_global):
+            f = getattr(scope, func_name)
+            f(*args, **kwargs)
+
 
 class ScopedCodes(ScopedAccessor):
 
@@ -89,37 +94,38 @@ class ScopedCodes(ScopedAccessor):
     def from_defaults(cls):
         return cls(Codes.default_initial(), Codes.default_local)
 
-    def set(self, is_global, code_type, char, code):
-        code_type_to_func_map = {
-            'CAT_CODE': 'set_cat_code',
-            'MATH_CODE': 'set_math_code',
-            'UPPER_CASE_CODE': 'set_upper_case_code',
-            'LOWER_CASE_CODE': 'set_lower_case_code',
-            'SPACE_FACTOR_CODE': 'set_space_factor_code',
-            'DELIMITER_CODE': 'set_delimiter_code',
-        }
-        func_name = code_type_to_func_map[code_type]
-        for scope in self.get_scopes(is_global):
-            set_func = getattr(scope, func_name)
-            set_func(char, code)
+    def get(self, code_type, char):
+        return self.try_scope_func_until_success('get', code_type, char)
+
+    def set(self, is_global, *args, **kwargs):
+        self.apply_scope_func(is_global, 'set', *args, **kwargs)
 
     def get_cat_code(self, *args, **kwargs):
         return self.try_scope_func_until_success('get_cat_code', *args, **kwargs)
 
-    def get_math_code(self, *args, **kwargs):
-        return self.try_scope_func_until_success('get_math_code', *args, **kwargs)
+    def get_upper_case_code(self, *args, **kwargs):
+        return self.try_scope_func_until_success('get_upper_case_code', *args, **kwargs)
 
     def get_lower_case_code(self, *args, **kwargs):
         return self.try_scope_func_until_success('get_lower_case_code', *args, **kwargs)
 
-    def get_upper_case_code(self, *args, **kwargs):
-        return self.try_scope_func_until_success('get_upper_case_code', *args, **kwargs)
-
     def get_space_factor_code(self, *args, **kwargs):
         return self.try_scope_func_until_success('get_space_factor_code', *args, **kwargs)
 
-    def get_delimiter_code(self, *args, **kwargs):
-        return self.try_scope_func_until_success('get_delimiter_code', *args, **kwargs)
+    def set_cat_code(self, is_global, *args, **kwargs):
+        self.apply_scope_func(is_global, 'set_cat_code', *args, **kwargs)
+
+    def set_upper_case_code(self, is_global, *args, **kwargs):
+        self.apply_scope_func(is_global, 'set_upper_case_code', *args, **kwargs)
+
+    def set_lower_case_code(self, is_global, *args, **kwargs):
+        self.apply_scope_func(is_global, 'set_lower_case_code', *args, **kwargs)
+
+    def set_space_factor_code(self, is_global, *args, **kwargs):
+        self.apply_scope_func(is_global, 'set_space_factor_code', *args, **kwargs)
+
+    def set_by_nrs(self, is_global, *args, **kwargs):
+        self.apply_scope_func(is_global, 'set_by_nrs', *args, **kwargs)
 
 
 class ScopedRegisters(ScopedAccessor):
@@ -135,8 +141,7 @@ class ScopedRegisters(ScopedAccessor):
         return self.try_scope_func_until_success('pop', *args, **kwargs)
 
     def set(self, is_global, *args, **kwargs):
-        for scope in self.get_scopes(is_global):
-            scope.set(*args, **kwargs)
+        self.apply_scope_func(is_global, 'set', *args, **kwargs)
 
     def modify_register_value(self, is_global, type_, i, by_operand,
                               operation):
@@ -165,14 +170,10 @@ class ScopedFontState(ScopedAccessor):
         return self.try_scope_attr_until_success('current_font_id')
 
     def set_current_font(self, is_global, *args, **kwargs):
-        scopes = self.get_scopes(is_global)
-        for scope in scopes:
-            scope.set_current_font(*args, **kwargs)
+        self.apply_scope_func(is_global, 'set_current_font', *args, **kwargs)
 
     def set_font_family(self, is_global, *args, **kwargs):
-        scopes = self.get_scopes(is_global)
-        for scope in scopes:
-            scope.set_font_family(*args, **kwargs)
+        self.apply_scope_func(is_global, 'set_font_family', *args, **kwargs)
 
 
 class ScopedRouter(ScopedAccessor):
@@ -223,8 +224,7 @@ class ScopedRouter(ScopedAccessor):
         return macro_token
 
     def do_let_assignment(self, is_global, *args, **kwargs):
-        for scope in self.get_scopes(is_global):
-            scope.do_let_assignment(*args, **kwargs)
+        self.apply_scope_func(is_global, 'do_let_assignment', *args, **kwargs)
 
 
 class ScopedParameters(ScopedAccessor):
@@ -238,8 +238,7 @@ class ScopedParameters(ScopedAccessor):
         return self.try_scope_func_until_success('get', *args, **kwargs)
 
     def set_parameter(self, is_global, *args, **kwargs):
-        for scope in self.get_scopes(is_global):
-            scope.set(*args, **kwargs)
+        self.apply_scope_func(is_global, 'set', *args, **kwargs)
 
     def modify_parameter_value(self, is_global, parameter, by_operand,
                                operation):

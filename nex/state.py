@@ -7,16 +7,16 @@ from .pydvi.TeXUnit import pt2sp
 
 from .utils import ExecuteCommandError, TidyEnd, UserError
 from .reader import EndOfFile
-from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
 from .instructions import Instructions, h_add_glue_instructions
 from .instructioner import make_primitive_control_sequence_instruction
-from .parameters import Parameters, is_parameter_type
+from .parameters import Parameters, Specials, is_parameter_type
 from .accessors import is_register_type, SpecialsAccessor
 from .box import (HBox, VBox, Rule, Glue, Character, FontDefinition,
                   FontSelection, Kern)
 from .paragraphs import h_list_to_best_h_boxes
 from . import evaluator as evaler
 from .fonts import GlobalFontState
+from .codes import CatCode
 from .scopes import (ScopedCodes, ScopedRegisters, ScopedRouter,
                      ScopedParameters, ScopedFontState, Operation)
 from .units import PhysicalUnit, MuUnit, InternalUnit, units_in_scaled_points
@@ -193,8 +193,11 @@ class GlobalState:
 
     def push_mode(self, mode):
         logger.info(f'Entering {mode}')
-        # if mode in horizontal_modes:
-        #     self.specials.set(Specials.space_factor, 1000)
+        # The space factor 'f' is 1000 at the beginning of a horizontal list.
+        # You can say `\spacefactor=<number>' to assign any particular value
+        # to the space factor.
+        if mode in horizontal_modes:
+            self.specials.set(Specials.space_factor, 1000)
         self.modes.append((mode, []))
 
     def pop_mode_to_box(self):
@@ -222,6 +225,51 @@ class GlobalState:
 
     def append_to_list(self, item):
         self._layout_list.append(item)
+        if self.mode in horizontal_modes:
+            # [the space factor] is set to 1000 just after a non-character box
+            # or a math formula has been put onto the current horizontal list.
+            # TODO: I made this condition up from my head.
+            if isinstance(item, (HBox, VBox, Rule)):
+                self.specials.set(Specials.space_factor, 1000)
+            # TODO: Ligatures? TeXbook page 76
+            # When ligatures are formed, or when a special character is
+            # specified via \char, the space factor code is computed from the
+            # individual characters that generated the ligature. For example,
+            # plain TeX sets the space factor code for single-right-quote to
+            # zero, so that the effects of punctuation will be propagated.  Two
+            # adjacent characters '' combine to form a ligature that is in
+            # character position octal(042); but the space factor code of this
+            # double-right-quote ligature is never examined by TeX, so plain
+            # TeX does not assign any value to
+            # \sfcode'042.
+            # [the space factor] gets set to a number other than 1000 only when
+            # a simple character box goes on the list.
+            elif isinstance(item, Character):
+                # TeXbook page 76 (in later editions): A character whose
+                # character code is 128 or more is required to have a space
+                # factor code of 1000, since TeX maintains a changeable \sfcode
+                # only for characters 0 to 127.
+                code = item.code
+                if not 0 <= code <= 127:
+                    g = 1000
+                else:
+                    g = self.codes.get_space_factor_code(chr(code))
+                # Each character has a space factor code, and when a character
+                # whose space factor code is 'g' enters the current list the
+                # normal procedure is simply to assign 'g' as the new space
+                # factor. However, if 'g' is zero, 'f' is not changed; and if
+                # 'f < 1000 < g', the space factor is set to 1000. (In other
+                # words, 'f' doesn't jump from a value less than 1000 to a
+                # value greater than 1000 in a single step.) The maximum space
+                # factor is 32767 (which is much higher than anybody would ever
+                # want to use).
+                f = self.specials.get(Specials.space_factor)
+                if g == 0:
+                    pass
+                elif f < 1000 < g:
+                    self.specials.set(Specials.space_factor, 1000)
+                else:
+                    self.specials.set(Specials.space_factor, g)
 
     def extend_list(self, items):
         self._layout_list.extend(items)
@@ -434,7 +482,6 @@ class GlobalState:
             horizontal_list.append(Glue(**par_fill_glue))
             h_size = self.parameters.get(Parameters.h_size)
             h_boxes = h_list_to_best_h_boxes(horizontal_list, h_size)
-            # all_routes = get_all_routes(root_node, h_box_tree, h_size, outer=True)
 
             # for best_route in all_routes:
             for h_box in h_boxes:
@@ -443,9 +490,6 @@ class GlobalState:
                 bl_skip = self.parameters.get(Parameters.base_line_skip)
                 line_glue_item = Glue(**bl_skip)
                 self.append_to_list(line_glue_item)
-
-            # par_glue_item = Glue(dimen=200000)
-            # self.append_to_list(par_glue_item)
         else:
             raise NotImplementedError
 
@@ -487,15 +531,29 @@ class GlobalState:
 
     def do_accent(self, accent_code, target_code=None):
         logger.info(f"Adding accent \"{accent_code}\"")
-        # TeXbook page 54: If it turns out that no suitable character is
-        # present, the accent will appear by itself as if you had said
-        # \char\<number> instead of
-        # \accent\<number>. For example, \'{} produces '.
+        # TeXbook page 286.
+        # Syntax: \accent <8-bit number> <optional assignments>
+
+        # Here <optional assignments> stands for zero or more <assignment>
+        # commands other than \setbox.
+
+        # If the assignments are not followed by a <character>, where
+        # <character> stands for [see page 286], TeX treats \accent as if it
+        # were \char, except that the space factor is set to 1000.
         if target_code is None:
             self.add_character_code(accent_code)
+        # Otherwise, the character that follows the assignment is accented by
+        # the character that corresponds to the <8-bit number>. (The purpose of
+        # the intervening assignments is to allow the accenter and accentee to
+        # be in different fonts.) If the accent must be moved up or down, it is
+        # put into an hbox that is raised or lowered. Then the accent is
+        # effectively superposed on the character by means of kerns, in such a
+        # way that the width of the accent does not influence the width of the
+        # resulting horizontal list.
         else:
             self.add_accented_character(accent_code, target_code)
-        # TODO: Set space factor to 1000.
+        # Finally, TeX sets \spacefactor=1000.
+        self.specials.set(Specials.space_factor, 1000)
 
     def add_kern(self, length):
         return self.append_to_list(Kern(length))
@@ -974,28 +1032,10 @@ class GlobalState:
             code_type = v['code_type']
             char_size = self.eval_number_token(v['char'])
             code_size = self.eval_number_token(v['code'])
-            char = chr(char_size)
-            if code_type == 'CAT_CODE':
-                code = CatCode(code_size)
-            elif code_type == 'MATH_CODE':
-                parts = evaler.split_hex_code(code_size,
-                                              hex_length=4, inds=(1, 2))
-                math_class_i, family, position = parts
-                math_class = MathClass(math_class_i)
-                glyph_code = GlyphCode(family, position)
-                code = MathCode(math_class, glyph_code)
-            elif code_type in ('UPPER_CASE_CODE', 'LOWER_CASE_CODE'):
-                code = chr(code_size)
-            elif code_type == 'SPACE_FACTOR_CODE':
-                code = code_size
-            elif code_type == 'DELIMITER_CODE':
-                parts = evaler.split_hex_code(code_size,
-                                              hex_length=6, inds=(1, 3, 4))
-                small_family, small_position, large_family, large_position = parts
-                small_glyph_code = GlyphCode(small_family, small_position)
-                large_glyph_code = GlyphCode(large_family, large_position)
-                code = DelimiterCode(small_glyph_code, large_glyph_code)
-            self.codes.set(v['global'], code_type, char, code)
+            self.codes.set_by_nrs(is_global=v['global'],
+                                  code_type=code_type,
+                                  char_size=char_size,
+                                  code_size=code_size)
         elif type_ == 'let_assignment':
             self.router.do_let_assignment(v['global'], new_name=v['name'],
                                           target_token=v['target_token'])
