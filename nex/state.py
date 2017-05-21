@@ -445,10 +445,13 @@ class GlobalState:
             # par_glue_item = Glue(dimen=200000)
             # self.append_to_list(par_glue_item)
         else:
-            import pdb; pdb.set_trace()
+            raise NotImplementedError
 
-    def get_character_item(self, *args, **kwargs):
-        return Character(font=self.current_font, *args, **kwargs)
+    def get_character_item(self, code):
+        return Character(code,
+                         width=self.current_font.width(code),
+                         height=self.current_font.height(code),
+                         depth=self.current_font.depth(code))
 
     def add_character_code(self, code):
         self.append_to_list(self.get_character_item(code))

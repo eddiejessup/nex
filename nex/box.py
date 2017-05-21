@@ -130,18 +130,6 @@ class AbstractBox(ListElement):
         return drep(self, a)
 
     @property
-    def widths(self):
-        return [e.width for e in self.contents]
-
-    @property
-    def heights(self):
-        return [e.height for e in self.contents]
-
-    @property
-    def depths(self):
-        return [e.depth for e in self.contents]
-
-    @property
     def un_set_glues(self):
         return [e for e in self.contents
                 if isinstance(e, Glue) and not e.is_set]
@@ -232,9 +220,26 @@ class HBox(AbstractBox):
         for c in self.contents:
             if isinstance(c, Glue):
                 w += c.natural_length
+            elif isinstance(c, Kern):
+                w += c.length
             else:
                 w += c.width
         return w
+
+    @property
+    def widths(self):
+        return [e.length if isinstance(e, (Glue, Kern)) else e.width
+                for e in self.contents]
+
+    @property
+    def heights(self):
+        return [0 if isinstance(e, (Glue, Kern)) else e.height
+                for e in self.contents]
+
+    @property
+    def depths(self):
+        return [0 if isinstance(e, (Glue, Kern)) else e.depth
+                for e in self.contents]
 
     @property
     def width(self):
@@ -276,6 +281,21 @@ class VBox(AbstractBox):
             else:
                 w += c.height
         return w
+
+    @property
+    def widths(self):
+        return [0 if isinstance(e, (Glue, Kern)) else e.width
+                for e in self.contents]
+
+    @property
+    def heights(self):
+        return [e.length if isinstance(e, (Glue, Kern)) else e.height
+                for e in self.contents]
+
+    @property
+    def depths(self):
+        return [0 if isinstance(e, (Glue, Kern)) else e.width
+                for e in self.contents]
 
     @property
     def width(self):
@@ -343,12 +363,11 @@ class Glue(ListElement):
         self.set_dimen = None
 
     @property
-    def width(self):
+    def length(self):
         if self.set_dimen is not None:
             return self.set_dimen
         else:
-            raise AttributeError('Glue is not set, so has no dimensions')
-    length = height = width
+            raise AttributeError('Glue is not set, so has no length')
 
 
 class Kern(ListElement):
@@ -359,11 +378,6 @@ class Kern(ListElement):
 
     def __repr__(self):
         return 'K({})'.format(dimrep(self.length))
-
-    @property
-    def width(self):
-        return self.length
-    height = width
 
 
 class Leaders(ListElement):
@@ -401,28 +415,17 @@ class Insertion(ListElement):
 class Character(ListElement):
     discardable = False
 
-    def __init__(self, code, font):
+    def __init__(self, code, width, height, depth):
         self.code = code
-        self.font = font
+        self.width = width
+        self.height = height
+        self.depth = depth
 
     def __repr__(self):
         if self.code in printable_ascii_codes:
             return f"'{chr(self.code)}'"
         else:
             return f"C({self.code})"
-        # return '{}({})'.format(self.__class__.__name__, self.char)
-
-    @property
-    def width(self):
-        return self.font.width(self.code)
-
-    @property
-    def height(self):
-        return self.font.height(self.code)
-
-    @property
-    def depth(self):
-        return self.font.depth(self.code)
 
 
 class Ligature(ListElement):
