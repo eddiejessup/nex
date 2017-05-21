@@ -3,6 +3,8 @@ import logging
 from enum import Enum
 from collections import deque
 
+from .pydvi.TeXUnit import pt2sp
+
 from .utils import ExecuteCommandError, TidyEnd, UserError
 from .reader import EndOfFile
 from .codes import CatCode, MathCode, GlyphCode, DelimiterCode, MathClass
@@ -477,7 +479,6 @@ class GlobalState:
         self.append_to_list(Rule(width, height, depth))
 
     def add_v_rule(self, width, height, depth):
-        from .pydvi.TeXUnit import pt2sp
         if width is None:
             width = pt2sp(0.4)
         else:
@@ -499,7 +500,6 @@ class GlobalState:
         self.add_rule(width, height, depth)
 
     def add_h_rule(self, width, height, depth):
-        from .pydvi.TeXUnit import pt2sp
         if width is None:
             if self.mode in (Mode.horizontal, Mode.vertical):
                 width = self.parameters.get(Parameters.h_size)
