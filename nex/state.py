@@ -563,14 +563,53 @@ class GlobalState:
             # "Spaces have no effects in vertical modes".
             pass
         elif self.mode in horizontal_modes:
-            # Spaces append glue to the current list; the exact amount of
-            # glue depends on \spacefactor, the current font, and the
-            # \spaceskip and
-            # \xspaceskip parameters, as described in Chapter 12.
-            font = self.current_font
-            space_glue_item = Glue(dimen=font.spacing,
-                                   stretch=font.space_stretch,
-                                   shrink=font.space_shrink)
+            # When TeX is processing a horizontal list of boxes and glue, it
+            # keeps track of a positive integer called the current 'space
+            # factor' The space factor is normally 1000, which means that the
+            # interword glue should not be modified. If the space factor 'f' is
+            # different from 1000, the interword glue is computed as follows:
+            # Take the normal space glue for the current font, and add the
+            # extra space if f >= 2000. (Each font specifies a normal space,
+            # normal stretch, normal shrink, and extra space; for example,
+            # these quantities are 3.33333pt, 1.66666pt, 1.11111pt, and
+            # 1.11111pt, respectively, in cmr10. Then the stretch component is
+            # multiplied by f / 1000, while the shrink component is multiplied
+            # by 1000 / f.
+
+            # However, TeX has two parameters \spaceskip and \xspaceskip that
+            # allow you to override the normal spacing of the current font. If
+            # f >= 2000 and if \xspaceskip is nonzero, the \xspaceskip glue is
+            # used for an interword space. Otherwise if \spaceskip is nonzero,
+            # the \spaceskip glue is used, with stretch and shrink components
+            # multiplied by f / 1000 and 1000 / f. For example, the
+            # \raggedright macro of plain \TeX\ uses \spaceskip and \xspaceskip
+            # to suppress all stretching and shrinking of interword spaces.
+            extra_space_skip = self.parameters.get(Parameters.x_space_skip)
+            space_skip = self.parameters.get(Parameters.space_skip)
+            f = self.specials.get(Specials.space_factor)
+
+            if f > 2000 and extra_space_skip['dimen'] != 0:
+                dimen = extra_space_skip['dimen']
+                stretch = extra_space_skip['stretch']
+                shrink = extra_space_skip['shrink']
+            elif space_skip['dimen'] != 0:
+                dimen = extra_space_skip['dimen']
+                stretch = extra_space_skip['stretch']
+                shrink = extra_space_skip['shrink']
+
+                stretch = int(round(f / 1000))
+                shrink *= int(round(1000 / f))
+            else:
+                dimen = self.current_font.spacing
+                stretch = self.current_font.space_stretch
+                shrink = self.current_font.space_shrink
+                if f > 2000:
+                    f += self.current_font.extra_space
+
+                stretch = int(round(f / 1000))
+                shrink *= int(round(1000 / f))
+
+            space_glue_item = Glue(dimen, stretch, shrink)
             self.append_to_list(space_glue_item)
         else:
             raise NotImplementedError
@@ -615,6 +654,11 @@ class GlobalState:
         self.add_rule(width, height, depth)
 
     def do_indent(self):
+        def append_parindent_box():
+            par_indent_width = self.parameters.get(Parameters.par_indent)
+            par_indent_hbox_item = HBox(contents=[], to=par_indent_width)
+            self.append_to_list(par_indent_hbox_item)
+
         if self.mode in vertical_modes:
             # "The \parskip glue is appended to the current list, unless
             # TeX is in internal vertical mode and the current list is
@@ -629,13 +673,14 @@ class GlobalState:
             self.push_mode(Mode.horizontal)
             # An empty box of width \parindent is appended to the current
             # list, and the space factor is set to 1000.
-            par_indent_width = self.parameters.get(Parameters.par_indent)
-            par_indent_hbox_item = HBox(contents=[], to=par_indent_width)
-            self.append_to_list(par_indent_hbox_item)
+            append_parindent_box()
         elif self.mode in horizontal_modes:
-            raise NotImplementedError
+            # An empty box of width \parindent is appended to the current list,
+            # and the space factor is set to 1000.
+            # (Space factor handling is done when adding any H Box.)
+            append_parindent_box()
         else:
-            raise ValueError(f"Unknown mode '{self.mode}'")
+            raise NotImplementedError
 
     def set_box_register(self, i, item, is_global):
         self.registers.set(type_=Instructions.set_box.value, i=i,

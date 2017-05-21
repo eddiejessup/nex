@@ -3,8 +3,9 @@ import pytest
 from nex.state import Mode, GlobalState
 from nex import box
 from nex.instructions import Instructions
+from nex.parameters import Specials
 from nex.box_writer import write_to_dvi_file
-from nex.utils import ExecuteCommandError, NotInScopeError, UserError
+from nex.utils import ExecuteCommandError, UserError
 from nex.tokens import BuiltToken
 from nex.fonts import GlobalFontState
 
@@ -213,6 +214,16 @@ def test_command_token_get_box(state):
     state.get_register_box(i=i_reg, copy=False) is None
 
 
+def test_command_token_code_assignment(state):
+    set_sf_tok = BuiltToken(type_='code_assignment',
+                            value={'code_type': Instructions.space_factor_code.value,
+                                   'char': nr_tok(ord('a')),
+                                   'code': nr_tok(900),
+                                   'global': True})
+    state.execute_command_token(set_sf_tok, banisher=None, reader=None)
+    assert state.codes.get_space_factor_code('a') == 900
+
+
 def test_command_token_unbox(state):
     i_reg = 3
     box_item = box.HBox(contents=[box.Rule(1, 1, 1), box.Rule(2, 2, 2)])
@@ -227,3 +238,29 @@ def test_command_token_unbox(state):
     assert nr_elems_after == nr_elems_before + 2
     # Should still work, since copy == True.
     state.get_register_box(i=i_reg, copy=False)
+
+
+def test_space_factor(state):
+    state.do_indent()
+    a_sf = 900
+    state.codes.set(code_type=Instructions.space_factor_code.value,
+                    char='a',
+                    code=a_sf,
+                    is_global=False)
+    state.codes.set(code_type=Instructions.space_factor_code.value,
+                    char='b',
+                    code=1100,
+                    is_global=False)
+    # Check space factor starts at 1000.
+    assert state.specials.get(Specials.space_factor) == 1000
+    # Check space factor changes to letter's space factor after adding it.
+    state.add_character_char('a')
+    assert state.specials.get(Specials.space_factor) == a_sf
+    # Check space factor does't jump from less than 1000 to more than 1000.
+    state.add_character_char('b')
+    assert state.specials.get(Specials.space_factor) == 1000
+    # Make space factor be non-1000, then check adding a non-character box sets
+    # it back to 1000.
+    state.add_character_char('a')
+    state.add_rule(10, 10, 10)
+    assert state.specials.get(Specials.space_factor) == 1000
