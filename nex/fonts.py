@@ -19,10 +19,10 @@ class FontInfo:
 
     def __init__(self, file_name, file_path, at_clause):
         if file_name is None:
-            self.font_info = None
+            self._font_info = None
         else:
-            self.font_info = TfmParser.parse(font_name=file_name,
-                                             filename=file_path)
+            self._font_info = TfmParser.parse(font_name=file_name,
+                                              filename=file_path)
         self.at_clause = at_clause
 
         self.at_size = None
@@ -31,6 +31,13 @@ class FontInfo:
         self.glue = None
         self.hyphen_char = None
         self.skew_char = None
+
+    @property
+    def font_info(self):
+        if self._font_info is not None:
+            return self._font_info
+        else:
+            raise AttributeError('Null font has no font information')
 
     @property
     def file_name(self):
