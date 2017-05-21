@@ -111,10 +111,10 @@ terminal_instructions = (
     I.parameter_text,
     I.balanced_text_and_right_brace,
     I.horizontal_mode_material_and_right_brace,
-    # I.vertical_mode_material_and_right_brace,
+    I.vertical_mode_material_and_right_brace,
     I.h_box,
-    # I.v_box,
-    # I.v_top,
+    I.v_box,
+    I.v_top,
     I.active_character,
     I.unexpanded_control_word,
 )

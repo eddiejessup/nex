@@ -37,16 +37,16 @@ class ListElement:
 
 
 @lru_cache(512)
-def glue_set_ratio(natural_width, desired_width, stretch, shrink):
-    excess_width = natural_width - desired_width
-    if excess_width == 0:
+def glue_set_ratio(natural_length, desired_length, stretch, shrink):
+    excess_length = natural_length - desired_length
+    if excess_length == 0:
         line_state = LineState.naturally_good
-    elif excess_width > 0:
+    elif excess_length > 0:
         line_state = LineState.should_shrink
     else:
         line_state = LineState.should_stretch
 
-    # If x = w, all glue gets its natural width.
+    # If x = w, all glue gets its natural length.
     if line_state == LineState.naturally_good:
         glue_ratio = 0.0
         # Not stated, but assuming this value does not matter.
@@ -74,7 +74,7 @@ def glue_set_ratio(natural_width, desired_width, stretch, shrink):
         else:
             glue_order = len(stretch) - 1
             relevant_stretch_dimen = stretch[-1]
-            glue_ratio = -excess_width / relevant_stretch_dimen
+            glue_ratio = -excess_length / relevant_stretch_dimen
     # If x > w, the glue order is the highest subscript i such that z_i
     # != 0, and the glue ratio is normally r = (x - w) / z_i. (see below
     # for exception at 'However...')
@@ -89,7 +89,7 @@ def glue_set_ratio(natural_width, desired_width, stretch, shrink):
         else:
             glue_order = len(shrink) - 1
             relevant_shrink_dimen = shrink[-1]
-            glue_ratio = excess_width / relevant_shrink_dimen
+            glue_ratio = excess_length / relevant_shrink_dimen
             # However, r is set to 1.0 in the case i=0 and x - w > z_0,
             # because the maximum shrinkability must not be exceeded.
             if glue_order == 0:
@@ -146,6 +146,70 @@ class AbstractBox(ListElement):
         return [e for e in self.contents
                 if isinstance(e, Glue) and not e.is_set]
 
+    @property
+    def stretch(self):
+        return sum_infinities(g.stretch for g in self.un_set_glues)
+
+    @property
+    def shrink(self):
+        return sum_infinities(g.shrink for g in self.un_set_glues)
+
+    @property
+    def desired_length(self):
+        if self.to is not None:
+            return self.to
+        w = self.natural_length
+        if self.spread is not None:
+            w += self.spread
+        return w
+
+    def glue_set_ratio(self):
+        return glue_set_ratio(self.natural_length, self.desired_length,
+                              tuple(self.stretch), tuple(self.shrink))
+
+    def scale_and_set(self):
+        line_state, glue_ratio, glue_set_order = self.glue_set_ratio()
+
+        # Note I've quoted this from the TeXbook, talking about setting glue in
+        # an H Box. But it later says that this all applies to V Boxes, so I've
+        # changed 'width' to 'length'.
+
+        # Every glob of glue in the list being boxed is modified. Suppose the
+        # glue has natural length u, stretchability y, and shrinkability z,
+        # where y is a jth order infinity and z is a kth order infinity.
+        for i, item in enumerate(self.contents):
+            if (not isinstance(item, Glue)) or item.is_set:
+                continue
+            g = item
+            if line_state == LineState.naturally_good:
+                glue_diff = 0
+            elif line_state == LineState.should_stretch:
+                glue_order, glue_factor = extract_dimen(g.stretch)
+                if glue_ratio == GlueRatio.no_stretchability:
+                    glue_diff = 0
+                # [Each] glue takes the new length u + ry if j=i;
+                # it keeps its natural length u if j != i.
+                elif glue_order == glue_set_order:
+                    glue_diff = glue_ratio * glue_factor
+                else:
+                    glue_diff = 0
+            elif line_state == LineState.should_shrink:
+                glue_order, glue_factor = extract_dimen(g.shrink)
+                if glue_ratio == GlueRatio.no_shrinkability:
+                    glue_diff = 0
+                # [Each] glue takes the new length u-rz if k = i; it
+                # keeps its natural length u if k != i.
+                elif glue_order == glue_set_order:
+                    glue_diff = -glue_ratio * glue_factor
+                else:
+                    glue_diff = 0
+            else:
+                raise ValueError(f'Unknown line state: {line_state}')
+            # Notice that stretching or shrinking occurs only when the glue
+            # has the highest order of infinity that doesn't cancel out.
+            self.contents[i].set(int(round(g.natural_length + glue_diff)))
+        self.set_glue = True
+
 
 def extract_dimen(d):
     if isinstance(d, int):
@@ -160,43 +224,32 @@ def extract_dimen(d):
 class HBox(AbstractBox):
 
     @property
-    def natural_width(self):
+    def natural_length(self):
         # The natural width, x, of the box contents is determined by adding up
         # the widths of the boxes and kerns inside, together with the natural
         # widths of all the glue inside.
-        return sum([e.natural_width for e in self.contents])
+        w = 0
+        for c in self.contents:
+            if isinstance(c, Glue):
+                w += c.natural_length
+            else:
+                w += c.width
+        return w
 
     @property
     def width(self):
         if not self.set_glue:
-            raise Exception('HBox is not set yet, does not have a width')
-        return self.desired_width
+            raise AttributeError('HBox is not set yet, does not have a width')
+        return self.desired_length
 
     # TODO: I'm not sure the height and depth definitions are correct.
     @property
     def height(self):
-        return max(self.heights)
+        return max(self.heights, default=0)
 
     @property
     def depth(self):
-        return max(self.depths)
-
-    @property
-    def stretch(self):
-        return sum_infinities(g.stretch for g in self.un_set_glues)
-
-    @property
-    def shrink(self):
-        return sum_infinities(g.shrink for g in self.un_set_glues)
-
-    @property
-    def desired_width(self):
-        if self.to is not None:
-            return self.to
-        w = self.natural_width
-        if self.spread is not None:
-            w += self.spread
-        return w
+        return max(self.depths, default=0)
 
     def badness(self):
         line_state, glue_ratio, glue_order = self.glue_set_ratio()
@@ -211,52 +264,18 @@ class HBox(AbstractBox):
                 b = 10000
         return min(b, 10000)
 
-    def glue_set_ratio(self):
-        return glue_set_ratio(self.natural_width, self.desired_width,
-                              tuple(self.stretch), tuple(self.shrink))
-
-    def scale_and_set(self):
-        line_state, glue_ratio, glue_set_order = self.glue_set_ratio()
-
-        # Every glob of glue in the horizontal list being boxed is
-        # modified. Suppose the glue has natural width u, stretchability y, and
-        # shrinkability z, where y is a jth order infinity and z is a kth order
-        # infinity.
-        for i, item in enumerate(self.contents):
-            if (not isinstance(item, Glue)) or item.is_set:
-                continue
-            g = item
-            if line_state == LineState.naturally_good:
-                glue_diff = 0
-            elif line_state == LineState.should_stretch:
-                glue_order, glue_factor = extract_dimen(g.stretch)
-                if glue_ratio == GlueRatio.no_stretchability:
-                    glue_diff = 0
-                # [Each] glue takes the new width u + ry if j=i;
-                # it keeps its natural width u if j != i.
-                elif glue_order == glue_set_order:
-                    glue_diff = glue_ratio * glue_factor
-                else:
-                    glue_diff = 0
-            elif line_state == LineState.should_shrink:
-                glue_order, glue_factor = extract_dimen(g.shrink)
-                if glue_ratio == GlueRatio.no_shrinkability:
-                    glue_diff = 0
-                # [Each] glue takes the new width u-rz if k = i; it
-                # keeps its natural width u if k != i.
-                elif glue_order == glue_set_order:
-                    glue_diff = -glue_ratio * glue_factor
-                else:
-                    glue_diff = 0
-            else:
-                raise ValueError(f'Unknown line state: {line_state}')
-            # Notice that stretching or shrinking occurs only when the glue
-            # has the highest order of infinity that doesn't cancel out.
-            self.contents[i].set(int(round(g.natural_width + glue_diff)))
-        self.set_glue = True
-
 
 class VBox(AbstractBox):
+
+    @property
+    def natural_length(self):
+        w = 0
+        for c in self.contents:
+            if isinstance(c, Glue):
+                w += c.natural_length
+            else:
+                w += c.height
+        return w
 
     @property
     def width(self):
@@ -264,15 +283,22 @@ class VBox(AbstractBox):
 
     @property
     def height(self):
-        return sum(self.heights)
+        if not self.set_glue:
+            raise AttributeError('VBox is not set yet, does not have a height')
+        return self.desired_length
+
+    # TODO: This is almost certainly wrong.
+    @property
+    def depth(self):
+        return self.contents[-1].depth
 
 
 class Rule(ListElement):
     discardable = False
 
     def __init__(self, width, height, depth):
-        self.width = self.natural_width = width
-        self.height = self.natural_height = height
+        self.width = width
+        self.height = height
         self.depth = depth
 
 
@@ -282,14 +308,14 @@ class Rule(ListElement):
 class WhatsIt(ListElement):
     discardable = False
 
-    width = height = natural_width = natural_height = depth = 0
+    width = height = depth = 0
 
 
 class Glue(ListElement):
     discardable = True
 
     def __init__(self, dimen, stretch=0, shrink=0):
-        self.natural_dimen = dimen
+        self.natural_length = dimen
         self.stretch = stretch
         self.shrink = shrink
 
@@ -297,20 +323,18 @@ class Glue(ListElement):
 
     def __repr__(self):
         if self.set_dimen is None:
-            return 'G({} +{} -{})'.format(dimrep(self.natural_dimen),
+            return 'G({} +{} -{})'.format(dimrep(self.natural_length),
                                           dimrep(self.stretch),
                                           dimrep(self.shrink))
         else:
             return '|G|({})'.format(dimrep(self.set_dimen))
 
     @property
-    def natural_width(self):
-        return self.natural_dimen
-    natural_height = natural_width
-
-    @property
     def is_set(self):
         return self.set_dimen is not None
+
+    def set_naturally(self):
+        self.set_dimen = self.natural_length
 
     def set(self, dimen):
         self.set_dimen = dimen
@@ -324,7 +348,7 @@ class Glue(ListElement):
             return self.set_dimen
         else:
             raise AttributeError('Glue is not set, so has no dimensions')
-    dimen = height = width
+    length = height = width
 
 
 class Kern(ListElement):
@@ -339,7 +363,7 @@ class Kern(ListElement):
     @property
     def width(self):
         return self.dimen
-    natural_height = height = natural_width = width
+    height = width
 
 
 class Leaders(ListElement):
@@ -391,12 +415,10 @@ class Character(ListElement):
     @property
     def width(self):
         return self.font.width(self.code)
-    natural_width = width
 
     @property
     def height(self):
         return self.font.height(self.code)
-    natural_height = height
 
     @property
     def depth(self):
@@ -446,7 +468,7 @@ class FontDefinition(ListElement):
         self.file_name = file_name
         self.at_clause = at_clause
 
-    width = height = natural_width = natural_height = depth = 0
+    width = height = depth = 0
 
     def __repr__(self):
         return f'FD({self.font_nr}: {self.font_name})'
@@ -461,4 +483,4 @@ class FontSelection(ListElement):
     def __repr__(self):
         return f'F({self.font_nr})'
 
-    width = height = natural_width = natural_height = depth = 0
+    width = height = depth = 0

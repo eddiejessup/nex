@@ -479,32 +479,29 @@ class GlobalState:
         self.append_to_list(Rule(width, height, depth))
 
     def add_v_rule(self, width, height, depth):
+        if self.mode not in horizontal_modes:
+            raise UserError(f'Cannot add V Rule in non-horizontal '
+                            f'mode: {self.mode}')
         if width is None:
             width = pt2sp(0.4)
         else:
             width = self.eval_number_token(width)
         if height is None:
-            if self.mode == Mode.vertical:
-                height = self.parameters.get(Parameters.v_size)
-            else:
-                raise NotImplementedError
+            height = self.parameters.get(Parameters.v_size)
         else:
             height = self.eval_number_token(height)
         if depth is None:
-            if self.mode == Mode.vertical:
-                depth = self.parameters.get(Parameters.v_size)
-            else:
-                raise NotImplementedError
+            depth = self.parameters.get(Parameters.v_size)
         else:
             depth = self.eval_number_token(depth)
         self.add_rule(width, height, depth)
 
     def add_h_rule(self, width, height, depth):
+        if self.mode not in vertical_modes:
+            raise UserError(f'Cannot add V Rule in non-vertical '
+                            f'mode: {self.mode}')
         if width is None:
-            if self.mode in (Mode.horizontal, Mode.vertical):
-                width = self.parameters.get(Parameters.h_size)
-            else:
-                raise NotImplementedError
+            width = self.parameters.get(Parameters.h_size)
         else:
             width = self.eval_number_token(width)
         if height is None:
@@ -619,7 +616,7 @@ class GlobalState:
         except Exception as e:
             raise ExecuteCommandError(command, e)
 
-    def _parse_h_box_token(self, v):
+    def _parse_box_token(self, v, horizontal):
         conts = v['contents']
         spec = v['specification']
         to = None
@@ -632,8 +629,9 @@ class GlobalState:
                 spread = d
             else:
                 raise ValueError(f'Unknown specification type {spec.type}')
-        h_box_item = HBox(contents=conts, to=to, spread=spread)
-        return h_box_item
+        BoxCls = HBox if horizontal else VBox
+        box_item = BoxCls(contents=conts, to=to, spread=spread)
+        return box_item
 
     def eval_size_token(self, size_token):
         v = size_token.value
@@ -803,10 +801,15 @@ class GlobalState:
             self.add_h_rule(**v)
         # The box already has its contents in the correct way, built using this
         # very method. Recursion still amazes me sometimes.
-        elif type_ == Instructions.h_box.value:
-            logger.info(f'Adding horizontal box')
-            h_box_item = self._parse_h_box_token(v)
-            self.append_to_list(h_box_item)
+        elif type_ in (Instructions.h_box.value,
+                       Instructions.v_box.value, Instructions.v_top.value):
+            horizontal = type_ == Instructions.h_box.value
+            if horizontal:
+                logger.info(f'Adding horizontal box')
+            else:
+                logger.info(f'Adding vertical box')
+            box_item = self._parse_box_token(v, horizontal=horizontal)
+            self.append_to_list(box_item)
         elif type_ in (Instructions.box.value, Instructions.copy.value):
             evaled_i = self.eval_number_token(v)
             # \box empties the register; \copy doesn't
@@ -917,10 +920,9 @@ class GlobalState:
         elif type_ == Instructions.set_box.value:
             evaled_i = self.eval_number_token(v['nr'])
             box_type = v['box'].type
-            if box_type == Instructions.h_box.value:
-                box_item = self._parse_h_box_token(v['box'].value)
-            else:
-                raise NotImplementedError
+            horizontal = box_type == Instructions.h_box.value
+            box_item = self._parse_box_token(v['box'].value,
+                                             horizontal=horizontal)
             self.set_box_register(evaled_i, box_item, v['global'])
         elif type_ == 'PATTERNS':
             raise NotImplementedError

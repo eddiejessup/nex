@@ -19,20 +19,31 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
             doc.pop()
             if horizontal:
                 doc.right(item.width)
+            else:
+                doc.down(item.height)
+        elif isinstance(item, box.VBox):
+            doc.push()
+            doc.right(item.offset)
+            write_box_to_doc(doc, item.contents, horizontal=False)
+            doc.pop()
+            if horizontal:
+                doc.right(item.width)
+            else:
+                doc.down(item.height)
         elif isinstance(item, box.Character):
             doc.put_char(item.code)
             doc.right(item.width)
         elif isinstance(item, box.Glue) and not item.is_set:
             if not horizontal:
-                item.set(item.natural_dimen)
-            amount = item.dimen
+                item.set_naturally()
+            amount = item.length
             if horizontal:
                 doc.right(amount)
             else:
                 doc.down(amount)
         elif (isinstance(item, box.Kern) or
               (isinstance(item, box.Glue) and item.is_set)):
-            amount = item.dimen
+            amount = item.length
             if horizontal:
                 doc.right(amount)
             else:
