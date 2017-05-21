@@ -193,6 +193,8 @@ class GlobalState:
 
     def push_mode(self, mode):
         logger.info(f'Entering {mode}')
+        # if mode in horizontal_modes:
+        #     self.specials.set(Specials.space_factor, 1000)
         self.modes.append((mode, []))
 
     def pop_mode_to_box(self):
@@ -513,7 +515,7 @@ class GlobalState:
                                    shrink=font.space_shrink)
             self.append_to_list(space_glue_item)
         else:
-            import pdb; pdb.set_trace()
+            raise NotImplementedError
 
     def add_rule(self, width, height, depth):
         self.append_to_list(Rule(width, height, depth))
@@ -1042,7 +1044,7 @@ class GlobalState:
                 self.pop_scope()
                 raise EndOfSubExecutor
             else:
-                import pdb; pdb.set_trace()
+                raise NotImplementedError
         elif type_ == 'V_SKIP':
             glue = self.eval_glue_token(v)
             item = Glue(**glue)

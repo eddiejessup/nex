@@ -106,12 +106,9 @@ def _encode_integer_to_bytes(length, value, signed=False,
                              allow_unsigned_4_byte=False):
     if not allow_unsigned_4_byte and length == 4:
         signed = True
-    try:
-        # 'DVI files use big endian format for multiple byte integer
-        # parameters.'
-        return value.to_bytes(length=length, signed=signed, byteorder='big')
-    except:
-        import pdb; pdb.set_trace()
+    # 'DVI files use big endian format for multiple byte integer
+    # parameters.'
+    return value.to_bytes(length=length, signed=signed, byteorder='big')
 
 
 op_codes = {

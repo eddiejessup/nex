@@ -138,8 +138,8 @@ class ChunkGrabber:
                 # If we get to the end of the file and we have a chunk queue
                 # that can't be parsed, something is wrong.
                 else:
-                    import pdb; pdb.set_trace()
-                    pass
+                    raise ValueError(f'Got to end-of-file but still have '
+                                     f'unparsed tokens: {chunk_token_queue}')
             # If we get an expansion error, it might be because we need to
             # act on the chunk we have so far first.
             except NoSuchControlSequence as e:
@@ -152,8 +152,6 @@ class ChunkGrabber:
                 # Otherwise, indeed something is wrong.
                 else:
                     raise
-            except Exception as e:
-                raise
             chunk_token_queue.append(t)
             try:
                 chunk = self.parser.parse(iter(chunk_token_queue))
@@ -161,7 +159,7 @@ class ChunkGrabber:
             # into parsing the next chunk.
             except ExpectedParsingError:
                 # If we have already parsed a chunk, then we use this as our
-                # result.
+                # result. (If we have not yet parsed, then something is wrong.)
                 if have_parsed:
                     logger.debug(f'Got chunk "{chunk.type}", through failure')
                     # We got one token of fluff due to extra read, to make the
@@ -170,10 +168,6 @@ class ChunkGrabber:
                     logger.debug(f'Replacing fluff token {fluff_tok} on to-parse queue.')
                     self.out_queue.queue.appendleft(fluff_tok)
                     break
-                # If we have not yet parsed, then something is wrong.
-                else:
-                    import pdb; pdb.set_trace()
-                    raise
             except ExhaustedTokensError:
                 # Carry on getting more tokens, because it seems we can.
                 pass

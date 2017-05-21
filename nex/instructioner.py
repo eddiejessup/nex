@@ -77,7 +77,7 @@ def get_char_cat_pair_instruction(char, cat):
     elif cat in category_map:
         return category_map[cat]
     else:
-        import pdb; pdb.set_trace()
+        raise ValueError(f'Confused by char-cat pair: ({char}, {cat})')
 
 
 def make_char_cat_pair_instruction_token(char_cat_lex_token):

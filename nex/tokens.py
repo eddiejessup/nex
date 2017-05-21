@@ -150,21 +150,7 @@ class BuiltToken(PositionToken):
         else:
             # All but char_len are the same as the first tagged token.
             super()._copy_position_from_token(tagged_ts[0])
-            # Now we just need to amend the length.
-            # First check the tokens are in order.
-            char_starts = [t.char_nr for t in tagged_ts]
-            # if sorted(char_starts) != char_starts:
-            #     import pdb; pdb.set_trace()
-            # And check the tokens do not overlap.
-            char_ends = [t.char_nr_end for t in tagged_ts]
-            char_offsets = [s - e for s, e in zip(char_starts[1:], char_ends[:-1])]
-            # Can be 'on top of each other' (zero) if they are from an expanded
-            # macro.
-            # if not all(off >= 0 for off in char_offsets):
-            #     import pdb; pdb.set_trace()
-            # Now do the actual amendment.
-            char_len = sum(t.char_len for t in tagged_ts)
-            self.char_len = char_len
+            self.char_len = sum(t.char_len for t in tagged_ts)
 
     def __repr__(self):
         if self.type == 'fil_dimension':
@@ -227,10 +213,7 @@ class InstructionToken(PositionToken, PLYTokenMixin):
 
     @property
     def type(self):
-        try:
-            return self.instruction.value
-        except:
-            import pdb; pdb.set_trace()
+        return self.instruction.value
 
     def __repr__(self):
         a = [f'I={self.instruction.name}']

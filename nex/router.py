@@ -180,7 +180,8 @@ class CSRouter:
         elif target_token.value['lex_type'] == char_cat_lex_type:
             self._set_let_character(new_name, target_token)
         else:
-            import pdb; pdb.set_trace()
+            raise ValueError(f'Let target does not look like a token: '
+                             f'{target_token}')
 
     def _set_primitive(self, name, instruction):
         # Get a route from the name to a primitive.

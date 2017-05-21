@@ -247,4 +247,4 @@ class Lexer:
             if token is not None:
                 return token
         else:
-            import pdb; pdb.set_trace()
+            raise ValueError(f'Do not know how to handle category {cat}')

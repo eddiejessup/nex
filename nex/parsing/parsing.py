@@ -128,7 +128,7 @@ def chunker_error(look_ahead):
     elif look_ahead is not None:
         raise ExpectedParsingError
     else:
-        import pdb; pdb.set_trace()
+        raise ValueError('No look-ahead value')
 
 
 def batch_error(look_ahead):

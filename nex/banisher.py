@@ -177,11 +177,8 @@ def get_macro_arguments(params, tokens):
         elif t.value['lex_type'] == control_sequence_lex_type:
             attr_keys = ('name',)
         else:
-            import pdb; pdb.set_trace()
-        try:
-            return all(t.value[k] == u.value[k] for k in attr_keys)
-        except:
-            import pdb; pdb.set_trace()
+            raise ValueError(f'Value does not look like a token: {t}')
+        return all(t.value[k] == u.value[k] for k in attr_keys)
     arguments = []
     i_param = 0
     for i_param in range(len(params)):
@@ -197,7 +194,6 @@ def get_macro_arguments(params, tokens):
             assert not arguments
             next_token = next(tokens)
             if not tokens_equal(p_t, next_token):
-                import pdb; pdb.set_trace()
                 raise Exception
             continue
         delim_toks = p_t.value['delim_tokens']
