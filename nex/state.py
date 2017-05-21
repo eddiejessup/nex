@@ -169,6 +169,25 @@ class GlobalState:
         return self.modes[-1][0]
 
     @property
+    def mode_depth(self):
+        return len(self.modes)
+
+    def return_to_mode(self, depth):
+        """Pop modes until returning to a certain depth, packaging boxes along
+        the way."""
+        if self.mode_depth <= depth:
+            raise ValueError(f'Cannot return to a mode depth {depth}, as '
+                             'state is only at depth {self.mode_depth}')
+        # For all but the last mode to pop, package the results in a box, and
+        # add it to the parent mode's list.
+        while self.mode_depth > depth + 1:
+            box_item = self.pop_mode_to_box()
+            self.append_to_list(box_item)
+        # For the last mode pop, we might not intend to package it in a box, so
+        # just pop and return the list.
+        return self.pop_mode()
+
+    @property
     def _layout_list(self):
         return self.modes[-1][1]
 
@@ -176,9 +195,27 @@ class GlobalState:
         logger.info(f'Entering {mode}')
         self.modes.append((mode, []))
 
+    def pop_mode_to_box(self):
+        if self.mode in horizontal_modes:
+            BoxCls = HBox
+        elif self.mode in vertical_modes:
+            BoxCls = VBox
+        else:
+            raise NotImplementedError
+        layout_list = self.pop_mode()
+        # Add what we just constructed to the upper list.
+        item = BoxCls(layout_list)
+        return item
+
     def pop_mode(self):
         mode, layout_list = self.modes.pop()
         logger.info(f'Exited {mode}')
+        return layout_list
+
+    def finish_up(self):
+        if len(self.modes) > 1 or self.mode != Mode.vertical:
+            raise Exception('Did not end in vertical mode')
+        layout_list = self.pop_mode()
         return layout_list
 
     def append_to_list(self, item):

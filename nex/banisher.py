@@ -441,6 +441,7 @@ class Banisher:
         elif self.context_mode == ContextMode.awaiting_make_h_box_start:
             mode = Mode.restricted_horizontal
         # TODO: Use context manager for mode.
+        outer_mode_depth = self.state.mode_depth
         self.state.push_mode(mode)
 
         # Done with the context.
@@ -450,14 +451,18 @@ class Banisher:
         with safe_chunk_grabber(self, parser=box_parser) as chunk_grabber:
             # Matching right brace should trigger EndOfSubExecutor and return.
             self.state.execute_command_tokens(chunk_grabber,
-                                                     banisher=self,
-                                                     reader=self.reader)
+                                              banisher=self,
+                                              reader=self.reader)
 
         # [After ending the group, then TeX] packages the hbox (using the
         # size that was saved on the stack), and completes the setbox
         # command, returning to the mode it was in at the time of the
         # setbox.
-        layout_list = self.state.pop_mode()
+        # Note: we don't do anything about packaging the box here; our purpose
+        # is only to get the box contents, because this is context sensitive.
+        # Packaging the box involves the box specification, which will be known
+        # after parsing.
+        layout_list = self.state.return_to_mode(outer_mode_depth)
         material_token = InstructionToken(
             mode_material_instruction_map[mode],
             value=layout_list,

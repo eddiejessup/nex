@@ -61,7 +61,7 @@ def write_box_to_doc(doc, layout_list, horizontal=False):
 def write_to_dvi_file(state, out_stream, write_pdf=False):
     magnification = state.parameters.get(Parameters.mag)
     doc = DVIDocument(magnification)
-    total_layout_list = state.pop_mode()
+    total_layout_list = state.finish_up()
     write_box_to_doc(doc, total_layout_list)
     doc.write(out_stream)
     if write_pdf:
