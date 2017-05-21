@@ -355,14 +355,14 @@ class Kern(ListElement):
     discardable = True
 
     def __init__(self, dimen):
-        self.dimen = dimen
+        self.length = dimen
 
     def __repr__(self):
-        return 'K({})'.format(dimrep(self.dimen))
+        return 'K({})'.format(dimrep(self.length))
 
     @property
     def width(self):
-        return self.dimen
+        return self.length
     height = width
 
 
