@@ -2,6 +2,7 @@ import subprocess
 
 from .dampf.dvi_document import DVIDocument
 from .parameters import Parameters
+from .utils import LogicError
 from . import box
 
 
@@ -38,13 +39,14 @@ def write_box_to_doc(doc, item, horizontal=False):
         doc.put_char(item.code)
         doc.right(item.width)
     elif isinstance(item, box.Glue) and not item.is_set:
-        if not horizontal:
-            item.set_naturally()
-        amount = item.length
-        if horizontal:
-            doc.right(amount)
-        else:
-            doc.down(amount)
+        raise LogicError('Found un-set glue while writing to DVI')
+        # if not horizontal:
+        #     item.set_naturally()
+        # amount = item.length
+        # if horizontal:
+        #     doc.right(amount)
+        # else:
+        #     doc.down(amount)
     elif (isinstance(item, box.Kern) or
           (isinstance(item, box.Glue) and item.is_set)):
         amount = item.length
@@ -60,15 +62,6 @@ def write_box_to_doc(doc, item, horizontal=False):
             doc.down(item.height)
     else:
         raise NotImplementedError
-
-
-def pp(item, l=1):
-    tabs = '\t' * l
-    if isinstance(item, list):
-        for it in item:
-            pp(it, l + 1)
-    else:
-        print(f'{tabs} {item}')
 
 
 def write_to_dvi_file(state, out_stream, write_pdf=False):
