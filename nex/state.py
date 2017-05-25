@@ -215,6 +215,11 @@ class GlobalState:
         # to the space factor.
         if mode in horizontal_modes:
             self.specials.set(Specials.space_factor, 1000)
+        # \prevdepth is set to the sentinel value -1000 pt at the beginning of
+        # a vertical list [...]; this serves to suppress the next interline
+        # glue.
+        elif mode in vertical_modes:
+            self.specials.set(Specials.prev_depth, pt_to_sp(-1000))
         self.modes.append((mode, []))
 
     def pop_mode_to_box(self):
@@ -241,7 +246,6 @@ class GlobalState:
         return layout_list
 
     def append_to_list(self, item):
-        self._layout_list.append(item)
         if self.mode in horizontal_modes:
             # "[the space factor] is set to 1000 just after a non-character box
             # or a math formula has been put onto the current horizontal list."
@@ -293,6 +297,47 @@ class GlobalState:
             else:
                 raise NotImplementedError
             self._layout_list.append(item)
+        elif self.mode in vertical_modes:
+            # TODO: I made up these list element conditions from my head.
+            if isinstance(item, (FontDefinition, FontSelection,
+                                 Glue, Kern)):
+                self._layout_list.append(item)
+            elif isinstance(item, Rule):
+                # \prevdepth is set to the sentinel value -1000 pt [...] just
+                # after a rule box; this serves to suppress the next interline
+                # glue.
+                self._layout_list.append(item)
+                self.specials.set(Specials.prev_depth, pt_to_sp(-1000))
+            elif isinstance(item, (HBox, VBox)):
+                # "Assume that a new box of height h (not a rule box) is about
+                # to be appended to the bottom of the current vertical list."
+                h = item.height
+                # "Let \prevdepth = p,"
+                p = self.specials.get(Specials.prev_depth)
+                # "\lineskiplimit = el,"
+                el = self.parameters.get(Parameters.line_skip_limit)
+                # "and \baselineskip = b plus y minus z."
+                b_skip = self.parameters.get(Parameters.base_line_skip)
+                b, y, z = b_skip['dimen'], b_skip['stretch'], b_skip['shrink']
+                # "If p <= -1000pt, no interline glue is added."
+                base_dimen = b - p - h
+                if p <= pt_to_sp(-1000):
+                    pass
+                # "Otherwise if b - p - h >= el, the interline glue '(b - p -
+                # h) plus y minus z' will be appended just above the new box."
+                elif base_dimen >= el:
+                    g = Glue(base_dimen, stretch=y, shrink=z)
+                    self._layout_list.append(g)
+                # "Otherwise the \lineskip glue will be appended."
+                else:
+                    line_skip = self.parameters.get(Parameters.line_skip)
+                    g = Glue(**line_skip)
+                    self._layout_list.append(g)
+                self._layout_list.append(item)
+                # "Finally, \prevdepth is set to the depth of the new box."
+                self.specials.set(Specials.prev_depth, item.depth)
+            else:
+                raise NotImplementedError
 
     def extend_list(self, items):
         self._layout_list.extend(items)
@@ -510,9 +555,6 @@ class GlobalState:
             for h_box in h_boxes:
                 # Add it to the enclosing vertical list.
                 self.append_to_list(h_box)
-                bl_skip = self.parameters.get(Parameters.base_line_skip)
-                line_glue_item = Glue(**bl_skip)
-                self.append_to_list(line_glue_item)
         else:
             raise NotImplementedError
 

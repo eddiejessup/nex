@@ -40,12 +40,11 @@ def test_single_letter(state):
     assert len(state.modes) == 1
     assert state.mode == Mode.vertical
     lst = state._layout_list
-    assert len(lst) == 5
+    assert len(lst) == 4
     assert isinstance(lst[0], box.FontDefinition)
     assert isinstance(lst[1], box.FontSelection)
     assert isinstance(lst[2], box.Glue)
     assert isinstance(lst[3], box.HBox)
-    assert isinstance(lst[4], box.Glue)
     hbox = lst[3]
     assert isinstance(hbox.contents[1], box.Character)
     write(state, 'test_single_letter.dvi')
