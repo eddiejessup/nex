@@ -7,8 +7,10 @@ from .pydvi.TeXUnit import pt2sp
 
 from .utils import ExecuteCommandError, TidyEnd, UserError
 from .reader import EndOfFile
-from .instructions import Instructions, h_add_glue_instructions
-from .instructioner import make_primitive_control_sequence_instruction
+from .instructions import (Instructions,
+                           h_add_glue_instructions, v_add_glue_instructions)
+from .instructioner import (make_primitive_control_sequence_instruction,
+                            make_unexpanded_control_sequence_instruction)
 from .parameters import Parameters, Specials, is_parameter_type
 from .accessors import is_register_type, SpecialsAccessor
 from .box import (HBox, VBox, Rule, Glue, Character, FontDefinition,
@@ -20,7 +22,7 @@ from .codes import CatCode
 from .scopes import (ScopedCodes, ScopedRegisters, ScopedRouter,
                      ScopedParameters, ScopedFontState, Operation)
 from .units import PhysicalUnit, MuUnit, InternalUnit, units_in_scaled_points
-from .tokens import BuiltToken, InstructionToken
+from .tokens import BuiltToken, InstructionToken, instructions_to_types
 
 logger = logging.getLogger(__name__)
 
@@ -113,11 +115,22 @@ shift_to_horizontal_instructions = (
     # Instructions.control_space,
 )
 shift_to_horizontal_instructions += tuple(h_add_glue_instructions)
-shift_to_horizontal_types = tuple(i.value
-                                  for i in shift_to_horizontal_instructions)
+shift_to_horizontal_types = instructions_to_types(shift_to_horizontal_instructions)
 shift_to_horizontal_cat_codes = (CatCode.letter,
                                  CatCode.other,
                                  CatCode.math_shift)
+
+
+shift_to_vertical_instructions = (
+    Instructions.un_v_box,
+    Instructions.un_v_copy,
+    # Instructions.h_align
+    Instructions.h_rule,
+    Instructions.end,
+    # Instructions.dump,
+)
+shift_to_vertical_instructions += tuple(v_add_glue_instructions)
+shift_to_vertical_types = instructions_to_types(shift_to_vertical_instructions)
 
 
 def command_shifts_to_horizontal(command):
@@ -127,6 +140,10 @@ def command_shifts_to_horizontal(command):
             command.value['cat'] in shift_to_horizontal_cat_codes):
         return True
     return False
+
+
+def command_shifts_to_vertical(command):
+    return command.type in shift_to_vertical_types
 
 
 class GlobalState:
@@ -915,6 +932,26 @@ class GlobalState:
             # And add it before the tokens we just read.
             banisher.instructions.replace_tokens_on_input([indent_token] +
                                                           terminal_tokens)
+        elif (self.mode == Mode.horizontal and
+              command_shifts_to_vertical(command)):
+            # "The appearance of a <vertical command> in regular horizontal
+            # mode causes TeX to insert the token 'par' into the input; after
+            # reading and expanding this 'par' token, TeX will see the
+            # <vertical command> token again. (The current meaning of the
+            # control sequence \par will be used; 'par' might no longer stand
+            # for TeX's \par primitive.)"
+            # Put the terminal tokens that led to this command back on the
+            # input queue.
+            terminal_tokens = command._terminal_tokens
+            par_cs_token = make_unexpanded_control_sequence_instruction('par')
+            banisher.instructions.replace_tokens_on_input([par_cs_token] +
+                                                          terminal_tokens)
+        elif (self.mode == Mode.restricted_horizontal and
+              command_shifts_to_vertical(command)):
+            # The appearance of a <vertical command> in restricted horizontal
+            # mode is forbidden.
+            raise UserError(f"Cannot do command {type_} in restricted "
+                            f"horizontal mode")
         elif type_ == Instructions.space.value:
             self.do_space()
         elif type_ == Instructions.par.value:
@@ -996,7 +1033,7 @@ class GlobalState:
             reader.insert_file(file_name)
         # I think technically only this should cause the program to end, not
         # EndOfFile anywhere. But for now, whatever.
-        elif type_ == 'END':
+        elif type_ == Instructions.end.value:
             logger.info(f"Doing paragraph if needed, then ending")
             self.do_paragraph()
             raise TidyEnd
@@ -1069,9 +1106,9 @@ class GlobalState:
             box_item = self._parse_box_token(v['box'].value,
                                              horizontal=horizontal)
             self.set_box_register(evaled_i, box_item, v['global'])
-        elif type_ == 'PATTERNS':
+        elif type_ == Instructions.patterns.value:
             raise NotImplementedError
-        elif type_ == 'HYPHENATION':
+        elif type_ == Instructions.hyphenation.value:
             raise NotImplementedError
         elif type_ == 'code_assignment':
             code_type = v['code_type']
@@ -1101,17 +1138,17 @@ class GlobalState:
             # TODO: This should be read with expansion, but at the moment we
             # read it unexpanded, so what we get here is not printable.
             pass
-        elif type_ == 'RELAX':
+        elif type_ == Instructions.relax.value:
             pass
-        elif type_ == 'INDENT':
+        elif type_ == Instructions.indent.value:
             self.do_indent()
-        elif type_ == 'LEFT_BRACE':
+        elif type_ == Instructions.left_brace.value:
             # A character token of category 1, or a control sequence like \bgroup
             # that has been \let equal to such a character token, causes TeX to
             # start a new level of grouping.
             self.push_group(Group.local)
             self.push_new_scope()
-        elif type_ == 'RIGHT_BRACE':
+        elif type_ == Instructions.right_brace.value:
             # I think roughly same comments as for LEFT_BRACE above apply.
             if self.group == Group.local:
                 self.pop_group()
@@ -1130,15 +1167,34 @@ class GlobalState:
                 raise EndOfSubExecutor
             else:
                 raise NotImplementedError
-        elif type_ == 'V_SKIP':
+        elif type_ == Instructions.v_skip.value:
             glue = self.eval_glue_token(v)
             item = Glue(**glue)
             logger.info(f'Adding vertical glue {item}')
             self.append_to_list(item)
-        elif type_ == 'H_STRETCH_OR_SHRINK':
-            fil_dimen = self.get_infinite_dimen(nr_fils=1, nr_units=1)
-            item = Glue(dimen=0, stretch=fil_dimen, shrink=fil_dimen)
-            logger.info(f'Adding horizontal super-elastic glue {item}')
+        elif type_ in (Instructions.h_stretch_or_shrink.value,
+                       Instructions.v_stretch_or_shrink.value):
+            one_fil = self.get_infinite_dimen(nr_fils=1, nr_units=1)
+            item = Glue(dimen=0, stretch=one_fil, shrink=one_fil)
+            logger.info(f'Adding infinite stretch and shrink glue')
+            self.append_to_list(item)
+        elif type_ in (Instructions.h_fil.value,
+                       Instructions.v_fil.value):
+            one_fil = self.get_infinite_dimen(nr_fils=1, nr_units=1)
+            item = Glue(dimen=0, stretch=one_fil, shrink=0)
+            logger.info(f'Adding first-order infinite-stretch glue')
+            self.append_to_list(item)
+        elif type_ in (Instructions.h_fill.value,
+                       Instructions.v_fill.value):
+            two_fils = self.get_infinite_dimen(nr_fils=2, nr_units=1)
+            item = Glue(dimen=0, stretch=two_fils, shrink=0)
+            logger.info(f'Adding second-order infinite-stretch glue')
+            self.append_to_list(item)
+        elif type_ in (Instructions.h_fil_neg.value,
+                       Instructions.v_fil_neg.value):
+            one_neg_fil = self.get_infinite_dimen(nr_fils=1, nr_units=-1)
+            item = Glue(dimen=0, stretch=one_neg_fil, shrink=one_neg_fil)
+            logger.info(f'Adding first-order infinite-negative-stretch glue')
             self.append_to_list(item)
         else:
             raise ValueError(f"Command type '{type_}' not recognised.")
