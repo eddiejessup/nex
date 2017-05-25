@@ -263,10 +263,11 @@ class HBox(AbstractBox):
         elif glue_ratio in (GlueRatio.no_stretchability,
                             GlueRatio.no_shrinkability):
             b = 10000
+        elif glue_ratio == 1.0:
+            line_state, glue_ratio, glue_set_order = self.glue_set_ratio()
+            b = 10000
         else:
             b = int(round(100 * glue_ratio ** 3))
-            if glue_ratio == 1.0:
-                b = 10000
         return min(b, 10000)
 
 
