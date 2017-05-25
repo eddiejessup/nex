@@ -243,13 +243,16 @@ class GlobalState:
     def append_to_list(self, item):
         self._layout_list.append(item)
         if self.mode in horizontal_modes:
-            # [the space factor] is set to 1000 just after a non-character box
-            # or a math formula has been put onto the current horizontal list.
-            # TODO: I made this condition up from my head.
+            # "[the space factor] is set to 1000 just after a non-character box
+            # or a math formula has been put onto the current horizontal list."
+            # TODO: I made up these list element conditions from my head.
             if isinstance(item, (HBox, VBox, Rule)):
                 self.specials.set(Specials.space_factor, 1000)
+            elif isinstance(item, (FontDefinition, FontSelection,
+                                   Glue, Kern)):
+                pass
             # TODO: Ligatures? TeXbook page 76
-            # When ligatures are formed, or when a special character is
+            # "When ligatures are formed, or when a special character is
             # specified via \char, the space factor code is computed from the
             # individual characters that generated the ligature. For example,
             # plain TeX sets the space factor code for single-right-quote to
@@ -260,18 +263,18 @@ class GlobalState:
             # TeX does not assign any value to
             # \sfcode'042.
             # [the space factor] gets set to a number other than 1000 only when
-            # a simple character box goes on the list.
+            # a simple character box goes on the list."
             elif isinstance(item, Character):
-                # TeXbook page 76 (in later editions): A character whose
+                # TeXbook page 76 (in later editions): "A character whose
                 # character code is 128 or more is required to have a space
                 # factor code of 1000, since TeX maintains a changeable \sfcode
-                # only for characters 0 to 127.
+                # only for characters 0 to 127."
                 code = item.code
                 if not 0 <= code <= 127:
                     g = 1000
                 else:
                     g = self.codes.get_space_factor_code(chr(code))
-                # Each character has a space factor code, and when a character
+                # "Each character has a space factor code, and when a character
                 # whose space factor code is 'g' enters the current list the
                 # normal procedure is simply to assign 'g' as the new space
                 # factor. However, if 'g' is zero, 'f' is not changed; and if
@@ -279,7 +282,7 @@ class GlobalState:
                 # words, 'f' doesn't jump from a value less than 1000 to a
                 # value greater than 1000 in a single step.) The maximum space
                 # factor is 32767 (which is much higher than anybody would ever
-                # want to use).
+                # want to use)."
                 f = self.specials.get(Specials.space_factor)
                 if g == 0:
                     pass
@@ -287,6 +290,9 @@ class GlobalState:
                     self.specials.set(Specials.space_factor, 1000)
                 else:
                     self.specials.set(Specials.space_factor, g)
+            else:
+                raise NotImplementedError
+            self._layout_list.append(item)
 
     def extend_list(self, items):
         self._layout_list.extend(items)
