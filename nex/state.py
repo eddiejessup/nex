@@ -614,16 +614,16 @@ class GlobalState:
                 stretch = extra_space_skip['stretch']
                 shrink = extra_space_skip['shrink']
 
-                stretch = int(round(f / 1000))
+                stretch *= int(round(f / 1000))
                 shrink *= int(round(1000 / f))
             else:
                 dimen = self.current_font.spacing
                 stretch = self.current_font.space_stretch
                 shrink = self.current_font.space_shrink
                 if f > 2000:
-                    f += self.current_font.extra_space
+                    dimen += self.current_font.extra_space
 
-                stretch = int(round(f / 1000))
+                stretch *= int(round(f / 1000))
                 shrink *= int(round(1000 / f))
 
             space_glue_item = Glue(dimen, stretch, shrink)
