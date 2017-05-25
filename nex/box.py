@@ -151,6 +151,22 @@ class AbstractBox(ListElement):
             w += self.spread
         return w
 
+    def append(self, *args, **kwargs):
+        self.contents.append(*args, **kwargs)
+
+    def extend(self, *args, **kwargs):
+        self.contents.extend(*args, **kwargs)
+
+    def copy(self, *args, **kwargs):
+        # If glue is set, need to tell the constructor that set_glue should be
+        # True, but that the glue is already set.
+        if self.set_glue:
+            raise NotImplementedError('Can only copy un-set boxes at the '
+                                      'moment, because that is all that is '
+                                      'needed')
+        return self.__class__(contents=self.contents[:],
+                              to=self.to, spread=self.spread, set_glue=False)
+
     def glue_set_ratio(self):
         return glue_set_ratio(self.natural_length, self.desired_length,
                               tuple(self.stretch), tuple(self.shrink))

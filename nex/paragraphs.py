@@ -1,7 +1,6 @@
 from collections import namedtuple
 
 from .box import HBox, Glue
-from .feedback import truncate_list
 
 
 def grab_word(h_list):
@@ -15,26 +14,25 @@ def grab_word(h_list):
     return chars, break_glue
 
 
-Node = namedtuple('Node', ('contents', 'badness', 'children'))
+Node = namedtuple('Node', ('box', 'badness', 'children'))
 NodeRoute = namedtuple('NodeRoute', ('sequence', 'badness'))
 
 
 def h_list_to_box_tree(remaining, w):
     tree = []
     seen_box = HBox(contents=[], to=w, set_glue=False)
-    seen_conts = seen_box.contents
     while remaining:
         grab_chars, grab_break_glue = grab_word(remaining)
-        seen_conts.extend(grab_chars)
+        seen_box.extend(grab_chars)
         seen_badness = seen_box.badness()
         if seen_badness < 1000:
             children = h_list_to_box_tree(remaining.copy(), w)
-            tree.append(Node(contents=seen_conts[:], badness=seen_badness,
+            tree.append(Node(box=seen_box.copy(), badness=seen_badness,
                              children=children))
         # If we are not breaking, put the break glue on the list.
-        seen_conts.append(grab_break_glue)
+        seen_box.append(grab_break_glue)
     # Add possibility to never break this h-list.
-    tree.append(Node(contents=seen_conts[:], badness=seen_box.badness(),
+    tree.append(Node(box=seen_box.copy(), badness=seen_box.badness(),
                      children=None))
     return tree
 
@@ -42,11 +40,10 @@ def h_list_to_box_tree(remaining, w):
 def pp(tree, l=1):
     tabs = '\t' * l
     if tree is None:
-        print(f'B: ----- ', tabs, 'end')
+        print(f'B: ----- {tabs} end')
         return
     for node in tree:
-        cnt = truncate_list(node.contents, 5)
-        print(f'B: {node.badness} ', tabs, cnt)
+        print(f'B: {node.badness} {tabs} {node.box}')
         pp(node.children, l=l+1)
 
 
@@ -76,10 +73,12 @@ def get_best_route(node):
 
 def h_list_to_best_h_boxes(h_list, h_size):
     box_tree = h_list_to_box_tree(h_list, h_size)
-    root_node = Node(contents=None, badness=0, children=box_tree)
+    root_node = Node(box=None, badness=0, children=box_tree)
     best_route = get_best_route(root_node)
     # Ignore root node.
     best_sequence = best_route.sequence[1:]
-    h_boxes = [HBox(contents=node.contents, to=h_size, set_glue=True)
-               for node in best_sequence]
+    h_boxes = [node.box for node in best_sequence]
+    # Set the glue of the sequence.
+    for box in h_boxes:
+        box.scale_and_set()
     return h_boxes
