@@ -1,5 +1,5 @@
 import string
-
+from .utils import sp_to_pt
 
 printable_ascii_codes = list(map(ord, string.printable))
 
@@ -49,3 +49,10 @@ def clsn(obj):
 def drep(obj, a):
     """Helper for formatting typical __repr__ return values."""
     return f'{clsn(obj)}({csep(a)})'
+
+
+def dimrep(d):
+    if isinstance(d, int):
+        return '{:.1f}pt'.format(sp_to_pt(d))
+    else:
+        return d

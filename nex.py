@@ -11,11 +11,8 @@ from nex.reader import logger as read_logger
 from nex.lexer import logger as lex_logger
 from nex.instructioner import logger as instr_logger
 from nex.banisher import logger as banish_logger
-
-read_logger.setLevel(logging.INFO)
-lex_logger.setLevel(logging.INFO)
-# instr_logger.setLevel(logging.WARNING)
-banish_logger.setLevel(logging.INFO)
+from nex.parsing.utils import logger as chunk_logger
+from nex.state import logger as state_logger
 
 dir_path = opath.dirname(opath.realpath(__file__))
 
@@ -66,8 +63,20 @@ if __name__ == '__main__':
         logging.basicConfig(level=getattr(logging, args.log_level))
     elif args.verbose:
         logging.basicConfig(level=logging.INFO)
+        read_logger.setLevel(logging.WARNING)
+        lex_logger.setLevel(logging.WARNING)
+        instr_logger.setLevel(logging.WARNING)
+        banish_logger.setLevel(logging.WARNING)
+        chunk_logger.setLevel(logging.WARNING)
+        state_logger.setLevel(logging.INFO)
     elif args.debug:
         logging.basicConfig(level=logging.DEBUG)
+        read_logger.setLevel(logging.WARNING)
+        lex_logger.setLevel(logging.WARNING)
+        instr_logger.setLevel(logging.INFO)
+        banish_logger.setLevel(logging.INFO)
+        chunk_logger.setLevel(logging.INFO)
+        state_logger.setLevel(logging.INFO)
 
     font_search_paths = default_font_search_paths[:]
     if args.fonts:

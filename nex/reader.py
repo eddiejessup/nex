@@ -253,7 +253,9 @@ class Reader:
             raise ValueError('Cannot advance backwards')
         for _ in range(n):
             self.increment_loc()
-        return self.peek_ahead(0)
+        c = self.peek_ahead(0)
+        logger.info(f"Advanced {n}, on line {self.line_nr}, got '{c}'")
+        return c
 
     def advance_to_end(self):
         """Return an iterator over the reader's characters, until all buffers

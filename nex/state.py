@@ -3,9 +3,7 @@ import logging
 from enum import Enum
 from collections import deque
 
-from .pydvi.TeXUnit import pt2sp
-
-from .utils import ExecuteCommandError, TidyEnd, UserError
+from .utils import ExecuteCommandError, TidyEnd, UserError, pt_to_sp
 from .reader import EndOfFile
 from .instructions import (Instructions,
                            h_add_glue_instructions, v_add_glue_instructions)
@@ -14,7 +12,7 @@ from .instructioner import (make_primitive_control_sequence_instruction,
 from .parameters import Parameters, Specials, is_parameter_type
 from .accessors import is_register_type, SpecialsAccessor
 from .box import (HBox, VBox, Rule, Glue, Character, FontDefinition,
-                  FontSelection, Kern)
+                  FontSelection, Kern, dimrep)
 from .paragraphs import h_list_to_best_h_boxes
 from . import evaluator as evaler
 from .fonts import GlobalFontState
@@ -161,8 +159,10 @@ class GlobalState:
         self.parameters = parameters
 
         # At the beginning, TeX is in vertical mode, ready to construct pages.
-        self.modes = [(Mode.vertical, [])]
-        self.groups = [Group.outside]
+        self.modes = []
+        self.push_mode(Mode.vertical)
+        self.groups = []
+        self.push_group(Group.outside)
 
     @classmethod
     def from_defaults(cls, font_search_paths=None, global_font_state=None):
@@ -599,7 +599,7 @@ class GlobalState:
             # used for an interword space. Otherwise if \spaceskip is nonzero,
             # the \spaceskip glue is used, with stretch and shrink components
             # multiplied by f / 1000 and 1000 / f. For example, the
-            # \raggedright macro of plain \TeX\ uses \spaceskip and \xspaceskip
+            # \raggedright macro of plain TeX\ uses \spaceskip and \xspaceskip
             # to suppress all stretching and shrinking of interword spaces.
             extra_space_skip = self.parameters.get(Parameters.x_space_skip)
             space_skip = self.parameters.get(Parameters.space_skip)
@@ -639,7 +639,7 @@ class GlobalState:
             raise UserError(f'Cannot add V Rule in non-horizontal '
                             f'mode: {self.mode}')
         if width is None:
-            width = pt2sp(0.4)
+            width = pt_to_sp(0.4)
         else:
             width = self.eval_number_token(width)
         if height is None:
@@ -661,7 +661,7 @@ class GlobalState:
         else:
             width = self.eval_number_token(width)
         if height is None:
-            height = int(pt2sp(0.4))
+            height = pt_to_sp(0.4)
         else:
             height = self.eval_number_token(height)
         if depth is None:
@@ -917,7 +917,6 @@ class GlobalState:
         # char-cat pair might end up as part of a filename or something.
         if (self.mode in vertical_modes and
                 command_shifts_to_horizontal(command)):
-            logger.info(f'"{type_}" causing shift to horizontal mode')
             # "If any of these tokens occurs as a command in vertical mode or
             # internal vertical mode, TeX automatically performs an \indent
             # command as explained above. This leads into horizontal mode with
@@ -925,6 +924,7 @@ class GlobalState:
             # horizontal command again."
             # Put the terminal tokens that led to this command back on the
             # input queue.
+            logger.info(f'"{type_}" causing shift to horizontal mode')
             terminal_tokens = command._terminal_tokens
             # Get a primitive token for the indent command.
             indent_token = make_primitive_control_sequence_instruction(
@@ -942,6 +942,7 @@ class GlobalState:
             # for TeX's \par primitive.)"
             # Put the terminal tokens that led to this command back on the
             # input queue.
+            logger.info(f'"{type_}" causing shift to vertical mode')
             terminal_tokens = command._terminal_tokens
             par_cs_token = make_unexpanded_control_sequence_instruction('par')
             banisher.instructions.replace_tokens_on_input([par_cs_token] +
@@ -953,13 +954,16 @@ class GlobalState:
             raise UserError(f"Cannot do command {type_} in restricted "
                             f"horizontal mode")
         elif type_ == Instructions.space.value:
+            logger.debug(f'Doing space')
             self.do_space()
         elif type_ == Instructions.par.value:
+            logger.debug(f'Doing paragraph')
             self.do_paragraph()
         elif type_ == 'character':
-            logger.info(f"Adding character \"{v['char']}\"")
+            logger.debug(f"Adding character \"{v['char']}\"")
             self.add_character_char(v['char'])
         elif type_ == Instructions.accent.value:
+            logger.info(f'Adding accented character')
             assignments = v['assignments'].value
             accent_code_eval = self.eval_number_token(v['accent_code'])
             char_tok = v['target_char']
@@ -993,11 +997,13 @@ class GlobalState:
             box_item = self._parse_box_token(v, horizontal=horizontal)
             self.append_to_list(box_item)
         elif type_ in (Instructions.box.value, Instructions.copy.value):
+            logger.info(f"Getting box from register with '{type_}' command")
             evaled_i = self.eval_number_token(v)
             # \box empties the register; \copy doesn't
             is_copy = type_ == Instructions.copy.value
             self.append_register_box(i=evaled_i, copy=is_copy)
         elif type_ == 'un_box':
+            logger.info(f"Unpacking box from register with '{type_}' command")
             reg_nr = self.eval_number_token(v['nr'])
             is_copy = v['cmd_type'] in (Instructions.un_h_copy,
                                         Instructions.un_v_copy)
@@ -1012,13 +1018,14 @@ class GlobalState:
             self.select_font(v['global'], v['font_id'])
         elif type_ == 'font_definition':
             file_name = v['file_name'].value
-            logger.info(f"Defining font at \"{file_name}\" as \"{v['control_sequence_name']}\"")
+            cs_name = v['control_sequence_name']
+            logger.info(f"Defining font at '{file_name}' as '{cs_name}'")
             new_font_id = self.define_new_font(
                 file_name, v['at_clause'],
             )
             # Make a control sequence pointing to it.
             self.router.define_new_font_control_sequence(
-                v['global'], v['control_sequence_name'], new_font_id)
+                v['global'], cs_name, new_font_id)
         elif type_ == 'family_assignment':
             family_nr_uneval = v['family_nr']
             family_nr_eval = self.eval_number_token(family_nr_uneval)
@@ -1034,7 +1041,7 @@ class GlobalState:
         # I think technically only this should cause the program to end, not
         # EndOfFile anywhere. But for now, whatever.
         elif type_ == Instructions.end.value:
-            logger.info(f"Doing paragraph if needed, then ending")
+            logger.info(f"Doing 'end' command")
             self.do_paragraph()
             raise TidyEnd
         elif type_ == 'short_hand_definition':
@@ -1056,6 +1063,7 @@ class GlobalState:
                 def_type=v['def_type'], prefixes=v['prefixes']
             )
         elif type_ == 'variable_assignment':
+            logger.info(f'Doing variable assignment')
             variable, value = v['variable'], v['value']
             # The value might be a variable reference or something, so we must
             # evaluate it to its contents first before assigning a variable to
@@ -1081,6 +1089,7 @@ class GlobalState:
                     is_global=v['global'],
                 )
         elif type_ == 'advance':
+            logger.info(f"Doing variable modification of type {type_}")
             variable, value = v['variable'], v['value']
             # See 'variable_assignment' case.
             evaled_value = self.eval_number_token(value)
@@ -1100,6 +1109,7 @@ class GlobalState:
                 raise ValueError(f"Unknown unknown variable type: "
                                  f"'{variable.type}'")
         elif type_ == Instructions.set_box.value:
+            logger.info(f"Setting box register")
             evaled_i = self.eval_number_token(v['nr'])
             box_type = v['box'].type
             horizontal = box_type == Instructions.h_box.value
@@ -1112,6 +1122,7 @@ class GlobalState:
             raise NotImplementedError
         elif type_ == 'code_assignment':
             code_type = v['code_type']
+            logger.info(f"Assigning code value of type '{code_type}'")
             char_size = self.eval_number_token(v['char'])
             code_size = self.eval_number_token(v['code'])
             self.codes.set_by_nrs(is_global=v['global'],
@@ -1119,19 +1130,24 @@ class GlobalState:
                                   char_size=char_size,
                                   code_size=code_size)
         elif type_ == 'let_assignment':
+            logger.info(f"Doing let assignment to '{v['name']}'")
             self.router.do_let_assignment(v['global'], new_name=v['name'],
                                           target_token=v['target_token'])
         elif type_ == 'skew_char_assignment':
+            logger.info(f"Setting skew character")
             code_eval = self.eval_number_token(v['code'])
             self.global_font_state.set_hyphen_char(v['font_id'], code_eval)
         elif type_ == 'hyphen_char_assignment':
+            logger.info(f"Setting hyphen character")
             code_eval = self.eval_number_token(v['code'])
             self.global_font_state.set_hyphen_char(v['font_id'], code_eval)
         elif type_ == 'message':
+            logger.info(f"Doing 'message' command")
             conts = v['content'].value
             s = ''.join(t.value['char'] for t in conts)
             print(f'MESSAGE: {s}')
         elif type_ == 'write':
+            logger.info(f"Doing 'write' command")
             conts = v['content'].value
             # s = ''.join(t.value['char'] for t in conts)
             print(f'LOG: <TODO>')
@@ -1139,16 +1155,20 @@ class GlobalState:
             # read it unexpanded, so what we get here is not printable.
             pass
         elif type_ == Instructions.relax.value:
+            logger.info(f"Doing 'relax' command")
             pass
         elif type_ == Instructions.indent.value:
+            logger.debug(f"Doing 'indent'")
             self.do_indent()
         elif type_ == Instructions.left_brace.value:
+            logger.debug(f"Starting local group due to left brace")
             # A character token of category 1, or a control sequence like \bgroup
             # that has been \let equal to such a character token, causes TeX to
             # start a new level of grouping.
             self.push_group(Group.local)
             self.push_new_scope()
         elif type_ == Instructions.right_brace.value:
+            logger.debug(f"Ending current group '{self.group}' due to right brace")
             # I think roughly same comments as for LEFT_BRACE above apply.
             if self.group == Group.local:
                 self.pop_group()

@@ -1,17 +1,8 @@
 from enum import Enum
 from functools import lru_cache
 
-from .pydvi.TeXUnit import sp2pt
-
 from .utils import sum_infinities
-from .feedback import printable_ascii_codes, drep, truncate_list
-
-
-def dimrep(d):
-    if isinstance(d, int):
-        return '{:.1f}pt'.format(sp2pt(d))
-    else:
-        return d
+from .feedback import printable_ascii_codes, drep, truncate_list, dimrep
 
 
 class LineState(Enum):
@@ -99,6 +90,21 @@ class ListElement:
 #     Boxes.
 
 
+def contsrep(contents, n=9):
+    """Get a nice representation of the contents of a box."""
+    cs_rep = []
+    for c in contents:
+        if isinstance(c, Character) and c.code in printable_ascii_codes:
+            c_str = chr(c.code)
+            if cs_rep and isinstance(cs_rep[-1], str):
+                cs_rep[-1] += c_str
+            else:
+                cs_rep.append(c_str)
+        else:
+            cs_rep.append(c)
+    return truncate_list(cs_rep, n=n)
+
+
 class AbstractBox(ListElement):
 
     discardable = False
@@ -116,9 +122,7 @@ class AbstractBox(ListElement):
         self.offset = offset
 
     def __repr__(self):
-        a = [
-            truncate_list(self.contents, n=9),
-        ]
+        a = [contsrep(self.contents)]
         if self.to is not None:
             a.append(f'to {dimrep(self.to)}')
         elif self.spread is not None:

@@ -84,6 +84,7 @@ class Lexer:
         while True:
             token = self._process_next_character()
             if token is not None:
+                logger.info(f'Fetched token {token}')
                 return token
 
     def advance_to_end(self):

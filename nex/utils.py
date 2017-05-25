@@ -3,11 +3,15 @@ from os import path as opath
 import base64
 import uuid
 
-from .pydvi.TeXUnit import pt2sp
+from .pydvi.TeXUnit import pt2sp, sp2pt
 
 
 def pt_to_sp(pt):
     return int(round(pt2sp(pt)))
+
+
+def sp_to_pt(pt):
+    return sp2pt(pt)
 
 
 ascii_characters = ''.join(chr(i) for i in range(128))
@@ -20,7 +24,13 @@ def get_unique_id():
     return sanitised
 
 
+class LogicError(Exception):
+    """Got into situations that should not be internally possible."""
+    pass
+
+
 class UserError(Exception):
+    """The input from the user is incorrect."""
     pass
 
 

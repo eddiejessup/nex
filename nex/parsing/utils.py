@@ -4,7 +4,7 @@ from collections import deque
 
 from ..reader import EndOfFile
 from ..tokens import BuiltToken
-from ..utils import NoSuchControlSequence
+from ..utils import NoSuchControlSequence, LogicError
 from ..instructioner import non_active_letters_map
 
 logger = logging.getLogger(__name__)
@@ -110,6 +110,13 @@ class ChunkGrabber:
     def __iter__(self):
         return self
 
+    def _clean_chunk(self, chunk, terminal_tokens, method):
+        # We might want to reverse the composition of terminal tokens we just
+        # did in the parser, so save the bits in a special place.
+        chunk._terminal_tokens = list(terminal_tokens)
+        logger.info(f'Got chunk "{chunk.type}", through {method}')
+        return chunk
+
     def __next__(self):
         # Want to extend the queue-to-be-parsed one token at a time,
         # so we can break as soon as we have all we need.
@@ -134,7 +141,8 @@ class ChunkGrabber:
                 # return this parse-chunk, then next time round we will be
                 # done.
                 elif have_parsed:
-                    break
+                    return self._clean_chunk(chunk, chunk_token_queue,
+                                             method='end-of-file')
                 # If we get to the end of the file and we have a chunk queue
                 # that can't be parsed, something is wrong.
                 else:
@@ -148,7 +156,8 @@ class ChunkGrabber:
                 if have_parsed:
                     # This might always be fine, but log it anyway.
                     logger.warning('Ignoring failed expansion in chunk grabber')
-                    break
+                    return self._clean_chunk(chunk, chunk_token_queue,
+                                             method='failed expansion')
                 # Otherwise, indeed something is wrong.
                 else:
                     raise
@@ -161,13 +170,13 @@ class ChunkGrabber:
                 # If we have already parsed a chunk, then we use this as our
                 # result. (If we have not yet parsed, then something is wrong.)
                 if have_parsed:
-                    logger.debug(f'Got chunk "{chunk.type}", through failure')
                     # We got one token of fluff due to extra read, to make the
                     # parse queue not-parse. So put it back on the buffer.
                     fluff_tok = chunk_token_queue.pop()
                     logger.debug(f'Replacing fluff token {fluff_tok} on to-parse queue.')
                     self.out_queue.queue.appendleft(fluff_tok)
-                    break
+                    return self._clean_chunk(chunk, chunk_token_queue,
+                                             method='failed parsing')
             except ExhaustedTokensError:
                 # Carry on getting more tokens, because it seems we can.
                 pass
@@ -180,13 +189,10 @@ class ChunkGrabber:
                 # must handle bad handling of the post- chunk tokens caused by
                 # not acting on this chunk.
                 if chunk._could_only_end:
-                    logger.debug(f'Got chunk "{chunk.type}", through inevitability')
-                    break
+                    return self._clean_chunk(chunk, chunk_token_queue,
+                                             method='inevitability')
                 have_parsed = True
-        # We might want to reverse the composition of terminal tokens we just
-        # did in the parser, so save the bits in a special place.
-        chunk._terminal_tokens = list(chunk_token_queue)
-        return chunk
+        raise LogicError('Broke from command parsing loop unexpectedly')
 
     def clean_up(self):
         logger.info(f"Cleaning up tokens on chunk grabber's queue: {self.out_queue.queue}")
