@@ -243,7 +243,9 @@ class GlobalState:
         if len(self.modes) > 1 or self.mode != Mode.vertical:
             raise Exception('Did not end in vertical mode')
         layout_list = self.pop_mode()
-        return layout_list
+        v_size = self.parameters.get(Parameters.v_size)
+        main_v_box = VBox(contents=layout_list, to=v_size, set_glue=True)
+        return main_v_box
 
     def append_to_list(self, item):
         if self.mode in horizontal_modes:

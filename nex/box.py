@@ -324,10 +324,18 @@ class VBox(AbstractBox):
             raise AttributeError('VBox is not set yet, does not have a height')
         return self.desired_length
 
-    # TODO: This is almost certainly wrong.
+    # TODO: This is wrong. Correct rules are in TeXbook page 80.
     @property
     def depth(self):
-        return self.contents[-1].depth
+        if self.contents:
+            # This is an approximation of the rules, not an attempt at
+            # correctness.
+            if not isinstance(self.contents[-1], AbstractBox):
+                return 0
+            else:
+                return self.contents[-1].depth
+        else:
+            return 0
 
 
 class Rule(ListElement):
