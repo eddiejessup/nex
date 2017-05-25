@@ -1,3 +1,9 @@
+"""
+Define structure and values of TeX's internal 'codes', which map characters
+to values such as their category (letter, space, comment and such),
+how they behave in mathematics (binary relation, large operator and such),
+and their status as delimiters.
+"""
 from collections import namedtuple
 from enum import Enum
 

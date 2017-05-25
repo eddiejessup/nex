@@ -1,8 +1,8 @@
 import pytest
 
-from nex.parsing import parsing, utils as pu
+from nex.parsing import parsing
 
-from common import PTok as T, str_to_lit_str, str_to_toks
+from common import str_to_lit_str, str_to_toks
 
 
 @pytest.fixture(scope='module')

@@ -2,9 +2,9 @@ from string import ascii_letters, ascii_lowercase, ascii_uppercase, digits
 from datetime import datetime
 
 from .constants.instructions import Instructions, register_instructions
-from .constants.parameters import (Parameters, Specials,
-                                   param_to_type, special_to_type,
+from .constants.parameters import (Parameters, param_to_type,
                                    param_instr_subset)
+from .constants.specials import Specials, special_to_type
 from .constants.codes import (CatCode, WeirdChar, MathClass, MathCode,
                               GlyphCode, DelimiterCode,
                               not_a_delimiter_code, ignored_delimiter_code)

@@ -2,10 +2,10 @@ from string import ascii_letters
 
 import pytest
 
-from nex.codes import CatCode
+from nex.constants.codes import CatCode
+from nex.constants.parameters import Parameters
+from nex.constants.instructions import Instructions
 from nex.banisher import Banisher, BanisherError
-from nex.parameters import Parameters
-from nex.instructions import Instructions
 from nex.instructioner import (Instructioner,
                                make_unexpanded_control_sequence_instruction,
                                char_cat_instr_tok)

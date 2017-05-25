@@ -1,5 +1,12 @@
+"""
+Define the default initial mapping of control sequences (literal strings such
+as 'input' that the user can type), to internal instructions (such as 'input a
+file'), parameters (such as 'the page width') and special values (such as 'the
+desired height of this page').
+"""
 from .instructions import Instructions
-from .parameters import Parameters, Specials
+from .parameters import Parameters
+from .specials import Specials
 
 
 # Control sequence to instruction map.
@@ -115,6 +122,7 @@ primitive_control_sequences = {
 }
 
 P = Parameters
+# Control sequence to parameter map.
 param_control_sequences = {
     'pretolerance': P.pre_tolerance,
     'tolerance': P.tolerance,
@@ -225,6 +233,7 @@ param_control_sequences = {
     'errhelp': P.err_help,
 }
 
+# Control sequence to special value map.
 special_control_sequences = {
     'spacefactor': Specials.space_factor,
     'prevgraf': Specials.prev_graf,

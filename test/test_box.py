@@ -27,12 +27,12 @@ def test_glue_flex_set():
 
 def test_box_writer():
     doc = DVIDocument(magnification=1000)
-    lay_list = [
+    v_box = box.VBox([
         box.Rule(1, 1, 1),
         box.Glue(1, 2, 3),
         box.HBox([
             box.Glue(3, 2, 1),
             box.Rule(3, 3, 3),
         ]),
-    ]
-    box_writer.write_box_to_doc(doc, lay_list)
+    ])
+    box_writer.write_box_to_doc(doc, v_box)

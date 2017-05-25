@@ -1,4 +1,4 @@
-from nex.codes import CatCode
+from nex.constants.codes import CatCode
 from nex.accessors import Codes
 from nex.lexer import Lexer
 

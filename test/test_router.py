@@ -1,11 +1,11 @@
 import pytest
 
-from nex.codes import CatCode
+from nex.constants.codes import CatCode
+from nex.constants.instructions import Instructions
 from nex.router import CSRouter
 from nex.utils import NoSuchControlSequence
 from nex.instructioner import (make_unexpanded_control_sequence_instruction,
                                char_cat_instr_tok)
-from nex.instructions import Instructions
 
 from common import DummyInstructions, DummyParameters, ITok
 

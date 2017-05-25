@@ -6,7 +6,8 @@ from collections import deque
 from .constants.instructions import (Instructions,
                                      h_add_glue_instructions,
                                      v_add_glue_instructions)
-from .constants.parameters import Parameters, Specials, is_parameter_type
+from .constants.parameters import Parameters, is_parameter_type
+from .constants.specials import Specials
 from .constants.codes import CatCode
 from .constants.units import (PhysicalUnit, MuUnit, InternalUnit,
                               units_in_scaled_points)

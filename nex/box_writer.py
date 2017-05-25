@@ -61,6 +61,7 @@ def write_box_to_doc(doc, item, horizontal=False):
         else:
             doc.down(item.height)
     else:
+        print(item)
         raise NotImplementedError
 
 

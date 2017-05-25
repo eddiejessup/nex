@@ -2,9 +2,9 @@ from string import ascii_letters
 
 import pytest
 
-from nex.codes import CatCode
+from nex.constants.codes import CatCode
+from nex.constants.instructions import Instructions, unexpanded_cs_instructions
 from nex.reader import EndOfFile
-from nex.instructions import Instructions, unexpanded_cs_instructions
 from nex.instructioner import (Instructioner,
                                make_unexpanded_control_sequence_instruction,
                                char_cat_instr_tok)

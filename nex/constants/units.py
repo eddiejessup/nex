@@ -1,3 +1,8 @@
+"""
+Define the list of physical units that TeX can deal with, and their sizes.
+Internally, everything is done in terms of 'scaled points', 'sp' for short,
+defined such that 65536 scaled points = 1 point.
+"""
 from enum import Enum
 
 

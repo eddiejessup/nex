@@ -1,9 +1,9 @@
 import pytest
 
+from nex.constants.instructions import Instructions
+from nex.constants.specials import Specials
 from nex.state import Mode, GlobalState
 from nex import box
-from nex.instructions import Instructions
-from nex.parameters import Specials
 from nex.box_writer import write_to_dvi_file
 from nex.utils import ExecuteCommandError, UserError
 from nex.tokens import BuiltToken

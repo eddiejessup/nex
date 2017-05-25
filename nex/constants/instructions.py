@@ -1,3 +1,9 @@
+"""
+Define the list of possible internal instructions that TeX might handle. These
+might constitute full commands by themselves (such as 'end' to end the
+document), or they might need to be composed with other pieces to form
+commands, such as 'input', which requires a file-name as an argument.
+"""
 from string import ascii_lowercase
 from enum import Enum
 

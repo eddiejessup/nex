@@ -1,6 +1,7 @@
 from enum import Enum
 
-from .constants.parameters import param_to_instr, special_to_instr
+from .constants.parameters import param_to_instr
+from .constants.specials import special_to_instr
 from .constants.instructions import Instructions, if_instructions
 from .constants import defaults
 from .tokens import InstructionToken, BaseToken
