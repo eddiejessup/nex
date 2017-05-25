@@ -1,16 +1,16 @@
 from string import ascii_lowercase
 
+from ..constants.instructions import (Instructions as I,
+                                      message_instructions,
+                                      hyphenation_instructions,
+                                      register_instructions,
+                                      h_add_glue_instructions,
+                                      v_add_glue_instructions,
+                                      short_hand_def_instructions,
+                                      def_instructions,
+                                      if_instructions
+                                      )
 from ..tokens import instructions_to_types
-from ..instructions import (Instructions as I,
-                            message_instructions,
-                            hyphenation_instructions,
-                            register_instructions,
-                            h_add_glue_instructions,
-                            v_add_glue_instructions,
-                            short_hand_def_instructions,
-                            def_instructions,
-                            if_instructions
-                            )
 
 terminal_instructions = (
     I.box_dimen_height,

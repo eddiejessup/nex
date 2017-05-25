@@ -1,7 +1,7 @@
 import subprocess
 
+from .constants.parameters import Parameters
 from .dampf.dvi_document import DVIDocument
-from .parameters import Parameters
 from .utils import LogicError
 from . import box
 

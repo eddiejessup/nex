@@ -1,4 +1,4 @@
-from .codes import CatCode
+from .constants.codes import CatCode
 
 
 def get_real_decimal_constant(collection):

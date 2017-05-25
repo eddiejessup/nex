@@ -219,6 +219,7 @@ def add_assignment_rules(pg):
     @pg.production('font_range : SCRIPT_FONT')
     @pg.production('font_range : SCRIPT_SCRIPT_FONT')
     def font_range(p):
+        # TODO: Doing too much in the parser.
         return BuiltToken(type_='font_range',
                           value=FontRange(p[0].type),
                           position_like=p)

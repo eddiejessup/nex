@@ -5,7 +5,7 @@ from functools import lru_cache
 from .pydvi.TeXUnit import pt2sp
 from .pydvi.Font.TfmParser import TfmParser
 
-from .instructions import Instructions
+from .constants.instructions import Instructions
 from .utils import ensure_extension, find_file, NotInScopeError
 from .feedback import drep
 

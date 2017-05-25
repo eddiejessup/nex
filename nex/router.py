@@ -1,14 +1,14 @@
 from enum import Enum
 
+from .constants.parameters import param_to_instr, special_to_instr
+from .constants.instructions import Instructions, if_instructions
+from .constants import defaults
 from .tokens import InstructionToken, BaseToken
 from .utils import get_unique_id, NoSuchControlSequence
-from .parameters import param_to_instr, special_to_instr
 from .lexer import control_sequence_lex_type, char_cat_lex_type
 from .instructioner import (make_primitive_control_sequence_instruction,
                             make_parameter_control_sequence_instruction,
                             make_special_control_sequence_instruction)
-from .instructions import Instructions, if_instructions
-from . import defaults
 from .expander import parse_replacement_text, parse_parameter_text
 
 

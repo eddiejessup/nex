@@ -1,5 +1,5 @@
 from ..tokens import BuiltToken
-from ..units import PhysicalUnit, MuUnit, InternalUnit
+from ..constants.units import PhysicalUnit, MuUnit, InternalUnit
 
 from . import utils as pu
 

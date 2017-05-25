@@ -1,5 +1,5 @@
 from ..tokens import BuiltToken
-from ..units import PhysicalUnit
+from ..constants.units import PhysicalUnit
 from ..accessors import glue_keys
 
 from . import utils as pu

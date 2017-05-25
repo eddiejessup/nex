@@ -1,9 +1,9 @@
 from enum import Enum
 import logging
 
+from .constants.codes import CatCode
 from .reader import Reader, EndOfFile
 from .tokens import LexToken
-from .codes import CatCode
 from .feedback import strep
 
 logger = logging.getLogger(__name__)

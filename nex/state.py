@@ -3,23 +3,25 @@ import logging
 from enum import Enum
 from collections import deque
 
+from .constants.instructions import (Instructions,
+                                     h_add_glue_instructions,
+                                     v_add_glue_instructions)
+from .constants.parameters import Parameters, Specials, is_parameter_type
+from .constants.codes import CatCode
+from .constants.units import (PhysicalUnit, MuUnit, InternalUnit,
+                              units_in_scaled_points)
 from .utils import ExecuteCommandError, TidyEnd, UserError, pt_to_sp
 from .reader import EndOfFile
-from .instructions import (Instructions,
-                           h_add_glue_instructions, v_add_glue_instructions)
 from .instructioner import (make_primitive_control_sequence_instruction,
                             make_unexpanded_control_sequence_instruction)
-from .parameters import Parameters, Specials, is_parameter_type
 from .accessors import is_register_type, SpecialsAccessor
 from .box import (HBox, VBox, Rule, Glue, Character, FontDefinition,
-                  FontSelection, Kern, dimrep)
+                  FontSelection, Kern)
 from .paragraphs import h_list_to_best_h_boxes
 from . import evaluator as evaler
 from .fonts import GlobalFontState
-from .codes import CatCode
 from .scopes import (ScopedCodes, ScopedRegisters, ScopedRouter,
                      ScopedParameters, ScopedFontState, Operation)
-from .units import PhysicalUnit, MuUnit, InternalUnit, units_in_scaled_points
 from .tokens import BuiltToken, InstructionToken, instructions_to_types
 
 logger = logging.getLogger(__name__)

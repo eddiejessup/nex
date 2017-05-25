@@ -2,20 +2,20 @@ from contextlib import contextmanager
 import logging
 from enum import Enum
 
+from .constants.codes import CatCode
+from .constants.instructions import (Instructions,
+                                     explicit_box_instructions,
+                                     short_hand_def_instructions,
+                                     def_instructions,
+                                     if_instructions,
+                                     message_instructions,
+                                     unexpanded_cs_instructions,
+                                     hyphenation_instructions)
+from .constants.parameters import Parameters
 from .tokens import InstructionToken
 from .reader import EndOfFile
 from .lexer import (is_control_sequence_call, is_char_cat,
                     char_cat_lex_type, control_sequence_lex_type)
-from .codes import CatCode
-from .instructions import (Instructions,
-                           explicit_box_instructions,
-                           short_hand_def_instructions,
-                           def_instructions,
-                           if_instructions,
-                           message_instructions,
-                           unexpanded_cs_instructions,
-                           hyphenation_instructions)
-from .parameters import Parameters
 from .instructioner import (Instructioner,
                             make_unexpanded_control_sequence_instruction,
                             char_cat_instr_tok)

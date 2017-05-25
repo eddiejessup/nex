@@ -2,12 +2,12 @@ import logging
 from string import ascii_letters
 from collections import deque
 
+from .constants.instructions import Instructions
+from .constants.codes import CatCode
 from .tokens import InstructionToken
 from .reader import EndOfFile
 from .lexer import (Lexer, make_char_cat_lex_token,
                     control_sequence_lex_type, char_cat_lex_type)
-from .instructions import Instructions
-from .codes import CatCode
 
 logger = logging.getLogger(__name__)
 

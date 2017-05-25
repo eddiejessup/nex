@@ -1,7 +1,7 @@
 from enum import Enum
 
 from .instructions import Instructions
-from .tokens import instructions_to_types
+from ..tokens import instructions_to_types
 
 params = {
     'PRE_TOLERANCE': Instructions.integer_parameter,
