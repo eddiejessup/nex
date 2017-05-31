@@ -1,8 +1,9 @@
+import math
 from enum import Enum
 from functools import lru_cache
 
-from .utils import sum_infinities
 from .feedback import printable_ascii_codes, drep, truncate_list, dimrep
+from .utils import sum_infinities, LogicError
 
 
 class LineState(Enum):
@@ -14,6 +15,28 @@ class LineState(Enum):
 class GlueRatio(Enum):
     no_stretchability = 2
     no_shrinkability = 3
+
+
+class BreakPoint(Enum):
+    """The types of places where line or page breaks may happen.
+    Used to decide how to assign penalties to breaks.
+    """
+    glue = 1
+    kern = 2
+    math_off = 3
+    penalty = 4
+    discretionary_break = 5
+    not_a_break_point = 6
+
+
+def extract_dimen(d):
+    if isinstance(d, int):
+        order = 0
+        factor = d
+    else:
+        order = d.value['number_of_fils']
+        factor = d.value['factor']
+    return order, factor
 
 
 @lru_cache(512)
@@ -75,6 +98,29 @@ def glue_set_ratio(natural_length, desired_length, stretch, shrink):
             if glue_order == 0:
                 glue_ratio = min(glue_ratio, 1.0)
     return line_state, glue_ratio, glue_order
+
+
+def get_penalty(pre_break_conts, break_item):
+    # Will assume if breaking at end of paragraph, so no break item, penalty is
+    # zero. Not actually sure this is a real case, because \hfil is always
+    # inserted right?
+    if break_item is None:
+        return 0
+    # "Each potential breakpoint has an associated 'penalty,' which
+    # represents the 'aesthetic cost' of breaking at that place."
+    # "In cases (a), (b), (c), the penalty is zero".
+    if isinstance(break_item, (Glue, Kern, MathOff)):
+        return 0
+    # "In case (d) an explicit penalty has been specified"
+    elif isinstance(break_item, Penalty):
+        raise NotImplementedError('Penalty items not implemented')
+    # "In case (e) the penalty is the current value of \hyphenpenalty if
+    # the pre-break text is nonempty, or the current value of
+    # \exhyphenpenalty if the pre-break text is empty."
+    elif isinstance(break_item, DiscretionaryBreak):
+        raise NotImplementedError
+    else:
+        raise ValueError(f"Item is not a break-point: {break_item}")
 
 
 class ListElement:
@@ -214,15 +260,22 @@ class AbstractBox(ListElement):
             self.contents[i].set(int(round(g.natural_length + glue_diff)))
         self.set_glue = True
 
-
-def extract_dimen(d):
-    if isinstance(d, int):
-        order = 0
-        factor = d
-    else:
-        order = d.value['number_of_fils']
-        factor = d.value['factor']
-    return order, factor
+    def badness(self):
+        """
+        Compute how bad this box would look if placed on a line. This is
+        high is the line is much shorter or longer than the page width.
+        """
+        line_state, glue_ratio, glue_order = self.glue_set_ratio()
+        if glue_order > 0:
+            b = 0
+        elif glue_ratio in (GlueRatio.no_stretchability,
+                            GlueRatio.no_shrinkability):
+            b = 10000
+        elif glue_ratio == 1.0:
+            b = 10000
+        else:
+            b = int(round(100 * glue_ratio ** 3))
+        return min(b, 10000)
 
 
 class HBox(AbstractBox):
@@ -233,13 +286,13 @@ class HBox(AbstractBox):
         # the widths of the boxes and kerns inside, together with the natural
         # widths of all the glue inside.
         w = 0
-        for c in self.contents:
-            if isinstance(c, Glue):
-                w += c.natural_length
-            elif isinstance(c, Kern):
-                w += c.length
+        for item in self.contents:
+            if isinstance(item, Glue):
+                w += item.natural_length
+            elif isinstance(item, Kern):
+                w += item.length
             else:
-                w += c.width
+                w += item.width
         return w
 
     @property
@@ -272,32 +325,44 @@ class HBox(AbstractBox):
     def depth(self):
         return max(self.depths, default=0)
 
-    def badness(self):
-        line_state, glue_ratio, glue_order = self.glue_set_ratio()
-        if glue_order > 0:
-            b = 0
-        elif glue_ratio in (GlueRatio.no_stretchability,
-                            GlueRatio.no_shrinkability):
-            b = 10000
-        elif glue_ratio == 1.0:
-            line_state, glue_ratio, glue_set_order = self.glue_set_ratio()
-            b = 10000
+    def demerit(self, break_item, line_penalty):
+        ten_k = 10000
+        el = line_penalty
+        b = self.badness()
+        p = get_penalty(self.contents, break_item)
+        d = (el + b)**2
+        if 0 <= p < ten_k:
+            d += p**2
+        elif -ten_k < p < 0:
+            d -= p**2
+        elif p <= -ten_k:
+            pass
         else:
-            b = int(round(100 * glue_ratio ** 3))
-        return min(b, 10000)
+            raise LogicError('Undefined condition state when computing '
+                             'demerit')
+        return d
+
+    def considerable_as_line(self, tolerance, break_item):
+        return (get_penalty(self.contents, break_item) < 10000
+                and (self.badness() <= tolerance))
 
 
 class VBox(AbstractBox):
 
     @property
     def natural_length(self):
+        # I'm assuming this is like for HBoxes, but adding heights instead of
+        # widths. Might not be true, considering depths exist.
         w = 0
-        for c in self.contents:
-            if isinstance(c, Glue):
-                w += c.natural_length
+        for item in self.contents:
+            if isinstance(item, Glue):
+                w += item.natural_length
+            elif isinstance(item, Kern):
+                w += item.length
             else:
-                w += c.height
+                w += item.height
         return w
+
 
     @property
     def widths(self):
@@ -336,6 +401,36 @@ class VBox(AbstractBox):
                 return self.contents[-1].depth
         else:
             return 0
+
+    def over_full(self):
+        raise NotImplementedError
+
+    def badness(self):
+        # Page 111 of TeXbook.
+        # "Vertical badness is computed by the same rules as horizontal
+        # badness; it is an integer between 0 and 10000, inclusive, except when
+        # the box is overfull, when it is infinity."
+        if self.over_full():
+            return math.inf
+        else:
+            return super().badness()
+
+    def page_break_cost(self, insert_penalties):
+        # Page 111 of TeXbook.
+        ten_k = 10000
+        b = self.badness()
+        p = self.penalty()
+        q = insert_penalties
+        if b < math.inf and p <= -ten_k and q < ten_k:
+            return p
+        elif b < ten_k and -ten_k < p < ten_k and q < ten_k:
+            return b + p + q
+        elif b >= ten_k and -ten_k < p < ten_k and q < ten_k:
+            # Not ten_k, I checked!
+            hundred_k = 100000
+            return hundred_k
+        elif (b == math.inf or q >= ten_k) and p < ten_k:
+            return math.inf
 
 
 class Rule(ListElement):

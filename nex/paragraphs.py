@@ -1,84 +1,113 @@
 from collections import namedtuple
 
-from .box import HBox, Glue
+from . import box
 
 
-def grab_word(h_list):
-    chars = []
-    # Loop making a word.
-    while True:
-        chars.append(h_list.popleft())
-        if isinstance(chars[-1], Glue):
-            break_glue = chars.pop()
-            break
-    return chars, break_glue
+HListRoute = namedtuple('HListRoute', ('sequence', 'demerit'))
 
 
-Node = namedtuple('Node', ('box', 'badness', 'children'))
-NodeRoute = namedtuple('NodeRoute', ('sequence', 'badness'))
+def is_break_point(h_list, i):
+    """These rules apply to both horizontal and vertical lists, but cases
+    (d) and (e) should never happen.
+    """
+    item = h_list[i]
+    # a) at glue, provided that this glue is immediately preceded by a non-
+    #    discardable item, and that it is not part of a math formula (i.e.,
+    #    not between math-on and math-off).
+    #    A break 'at glue' occurs at the left edge of the glue space.
+    # TODO: Add math conditions.
+    if (isinstance(item, box.Glue)
+            # Check a previous item exists, and it is not discardable.
+            and ((i - 1) >= 0) and (not h_list[i - 1].discardable)):
+                return True
+    # b) at a kern, provided that this kern is immediately followed by
+    # glue, and that it is not part of a math formula.
+    # TODO: Add math conditions.
+    elif (isinstance(item, box.Kern)
+            # Check a following item exists, and it is glue.
+            and ((i + 1) <= (len(h_list) - 1))
+            and isinstance(h_list[i + 1], box.Glue)):
+                return True
+    # c) at a math-off that is immediately followed by glue.
+    elif (isinstance(item, box.MathOff)
+            # Check a following item exists, and it is glue.
+            and ((i + 1) <= (len(h_list) - 1))
+            and isinstance(h_list[i + 1], box.Glue)):
+                return True
+    # d) at a penalty (which might have been inserted automatically in a
+    # formula).
+    elif isinstance(item, box.Penalty):
+        return True
+    # e) at a discretionary break.
+    elif isinstance(item, box.DiscretionaryBreak):
+        return True
+    else:
+        return False
 
 
-def h_list_to_box_tree(remaining, w):
-    tree = []
-    seen_box = HBox(contents=[], to=w, set_glue=False)
-    while remaining:
-        grab_chars, grab_break_glue = grab_word(remaining)
-        seen_box.extend(grab_chars)
-        seen_badness = seen_box.badness()
-        if seen_badness < 1000:
-            children = h_list_to_box_tree(remaining.copy(), w)
-            tree.append(Node(box=seen_box.copy(), badness=seen_badness,
-                             children=children))
-        # If we are not breaking, put the break glue on the list.
-        seen_box.append(grab_break_glue)
-    # Add possibility to never break this h-list.
-    tree.append(Node(box=seen_box.copy(), badness=seen_box.badness(),
-                     children=None))
-    return tree
+def break_at(h_list, i):
+    break_item = h_list[i]
+    # If the break item is glue, it is not included in the got h_list;
+    # otherwise, it is. This is why the break item is returned separately.
+    if isinstance(break_item, box.Glue):
+        h_list_got = h_list[: i]
+    else:
+        h_list_got = h_list[: i+1]
+    # If the break item is the last item in the list, no h_list after.
+    if i == len(h_list) - 1:
+        h_list_after = []
+    # Otherwise, discard tokens until seeing something.
+    else:
+        for j in range(i + 1, len(h_list)):
+            item_after = h_list[j]
+            # Discard items until we see something not discardable, or a break-
+            # point.
+            if (not item_after.discardable) or is_break_point(h_list, j):
+                break
+        h_list_after = h_list[j:]
+    return h_list_got, h_list_after, break_item
 
 
-def pp(tree, l=1):
-    tabs = '\t' * l
-    if tree is None:
-        print(f'B: ----- {tabs} end')
-        return
-    for node in tree:
-        print(f'B: {node.badness} {tabs} {node.box}')
-        pp(node.children, l=l+1)
+def get_best_route(h_list, demerit_func):
+    if not h_list:
+        return HListRoute(sequence=[], demerit=0)
 
-
-def get_best_route(node):
-    if node.children is None:
-        return NodeRoute(sequence=[node],
-                         badness=node.badness)
     child_routes = []
-    for child_node in node.children:
-        best_current_child_route = get_best_route(child_node)
-        child_routes.append(best_current_child_route)
-    best_child_route = min(child_routes, key=lambda t: t.badness)
-    return NodeRoute(sequence=[node] + best_child_route.sequence,
-                     badness=node.badness + best_child_route.badness)
+    for i in range(len(h_list)):
+        if is_break_point(h_list, i):
+            h_list_got, h_list_after, break_item = break_at(h_list, i)
+            got_demerit = demerit_func(h_list_got, break_item)
+            if got_demerit is not None:
+                best_current_child_route = get_best_route(h_list_after,
+                                                          demerit_func)
+                if best_current_child_route is not None:
+                    rt = HListRoute(sequence=[h_list_got] + best_current_child_route.sequence,
+                                    demerit=got_demerit + best_current_child_route.demerit)
+                    child_routes.append(rt)
+
+    # One option is not to break at all.
+    no_break_demerit = demerit_func(h_list, break_item=None)
+    if no_break_demerit is not None:
+        child_routes.append(HListRoute(sequence=[h_list],
+                                       demerit=no_break_demerit))
+
+    if child_routes:
+        return min(child_routes, key=lambda t: t.demerit)
+    else:
+        return None
 
 
-# def get_all_routes(node, tree):
-#     routes = []
-#     for child_node, child_tree in tree.items():
-#         if child_tree is None:
-#             routes.append([child_node])
-#         else:
-#             routes.extend(get_all_routes(child_node, child_tree))
-#     routes = [[node] + r for r in routes]
-#     return routes
+def get_demerit(h_list, h_size, tolerance, line_penalty, break_item):
+    h_box = box.HBox(h_list, to=h_size, set_glue=False)
+    if h_box.considerable_as_line(tolerance, break_item):
+        return h_box.demerit(break_item, line_penalty)
+    else:
+        return None
 
 
-def h_list_to_best_h_boxes(h_list, h_size):
-    box_tree = h_list_to_box_tree(h_list, h_size)
-    root_node = Node(box=None, badness=0, children=box_tree)
-    best_route = get_best_route(root_node)
-    # Ignore root node.
-    best_sequence = best_route.sequence[1:]
-    h_boxes = [node.box for node in best_sequence]
-    # Set the glue of the sequence.
-    for box in h_boxes:
-        box.scale_and_set()
-    return h_boxes
+def get_best_h_lists(h_list, h_size, tolerance, line_penalty):
+    def demerit(h_list, break_item):
+        return get_demerit(h_list, h_size, tolerance, line_penalty, break_item)
+    best_route = get_best_route(h_list,
+                                demerit_func=demerit)
+    return best_route.sequence

@@ -17,8 +17,8 @@ from .instructioner import (make_primitive_control_sequence_instruction,
                             make_unexpanded_control_sequence_instruction)
 from .accessors import is_register_type, SpecialsAccessor
 from .box import (HBox, VBox, Rule, Glue, Character, FontDefinition,
-                  FontSelection, Kern)
-from .paragraphs import h_list_to_best_h_boxes
+                  FontSelection, Kern, get_penalty)
+from .paragraphs import get_best_h_lists
 from . import evaluator as evaler
 from .fonts import GlobalFontState
 from .scopes import (ScopedCodes, ScopedRegisters, ScopedRouter,
@@ -552,12 +552,19 @@ class GlobalState:
                 horizontal_list.pop()
             # Do \hskip\parfillskip.
             par_fill_glue = self.parameters.get(Parameters.par_fill_skip)
+            line_penalty = self.parameters.get(Parameters.line_penalty)
             horizontal_list.append(Glue(**par_fill_glue))
             h_size = self.parameters.get(Parameters.h_size)
-            h_boxes = h_list_to_best_h_boxes(horizontal_list, h_size)
+            # TODO: This is temporary; not correct
+            tolerance = self.parameters.get(Parameters.tolerance)
+
+            # It's a deque for some reason I haven't sussed.
+            h_lists = get_best_h_lists(list(horizontal_list),
+                                       h_size, tolerance, line_penalty)
 
             # for best_route in all_routes:
-            for h_box in h_boxes:
+            for h_list in h_lists:
+                h_box = HBox(h_list, to=h_size)
                 # Add it to the enclosing vertical list.
                 self.append_to_list(h_box)
         else:
