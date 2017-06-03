@@ -56,7 +56,7 @@ class DVIDocument:
         self.defined_fonts_info = {}
         self.stack_depth = 0
         self.max_stack_depth = self.stack_depth
-        self.begin_new_page()
+        self.current_font_nr = None
 
     @property
     def instructions(self):
@@ -73,7 +73,7 @@ class DVIDocument:
             byte_pointer += part.nr_bytes()
             if (isinstance(part, EncodedOperation)
                     and part.op_code == op_code):
-                op_code_pointers.append(byte_pointer)
+                op_code_pointers.append(byte_pointer - 1)
         return op_code_pointers
 
     @property
@@ -143,7 +143,6 @@ class DVIDocument:
         # now.
         max_page_height_plus_depth = 1
         max_page_width = 1
-
         post = get_postamble_instruction(self.last_begin_page_pointer,
                                          numerator,
                                          denominator,
@@ -167,7 +166,7 @@ class DVIDocument:
     def push(self):
         # House-keeping to track maximum stack depth for postamble.
         self.stack_depth += 1
-        self.max_push_level = max(self.stack_depth, self.max_stack_depth)
+        self.max_stack_depth = max(self.stack_depth, self.max_stack_depth)
         self.mundane_instructions.append(get_push_instruction())
 
     def pop(self):
