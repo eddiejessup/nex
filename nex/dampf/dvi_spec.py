@@ -258,20 +258,20 @@ def get_do_special_instruction_func(op_code, command_length_bytes):
 
 # Rules.
 
-get_put_rule_instruction = get_simple_instruction_func(OpCode.put_rule, g(4), g(4))
-get_set_rule_instruction = get_simple_instruction_func(OpCode.set_rule, g(4), g(4))
+get_put_rule_instruction = get_simple_instruction_func(OpCode.put_rule, g(4, name='height'), g(4, name='width'))
+get_set_rule_instruction = get_simple_instruction_func(OpCode.set_rule, g(4, name='height'), g(4, name='width'))
 
 # Characters.
 
-get_put_1_byte_char_instruction = get_simple_instruction_func(OpCode.put_1_byte_char, g(1))
-get_put_2_byte_char_instruction = get_simple_instruction_func(OpCode.put_2_byte_char, g(2))
-get_put_3_byte_char_instruction = get_simple_instruction_func(OpCode.put_3_byte_char, g(3))
-get_put_4_byte_char_instruction = get_simple_instruction_func(OpCode.put_4_byte_char, g(4))
+get_put_1_byte_char_instruction = get_simple_instruction_func(OpCode.put_1_byte_char, g(1, name='char'))
+get_put_2_byte_char_instruction = get_simple_instruction_func(OpCode.put_2_byte_char, g(2, name='char'))
+get_put_3_byte_char_instruction = get_simple_instruction_func(OpCode.put_3_byte_char, g(3, name='char'))
+get_put_4_byte_char_instruction = get_simple_instruction_func(OpCode.put_4_byte_char, g(4, name='char'))
 
-get_set_1_byte_char_instruction = get_simple_instruction_func(OpCode.set_1_byte_char, g(1))
-get_set_2_byte_char_instruction = get_simple_instruction_func(OpCode.set_2_byte_char, g(2))
-get_set_3_byte_char_instruction = get_simple_instruction_func(OpCode.set_3_byte_char, g(3))
-get_set_4_byte_char_instruction = get_simple_instruction_func(OpCode.set_4_byte_char, g(4))
+get_set_1_byte_char_instruction = get_simple_instruction_func(OpCode.set_1_byte_char, g(1, name='char'))
+get_set_2_byte_char_instruction = get_simple_instruction_func(OpCode.set_2_byte_char, g(2, name='char'))
+get_set_3_byte_char_instruction = get_simple_instruction_func(OpCode.set_3_byte_char, g(3, name='char'))
+get_set_4_byte_char_instruction = get_simple_instruction_func(OpCode.set_4_byte_char, g(4, name='char'))
 
 # Movers.
 
@@ -280,42 +280,42 @@ get_right_x_instruction = get_simple_instruction_func(OpCode.right_x)
 get_down_y_instruction = get_simple_instruction_func(OpCode.down_y)
 get_down_z_instruction = get_simple_instruction_func(OpCode.down_z)
 
-get_right_1_byte_instruction = get_simple_instruction_func(OpCode.right_1_byte, g(1, True))
-get_right_2_byte_instruction = get_simple_instruction_func(OpCode.right_2_byte, g(2, True))
-get_right_3_byte_instruction = get_simple_instruction_func(OpCode.right_3_byte, g(3, True))
-get_right_4_byte_instruction = get_simple_instruction_func(OpCode.right_4_byte, g(4, True))
+get_right_1_byte_instruction = get_simple_instruction_func(OpCode.right_1_byte, g(1, True, name='distance'))
+get_right_2_byte_instruction = get_simple_instruction_func(OpCode.right_2_byte, g(2, True, name='distance'))
+get_right_3_byte_instruction = get_simple_instruction_func(OpCode.right_3_byte, g(3, True, name='distance'))
+get_right_4_byte_instruction = get_simple_instruction_func(OpCode.right_4_byte, g(4, True, name='distance'))
 
-get_set_1_byte_w_then_right_w_instruction = get_simple_instruction_func(OpCode.set_1_byte_w_then_right_w, g(1, True))
-get_set_2_byte_w_then_right_w_instruction = get_simple_instruction_func(OpCode.set_2_byte_w_then_right_w, g(2, True))
-get_set_3_byte_w_then_right_w_instruction = get_simple_instruction_func(OpCode.set_3_byte_w_then_right_w, g(3, True))
-get_set_4_byte_w_then_right_w_instruction = get_simple_instruction_func(OpCode.set_4_byte_w_then_right_w, g(4, True))
+get_set_1_byte_w_then_right_w_instruction = get_simple_instruction_func(OpCode.set_1_byte_w_then_right_w, g(1, True, name='distance'))
+get_set_2_byte_w_then_right_w_instruction = get_simple_instruction_func(OpCode.set_2_byte_w_then_right_w, g(2, True, name='distance'))
+get_set_3_byte_w_then_right_w_instruction = get_simple_instruction_func(OpCode.set_3_byte_w_then_right_w, g(3, True, name='distance'))
+get_set_4_byte_w_then_right_w_instruction = get_simple_instruction_func(OpCode.set_4_byte_w_then_right_w, g(4, True, name='distance'))
 
-get_set_1_byte_x_then_right_x_instruction = get_simple_instruction_func(OpCode.set_1_byte_x_then_right_x, g(1, True))
-get_set_2_byte_x_then_right_x_instruction = get_simple_instruction_func(OpCode.set_2_byte_x_then_right_x, g(2, True))
-get_set_3_byte_x_then_right_x_instruction = get_simple_instruction_func(OpCode.set_3_byte_x_then_right_x, g(3, True))
-get_set_4_byte_x_then_right_x_instruction = get_simple_instruction_func(OpCode.set_4_byte_x_then_right_x, g(4, True))
+get_set_1_byte_x_then_right_x_instruction = get_simple_instruction_func(OpCode.set_1_byte_x_then_right_x, g(1, True, name='distance'))
+get_set_2_byte_x_then_right_x_instruction = get_simple_instruction_func(OpCode.set_2_byte_x_then_right_x, g(2, True, name='distance'))
+get_set_3_byte_x_then_right_x_instruction = get_simple_instruction_func(OpCode.set_3_byte_x_then_right_x, g(3, True, name='distance'))
+get_set_4_byte_x_then_right_x_instruction = get_simple_instruction_func(OpCode.set_4_byte_x_then_right_x, g(4, True, name='distance'))
 
-get_down_1_byte_instruction = get_simple_instruction_func(OpCode.down_1_byte, g(1, True))
-get_down_2_byte_instruction = get_simple_instruction_func(OpCode.down_2_byte, g(2, True))
-get_down_3_byte_instruction = get_simple_instruction_func(OpCode.down_3_byte, g(3, True))
-get_down_4_byte_instruction = get_simple_instruction_func(OpCode.down_4_byte, g(4, True))
+get_down_1_byte_instruction = get_simple_instruction_func(OpCode.down_1_byte, g(1, True, name='distance'))
+get_down_2_byte_instruction = get_simple_instruction_func(OpCode.down_2_byte, g(2, True, name='distance'))
+get_down_3_byte_instruction = get_simple_instruction_func(OpCode.down_3_byte, g(3, True, name='distance'))
+get_down_4_byte_instruction = get_simple_instruction_func(OpCode.down_4_byte, g(4, True, name='distance'))
 
-get_set_1_byte_y_then_down_y_instruction = get_simple_instruction_func(OpCode.set_1_byte_y_then_down_y, g(1, True))
-get_set_2_byte_y_then_down_y_instruction = get_simple_instruction_func(OpCode.set_2_byte_y_then_down_y, g(2, True))
-get_set_3_byte_y_then_down_y_instruction = get_simple_instruction_func(OpCode.set_3_byte_y_then_down_y, g(3, True))
-get_set_4_byte_y_then_down_y_instruction = get_simple_instruction_func(OpCode.set_4_byte_y_then_down_y, g(4, True))
+get_set_1_byte_y_then_down_y_instruction = get_simple_instruction_func(OpCode.set_1_byte_y_then_down_y, g(1, True, name='distance'))
+get_set_2_byte_y_then_down_y_instruction = get_simple_instruction_func(OpCode.set_2_byte_y_then_down_y, g(2, True, name='distance'))
+get_set_3_byte_y_then_down_y_instruction = get_simple_instruction_func(OpCode.set_3_byte_y_then_down_y, g(3, True, name='distance'))
+get_set_4_byte_y_then_down_y_instruction = get_simple_instruction_func(OpCode.set_4_byte_y_then_down_y, g(4, True, name='distance'))
 
-get_set_1_byte_z_then_down_z_instruction = get_simple_instruction_func(OpCode.set_1_byte_z_then_down_z, g(1, True))
-get_set_2_byte_z_then_down_z_instruction = get_simple_instruction_func(OpCode.set_2_byte_z_then_down_z, g(2, True))
-get_set_3_byte_z_then_down_z_instruction = get_simple_instruction_func(OpCode.set_3_byte_z_then_down_z, g(3, True))
-get_set_4_byte_z_then_down_z_instruction = get_simple_instruction_func(OpCode.set_4_byte_z_then_down_z, g(4, True))
+get_set_1_byte_z_then_down_z_instruction = get_simple_instruction_func(OpCode.set_1_byte_z_then_down_z, g(1, True, name='distance'))
+get_set_2_byte_z_then_down_z_instruction = get_simple_instruction_func(OpCode.set_2_byte_z_then_down_z, g(2, True, name='distance'))
+get_set_3_byte_z_then_down_z_instruction = get_simple_instruction_func(OpCode.set_3_byte_z_then_down_z, g(3, True, name='distance'))
+get_set_4_byte_z_then_down_z_instruction = get_simple_instruction_func(OpCode.set_4_byte_z_then_down_z, g(4, True, name='distance'))
 
 # Font selection.
 
-get_select_1_byte_font_nr_instruction = get_simple_instruction_func(OpCode.select_1_byte_font_nr, g(1))
-get_select_2_byte_font_nr_instruction = get_simple_instruction_func(OpCode.select_2_byte_font_nr, g(2))
-get_select_3_byte_font_nr_instruction = get_simple_instruction_func(OpCode.select_3_byte_font_nr, g(3))
-get_select_4_byte_font_nr_instruction = get_simple_instruction_func(OpCode.select_4_byte_font_nr, g(4))
+get_select_1_byte_font_nr_instruction = get_simple_instruction_func(OpCode.select_1_byte_font_nr, g(1, name='font_number'))
+get_select_2_byte_font_nr_instruction = get_simple_instruction_func(OpCode.select_2_byte_font_nr, g(2, name='font_number'))
+get_select_3_byte_font_nr_instruction = get_simple_instruction_func(OpCode.select_3_byte_font_nr, g(3, name='font_number'))
+get_select_4_byte_font_nr_instruction = get_simple_instruction_func(OpCode.select_4_byte_font_nr, g(4, name='font_number'))
 
 # Special.
 

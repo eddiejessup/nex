@@ -35,7 +35,7 @@ from .dvi_spec import (get_set_char_instruction,
                        get_postamble_instruction,
                        get_post_postamble_instruction,
                        )
-from .dvi_spec import EncodedOperation, OpCode
+from .dvi_spec import EncodedOperation, EncodedInteger, EncodedString, OpCode
 
 numerator = int(254e5)
 denominator = int(7227 * 2 ** 16)
@@ -189,9 +189,74 @@ class DVIDocument:
     def put_char(self, char):
         self.mundane_instructions.append(get_put_char_instruction(char))
 
+    def pretty_print(self):
+        """Print document instructions in a human-readable manner."""
+
+        def bps(bp):
+            """Format a byte pointer."""
+            return f'@{bp:3n}: '
+
+        def bls(nb):
+            """Format a byte length."""
+            return f'[{nb:3n} bytes]'
+
+        # Byte pointer (index of byte number in document).
+        bp = 0
+        # A gap.
+        g = '    '
+        # Count boring instructions to be skipped
+        boring_count = 0
+        boredom_thresh = 3
+        for instr in self.instructions:
+            # Skip repeated boring instructions that will happen a lot, like
+            # putting characters, moving right, and defining fonts (at the
+            # start and end).
+            if instr.op_code in (OpCode.right_3_byte, OpCode.put_1_byte_char,
+                                 OpCode.define_1_byte_font_nr):
+                boring_count += 1
+            else:
+                if boring_count > 0:
+                    print('^...^...^...^...^...^...^...^...^...^...^...^...^...^...^')
+                boring_count = 0
+            if boring_count > boredom_thresh:
+                if boring_count == boredom_thresh + 1:
+                    print('v...v...v...v...v...v...v...v...v...v...v...v...v...v...v')
+                continue
+
+            # Summary of whole instruction.
+            print(f'{bps(bp)}: {instr.op_code} {g}{bls(instr.nr_bytes())}')
+            print('--------------------------------------------------------')
+
+            # Op-code part of instruction.
+            print(f'{bps(bp)}: {g}{instr.encoded_op_code.value:<10n}{g}{g}{bls(instr.encoded_op_code.nr_bytes())} ({instr.op_code})')
+            # Track byte number index.
+            bp += instr.encoded_op_code.nr_bytes()
+
+            # Arguments part of instruction.
+            print('(')
+            for arg in instr.arguments:
+                if isinstance(arg, EncodedInteger):
+                    # If metadata suggests this integer represents a character,
+                    # show its character representation as well as the number.
+                    if arg.name == 'char':
+                        v = f"{arg.value:<4n} ('{chr(arg.value)}')"
+                    else:
+                        v = f'{arg.value:<10n}'
+                    print(f'{bps(bp)}: {g}{v}{g}{g}{bls(arg.nr_bytes())} ({arg.name})')
+                # String arguments
+                elif isinstance(arg, EncodedString):
+                    s = f'"{arg.value}"'
+                    d = 10
+                    s += ' ' * max(d - len(s), 0)
+                    print(f'{bps(bp)}: {g}{s}{g}{g}{bls(arg.nr_bytes())} ({arg.name})')
+                # Track byte number index.
+                bp += arg.nr_bytes()
+            print(')')
+
     def write(self, stream):
         self._end_page()
         self._end_document()
+
         # Allow passing a filename.
         if isinstance(stream, str):
             stream = open(stream, 'wb')
