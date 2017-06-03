@@ -960,6 +960,40 @@ class GlobalState:
                                                                horizontal)
         self.extend_list(unwrapped_box_contents)
 
+    def do_end(self):
+        # TeXbook page 283.
+        # "This command is not allowed in internal vertical mode. In
+        # regular vertical mode it terminates TeX if the main vertical list
+        # is empty and '\deadcycles = 0'. Otherwise TeX backs up the 'end'
+        # command so that it can be read again; then it exercises the page
+        # builder, after appending a box/glue/penalty combination that will
+        # force the output routine to act. (See the end of Chapter 23.)"
+        # TeXbook page 264 (the end of Chapter 23).
+        # [When TeX gets into the above situation] it inserts the
+        # equivalent of
+        #
+        #   \line{} \vfill \penalty -10000000000
+        #   [
+        #   translated from Plain TeX into primitive calls:
+        #   \hbox to \hsize \vfill \penalty -10000000000
+        #   ]
+        #
+        # into the main vertical list. This has the effect of invoking the
+        # output routine repeatedly until everything has been shipped out.
+        # In particular, the last column of two-column format will not be
+        # lost.
+        if self.mode != Mode.vertical:
+            raise LogicError(f"Got 'end' command in mode {self.mode}")
+        logger.info(f"Doing 'end' command")
+        if not self.current_page:
+            raise TidyEnd
+        h_size = self.parameters.get(Parameters.h_size)
+        self.append_to_list(HBox([], to=h_size))
+        self.add_fill_glue()
+        self.add_penalty(-10000000000)
+        # Recurse.
+        self.do_end()
+
     # Driving with tokens.
 
     def execute_command_tokens(self, commands, banisher, reader):
@@ -1175,9 +1209,9 @@ class GlobalState:
                 target_char_code = ord(char_tok.value['char'])
             else:
                 raise NotImplementedError
-            # TeXbook page 54: Mode-independent commands like font changes may
+            # TeXbook page 54: "Mode-independent commands like font changes may
             # appear between the accent number and the character to be
-            # accented, but grouping operations must not intervene.
+            # accented, but grouping operations must not intervene."
             for assignment in assignments:
                 self.execute_command_token(assignment, banisher, reader)
             self.do_accent(accent_code_eval, target_char_code)
@@ -1243,38 +1277,7 @@ class GlobalState:
         # I think technically only this should cause the program to end, not
         # EndOfFile anywhere. But for now, whatever.
         elif type_ == Instructions.end.value:
-            # TeXbook page 283.
-            # "This command is not allowed in internal vertical mode. In
-            # regular vertical mode it terminates TeX if the main vertical list
-            # is empty and '\deadcycles = 0'. Otherwise TeX backs up the 'end'
-            # command so that it can be read again; then it exercises the page
-            # builder, after appending a box/glue/penalty combination that will
-            # force the output routine to act. (See the end of Chapter 23.)"
-            # TeXbook page 264 (the end of Chapter 23).
-            # [When TeX gets into the above situation] it inserts the
-            # equivalent of
-            #
-            #   \line{} \vfill \penalty -10000000000
-            #   [
-            #   translated from Plain TeX into primitive calls:
-            #   \hbox to \hsize \vfill \penalty -10000000000
-            #   ]
-            #
-            # into the main vertical list. This has the effect of invoking the
-            # output routine repeatedly until everything has been shipped out.
-            # In particular, the last column of two-column format will not be
-            # lost.
-            logger.info(f"Doing 'end' command")
-            if self.mode != Mode.vertical:
-                raise LogicError(f"Got 'end' command in mode {self.mode}")
-            if not self.current_page:
-                raise TidyEnd
-            h_size = self.parameters.get(Parameters.h_size)
-            self.append_to_list(HBox([], to=h_size))
-            self.add_fill_glue()
-            self.add_penalty(-10000000000)
-            # Recurse.
-            self.execute_command_token(command, banisher, reader)
+            self.do_end()
         elif type_ == 'short_hand_definition':
             code_uneval = v['code']
             code_eval = self.eval_number_token(code_uneval)
