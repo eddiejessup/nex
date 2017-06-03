@@ -96,6 +96,8 @@ class DVIDocument:
         bop_args = list(range(10)) + [self.last_begin_page_pointer]
         bop = get_begin_page_instruction(*bop_args)
         self.mundane_instructions.append(bop)
+        if self.current_font_nr is not None:
+            self.select_font(self.current_font_nr)
 
     def _end_page(self):
         eop = get_end_page_instruction()
