@@ -43,7 +43,10 @@ def csep(args):
 
 def clsn(obj):
     """Short-hand to get class name. Intended for use in __repr__ and such."""
-    return obj.__class__.__name__
+    if isinstance(obj, str):
+        return obj
+    else:
+        return obj.__class__.__name__
 
 
 def drep(obj, a):

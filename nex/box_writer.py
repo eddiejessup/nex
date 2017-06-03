@@ -60,16 +60,21 @@ def write_box_to_doc(doc, item, horizontal=False):
             doc.right(item.width)
         else:
             doc.down(item.height)
+    # TODO: Should such items even get this far?
+    elif isinstance(item, box.Penalty):
+        pass
     else:
-        print(item)
         raise NotImplementedError
 
 
 def write_to_dvi_file(state, out_stream, write_pdf=False):
     magnification = state.parameters.get(Parameters.mag)
     doc = DVIDocument(magnification)
-    main_v_box = state.finish_up()
-    write_box_to_doc(doc, main_v_box, horizontal=False)
+    for main_v_box in state.completed_pages:
+        doc.begin_new_page()
+        for item in main_v_box.contents:
+            write_box_to_doc(doc, item, horizontal=False)
+
     doc.write(out_stream)
     if write_pdf:
         if not isinstance(out_stream, str):

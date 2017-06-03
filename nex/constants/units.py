@@ -38,3 +38,8 @@ units_in_scaled_points[PhysicalUnit.centimetre] = (1.0 / 2.54) * units_in_scaled
 units_in_scaled_points[PhysicalUnit.millimetre] = 0.1 * units_in_scaled_points[PhysicalUnit.centimetre]
 units_in_scaled_points[PhysicalUnit.didot_point] = (1238.0 / 1157.0) * units_in_scaled_points[PhysicalUnit.point]
 units_in_scaled_points[PhysicalUnit.cicero] = 12 * units_in_scaled_points[PhysicalUnit.didot_point]
+
+
+# TeXbook page 58.
+# "TeX will not deal with dimensions whose absolute value is 2^30 sp or more."
+MAX_DIMEN = 2 ** 30 - 1

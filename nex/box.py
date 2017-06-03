@@ -3,6 +3,7 @@ from enum import Enum
 from functools import lru_cache
 
 from .feedback import printable_ascii_codes, drep, truncate_list, dimrep
+from .tokens import BuiltToken
 from .utils import sum_infinities, LogicError
 
 
@@ -64,15 +65,18 @@ def glue_set_ratio(natural_length, desired_length, stretch, shrink):
     #     z_0 + z_1 fil + z_2 fill + z_3 filll
     # available for  shrinking.
 
-    # If x < w, TeX attempts to stretch the contents of the box; the
+    # "If x < w, TeX attempts to stretch the contents of the box; the
     # glue order is the highest subscript i such that y_i is nonzero, and
     # the glue ratio is r = (w - x) / y_i. (If y_0 = y_1 = y_2 = y_3 = 0,
-    # there's no stretchability; both i and r are set to zero.)
+    # there's no stretchability; both i and r are set to zero.)"
     elif line_state == LineState.should_stretch:
         stretch = stretch
         stretch = [d for d in stretch if d > 0]
-        if len(stretch) == 0:
+        if not stretch:
             glue_order = 0
+            # I actually don't obey the rules in this case, because it results
+            # in a weird situation where lines with no stretchability, such as
+            # single words, are assigned zero badness.
             glue_ratio = GlueRatio.no_stretchability
         else:
             glue_order = len(stretch) - 1
@@ -86,7 +90,7 @@ def glue_set_ratio(natural_length, desired_length, stretch, shrink):
         shrink = [d for d in shrink if d > 0]
         # I assume that the rule when stretch_i = 0 also applies for
         # shrink_i = 0, though I can't see it stated anywhere.
-        if len(shrink) == 0:
+        if not shrink:
             glue_order = 0
             glue_ratio = GlueRatio.no_shrinkability
         else:
@@ -113,7 +117,7 @@ def get_penalty(pre_break_conts, break_item):
         return 0
     # "In case (d) an explicit penalty has been specified"
     elif isinstance(break_item, Penalty):
-        raise NotImplementedError('Penalty items not implemented')
+        return break_item.size
     # "In case (e) the penalty is the current value of \hyphenpenalty if
     # the pre-break text is nonempty, or the current value of
     # \exhyphenpenalty if the pre-break text is empty."
@@ -123,11 +127,49 @@ def get_penalty(pre_break_conts, break_item):
         raise ValueError(f"Item is not a break-point: {break_item}")
 
 
+def is_break_point(h_list, i):
+    """These rules apply to both horizontal and vertical lists, but cases
+    (d) and (e) should never happen.
+    """
+    item = h_list[i]
+    # a) at glue, provided that this glue is immediately preceded by a non-
+    #    discardable item, and that it is not part of a math formula (i.e.,
+    #    not between math-on and math-off).
+    #    A break 'at glue' occurs at the left edge of the glue space.
+    # TODO: Add math conditions.
+    if (isinstance(item, Glue)
+            # Check a previous item exists, and it is not discardable.
+            and ((i - 1) >= 0) and (not h_list[i - 1].discardable)):
+                return True
+    # b) at a kern, provided that this kern is immediately followed by
+    # glue, and that it is not part of a math formula.
+    # TODO: Add math conditions.
+    elif (isinstance(item, Kern)
+            # Check a following item exists, and it is glue.
+            and ((i + 1) <= (len(h_list) - 1))
+            and isinstance(h_list[i + 1], Glue)):
+                return True
+    # c) at a math-off that is immediately followed by glue.
+    elif (isinstance(item, MathOff)
+            # Check a following item exists, and it is glue.
+            and ((i + 1) <= (len(h_list) - 1))
+            and isinstance(h_list[i + 1], Glue)):
+                return True
+    # d) at a penalty (which might have been inserted automatically in a
+    # formula).
+    elif isinstance(item, Penalty):
+        return True
+    # e) at a discretionary break.
+    elif isinstance(item, DiscretionaryBreak):
+        return True
+    else:
+        return False
+
+
 class ListElement:
 
     def __repr__(self):
-        return '{}({})'.format(self.__class__.__name__,
-                               self.__dict__.__repr__())
+        return f'{self.__class__.__name__}({self.__dict__.__repr__()})'
 
 
 # All modes.
@@ -168,12 +210,18 @@ class AbstractBox(ListElement):
         self.offset = offset
 
     def __repr__(self):
-        a = [contsrep(self.contents)]
+        a = []
+        a.append(f'naturally {dimrep(self.natural_length)}')
+        a.append(f'minimally {dimrep(self.min_length)}')
         if self.to is not None:
             a.append(f'to {dimrep(self.to)}')
         elif self.spread is not None:
             a.append(f'spread {dimrep(self.to)}')
-        return drep(self, a)
+        a.append(contsrep(self.contents))
+        cls_name = self.__class__.__name__
+        if self.set_glue:
+            cls_name = f'|{cls_name}|'
+        return drep(cls_name, a)
 
     @property
     def un_set_glues(self):
@@ -187,6 +235,43 @@ class AbstractBox(ListElement):
     @property
     def shrink(self):
         return sum_infinities(g.shrink for g in self.un_set_glues)
+
+    @property
+    def natural_length(self):
+        # The natural width, x, of the box contents is determined by adding up
+        # the widths of the boxes and kerns inside, together with the natural
+        # widths of all the glue inside.
+        # I'm assuming this also applies to VBoxes, but adding heights instead
+        # of widths. Might not be true, considering depths exist.
+        w = 0
+        for item in self.contents:
+            if isinstance(item, Glue):
+                w += item.natural_length
+            elif isinstance(item, Kern):
+                w += item.length
+            else:
+                w += self.get_length(item)
+        return w
+
+    @property
+    def min_length(self):
+        """
+        Non-Knuthian concept, used to decide if a box is over-full: the length
+        even if all glue is maximally shrunk.
+        """
+        w = 0
+        for item in self.contents:
+            if isinstance(item, Glue):
+                w += item.min_length
+            elif isinstance(item, Kern):
+                w += item.length
+            else:
+                w += self.get_length(item)
+        return w
+
+    @property
+    def is_over_full(self):
+        return self.min_length > self.desired_length
 
     @property
     def desired_length(self):
@@ -219,6 +304,11 @@ class AbstractBox(ListElement):
 
     def scale_and_set(self):
         line_state, glue_ratio, glue_set_order = self.glue_set_ratio()
+        # I undo the disobeyance I did in the glue set ratio logic, to align
+        # with the TeXbook from now on.
+        if glue_ratio in (GlueRatio.no_shrinkability,
+                          GlueRatio.no_stretchability):
+            glue_ratio = 0.0
 
         # Note I've quoted this from the TeXbook, talking about setting glue in
         # an H Box. But it later says that this all applies to V Boxes, so I've
@@ -235,21 +325,17 @@ class AbstractBox(ListElement):
                 glue_diff = 0
             elif line_state == LineState.should_stretch:
                 glue_order, glue_factor = extract_dimen(g.stretch)
-                if glue_ratio == GlueRatio.no_stretchability:
-                    glue_diff = 0
                 # [Each] glue takes the new length u + ry if j=i;
                 # it keeps its natural length u if j != i.
-                elif glue_order == glue_set_order:
+                if glue_order == glue_set_order:
                     glue_diff = glue_ratio * glue_factor
                 else:
                     glue_diff = 0
             elif line_state == LineState.should_shrink:
                 glue_order, glue_factor = extract_dimen(g.shrink)
-                if glue_ratio == GlueRatio.no_shrinkability:
-                    glue_diff = 0
                 # [Each] glue takes the new length u-rz if k = i; it
                 # keeps its natural length u if k != i.
-                elif glue_order == glue_set_order:
+                if glue_order == glue_set_order:
                     glue_diff = -glue_ratio * glue_factor
                 else:
                     glue_diff = 0
@@ -263,42 +349,51 @@ class AbstractBox(ListElement):
     def badness(self):
         """
         Compute how bad this box would look if placed on a line. This is
-        high is the line is much shorter or longer than the page width.
+        high if the line is much shorter or longer than the page width.
         """
+        # Page 97 of TeXbook.
+        # "The badness of a line is an integer that is approximately 100 times
+        # the cube of the ratio by which the glue inside the line must stretch
+        # or shrink to make an hbox of the required size. For example, if the
+        # line has a total shrinkability of 10 points, and if the glue is being
+        # compressed by a total of 9 points, the badness is computed to be 73
+        # (since 100 * (9/10)^3 = 72.9); similarly, a line that stretches by
+        # twice its total stretchability has a badness of 800. But if the
+        # badness obtained by this method turns out to be more than 10000, the
+        # value 10000 is used. (See the discussion of glue set ratio and glue
+        # set order in Chapter 12; if i != 0, there is infinite stretchability
+        # or shrinkability, so the badness is zero, otherwise the badness is
+        # approximately min(100r^3, 10000).) Overfull boxes are considered to
+        # be infinitely bad; they are avoided whenever possible."
+        # Page 111 of TeXbook.
+        # "Vertical badness is computed by the same rules as horizontal
+        # badness; it is an integer between 0 and 10000, inclusive, except when
+        # the box is overfull, when it is infinity."
+        if self.is_over_full:
+            return math.inf
         line_state, glue_ratio, glue_order = self.glue_set_ratio()
         if glue_order > 0:
-            b = 0
+            return 0
+        # I can't find this stated anywhere, but it seems intuitively correct:
+        # a single word on a line has no flexibility, but it is probably bad.
         elif glue_ratio in (GlueRatio.no_stretchability,
                             GlueRatio.no_shrinkability):
-            b = 10000
-        elif glue_ratio == 1.0:
-            b = 10000
+            return 10000
         else:
-            b = int(round(100 * glue_ratio ** 3))
-        return min(b, 10000)
+            return min(int(round(100 * glue_ratio ** 3)), 10000)
 
 
 class HBox(AbstractBox):
 
-    @property
-    def natural_length(self):
-        # The natural width, x, of the box contents is determined by adding up
-        # the widths of the boxes and kerns inside, together with the natural
-        # widths of all the glue inside.
-        w = 0
-        for item in self.contents:
-            if isinstance(item, Glue):
-                w += item.natural_length
-            elif isinstance(item, Kern):
-                w += item.length
-            else:
-                w += item.width
-        return w
+    def get_length(self, item):
+        if isinstance(item, (Glue, Kern)):
+            return item.length
+        else:
+            return item.width
 
     @property
     def widths(self):
-        return [e.length if isinstance(e, (Glue, Kern)) else e.width
-                for e in self.contents]
+        return [self.get_length(e) for e in self.contents]
 
     @property
     def heights(self):
@@ -349,20 +444,11 @@ class HBox(AbstractBox):
 
 class VBox(AbstractBox):
 
-    @property
-    def natural_length(self):
-        # I'm assuming this is like for HBoxes, but adding heights instead of
-        # widths. Might not be true, considering depths exist.
-        w = 0
-        for item in self.contents:
-            if isinstance(item, Glue):
-                w += item.natural_length
-            elif isinstance(item, Kern):
-                w += item.length
-            else:
-                w += item.height
-        return w
-
+    def get_length(self, item):
+        if isinstance(item, (Glue, Kern)):
+            return item.length
+        else:
+            return item.height
 
     @property
     def widths(self):
@@ -371,8 +457,7 @@ class VBox(AbstractBox):
 
     @property
     def heights(self):
-        return [e.length if isinstance(e, (Glue, Kern)) else e.height
-                for e in self.contents]
+        return [self.get_length(e) for e in self.contents]
 
     @property
     def depths(self):
@@ -402,35 +487,25 @@ class VBox(AbstractBox):
         else:
             return 0
 
-    def over_full(self):
-        raise NotImplementedError
-
-    def badness(self):
-        # Page 111 of TeXbook.
-        # "Vertical badness is computed by the same rules as horizontal
-        # badness; it is an integer between 0 and 10000, inclusive, except when
-        # the box is overfull, when it is infinity."
-        if self.over_full():
-            return math.inf
-        else:
-            return super().badness()
-
-    def page_break_cost(self, insert_penalties):
+    def page_break_cost_and_penalty(self, break_item, insert_penalties):
         # Page 111 of TeXbook.
         ten_k = 10000
         b = self.badness()
-        p = self.penalty()
+        p = get_penalty(self.contents, break_item)
         q = insert_penalties
         if b < math.inf and p <= -ten_k and q < ten_k:
-            return p
+            c = p
         elif b < ten_k and -ten_k < p < ten_k and q < ten_k:
-            return b + p + q
+            c = b + p + q
         elif b >= ten_k and -ten_k < p < ten_k and q < ten_k:
             # Not ten_k, I checked!
             hundred_k = 100000
-            return hundred_k
+            c = hundred_k
         elif (b == math.inf or q >= ten_k) and p < ten_k:
-            return math.inf
+            c = math.inf
+        else:
+            raise LogicError('TeX implies we should not get here')
+        return c, p
 
 
 class Rule(ListElement):
@@ -467,11 +542,19 @@ class Glue(ListElement):
                                           dimrep(self.stretch),
                                           dimrep(self.shrink))
         else:
-            return '|G|({})'.format(dimrep(self.set_dimen))
+            return f'|G|({dimrep(self.set_dimen)})'
 
     @property
     def is_set(self):
         return self.set_dimen is not None
+
+    @property
+    def min_length(self):
+        # Infinite shrink.
+        if isinstance(self.shrink, BuiltToken):
+            return 0
+        else:
+            return self.natural_length - self.shrink
 
     def set_naturally(self):
         self.set_dimen = self.natural_length
@@ -497,7 +580,7 @@ class Kern(ListElement):
         self.length = dimen
 
     def __repr__(self):
-        return 'K({})'.format(dimrep(self.length))
+        return f'K({dimrep(self.length)})'
 
 
 class Leaders(ListElement):
@@ -507,7 +590,14 @@ class Leaders(ListElement):
 
 class Penalty(ListElement):
     discardable = True
-    pass
+
+    def __init__(self, size):
+        self.size = size
+
+    def __repr__(self):
+        return f'P({self.size})'
+
+    width = height = depth = 0
 
 
 #     /Miscellanea.

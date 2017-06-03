@@ -1,3 +1,4 @@
+import math
 import operator
 import logging
 from enum import Enum
@@ -10,14 +11,16 @@ from .constants.parameters import Parameters, is_parameter_type
 from .constants.specials import Specials
 from .constants.codes import CatCode
 from .constants.units import (PhysicalUnit, MuUnit, InternalUnit,
-                              units_in_scaled_points)
-from .utils import ExecuteCommandError, TidyEnd, UserError, pt_to_sp
+                              units_in_scaled_points, MAX_DIMEN)
+from .utils import (ExecuteCommandError, TidyEnd, UserError, LogicError,
+                    pt_to_sp)
 from .reader import EndOfFile
 from .instructioner import (make_primitive_control_sequence_instruction,
                             make_unexpanded_control_sequence_instruction)
 from .accessors import is_register_type, SpecialsAccessor
+from . import box
 from .box import (HBox, VBox, Rule, Glue, Character, FontDefinition,
-                  FontSelection, Kern, get_penalty)
+                  FontSelection, Kern, Penalty)
 from .paragraphs import get_best_h_lists
 from . import evaluator as evaler
 from .fonts import GlobalFontState
@@ -167,6 +170,10 @@ class GlobalState:
         self.groups = []
         self.push_group(Group.outside)
 
+        self.current_page = []
+        self.completed_pages = []
+        self.start_new_page()
+
     @classmethod
     def from_defaults(cls, font_search_paths=None, global_font_state=None):
         # We allow passing this in for testing purposes, because it touches the
@@ -223,7 +230,7 @@ class GlobalState:
         # glue.
         elif mode in vertical_modes:
             self.specials.set(Specials.prev_depth, pt_to_sp(-1000))
-        self.modes.append((mode, []))
+        self.modes.append((mode, deque()))
 
     def pop_mode_to_box(self):
         if self.mode in horizontal_modes:
@@ -242,14 +249,6 @@ class GlobalState:
         logger.info(f'Exited {mode}')
         return layout_list
 
-    def finish_up(self):
-        if len(self.modes) > 1 or self.mode != Mode.vertical:
-            raise Exception('Did not end in vertical mode')
-        layout_list = self.pop_mode()
-        v_size = self.parameters.get(Parameters.v_size)
-        main_v_box = VBox(contents=layout_list, to=v_size, set_glue=True)
-        return main_v_box
-
     def append_to_list(self, item):
         if self.mode in horizontal_modes:
             # "[the space factor] is set to 1000 just after a non-character box
@@ -258,7 +257,7 @@ class GlobalState:
             if isinstance(item, (HBox, VBox, Rule)):
                 self.specials.set(Specials.space_factor, 1000)
             elif isinstance(item, (FontDefinition, FontSelection,
-                                   Glue, Kern)):
+                                   Glue, Kern, Penalty)):
                 pass
             # TODO: Ligatures? TeXbook page 76
             # "When ligatures are formed, or when a special character is
@@ -305,7 +304,7 @@ class GlobalState:
         elif self.mode in vertical_modes:
             # TODO: I made up these list element conditions from my head.
             if isinstance(item, (FontDefinition, FontSelection,
-                                 Glue, Kern)):
+                                 Glue, Kern, Penalty)):
                 self._layout_list.append(item)
             elif isinstance(item, Rule):
                 # \prevdepth is set to the sentinel value -1000 pt [...] just
@@ -343,9 +342,119 @@ class GlobalState:
                 self.specials.set(Specials.prev_depth, item.depth)
             else:
                 raise NotImplementedError
+            if self.mode == Mode.vertical:
+                self.fill_page()
+
+    def start_new_page(self):
+        # TeXbook page 114.
+        # "When the current page contains no boxes, \pagetotal and its
+        # relatives are zero and '\pagegoal' is 16383.99998 pt (TeX's largest
+        # dimen); changing their values has no effect at such times."
+        self.current_page.clear()
+        for s in (Specials.page_total,
+                  Specials.page_stretch,
+                  Specials.page_fil_stretch,
+                  Specials.page_fill_stretch,
+                  Specials.page_filll_stretch,
+                  Specials.page_shrink,
+                  Specials.page_goal,
+                  ):
+            self.specials.set(s, MAX_DIMEN)
+        self.best_page_break_so_far = None
+        self.best_page_break_cost_so_far = math.inf
+        self.seen_box_or_insertion = False
+        self.seen_box = False
+
+    def fill_page(self):
+        while self._layout_list:
+            new_item = self._layout_list.popleft()
+
+            # TeXbook page 112.
+            # "Whenever TeX is moving an item from the top of the 'recent
+            # contributions' to the bottom of the 'current page,' it discards a
+            # discardable item (glue, kern, or penalty) if the current page
+            # does not contain any boxes. This is how glue disappears at a page
+            # break."
+            if new_item.discardable and not self.seen_box:
+                continue
+
+            # TeXbook page 114.
+            # "TeX salts away the values of \vsize and \maxdepth when [...] the
+            # first box or insertion occurs on the current page; subsequent
+            # changes to those two parameters have no effect until the next
+            # current page is started."
+            if isinstance(new_item, (box.AbstractBox, box.Rule,
+                                     box.Insertion)):
+                if not self.seen_box_or_insertion:
+                    v_size = self.parameters.get(Parameters.v_size)
+                    self.specials.set(Specials.page_goal, v_size)
+                    max_depth = self.parameters.get(Parameters.max_depth)
+                    # TODO: I guessed that this is where the parameter is
+                    # 'salted away', but I'm not sure.
+                    self.specials.set(Specials.page_depth, max_depth)
+                self.seen_box_or_insertion = True
+            # TeXbook page 114 continued...
+            # "On the other hand, TeX looks at '\topskip' only when the first
+            # box is being contributed to the current page. If insertions occur
+            # before the first box, the \topskip glue before that box is
+            # considered to be a valid breakpoint; this is the only case in
+            # which a completed page might not contain a box."
+            if isinstance(new_item, (box.AbstractBox, box.Rule)):
+                if not self.seen_box:
+                    pass
+                    # TODO: \topskip.
+                self.seen_box = True
+
+            self.current_page.append(new_item)
+
+            page_goal = self.specials.get(Specials.page_goal)
+            hypot_box = box.VBox(self.current_page, to=page_goal,
+                                 set_glue=False)
+
+            # # Update page total.
+            # TODO: Make this matter: page break cost always considers the
+            # actual length of the list, but I think we actually want to
+            # consider the value of \pagetotal.
+            # page_total = self.specials.get(Specials.page_total)
+            # page_total += hypot_box.get_length(new_item)
+            # self.specials.set(Specials.page_total, page_total)
+
+            # TeXbook page 112 continued...
+            # "Otherwise if a discardable item is a legitimate breakpoint, TeX
+            # calculates the cost 'c' of breaking at this point, using the
+            # formula that we have just discussed."
+            if box.is_break_point(self.current_page,
+                                  i=len(self.current_page) - 1):
+                insert_penalties = self.specials.get(Specials.insert_penalties)
+                c, p = hypot_box.page_break_cost_and_penalty(break_item=new_item,
+                                                             insert_penalties=insert_penalties)
+                # "[...] If the resulting 'c' is less than or equal to the
+                # smallest cost seen so far on the current page, TeX remembers
+                # the current breakpoint as the best so far."
+                if c <= self.best_page_break_cost_so_far:
+                    self.best_page_break_cost_so_far = c
+                    # TODO: Indexing might be one too big or small here.
+                    self.best_page_break_so_far = len(self.current_page)
+                # "[...] And if c = infinity or if p <= -10000, TeX seizes the
+                # initiative and breaks the page at the best remembered
+                # breakpoint. Any material on the current page following that
+                # best breakpoint is moved back onto the list of recent
+                # contributions, where it will be considered again; thus the
+                # 'current page' typically gets more than one page's worth of
+                # material before the breakpoint is chosen."
+                if c == math.inf or p <= -10000:
+                    i_break = self.best_page_break_so_far
+                    completed_page, remainder_page = (self.current_page[:i_break],
+                                                      self.current_page[i_break:])
+                    completed_box = box.VBox(completed_page, to=page_goal,
+                                             set_glue=True)
+                    self.completed_pages.append(completed_box)
+                    self._layout_list.extendleft(reversed(remainder_page))
+                    self.start_new_page()
 
     def extend_list(self, items):
-        self._layout_list.extend(items)
+        for item in items:
+            self.append_to_list(item)
 
     # Group.
 
@@ -542,18 +651,14 @@ class GlobalState:
             # migration of vertical material that was in the horizontal
             # list. Then TeX exercises the page builder."
 
-            # TODO: Not sure whether to do the above things as internal
-            # calls, or whether the tokens should be inserted.
-            # TODO: Do these commands before we pop.
-            # Get the horizontal list
-            horizontal_list = deque(self.pop_mode())
-            # Do \unskip.
-            if isinstance(horizontal_list[-1], Glue):
-                horizontal_list.pop()
+            self.do_un_skip()
             # Do \hskip\parfillskip.
             par_fill_glue = self.parameters.get(Parameters.par_fill_skip)
+            self.add_glue(**par_fill_glue)
             line_penalty = self.parameters.get(Parameters.line_penalty)
-            horizontal_list.append(Glue(**par_fill_glue))
+            self.add_penalty(line_penalty)
+            # Get the horizontal list
+            horizontal_list = deque(self.pop_mode())
             h_size = self.parameters.get(Parameters.h_size)
             # TODO: This is temporary; not correct
             tolerance = self.parameters.get(Parameters.tolerance)
@@ -634,6 +739,43 @@ class GlobalState:
 
     def add_kern(self, length):
         return self.append_to_list(Kern(length))
+
+    def do_un_skip(self):
+        if isinstance(self._layout_list[-1], Glue):
+            self._layout_list.pop()
+
+    def add_glue(self, dimen, stretch, shrink):
+        item = Glue(dimen, stretch, shrink)
+        logger.info(f'Adding glue {item}')
+        self.append_to_list(item)
+
+    def add_penalty(self, size):
+        logger.info(f'Adding penalty {size}')
+        self.append_to_list(Penalty(size))
+
+    def add_stretch_or_shrink_glue(self):
+        one_fil = self.get_infinite_dimen(nr_fils=1, nr_units=1)
+        item = Glue(dimen=0, stretch=one_fil, shrink=one_fil)
+        logger.info(f'Adding infinite stretch and shrink glue')
+        self.append_to_list(item)
+
+    def add_fil_glue(self):
+        one_fil = self.get_infinite_dimen(nr_fils=1, nr_units=1)
+        item = Glue(dimen=0, stretch=one_fil, shrink=0)
+        logger.info(f'Adding first-order infinite-stretch glue')
+        self.append_to_list(item)
+
+    def add_fill_glue(self):
+        two_fils = self.get_infinite_dimen(nr_fils=2, nr_units=1)
+        item = Glue(dimen=0, stretch=two_fils, shrink=0)
+        logger.info(f'Adding second-order infinite-stretch glue')
+        self.append_to_list(item)
+
+    def add_neg_fil_glue(self):
+        one_neg_fil = self.get_infinite_dimen(nr_fils=1, nr_units=-1)
+        item = Glue(dimen=0, stretch=one_neg_fil, shrink=one_neg_fil)
+        logger.info(f'Adding first-order infinite-negative-stretch glue')
+        self.append_to_list(item)
 
     def do_space(self):
         if self.mode in vertical_modes:
@@ -1101,9 +1243,38 @@ class GlobalState:
         # I think technically only this should cause the program to end, not
         # EndOfFile anywhere. But for now, whatever.
         elif type_ == Instructions.end.value:
+            # TeXbook page 283.
+            # "This command is not allowed in internal vertical mode. In
+            # regular vertical mode it terminates TeX if the main vertical list
+            # is empty and '\deadcycles = 0'. Otherwise TeX backs up the 'end'
+            # command so that it can be read again; then it exercises the page
+            # builder, after appending a box/glue/penalty combination that will
+            # force the output routine to act. (See the end of Chapter 23.)"
+            # TeXbook page 264 (the end of Chapter 23).
+            # [When TeX gets into the above situation] it inserts the
+            # equivalent of
+            #
+            #   \line{} \vfill \penalty -10000000000
+            #   [
+            #   translated from Plain TeX into primitive calls:
+            #   \hbox to \hsize \vfill \penalty -10000000000
+            #   ]
+            #
+            # into the main vertical list. This has the effect of invoking the
+            # output routine repeatedly until everything has been shipped out.
+            # In particular, the last column of two-column format will not be
+            # lost.
             logger.info(f"Doing 'end' command")
-            self.do_paragraph()
-            raise TidyEnd
+            if self.mode != Mode.vertical:
+                raise LogicError(f"Got 'end' command in mode {self.mode}")
+            if not self.current_page:
+                raise TidyEnd
+            h_size = self.parameters.get(Parameters.h_size)
+            self.append_to_list(HBox([], to=h_size))
+            self.add_fill_glue()
+            self.add_penalty(-10000000000)
+            # Recurse.
+            self.execute_command_token(command, banisher, reader)
         elif type_ == 'short_hand_definition':
             code_uneval = v['code']
             code_eval = self.eval_number_token(code_uneval)
@@ -1249,33 +1420,19 @@ class GlobalState:
                 raise NotImplementedError
         elif type_ == Instructions.v_skip.value:
             glue = self.eval_glue_token(v)
-            item = Glue(**glue)
-            logger.info(f'Adding vertical glue {item}')
-            self.append_to_list(item)
+            self.add_glue(**glue)
         elif type_ in (Instructions.h_stretch_or_shrink.value,
                        Instructions.v_stretch_or_shrink.value):
-            one_fil = self.get_infinite_dimen(nr_fils=1, nr_units=1)
-            item = Glue(dimen=0, stretch=one_fil, shrink=one_fil)
-            logger.info(f'Adding infinite stretch and shrink glue')
-            self.append_to_list(item)
+            self.add_stretch_or_shrink_glue()
         elif type_ in (Instructions.h_fil.value,
                        Instructions.v_fil.value):
-            one_fil = self.get_infinite_dimen(nr_fils=1, nr_units=1)
-            item = Glue(dimen=0, stretch=one_fil, shrink=0)
-            logger.info(f'Adding first-order infinite-stretch glue')
-            self.append_to_list(item)
+            self.add_fil_glue()
         elif type_ in (Instructions.h_fill.value,
                        Instructions.v_fill.value):
-            two_fils = self.get_infinite_dimen(nr_fils=2, nr_units=1)
-            item = Glue(dimen=0, stretch=two_fils, shrink=0)
-            logger.info(f'Adding second-order infinite-stretch glue')
-            self.append_to_list(item)
+            self.add_fill_glue()
         elif type_ in (Instructions.h_fil_neg.value,
                        Instructions.v_fil_neg.value):
-            one_neg_fil = self.get_infinite_dimen(nr_fils=1, nr_units=-1)
-            item = Glue(dimen=0, stretch=one_neg_fil, shrink=one_neg_fil)
-            logger.info(f'Adding first-order infinite-negative-stretch glue')
-            self.append_to_list(item)
+            self.add_neg_fil_glue()
         else:
             raise ValueError(f"Command type '{type_}' not recognised.")
 

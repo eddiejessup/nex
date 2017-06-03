@@ -39,13 +39,13 @@ def test_single_letter(state):
     state.do_paragraph()
     assert len(state.modes) == 1
     assert state.mode == Mode.vertical
-    lst = state._layout_list
-    assert len(lst) == 4
+    lst = state.current_page
+    assert len(lst) == 3
     assert isinstance(lst[0], box.FontDefinition)
     assert isinstance(lst[1], box.FontSelection)
-    assert isinstance(lst[2], box.Glue)
-    assert isinstance(lst[3], box.HBox)
-    hbox = lst[3]
+    assert isinstance(lst[2], box.HBox)
+    hbox = lst[2]
+    assert isinstance(hbox.contents[0], box.HBox)
     assert isinstance(hbox.contents[1], box.Character)
     write(state, 'test_single_letter.dvi')
 
@@ -83,7 +83,7 @@ def test_v_rule(state):
     state.do_paragraph()
     assert len(state.modes) == 1
     assert state.mode == Mode.vertical
-    lst = state._layout_list
+    lst = state.current_page
     assert isinstance(lst[2], box.Rule)
     assert isinstance(lst[3], box.Rule)
     write(state, 'test_v_rule.dvi')
@@ -137,40 +137,40 @@ def test_set_box(state):
     box_item = box.HBox(contents=[])
     state.set_box_register(i=2, item=box_item, is_global=False)
     state.append_register_box(i=2, copy=False)
-    lst = state._layout_list
+    lst = state.current_page
     assert lst[-1].contents is box_item.contents
 
 
 def test_set_box_void(state):
-    nr_elems_before = len(state._layout_list)
+    nr_elems_before = len(state.current_page)
     state.append_register_box(i=2, copy=False)
-    nr_elems_after = len(state._layout_list)
+    nr_elems_after = len(state.current_page)
     assert nr_elems_before == nr_elems_after
 
 
 def test_unbox(state):
     box_item = box.HBox([
-        box.Glue(100),
         box.HBox([
             box.Glue(20),
         ]),
+        box.Glue(100),
     ])
 
     i_reg = 2
     state.set_box_register(i=i_reg, item=box_item, is_global=False)
-    nr_elems_before = len(state._layout_list)
+    nr_elems_before = len(state.current_page)
     state.append_unboxed_register_box(i=i_reg, copy=True, horizontal=True)
-    nr_elems_after = len(state._layout_list)
+    nr_elems_after = len(state.current_page)
     assert nr_elems_after == nr_elems_before + 2
     unboxed_contents = state.get_unboxed_register_box(i=i_reg, copy=False,
                                                       horizontal=True)
-    outer_glue = unboxed_contents[0]
-    assert isinstance(outer_glue, box.Glue)
-    assert not outer_glue.is_set
-
-    inner_glue = unboxed_contents[1].contents[0]
+    inner_glue = unboxed_contents[0].contents[0]
     assert isinstance(inner_glue, box.Glue)
     assert inner_glue.is_set
+
+    outer_glue = unboxed_contents[1]
+    assert isinstance(outer_glue, box.Glue)
+    assert not outer_glue.is_set
 
     # Should be empty now, because I called with copy == False just then.
     assert state.get_register_box(i=i_reg, copy=False) is None
@@ -208,7 +208,7 @@ def test_command_token_get_box(state):
     get_box_tok = BuiltToken(type_=Instructions.box.value,
                              value=nr_tok(i_reg))
     state.execute_command_token(get_box_tok, banisher=None, reader=None)
-    lst = state._layout_list
+    lst = state.current_page
     assert lst[-1].contents is box_item.contents
     state.get_register_box(i=i_reg, copy=False) is None
 
@@ -227,13 +227,13 @@ def test_command_token_unbox(state):
     i_reg = 3
     box_item = box.HBox(contents=[box.Rule(1, 1, 1), box.Rule(2, 2, 2)])
     state.set_box_register(i=i_reg, item=box_item, is_global=False)
-    nr_elems_before = len(state._layout_list)
+    nr_elems_before = len(state.current_page)
 
     get_box_tok = BuiltToken(type_='un_box',
                              value={'nr': nr_tok(i_reg),
                                     'cmd_type': Instructions.un_h_copy})
     state.execute_command_token(get_box_tok, banisher=None, reader=None)
-    nr_elems_after = len(state._layout_list)
+    nr_elems_after = len(state.current_page)
     assert nr_elems_after == nr_elems_before + 2
     # Should still work, since copy == True.
     state.get_register_box(i=i_reg, copy=False)
