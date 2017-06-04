@@ -19,7 +19,7 @@ from .instructioner import (Instructioner,
                             make_unexpanded_control_sequence_instruction,
                             char_cat_instr_tok)
 from .state import Mode, Group
-from .expander import substitute_params_with_args
+from .macro import substitute_params_with_args
 from .parsing.utils import GetBuffer, safe_chunk_grabber
 from .parsing import parsing
 from .feedback import truncate_list

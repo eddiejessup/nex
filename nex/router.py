@@ -10,7 +10,7 @@ from .lexer import control_sequence_lex_type, char_cat_lex_type
 from .instructioner import (make_primitive_control_sequence_instruction,
                             make_parameter_control_sequence_instruction,
                             make_special_control_sequence_instruction)
-from .expander import parse_replacement_text, parse_parameter_text
+from .macro import parse_replacement_text, parse_parameter_text
 
 
 short_hand_def_type_to_token_instr = {

@@ -38,7 +38,6 @@ def add_assignment_rules(pg):
                                      **p[2].value),
                           position_like=p)
 
-    # TODO: can automate this, and many like it, using expander maps.
     @pg.production('def : DEF_')
     @pg.production('def : G_DEF')
     @pg.production('def : E_DEF')
