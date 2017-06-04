@@ -3,7 +3,7 @@ from enum import Enum
 from .constants.parameters import param_to_instr
 from .constants.specials import special_to_instr
 from .constants.instructions import Instructions, if_instructions
-from .constants import defaults
+from .constants import control_sequences
 from .tokens import InstructionToken, BaseToken
 from .utils import get_unique_id
 from .lexer import control_sequence_lex_type, char_cat_lex_type
@@ -93,14 +93,19 @@ class CSRouter:
     def default_initial(cls):
         # Router needs a map from a control sequence name, to the parameter and
         # the instruction type of the parameter (integer, dimen and so on).
-        params = {n: (p, param_to_instr[p])
-                  for n, p in defaults.param_control_sequences.items()}
-        specials = {n: (p, special_to_instr[p])
-                    for n, p in defaults.special_control_sequences.items()}
+        params = {
+            n: (p, param_to_instr[p])
+            for n, p in control_sequences.param_control_sequences.items()
+        }
+        specials = {
+            n: (p, special_to_instr[p])
+            for n, p in control_sequences.special_control_sequences.items()
+        }
+        primitives = control_sequences.primitive_control_sequences
         return cls(
             param_control_sequences=params,
             special_control_sequences=specials,
-            primitive_control_sequences=defaults.primitive_control_sequences,
+            primitive_control_sequences=primitives,
             enclosing_scope=None)
 
     @classmethod

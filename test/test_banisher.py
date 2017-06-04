@@ -400,3 +400,18 @@ def test_if():
     b = string_to_banisher('$ifNo abc$else def$endIf', cs_map)
     out = b.advance_to_end()
     assert ''.join(t.value['char'] for t in out) == 'def'
+
+
+def test_afters():
+    cs_map = {
+        'assignThen': ITok(Instructions.after_assignment),
+        'groupThen': ITok(Instructions.after_group),
+    }
+    for cs in cs_map:
+        b = string_to_banisher(f'${cs} $something', cs_map)
+        out = b.get_next_output_list()
+        assert len(out) == 2
+        assert out[0] == cs_map[cs]
+        assert out[1].instruction == Instructions.let_target
+        target_tok = out[1].value
+        assert target_tok.value['name'] == 'something'

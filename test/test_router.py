@@ -2,8 +2,7 @@ import pytest
 
 from nex.constants.codes import CatCode
 from nex.constants.instructions import Instructions
-from nex.router import CSRouter
-from nex.router import NoSuchControlSequence
+from nex.router import CSRouter, NoSuchControlSequence
 from nex.instructioner import (make_unexpanded_control_sequence_instruction,
                                char_cat_instr_tok)
 

@@ -117,6 +117,8 @@ primitive_control_sequences = {
     'else': I.else_,
     'fi': I.end_if,
     'or': I.or_,
+    'afterassignment': I.after_assignment,
+    'aftergroup': I.after_group,
     # Other.
     'accent': I.accent,
 }

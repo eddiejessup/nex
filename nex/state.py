@@ -183,6 +183,9 @@ class GlobalState:
         self.completed_pages = []
         self.start_new_page()
 
+        self.after_assignment_token = None
+        self.after_group_stack = deque()
+
     @classmethod
     def from_defaults(cls, font_search_paths=None, global_font_state=None):
         # We allow passing this in for testing purposes, because it touches the

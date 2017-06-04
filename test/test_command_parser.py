@@ -8,10 +8,11 @@ from nex.instructioner import (Instructioner,
                                make_unexpanded_control_sequence_instruction,
                                char_cat_instr_tok)
 from nex.utils import ascii_characters
-from nex.parsing.parsing import command_parser
-
+from nex.parsing import parsing
 
 from common import ITok
+
+parser = parsing.get_parser(start='command', chunking=False)
 
 
 char_to_cat = {}
@@ -34,12 +35,16 @@ cs_map = {
     'unwrapHBox': ITok(Instructions.un_h_box),
     'HBox': ITok(Instructions.h_box),
     'HMaterial': ITok(Instructions.horizontal_mode_material_and_right_brace),
+    'assignThen': ITok(Instructions.after_assignment),
+    'groupThen': ITok(Instructions.after_group),
 }
 
 
 def process(s):
-    """Just resolves control sequences, enough to allow convenient string input
-    in tests."""
+    """
+    Just resolves control sequences, enough to allow convenient string input
+    in tests.
+    """
     instrs = Instructioner.from_string(
         s, get_cat_code_func=char_to_cat.get)
     while True:
@@ -54,20 +59,30 @@ def process(s):
 
 
 def test_h_rule():
-    command_parser.parse(process('$hRule height 20pt width 10pt depth 30pt'))
+    parser.parse(process('$hRule height 20pt width 10pt depth 30pt'))
 
 
 def test_accent():
-    command_parser.parse(process('$alloAllo22'))
+    parser.parse(process('$alloAllo22'))
 
 
 def test_set_box():
-    command_parser.parse(process('$unwrapHBox 12'))
+    parser.parse(process('$unwrapHBox 12'))
 
 
 def test_un_h_box():
-    command_parser.parse(process('$unwrapHBox 12'))
+    parser.parse(process('$unwrapHBox 12'))
 
 
 def test_box_literal():
-    command_parser.parse(process('$HBox to 2pt [$HMaterial'))
+    parser.parse(process('$HBox to 2pt [$HMaterial'))
+
+
+def test_after_assignment():
+    ts = [ITok(Instructions.after_assignment), ITok(Instructions.let_target)]
+    parser.parse(iter(ts))
+
+
+def test_after_group():
+    ts = [ITok(Instructions.after_group), ITok(Instructions.let_target)]
+    parser.parse(iter(ts))

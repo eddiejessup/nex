@@ -56,7 +56,7 @@ def wrap(pg, func, rule):
     return f(func)
 
 
-class ExpectedParsingError(Exception):
+class ParsingSyntaxError(Exception):
     pass
 
 
@@ -131,7 +131,7 @@ class ChunkGrabber:
         # Get enough tokens to grab a parse-chunk. We know to stop adding tokens
         # when we see a switch from failing because we run out of tokens
         # (ExhaustedTokensError) to an actual syntax error
-        # (ExpectedParsingError).
+        # (ParsingSyntaxError).
         # We keep track of if we have parsed, just for checking for weird
         # situations.
         have_parsed = False
@@ -173,13 +173,17 @@ class ChunkGrabber:
                 chunk = self.parser.parse(iter(chunk_token_queue))
             # If we got a syntax error, this should mean we have spilled over
             # into parsing the next chunk.
-            except ExpectedParsingError:
+            except ParsingSyntaxError as exc:
                 # If we have already parsed a chunk, then we use this as our
-                # result. (If we have not yet parsed, then something is wrong.)
+                # result.
                 if have_parsed:
                     self.replace_fluff(chunk_token_queue)
                     return self._clean_chunk(chunk, chunk_token_queue,
                                              method='failed parsing')
+                # If we have not yet parsed, then something is wrong.
+                else:
+                    exc.args += (f'Tokens: {list(chunk_token_queue)}',)
+                    raise
             except ExhaustedTokensError:
                 # Carry on getting more tokens, because it seems we can.
                 pass

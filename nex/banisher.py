@@ -40,7 +40,10 @@ command_parser = parsing.command_parser
 condition_parser = parsing.get_parser(start='condition_wrap')
 general_text_parser = parsing.get_parser(start='general_text')
 
-shorties = short_hand_def_instructions + (Instructions.font, Instructions.backtick)
+shorties = short_hand_def_instructions + (
+    Instructions.font,
+    Instructions.backtick,
+)
 
 
 def stringify_instrs(ts):
@@ -573,6 +576,18 @@ class Banisher:
             # output.
             logger.debug(f'Grabbing {instr} argument')
             return [], [first_token, self.instructions.next_unexpanded()]
+        # \afterassignment, or \aftergroup.
+        elif instr in (Instructions.after_assignment,
+                       Instructions.after_group):
+            # Add an arbitrary token as an instruction token to the output.
+            logger.debug(f'Grabbing {instr} argument')
+            target_token = self.instructions.next_unexpanded()
+            target_token_instr = InstructionToken(
+                Instructions.let_target,
+                value=target_token,
+                position_like=target_token,
+            )
+            return [], [first_token, target_token_instr]
         # Such as \def.
         elif instr in def_instructions:
             logger.debug(f'Grabbing macro definition')

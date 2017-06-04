@@ -117,6 +117,8 @@ terminal_instructions = (
     I.v_top,
     I.active_character,
     I.unexpanded_control_word,
+    I.after_assignment,
+    I.after_group,
 )
 # Add ordinary character literals.
 char_instructions = tuple(I['non_active_uncased_{}'.format(c.lower())]

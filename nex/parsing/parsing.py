@@ -8,7 +8,7 @@ from ..accessors import short_hand_reg_def_token_type_to_reg_type
 from . import (number_rules, dimen_rules, glue_rules, character_rules,
                command_rules)
 from .terminals import terminal_types
-from .utils import ExpectedParsingError, ExhaustedTokensError, is_end_token
+from .utils import ParsingSyntaxError, ExhaustedTokensError, is_end_token
 
 logger = logging.getLogger(__name__)
 
@@ -125,14 +125,12 @@ def chunker_error(look_ahead):
     # Assume we have an actual syntax error, which we interpret to mean the
     # current command has finished being parsed and we are looking at tokens
     # for the next command.
-    elif look_ahead is not None:
-        raise ExpectedParsingError
     else:
-        raise ValueError('No look-ahead value')
+        raise ParsingSyntaxError(look_ahead)
 
 
 def batch_error(look_ahead):
-    raise Exception
+    raise ParsingSyntaxError(look_ahead)
 
 
 def get_parser(start='command', chunking=True):

@@ -390,6 +390,8 @@ def add_command_rules(pg):
     @pg.production('command : solo_accent')
     @pg.production('command : paired_accent')
     @pg.production('command : character_like')
+    @pg.production('command : after_assignment')
+    @pg.production('command : after_group')
     def command(p):
         return p[0]
 
@@ -425,6 +427,13 @@ def add_command_rules(pg):
     def character_like_char(p):
         return BuiltToken(type_='char',
                           value={'code': p[1]},
+                          position_like=p)
+
+    @pg.production('after_assignment : AFTER_ASSIGNMENT LET_TARGET')
+    @pg.production('after_group : AFTER_GROUP LET_TARGET')
+    def after_event(p):
+        return BuiltToken(type_=p[0].type,
+                          value=p[1],
                           position_like=p)
 
     add_assignment_rules(pg)

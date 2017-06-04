@@ -171,6 +171,8 @@ instructions = (
     'UPPER_CASE',
     'LOWER_CASE',
     'CR',
+    'AFTER_ASSIGNMENT',
+    'AFTER_GROUP',
 
     # Short-hand definition tokens (produced internally).
     'CHAR_DEF_TOKEN',
