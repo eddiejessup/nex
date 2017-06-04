@@ -132,16 +132,6 @@ mode_material_instruction_map = {
 }
 
 
-expanding_context_modes = (
-    ContextMode.normal,
-    ContextMode.awaiting_balanced_text_start,
-    ContextMode.awaiting_balanced_text_or_token_variable_start,
-    ContextMode.awaiting_make_h_box_start,
-    ContextMode.awaiting_make_v_box_start,
-    ContextMode.awaiting_make_v_top_start,
-)
-
-
 def get_brace_sign(token):
     if token.instruction == Instructions.left_brace:
         return 1
@@ -314,10 +304,6 @@ class Banisher:
     def context_mode(self):
         return self.context_mode_stack[-1]
 
-    @property
-    def _expanding_control_sequences(self):
-        return self.context_mode in expanding_context_modes
-
     def advance_to_end(self):
         while True:
             try:
@@ -336,9 +322,8 @@ class Banisher:
     def _iterate(self):
         # TODO: Check what happens when we try to parse tokens too far in one
         # chunk, and bleed into another chunk that only makes sense once the
-        # previous one has executed. For example, defining a new macro, then
-        # calling that macro. This function might have side effects on the
-        # state, and the instructions.
+        # previous one has executed. For example, Changing the escape
+        # character, then calling \string on a control sequence.
         next_inputs, next_outputs = self._expand_next_input_token()
         if next_inputs and next_outputs:
             raise Exception
@@ -354,7 +339,8 @@ class Banisher:
     def _handle_macro(self, first_token):
         params = first_token.value['parameter_text']
         replace_text = first_token.value['replacement_text']
-        arguments = get_macro_arguments(params, tokens=self.instructions)
+        arguments = get_macro_arguments(params,
+                                        tokens=self.instructions.iter_unexpanded())
         if len(replace_text) > 1:
             logger.info(f"Expanding macro \"{first_token.value['name']}\" to \"{stringify_instr_list(replace_text)}\"")
             for i, arg in enumerate(arguments):
@@ -392,7 +378,7 @@ class Banisher:
         nr_conditions = 1
         i_block = 0
         not_skipped_tokens = []
-        for t in self.instructions:
+        for t in self.instructions.iter_unexpanded():
             # Keep track of nested conditions.
             nr_conditions += get_condition_sign(t)
 
@@ -469,10 +455,10 @@ class Banisher:
 
     def _handle_def(self, first_token):
         # Get name of macro.
-        cs_name_token = next(self.instructions)
+        cs_name_token = self.instructions.next_unexpanded()
 
         # Get parameter text.
-        parameter_instrs, left_brace_token = get_parameter_instrs(self.instructions)
+        parameter_instrs, left_brace_token = get_parameter_instrs(self.instructions.iter_unexpanded())
         parameter_text_token = InstructionToken(
             Instructions.parameter_text,
             value=parameter_instrs,
@@ -482,7 +468,7 @@ class Banisher:
         # Get the replacement text.
         # TODO: this is where expanded-def will be differentiated from
         # normal-def.
-        replacement_text_token = get_balanced_text_token(self.instructions)
+        replacement_text_token = get_balanced_text_token(self.instructions.iter_unexpanded())
 
         # Add the def token, macro name, parameter text, left brace and
         # replacement text to the output queue.
@@ -491,11 +477,11 @@ class Banisher:
         return [], output
 
     def _handle_let(self, first_token):
-        cs_name_token = next(self.instructions)
+        cs_name_token = self.instructions.next_unexpanded()
 
         # Parse the arguments of LET manually, because the target token can be
         # basically anything, and this would be a pain to tell the parser.
-        let_preamble, let_target_tok = get_let_arguments(self.instructions)
+        let_preamble, let_target_tok = get_let_arguments(self.instructions.iter_unexpanded())
         let_target_instr = InstructionToken(
             Instructions.let_target,
             value=let_target_tok,
@@ -541,7 +527,7 @@ class Banisher:
 
     def _handle_string(self, first_token):
         # TeX first reads the [next] token without expansion.
-        target_token = next(self.instructions)
+        target_token = self.instructions.next_unexpanded()
         logger.debug(f'Doing "string" instruction to {target_token}')
         escape_char_code = self.state.parameters.get(Parameters.escape_char)
         return [], get_string_instr_repr(target_token, escape_char_code)
@@ -567,25 +553,7 @@ class Banisher:
         return [cs_token] + list(out_queue.queue), []
 
     def _expand_next_input_token(self):
-        first_token = next(self.instructions)
-
-        # If the token is an unexpanded control sequence call, and expansion is
-        # not suppressed, then we must resolve the call:
-        # - A user control sequence will become a macro instruction token.
-        # - A \let character will become its character instruction token.
-        # - A primitive control sequence will become its instruction token.
-        # NOTE: I've made this mistake twice now: we can't make this resolution
-        # into a two-call process, where we resolve the token, put the resolved
-        # token on the input, then handle it in the next call. This is because,
-        # for example, \expandafter expects a single call to this method to do
-        # resolution and actual expansion. Basically this method has certain
-        # responsibilites to do a certain amount to a token in each call.
-        if (self._expanding_control_sequences and
-                first_token.instruction in unexpanded_cs_instructions):
-            name = first_token.value['name']
-            first_token = self.state.router.lookup_control_sequence(
-                name, position_like=first_token)
-
+        first_token = self.instructions.next_expanded()
         instr = first_token.instruction
 
         # A user control sequence.
@@ -596,7 +564,7 @@ class Banisher:
                                     ContextMode.awaiting_balanced_text_or_token_variable_start)
                 and instr == Instructions.left_brace):
             logger.debug('Grabbing balanced text')
-            bal_tok = get_balanced_text_token(self.instructions)
+            bal_tok = get_balanced_text_token(self.instructions.iter_unexpanded())
             # Done getting balanced text, so pop context.
             self._pop_context()
             # Put the LEFT_BRACE and the balanced text on the output queue.
@@ -622,7 +590,7 @@ class Banisher:
             # Add an unexpanded control sequence as an instruction token to the
             # output.
             logger.debug(f'Grabbing {instr} argument')
-            return [], [first_token, next(self.instructions)]
+            return [], [first_token, self.instructions.next_unexpanded()]
         # Such as \def.
         elif instr in def_instructions:
             logger.debug(f'Grabbing macro definition')
@@ -640,7 +608,7 @@ class Banisher:
         elif instr == Instructions.expand_after:
             logger.debug(f'Evaluating expand-after')
             # Read a token without expansion.
-            unexpanded_token = next(self.instructions)
+            unexpanded_token = self.instructions.next_unexpanded()
             # Then get the next token *with* expansion.
             next_input_tokens, next_output_tokens = self._expand_next_input_token()
             # Order doesn't matter because only one should have elements anyway.

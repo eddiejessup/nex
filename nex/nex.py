@@ -3,6 +3,7 @@ from .state import GlobalState
 from .reader import Reader
 from .lexer import Lexer
 from .instructioner import Instructioner
+from .resolver import Resolver
 from .banisher import Banisher
 from .parsing.parsing import command_parser
 from .parsing.utils import safe_chunk_grabber
@@ -14,8 +15,9 @@ def make_input_chain(in_path, state):
     reader.insert_file(in_path)
     lexer = Lexer(reader, get_cat_code_func=state.codes.get_cat_code)
     instructioner = Instructioner(lexer)
+    resolver = Resolver(instructioner, router=state.router)
     banisher = Banisher(
-        instructions=instructioner, state=state, reader=reader,
+        instructions=resolver, state=state, reader=reader,
     )
     return banisher, reader
 

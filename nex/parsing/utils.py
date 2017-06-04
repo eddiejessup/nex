@@ -117,6 +117,13 @@ class ChunkGrabber:
         logger.info(f'Got chunk "{chunk.type}", through {method}')
         return chunk
 
+    def replace_fluff(self, chunk_token_queue):
+        # We got one token of fluff due to extra read, to make the
+        # parse queue not-parse. So put it back on the buffer.
+        fluff_tok = chunk_token_queue.pop()
+        logger.debug(f'Replacing fluff token {fluff_tok} on to-parse queue.')
+        self.out_queue.queue.appendleft(fluff_tok)
+
     def __next__(self):
         # Want to extend the queue-to-be-parsed one token at a time,
         # so we can break as soon as we have all we need.
@@ -170,11 +177,7 @@ class ChunkGrabber:
                 # If we have already parsed a chunk, then we use this as our
                 # result. (If we have not yet parsed, then something is wrong.)
                 if have_parsed:
-                    # We got one token of fluff due to extra read, to make the
-                    # parse queue not-parse. So put it back on the buffer.
-                    fluff_tok = chunk_token_queue.pop()
-                    logger.debug(f'Replacing fluff token {fluff_tok} on to-parse queue.')
-                    self.out_queue.queue.appendleft(fluff_tok)
+                    self.replace_fluff(chunk_token_queue)
                     return self._clean_chunk(chunk, chunk_token_queue,
                                              method='failed parsing')
             except ExhaustedTokensError:
