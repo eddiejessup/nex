@@ -37,7 +37,7 @@ def get_best_route(h_list, h_size, tolerance, line_penalty):
     for i in range(len(h_list)):
         if box.is_break_point(h_list, i):
             h_list_got, h_list_after, break_item = break_at(h_list, i)
-            h_box = box.HBox(h_list, to=h_size, set_glue=False)
+            h_box = box.HBox(h_list_got, to=h_size, set_glue=False)
             if h_box.considerable_as_line(tolerance, break_item):
                 got_demerit = h_box.demerit(break_item, line_penalty)
                 best_current_child_route = get_best_route(h_list_after,
