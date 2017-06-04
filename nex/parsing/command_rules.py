@@ -162,7 +162,7 @@ def add_assignment_rules(pg):
 
     # Start of 'let assignment', a simple assignment.
 
-    @pg.production('let_assignment : LET control_sequence equals one_optional_space LET_TARGET')
+    @pg.production('let_assignment : LET control_sequence equals one_optional_space ARBITRARY_TOKEN')
     def let_assignment_control_sequence(p):
         target_token = p[4].value
         new_name = p[1].value['name']
@@ -429,8 +429,8 @@ def add_command_rules(pg):
                           value={'code': p[1]},
                           position_like=p)
 
-    @pg.production('after_assignment : AFTER_ASSIGNMENT LET_TARGET')
-    @pg.production('after_group : AFTER_GROUP LET_TARGET')
+    @pg.production('after_assignment : AFTER_ASSIGNMENT ARBITRARY_TOKEN')
+    @pg.production('after_group : AFTER_GROUP ARBITRARY_TOKEN')
     def after_event(p):
         return BuiltToken(type_=p[0].type,
                           value=p[1],

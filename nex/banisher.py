@@ -442,7 +442,7 @@ class Banisher:
         let_preamble, let_target_tok = let_arguments[:-1], let_arguments[-1]
 
         let_target_instr = InstructionToken(
-            Instructions.let_target,
+            Instructions.arbitrary_token,
             value=let_target_tok,
             position_like=first_token
         )
@@ -583,7 +583,7 @@ class Banisher:
             logger.debug(f'Grabbing {instr} argument')
             target_token = self.instructions.next_unexpanded()
             target_token_instr = InstructionToken(
-                Instructions.let_target,
+                Instructions.arbitrary_token,
                 value=target_token,
                 position_like=target_token,
             )

@@ -107,7 +107,7 @@ terminal_instructions = (
     I.left_brace,
     I.right_brace,
     I.font_def_token,
-    I.let_target,
+    I.arbitrary_token,
     I.parameter_text,
     I.balanced_text_and_right_brace,
     I.horizontal_mode_material_and_right_brace,

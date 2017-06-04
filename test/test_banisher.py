@@ -412,6 +412,6 @@ def test_afters():
         out = b.get_next_output_list()
         assert len(out) == 2
         assert out[0] == cs_map[cs]
-        assert out[1].instruction == Instructions.let_target
+        assert out[1].instruction == Instructions.arbitrary_token
         target_tok = out[1].value
         assert target_tok.value['name'] == 'something'

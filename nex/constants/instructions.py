@@ -186,7 +186,7 @@ instructions = (
     'FONT_DEF_TOKEN',
 
     # Strange internal instructions that are produced by the banisher.
-    'LET_TARGET',
+    'ARBITRARY_TOKEN',
     # Control sequence names produced as part of a definition and such.
     'UNEXPANDED_CONTROL_SYMBOL',
     'UNEXPANDED_CONTROL_WORD',

@@ -79,10 +79,12 @@ def test_box_literal():
 
 
 def test_after_assignment():
-    ts = [ITok(Instructions.after_assignment), ITok(Instructions.let_target)]
+    ts = [ITok(Instructions.after_assignment),
+          ITok(Instructions.arbitrary_token)]
     parser.parse(iter(ts))
 
 
 def test_after_group():
-    ts = [ITok(Instructions.after_group), ITok(Instructions.let_target)]
+    ts = [ITok(Instructions.after_group),
+          ITok(Instructions.arbitrary_token)]
     parser.parse(iter(ts))
