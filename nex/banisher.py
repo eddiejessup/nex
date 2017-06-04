@@ -13,7 +13,6 @@ from .constants.instructions import (Instructions,
                                      hyphenation_instructions)
 from .constants.parameters import Parameters
 from .tokens import InstructionToken
-from .reader import EndOfFile
 from .lexer import (is_control_sequence_call, is_char_cat,
                     char_cat_lex_type, control_sequence_lex_type)
 from .instructioner import (Instructioner,
@@ -25,6 +24,7 @@ from .parsing.utils import GetBuffer, safe_chunk_grabber
 from .parsing import parsing
 from .feedback import truncate_list
 from .router import short_hand_def_type_to_token_instr
+from .utils import UserError
 
 
 logger = logging.getLogger(__name__)
@@ -78,10 +78,6 @@ def stringify_instrs(ts):
 def stringify_instr_list(ts):
     """Represent a sequence of instructions as a string."""
     return ' '.join(stringify_instrs(ts))
-
-
-class BanisherError(Exception):
-    pass
 
 
 class ContextMode(Enum):
@@ -141,139 +137,6 @@ def get_brace_sign(token):
         return 0
 
 
-def get_balanced_text_token(tokens):
-    b_tokens = []
-    brace_level = 1
-    while True:
-        token = next(tokens)
-        b_tokens.append(token)
-        brace_level += get_brace_sign(token)
-        if brace_level == 0:
-            break
-    balanced_text = InstructionToken(
-        Instructions.balanced_text_and_right_brace,
-        value=b_tokens[:-1],
-        position_like=b_tokens[0]
-    )
-    return balanced_text
-
-
-def get_macro_arguments(params, tokens):
-    def tokens_equal(t, u):
-        if t.value['lex_type'] != u.value['lex_type']:
-            return False
-        if t.value['lex_type'] == char_cat_lex_type:
-            attr_keys = ('char', 'cat')
-        elif t.value['lex_type'] == control_sequence_lex_type:
-            attr_keys = ('name',)
-        else:
-            raise ValueError(f'Value does not look like a token: {t}')
-        return all(t.value[k] == u.value[k] for k in attr_keys)
-    arguments = []
-    i_param = 0
-    for i_param in range(len(params)):
-        arg_toks = []
-        p_t = params[i_param]
-        if p_t.instruction not in (Instructions.undelimited_param,
-                                   Instructions.delimited_param):
-            # We should only see non-parameters in the parameter list,
-            # if they are text preceding the parameters proper. See
-            # the comments in `parse_parameter_text` for further
-            # details.
-            # We just swallow up these tokens.
-            assert not arguments
-            next_token = next(tokens)
-            if not tokens_equal(p_t, next_token):
-                raise Exception
-            continue
-        delim_toks = p_t.value['delim_tokens']
-        if p_t.instruction == Instructions.undelimited_param:
-            assert not delim_toks
-            next_token = next(tokens)
-            if next_token.instruction == Instructions.left_brace:
-                b_tok = get_balanced_text_token(tokens)
-                arg_toks.extend(b_tok.value)
-            else:
-                arg_toks.append(next_token)
-        elif p_t.instruction == Instructions.delimited_param:
-            # To be finished, we must be balanced brace-wise.
-            brace_level = 0
-            while True:
-                next_token = next(tokens)
-                brace_level += get_brace_sign(next_token)
-                arg_toks.append(next_token)
-                # If we are balanced, and we could possibly
-                # have got the delimiter tokens.
-                if brace_level == 0 and len(arg_toks) >= len(delim_toks):
-                    # Check if the recent argument tokens match the
-                    # delimiter tokens, and if so, we are done.
-                    to_compare = zip(reversed(arg_toks),
-                                     reversed(delim_toks))
-                    if all(tokens_equal(*ts) for ts in to_compare):
-                        break
-            # Remove the delimiter tokens as they are not part of
-            # the argument
-            arg_toks = arg_toks[:-len(delim_toks)]
-            # We remove exactly one set of braces, if present.
-            if arg_toks[0].instruction == Instructions.left_brace and arg_toks[-1].instruction == Instructions.right_brace:
-                arg_toks = arg_toks[1:-1]
-        arguments.append(arg_toks)
-    return arguments
-
-
-def get_parameter_instrs(instructions):
-    param_instrs = []
-    while True:
-        instr = next(instructions)
-        if instr.instruction == Instructions.left_brace:
-            left_brace_instr = instr
-            return param_instrs, left_brace_instr
-        param_instrs.append(instr)
-
-
-def get_let_arguments(instructions):
-    let_arguments = []
-    let_arguments.append(next(instructions))
-    # If we find an equals, ignore that and read again.
-    if let_arguments[-1].instruction == Instructions.equals:
-        let_arguments.append(next(instructions))
-    # If we find a space, ignore that and read again.
-    if let_arguments[-1].instruction == Instructions.space:
-        let_arguments.append(next(instructions))
-    # Now we know the last instruction should be the let target.
-    preamble_tokens, let_target = let_arguments[:-1], let_arguments[-1]
-    return preamble_tokens, let_target
-
-
-def get_string_instr_repr(target_token, escape_char_code):
-    # If a control sequence token appears, its \string expansion
-    # consists of the control sequence name (including \escapechar as
-    # an escape character, if the control sequence isn't simply an
-    # active character).
-    if target_token.instruction in unexpanded_cs_instructions:
-        chars = []
-        if escape_char_code >= 0:
-            chars.append(chr(escape_char_code))
-        chars += list(target_token.value['name'])
-    else:
-        chars = [target_token.value['char']]
-
-    toks = []
-    for c in chars:
-        # Each character in this token list automatically gets category code
-        # [other], including the backslash that \string inserts to represent an
-        # escape character. However, category [space] will be assigned to the
-        # character ']' if it somehow sneaks into the name of a control
-        # sequence.
-        if c == ' ':
-            cat = CatCode.space
-        else:
-            cat = CatCode.other
-        t = char_cat_instr_tok(c, cat, position_like=target_token)
-        toks.append(t)
-    return toks
-
-
 class Banisher:
 
     def __init__(self, instructions, state, reader):
@@ -308,7 +171,7 @@ class Banisher:
         while True:
             try:
                 ts = self.get_next_output_list()
-            except EndOfFile:
+            except EOFError:
                 return
             for t in ts:
                 yield t
@@ -336,11 +199,86 @@ class Banisher:
             # example, a condition might return nothing in some branches.
             pass
 
+    def _get_balanced_text_token(self):
+        b_tokens = []
+        brace_level = 1
+        while True:
+            token = self.instructions.next_unexpanded()
+            b_tokens.append(token)
+            brace_level += get_brace_sign(token)
+            if brace_level == 0:
+                break
+        balanced_text = InstructionToken(
+            Instructions.balanced_text_and_right_brace,
+            value=b_tokens[:-1],
+            position_like=b_tokens[0]
+        )
+        return balanced_text
+
     def _handle_macro(self, first_token):
         params = first_token.value['parameter_text']
         replace_text = first_token.value['replacement_text']
-        arguments = get_macro_arguments(params,
-                                        tokens=self.instructions.iter_unexpanded())
+
+        def tokens_equal(t, u):
+            if t.value['lex_type'] != u.value['lex_type']:
+                return False
+            if t.value['lex_type'] == char_cat_lex_type:
+                attr_keys = ('char', 'cat')
+            elif t.value['lex_type'] == control_sequence_lex_type:
+                attr_keys = ('name',)
+            else:
+                raise ValueError(f'Value does not look like a token: {t}')
+            return all(t.value[k] == u.value[k] for k in attr_keys)
+        arguments = []
+        i_param = 0
+        for i_param in range(len(params)):
+            arg_toks = []
+            p_t = params[i_param]
+            if p_t.instruction not in (Instructions.undelimited_param,
+                                       Instructions.delimited_param):
+                # We should only see non-parameters in the parameter list,
+                # if they are text preceding the parameters proper. See
+                # the comments in `parse_parameter_text` for further
+                # details.
+                # We just swallow up these tokens.
+                assert not arguments
+                next_token = self.instructions.next_unexpanded()
+                if not tokens_equal(p_t, next_token):
+                    raise Exception
+                continue
+            delim_toks = p_t.value['delim_tokens']
+            if p_t.instruction == Instructions.undelimited_param:
+                assert not delim_toks
+                next_token = self.instructions.next_unexpanded()
+                if next_token.instruction == Instructions.left_brace:
+                    b_tok = self._get_balanced_text_token()
+                    arg_toks.extend(b_tok.value)
+                else:
+                    arg_toks.append(next_token)
+            elif p_t.instruction == Instructions.delimited_param:
+                # To be finished, we must be balanced brace-wise.
+                brace_level = 0
+                while True:
+                    next_token = self.instructions.next_unexpanded()
+                    brace_level += get_brace_sign(next_token)
+                    arg_toks.append(next_token)
+                    # If we are balanced, and we could possibly
+                    # have got the delimiter tokens.
+                    if brace_level == 0 and len(arg_toks) >= len(delim_toks):
+                        # Check if the recent argument tokens match the
+                        # delimiter tokens, and if so, we are done.
+                        to_compare = zip(reversed(arg_toks),
+                                         reversed(delim_toks))
+                        if all(tokens_equal(*ts) for ts in to_compare):
+                            break
+                # Remove the delimiter tokens as they are not part of
+                # the argument
+                arg_toks = arg_toks[:-len(delim_toks)]
+                # We remove exactly one set of braces, if present.
+                if arg_toks[0].instruction == Instructions.left_brace and arg_toks[-1].instruction == Instructions.right_brace:
+                    arg_toks = arg_toks[1:-1]
+            arguments.append(arg_toks)
+
         if len(replace_text) > 1:
             logger.info(f"Expanding macro \"{first_token.value['name']}\" to \"{stringify_instr_list(replace_text)}\"")
             for i, arg in enumerate(arguments):
@@ -458,22 +396,29 @@ class Banisher:
         cs_name_token = self.instructions.next_unexpanded()
 
         # Get parameter text.
-        parameter_instrs, left_brace_token = get_parameter_instrs(self.instructions.iter_unexpanded())
+        param_instrs = []
+        while True:
+            instr = self.instructions.next_unexpanded()
+            if instr.instruction == Instructions.left_brace:
+                left_brace_instr = instr
+                break
+            param_instrs.append(instr)
+
         parameter_text_token = InstructionToken(
             Instructions.parameter_text,
-            value=parameter_instrs,
+            value=param_instrs,
             position_like=first_token,
         )
 
         # Get the replacement text.
         # TODO: this is where expanded-def will be differentiated from
         # normal-def.
-        replacement_text_token = get_balanced_text_token(self.instructions.iter_unexpanded())
+        replacement_text_token = self._get_balanced_text_token()
 
         # Add the def token, macro name, parameter text, left brace and
         # replacement text to the output queue.
         output = [first_token, cs_name_token, parameter_text_token,
-                  left_brace_token, replacement_text_token]
+                  left_brace_instr, replacement_text_token]
         return [], output
 
     def _handle_let(self, first_token):
@@ -481,7 +426,18 @@ class Banisher:
 
         # Parse the arguments of LET manually, because the target token can be
         # basically anything, and this would be a pain to tell the parser.
-        let_preamble, let_target_tok = get_let_arguments(self.instructions.iter_unexpanded())
+
+        let_arguments = []
+        let_arguments.append(self.instructions.next_unexpanded())
+        # If we find an equals, ignore that and read again.
+        if let_arguments[-1].instruction == Instructions.equals:
+            let_arguments.append(self.instructions.next_unexpanded())
+        # If we find a space, ignore that and read again.
+        if let_arguments[-1].instruction == Instructions.space:
+            let_arguments.append(self.instructions.next_unexpanded())
+        # Now we know the last instruction should be the let target.
+        let_preamble, let_target_tok = let_arguments[:-1], let_arguments[-1]
+
         let_target_instr = InstructionToken(
             Instructions.let_target,
             value=let_target_tok,
@@ -530,7 +486,33 @@ class Banisher:
         target_token = self.instructions.next_unexpanded()
         logger.debug(f'Doing "string" instruction to {target_token}')
         escape_char_code = self.state.parameters.get(Parameters.escape_char)
-        return [], get_string_instr_repr(target_token, escape_char_code)
+
+        # If a control sequence token appears, its \string expansion consists
+        # of the control sequence name (including \escapechar as an escape
+        # character, if the control sequence isn't simply an active character).
+        if target_token.instruction in unexpanded_cs_instructions:
+            chars = []
+            if escape_char_code >= 0:
+                chars.append(chr(escape_char_code))
+            chars += list(target_token.value['name'])
+        else:
+            chars = [target_token.value['char']]
+
+        output = []
+        for c in chars:
+            # Each character in this token list automatically gets category
+            # code [other], including the backslash that \string inserts to
+            # represent an escape character. However, category [space] will be
+            # assigned to the character ']' if it somehow sneaks into the name
+            # of a control sequence.
+            if c == ' ':
+                cat = CatCode.space
+            else:
+                cat = CatCode.other
+            t = char_cat_instr_tok(c, cat, position_like=target_token)
+            output.append(t)
+
+        return [], output
 
     def _handle_cs_name(self, first_token):
         chars = []
@@ -542,8 +524,8 @@ class Banisher:
             if is_char_cat(t):
                 chars.append(t.value['char'])
             else:
-                raise BanisherError(f'Found non-character inside '
-                                    f'\csname ... \endcsname block: {t}')
+                raise UserError(f'Found non-character inside '
+                                f'\csname ... \endcsname block: {t}')
 
         cs_name = ''.join(chars)
         cs_token = make_unexpanded_control_sequence_instruction(
@@ -564,7 +546,7 @@ class Banisher:
                                     ContextMode.awaiting_balanced_text_or_token_variable_start)
                 and instr == Instructions.left_brace):
             logger.debug('Grabbing balanced text')
-            bal_tok = get_balanced_text_token(self.instructions.iter_unexpanded())
+            bal_tok = self._get_balanced_text_token()
             # Done getting balanced text, so pop context.
             self._pop_context()
             # Put the LEFT_BRACE and the balanced text on the output queue.

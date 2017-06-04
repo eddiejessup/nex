@@ -8,10 +8,6 @@ from .feedback import drep
 logger = logging.getLogger(__name__)
 
 
-class EndOfFile(Exception):
-    pass
-
-
 # TODO: Would it be good to extend some built-in class, like a file class?
 # TODO: Would be nice to support non-file buffer interfaces, like stdin and
 # network things. \input{http://mysite.com/tex_preamble.tex} would be nice.
@@ -56,7 +52,7 @@ class ReaderBuffer:
         `n = 0` returns the current position.
         If the buffer's position has not been advanced, so it is not 'on' any
         character, ValueError is raised.
-        If the offset would spill past the end of the buffer, EndOfFile is
+        If the offset would spill past the end of the buffer, EOFError is
         raised."""
         if n < 0:
             raise ValueError('Cannot peek backwards')
@@ -69,7 +65,7 @@ class ReaderBuffer:
         try:
             return self.chars[i_peek]
         except IndexError:
-            raise EndOfFile
+            raise EOFError
 
     def __repr__(self):
         a = []
@@ -216,7 +212,7 @@ class Reader:
             for n_to_try in range(1, n_to_do + 1):
                 try:
                     char = read_buffer.peek_ahead(n_to_try)
-                except EndOfFile:
+                except EOFError:
                     break
             # If we have read our aimed distance, then we have our peeked
             # character, and can return.
@@ -227,7 +223,7 @@ class Reader:
             # The last value of `n_to_try` is what failed, so we successfully
             # read one less than this.
             n_to_do -= n_to_try - 1
-        raise EndOfFile
+        raise EOFError
 
     def increment_loc(self):
         """Increment the reader's position, changing the current buffer if
@@ -236,7 +232,7 @@ class Reader:
             self.active_buffer_hash_stack.pop()
         # If that was the last buffer, we are done.
         if not self.active_buffer_hash_stack:
-            raise EndOfFile
+            raise EOFError
         return self.current_buffer.increment_loc()
 
     def advance_loc(self, n=1):
@@ -264,5 +260,5 @@ class Reader:
         while True:
             try:
                 yield self.advance_loc()
-            except EndOfFile:
+            except EOFError:
                 break

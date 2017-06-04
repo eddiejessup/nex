@@ -10,8 +10,13 @@ from .constants.codes import (CatCode, WeirdChar, MathClass, MathCode,
                               not_a_delimiter_code, ignored_delimiter_code)
 from .tokens import InstructionToken, instructions_to_types
 from .box import AbstractBox
-from .utils import NotInScopeError, ascii_characters
+from .utils import ascii_characters
 from . import evaluator as evaler
+
+
+class NotInScopeError(Exception):
+    """Made a reference that cannot be resolved in the current scope"""
+    pass
 
 
 def check_type(type_, value):

@@ -5,7 +5,6 @@ from collections import deque
 from .constants.instructions import Instructions
 from .constants.codes import CatCode
 from .tokens import InstructionToken
-from .reader import EndOfFile
 from .lexer import (Lexer, make_char_cat_lex_token,
                     control_sequence_lex_type, char_cat_lex_type)
 
@@ -181,7 +180,7 @@ class Instructioner:
         while True:
             try:
                 yield next(self)
-            except EndOfFile:
+            except EOFError:
                 return
 
     def replace_tokens_on_input(self, tokens):

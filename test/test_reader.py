@@ -1,6 +1,6 @@
 import pytest
 
-from nex.reader import Reader, ReaderBuffer, EndOfFile
+from nex.reader import Reader, ReaderBuffer
 
 from common import (test_not_here_file_name, test_file_name, test_chars,
                     test_2_chars)
@@ -19,7 +19,7 @@ def test_next_char():
     r.insert_chars(test_chars)
     cs = [r.advance_loc() for _ in range(4)]
     assert cs == test_chars
-    with pytest.raises(EndOfFile):
+    with pytest.raises(EOFError):
         r.advance_loc()
 
 
@@ -89,7 +89,7 @@ def test_peek():
     r.advance_loc()
     assert r.current_char == 'b'
     # Can't peek past end of buffer.
-    with pytest.raises(EndOfFile):
+    with pytest.raises(EOFError):
         r.peek_ahead(n=3)
 
 

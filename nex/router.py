@@ -5,7 +5,7 @@ from .constants.specials import special_to_instr
 from .constants.instructions import Instructions, if_instructions
 from .constants import defaults
 from .tokens import InstructionToken, BaseToken
-from .utils import get_unique_id, NoSuchControlSequence
+from .utils import get_unique_id
 from .lexer import control_sequence_lex_type, char_cat_lex_type
 from .instructioner import (make_primitive_control_sequence_instruction,
                             make_parameter_control_sequence_instruction,
@@ -23,6 +23,12 @@ short_hand_def_type_to_token_instr = {
     Instructions.toks_def.value: Instructions.toks_def_token,
     Instructions.font.value: Instructions.font_def_token,
 }
+
+
+class NoSuchControlSequence(Exception):
+
+    def __init__(self, name):
+        self.name = name
 
 
 class ControlSequenceType(Enum):

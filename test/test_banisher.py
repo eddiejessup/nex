@@ -5,12 +5,12 @@ import pytest
 from nex.constants.codes import CatCode
 from nex.constants.parameters import Parameters
 from nex.constants.instructions import Instructions
-from nex.banisher import Banisher, BanisherError
+from nex.banisher import Banisher
 from nex.instructioner import (make_unexpanded_control_sequence_instruction,
                                char_cat_instr_tok)
 from nex.resolver import Resolver
 from nex.router import make_macro_token
-from nex.utils import ascii_characters
+from nex.utils import ascii_characters, UserError
 
 from common import DummyInstructions, ITok
 
@@ -349,7 +349,7 @@ def test_cs_name_containing_non_char():
     }
 
     b = string_to_banisher('$getCSName $primitive $endCSName', cs_map)
-    with pytest.raises(BanisherError):
+    with pytest.raises(UserError):
         b.get_next_output_list()
 
 

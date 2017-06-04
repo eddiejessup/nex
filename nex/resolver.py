@@ -2,8 +2,7 @@ import logging
 
 from .constants.instructions import unexpanded_cs_instructions
 from .instructioner import Instructioner
-from .reader import EndOfFile
-from .utils import NoSuchControlSequence
+from .router import NoSuchControlSequence
 
 logger = logging.getLogger(__name__)
 
@@ -62,5 +61,5 @@ class Resolver:
                     yield self.next_expanded()
                 else:
                     yield self.next_unexpanded()
-            except EndOfFile:
+            except EOFError:
                 return

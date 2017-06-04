@@ -2,9 +2,9 @@ import logging
 from contextlib import contextmanager
 from collections import deque
 
-from ..reader import EndOfFile
 from ..tokens import BuiltToken
-from ..utils import NoSuchControlSequence, LogicError
+from ..utils import LogicError
+from ..router import NoSuchControlSequence
 from ..instructioner import non_active_letters_map
 
 logger = logging.getLogger(__name__)
@@ -138,13 +138,13 @@ class ChunkGrabber:
         while True:
             try:
                 t = next(self.out_queue)
-            except EndOfFile:
-                # If we get an EndOfFile, and we have just started trying to
+            except EOFError:
+                # If we get an EOFError, and we have just started trying to
                 # get a parse-chunk, we are done, so just propagate the
                 # exception to wrap things up.
                 if not chunk_token_queue:
                     raise
-                # If we get an EndOfFile and we have already parsed, we need to
+                # If we get an EOFError and we have already parsed, we need to
                 # return this parse-chunk, then next time round we will be
                 # done.
                 elif have_parsed:

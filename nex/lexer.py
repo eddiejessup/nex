@@ -2,7 +2,7 @@ from enum import Enum
 import logging
 
 from .constants.codes import CatCode
-from .reader import Reader, EndOfFile
+from .reader import Reader
 from .tokens import LexToken
 from .feedback import strep
 
@@ -94,7 +94,7 @@ class Lexer:
         while True:
             try:
                 yield next(self)
-            except EndOfFile:
+            except EOFError:
                 return
 
     def _peek_ahead(self, n=1):
@@ -128,7 +128,7 @@ class Lexer:
             # no trio-ing is going on.
             try:
                 next_char, next_cat = self._peek_ahead(n=peek_offset + 1)
-            except EndOfFile:
+            except EOFError:
                 return char, cat, char_len
             # Next char-cat must match start char-cat.
             if (next_char == start_char) and (next_cat == start_cat):
@@ -136,7 +136,7 @@ class Lexer:
                 # then no trio-ing is going on.
                 try:
                     triod_char, triod_cat = self._peek_ahead(n=peek_offset + 2)
-                except EndOfFile:
+                except EOFError:
                     return char, cat, char_len
                 if triod_cat != CatCode.end_of_line:
                     triod_ascii_code = ord(triod_char)
@@ -188,7 +188,7 @@ class Lexer:
                         next_char, next_cat, next_char_len = self._chomp_next_char_trio(peek=True)
                     # If the next 'character' is end-of-file, then finish
                     # control sequence.
-                    except EndOfFile:
+                    except EOFError:
                         break
                     if next_cat == CatCode.letter:
                         self._chomp_next_char_trio(peek=False)

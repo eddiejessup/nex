@@ -4,7 +4,6 @@ import pytest
 
 from nex.constants.codes import CatCode
 from nex.constants.instructions import Instructions, unexpanded_cs_instructions
-from nex.reader import EndOfFile
 from nex.instructioner import (Instructioner,
                                make_unexpanded_control_sequence_instruction,
                                char_cat_instr_tok)
@@ -46,7 +45,7 @@ def process(s):
     while True:
         try:
             t = next(instrs)
-        except EndOfFile:
+        except EOFError:
             return
         else:
             if t.instruction in unexpanded_cs_instructions:

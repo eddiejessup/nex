@@ -6,7 +6,8 @@ from .pydvi.TeXUnit import pt2sp
 from .pydvi.Font.TfmParser import TfmParser
 
 from .constants.instructions import Instructions
-from .utils import ensure_extension, find_file, NotInScopeError
+from .utils import ensure_extension, find_file
+from .accessors import NotInScopeError
 from .feedback import drep
 
 

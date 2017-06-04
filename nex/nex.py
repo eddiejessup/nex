@@ -1,5 +1,4 @@
-from .utils import TidyEnd
-from .state import GlobalState
+from .state import GlobalState, TidyEnd
 from .reader import Reader
 from .lexer import Lexer
 from .instructioner import Instructioner

@@ -1,9 +1,8 @@
 from enum import Enum
 
-from .accessors import ParametersAccessor, Registers, Codes
+from .accessors import ParametersAccessor, Registers, Codes, NotInScopeError
 from .fonts import FontState
 from .router import CSRouter
-from .utils import NotInScopeError
 
 
 class Operation(Enum):

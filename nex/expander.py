@@ -1,24 +1,29 @@
 from .constants.instructions import Instructions
 from .tokens import InstructionToken
+from .utils import LogicError, UserError
 
 
 def parse_parameter_text(tokens):
-    p_nr = 1
+    """
+    From the raw parameter text of a macro, extract the parameters, their types
+    (delimited or un-delimited), and the delimiting tokens.
+    """
+    param_nr = 1
     i = 0
     parameters = []
     while i < len(tokens):
         t = tokens[i]
 
-        # The only time we should see a non-parameter, is if there is text
-        # preceding the parameters proper. Anything else should be
-        # gobbled down below. Ooh-err.
-        # "
-        # Tokens that precede the first parameter token in the parameter
+        # We should only see a non-parameter here if there is text
+        # preceding the parameters proper. Other non-parameter tokens should be
+        # gobbled up down below.
+        # "Tokens that precede the first parameter token in the parameter
         # text of a definition are required to follow the control sequence; in
-        # effect, they become part of the control sequence name.
-        # "
+        # effect, they become part of the control sequence name."
         if t.instruction != Instructions.parameter:
-            assert p_nr == 1
+            if param_nr != 1:
+                raise LogicError(f'Found non-parameter token where only '
+                                 f'parameter tokens are expected: {t}')
             parameters.append(t)
             i += 1
             continue
@@ -27,19 +32,27 @@ def parse_parameter_text(tokens):
         # and check it is numbered correctly.
         i += 1
         t_next = tokens[i]
-        if int(t_next.value['char']) != p_nr:
-            raise ValueError
+        labelled_param_char = t_next.value['char']
+        try:
+            labelled_param_nr = int(labelled_param_char)
+        except ValueError:
+            raise UserError(f'Got parameter number {param_nr}, but it is '
+                            f'labelled as non-integer "{labelled_param_char}"')
+        else:
+            if labelled_param_nr != param_nr:
+                raise UserError(f'Got parameter number {param_nr}, but it is '
+                                f'labelled as parameter number '
+                                f'{labelled_param_nr}')
 
-        # "
-        # How does TeX determine where an argument stops, you ask. Answer:
+        # "How does TeX determine where an argument stops, you ask. Answer:
         # There are two cases.
         # An undelimited parameter is followed immediately in the parameter
         # text by a parameter token, or it occurs at the very end of the
         # parameter text; [...]
         # A delimited parameter is followed in the parameter text by
-        # one or more non-parameter tokens [...]
-        # "
+        # one or more non-parameter tokens [...]"
         delim_tokens = []
+        # Go forward to inspect following token.
         i += 1
         if i < len(tokens):
             # If there are more tokens, go forward in the token list collecting
@@ -55,40 +68,58 @@ def parse_parameter_text(tokens):
                        else Instructions.undelimited_param)
         param = InstructionToken(
             instruction,
-            value={'param_nr': p_nr, 'delim_tokens': delim_tokens}
+            value={'param_nr': param_nr, 'delim_tokens': delim_tokens}
         )
-        p_nr += 1
+        param_nr += 1
         parameters.append(param)
     return parameters
 
 
 def parse_replacement_text(tokens):
+    """
+    From the raw replacement text of a macro, extract the use of parameter
+    arguments and translate them into parameter call tokens.
+    """
     i = 0
     tokens_processed = []
     while i < len(tokens):
         t = tokens[i]
+        # If token represents a potential parameter call.
         if t.instruction == Instructions.parameter:
+            # [...] each "#" must be followed by a digit that appeared after
+            # "#" in the parameter text, or else the "#" should be followed by
+            # another "#".
+            # Inspect the next token to see which of the two cases applies.
             i += 1
             t_next = tokens[i]
-            # [...] each # must be followed by a digit that appeared after # in
-            # the parameter text, or else the # should be followed by another
-            # #.
             if t_next.instruction == Instructions.parameter:
                 # TODO: I don't know if the cat-code of this should be changed.
                 # Look in TeX: The Program to see what it does.
-                tokens_processed.append(t_next)
+                t_processed = t_next
             else:
-                p_nr = int(t_next.value['char'])
-                t = InstructionToken(
+                param_nr_char = t_next.value['char']
+                try:
+                    param_nr = int(param_nr_char)
+                except ValueError:
+                    raise UserError(f'Parameter indicator followed by '
+                                    f'non-integer "{param_nr_char}"')
+                t_processed = InstructionToken(
                     Instructions.param_number,
-                    value=p_nr
+                    value=param_nr
                 )
-        tokens_processed.append(t)
+        else:
+            t_processed = t
+        tokens_processed.append(t_processed)
         i += 1
     return tokens_processed
 
 
 def substitute_params_with_args(replace_text, arguments):
+    """
+    Combine a macro's parsed replacement text with the arguments of a call to
+    it, to produce a finished text after substituting the parameters with the
+    arguments.
+    """
     finished_text = []
     for i, t in enumerate(replace_text):
         if t.instruction == Instructions.param_number:

@@ -12,9 +12,7 @@ from .constants.specials import Specials
 from .constants.codes import CatCode
 from .constants.units import (PhysicalUnit, MuUnit, InternalUnit,
                               units_in_scaled_points, MAX_DIMEN)
-from .utils import (ExecuteCommandError, TidyEnd, UserError, LogicError,
-                    pt_to_sp)
-from .reader import EndOfFile
+from .utils import UserError, LogicError, pt_to_sp
 from .instructioner import (make_primitive_control_sequence_instruction,
                             make_unexpanded_control_sequence_instruction)
 from .accessors import is_register_type, SpecialsAccessor
@@ -101,10 +99,6 @@ sub_executor_groups = (
 )
 
 
-class EndOfSubExecutor(Exception):
-    pass
-
-
 shift_to_horizontal_instructions = (
     Instructions.char,
     Instructions.char_def_token,
@@ -148,6 +142,21 @@ def command_shifts_to_horizontal(command):
 
 def command_shifts_to_vertical(command):
     return command.type in shift_to_vertical_types
+
+
+class ExecuteCommandError(Exception):
+
+    def __init__(self, command, exception):
+        self.command = command
+        self.exception = exception
+
+
+class TidyEnd(Exception):
+    pass
+
+
+class EndOfSubExecutor(Exception):
+    pass
 
 
 class GlobalState:
@@ -1000,7 +1009,7 @@ class GlobalState:
         while True:
             try:
                 self.execute_next_command_token(commands, banisher, reader)
-            except EndOfFile:
+            except EOFError:
                 return
             except EndOfSubExecutor:
                 return
@@ -1009,7 +1018,7 @@ class GlobalState:
         command = next(commands)
         try:
             self.execute_command_token(command, banisher, reader)
-        except (EndOfFile, EndOfSubExecutor, TidyEnd):
+        except (EOFError, EndOfSubExecutor, TidyEnd):
             raise
         except Exception as e:
             raise ExecuteCommandError(command, e)
@@ -1275,7 +1284,7 @@ class GlobalState:
             logger.info(f"Inserting new file '{file_name}'")
             reader.insert_file(file_name)
         # I think technically only this should cause the program to end, not
-        # EndOfFile anywhere. But for now, whatever.
+        # EOFError anywhere. But for now, whatever.
         elif type_ == Instructions.end.value:
             self.do_end()
         elif type_ == 'short_hand_definition':

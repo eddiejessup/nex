@@ -5,7 +5,8 @@ from nex.constants.specials import Specials
 from nex.state import Mode, GlobalState
 from nex import box
 from nex.box_writer import write_to_dvi_file
-from nex.utils import ExecuteCommandError, UserError
+from nex.state import ExecuteCommandError
+from nex.utils import UserError
 from nex.tokens import BuiltToken
 from nex.fonts import GlobalFontState
 

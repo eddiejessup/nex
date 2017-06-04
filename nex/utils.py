@@ -24,37 +24,6 @@ def get_unique_id():
     return sanitised
 
 
-class LogicError(Exception):
-    """Got into situations that should not be internally possible."""
-    pass
-
-
-class UserError(Exception):
-    """The input from the user is incorrect."""
-    pass
-
-
-class NoSuchControlSequence(Exception):
-
-    def __init__(self, name):
-        self.name = name
-
-
-class ExecuteCommandError(Exception):
-
-    def __init__(self, command, exception):
-        self.command = command
-        self.exception = exception
-
-
-class NotInScopeError(Exception):
-    pass
-
-
-class TidyEnd(Exception):
-    pass
-
-
 def get_default_font_paths():
     return [
         os.getcwd(),
@@ -105,3 +74,16 @@ def file_path_to_chars(file_path):
     """Return the characters in a file at the given path."""
     with open(file_path, 'rb') as f:
         return [chr(b) for b in f.read()]
+
+
+# General exceptions.
+
+
+class LogicError(Exception):
+    """Got into situations that should not be internally possible."""
+    pass
+
+
+class UserError(Exception):
+    """The input from the user is incorrect."""
+    pass

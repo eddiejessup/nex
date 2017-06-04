@@ -1,9 +1,8 @@
 import pytest
 
 from nex.constants.instructions import Instructions
-from nex.accessors import Registers
+from nex.accessors import Registers, NotInScopeError
 from nex.box import HBox
-from nex.utils import NotInScopeError
 
 
 def test_registers_empty():
