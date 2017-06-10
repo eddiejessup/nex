@@ -596,22 +596,19 @@ class GlobalState:
     # Evaluate conditions.
 
     def evaluate_if_num(self, left_number, right_number, relation):
-        left_number_eval = self.eval_number_token(left_number)
-        right_number_eval = self.eval_number_token(right_number)
         operator_map = {
             '<': operator.lt,
             '=': operator.eq,
             '>': operator.gt,
         }
         op = operator_map[relation]
-        outcome = op(left_number_eval, right_number_eval)
+        outcome = op(left_number, right_number)
         return outcome
 
     evaluate_if_dim = evaluate_if_num
 
     def evaluate_if_odd(self, number):
-        number_eval = self.eval_number_token(number)
-        return number_eval % 2
+        return number % 2
 
     def evaluate_if_v_mode(self):
         return self.mode in vertical_modes
@@ -655,11 +652,10 @@ class GlobalState:
         raise NotImplementedError
 
     def evaluate_if_case(self, number):
-        number_eval = self.eval_number_token(number)
-        if number_eval < 0:
+        if number < 0:
             raise ValueError(f'if-case should not return negative number: '
-                             f'{number_eval}')
-        return number_eval
+                             f'{number}')
+        return number
 
     # Do chunky commands.
 
@@ -1561,14 +1557,16 @@ class GlobalState:
         t = if_token.type
         if t == 'IF_NUM':
             relation_str = v['relation'].value['char']
-            outcome = self.evaluate_if_num(v['left_number'], v['right_number'],
-                                           relation_str)
+            left_nr = self.eval_number_token(v['left_number'])
+            right_nr = self.eval_number_token(v['right_number'])
+            outcome = self.evaluate_if_num(left_nr, right_nr, relation_str)
         elif t == 'IF_DIMEN':
             relation_str = v['relation'].value['char']
             outcome = self.evaluate_if_dim(v['left_dimen'], v['right_dimen'],
                                            relation_str)
         elif t == 'IF_CASE':
-            outcome = self.evaluate_if_case(v['number'])
+            number_eval = self.eval_number_token(v['number'])
+            outcome = self.evaluate_if_case(number_eval)
         elif t == 'IF_TRUE':
             outcome = True
         elif t == 'IF_FALSE':

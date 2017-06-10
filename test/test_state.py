@@ -101,23 +101,23 @@ def nr_tok(n):
 
 
 def test_if_num(state):
-    assert state.evaluate_if_num(nr_tok(2), nr_tok(2), '=')
-    assert state.evaluate_if_num(nr_tok(5), nr_tok(0), '>')
-    assert not state.evaluate_if_num(nr_tok(-6), nr_tok(-10), '<')
+    assert state.evaluate_if_num(2, 2, '=')
+    assert state.evaluate_if_num(5, 0, '>')
+    assert not state.evaluate_if_num(-6, -10, '<')
 
 
 def test_if_dimen(state):
-    assert state.evaluate_if_dim(nr_tok(2), nr_tok(2), '=')
-    assert state.evaluate_if_dim(nr_tok(5), nr_tok(0), '>')
-    assert not state.evaluate_if_dim(nr_tok(-6), nr_tok(-10), '<')
+    assert state.evaluate_if_dim(2, 2, '=')
+    assert state.evaluate_if_dim(5, 0, '>')
+    assert not state.evaluate_if_dim(-6, -10, '<')
 
 
 def test_if_odd(state):
-    assert not state.evaluate_if_odd(nr_tok(2))
-    assert state.evaluate_if_odd(nr_tok(5))
-    assert not state.evaluate_if_odd(nr_tok(-6))
-    assert state.evaluate_if_odd(nr_tok(-1))
-    assert not state.evaluate_if_odd(nr_tok(0))
+    assert not state.evaluate_if_odd(2)
+    assert state.evaluate_if_odd(5)
+    assert not state.evaluate_if_odd(-6)
+    assert state.evaluate_if_odd(-1)
+    assert not state.evaluate_if_odd(0)
 
 
 def test_if_mode(state):
@@ -133,10 +133,10 @@ def test_if_mode(state):
 
 
 def test_if_case(state):
-    assert state.evaluate_if_case(nr_tok(2)) == 2
-    assert state.evaluate_if_case(nr_tok(5)) == 5
+    assert state.evaluate_if_case(2) == 2
+    assert state.evaluate_if_case(5) == 5
     with pytest.raises(ValueError):
-        state.evaluate_if_case(nr_tok(-6))
+        state.evaluate_if_case(-6)
 
 
 def test_set_box(state):
