@@ -184,7 +184,6 @@ class GlobalState:
         self.start_new_page()
 
         self.after_assignment_token = None
-        self.after_group_stack = deque()
 
     @classmethod
     def from_defaults(cls, font_search_paths=None, global_font_state=None):
@@ -208,6 +207,10 @@ class GlobalState:
         return self.modes[-1][0]
 
     @property
+    def _layout_list(self):
+        return self.modes[-1][1]
+
+    @property
     def mode_depth(self):
         return len(self.modes)
 
@@ -225,10 +228,6 @@ class GlobalState:
         # For the last mode pop, we might not intend to package it in a box, so
         # just pop and return the list.
         return self.pop_mode()
-
-    @property
-    def _layout_list(self):
-        return self.modes[-1][1]
 
     def push_mode(self, mode):
         logger.info(f'Entering {mode}')
@@ -472,13 +471,22 @@ class GlobalState:
 
     @property
     def group(self):
-        return self.groups[-1]
+        return self.groups[-1][0]
+
+    @property
+    def after_group_queue(self):
+        return self.groups[-1][1]
 
     def push_group(self, group):
-        self.groups.append(group)
+        logger.info(f'Entering {group}')
+        # Each group comes with a queue for the 'after_group' tokens.
+        self.groups.append((group, deque()))
 
-    def pop_group(self):
-        return self.groups.pop()
+    def pop_group(self, banisher):
+        group, after_group_queue = self.groups.pop()
+        logger.info(f'Exited {group}')
+        banisher.replace_tokens_on_input(after_group_queue)
+        return group
 
     # Scope
 
@@ -1006,6 +1014,32 @@ class GlobalState:
         # Recurse.
         self.do_end()
 
+    def start_local_group(self):
+        self.push_group(Group.local)
+        self.push_new_scope()
+
+    def end_group(self, banisher):
+        if self.group == Group.local:
+            # TODO: Bit dodgy: TeXbook says 'after_group' tokens are inserted
+            # "just *after* undoing local assignments". Emphasis mine.
+            self.pop_group(banisher)
+            self.pop_scope()
+        # For groups where we started a sub-executor (for example, to get a
+        # box), raise an exception to tell the surrounding executor to finish
+        # up (such as tell the banisher to make the box).
+        elif self.group in sub_executor_groups:
+            # "Eventually, when the matching '}' appears, TeX restores
+            # values that were changed by assignments in the group just
+            # ended."
+            self.pop_group(banisher)
+            self.pop_scope()
+            raise EndOfSubExecutor
+        else:
+            raise NotImplementedError
+
+    def push_to_after_group_queue(self, token):
+        self.after_group_queue.append(token)
+
     # Driving with tokens.
 
     def execute_command_tokens(self, commands, banisher, reader):
@@ -1406,31 +1440,15 @@ class GlobalState:
             self.do_indent()
         elif type_ == Instructions.left_brace.value:
             logger.debug(f"Starting local group due to left brace")
-            # A character token of category 1, or a control sequence like \bgroup
-            # that has been \let equal to such a character token, causes TeX to
-            # start a new level of grouping.
-            self.push_group(Group.local)
-            self.push_new_scope()
+            # A character token of category 1, or a control sequence like
+            # \bgroup that has been \let equal to such a character token,
+            # causes TeX to start a new level of grouping.
+            self.start_local_group()
         elif type_ == Instructions.right_brace.value:
             logger.debug(f"Ending current group '{self.group}' due to right brace")
-            # I think roughly same comments as for LEFT_BRACE above apply.
-            if self.group == Group.local:
-                self.pop_group()
-                self.pop_scope()
-            # Groups where we started a sub-executor to get the box.
-            # We need to tell the banisher to finish up so the resulting
-            # box can be made into the container token.
-            elif self.group in sub_executor_groups:
-                # "
-                # Eventually, when the matching '}' appears, TeX restores
-                # values that were changed by assignments in the group just
-                # ended.
-                # "
-                self.pop_group()
-                self.pop_scope()
-                raise EndOfSubExecutor
-            else:
-                raise NotImplementedError
+            # I think roughly same comments as for left brace above probably
+            # apply.
+            self.end_group(banisher)
         elif type_ == Instructions.v_skip.value:
             glue = self.eval_glue_token(v)
             self.add_glue(**glue)
@@ -1446,6 +1464,10 @@ class GlobalState:
         elif type_ in (Instructions.h_fil_neg.value,
                        Instructions.v_fil_neg.value):
             self.add_neg_fil_glue()
+        elif type_ == Instructions.after_group.value:
+            self.push_to_after_group_queue(v)
+        elif type_ == Instructions.after_assignment.value:
+            self.set_after_assignment_token(v)
         else:
             raise ValueError(f"Command type '{type_}' not recognised.")
 

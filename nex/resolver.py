@@ -29,6 +29,7 @@ class Resolver:
         return next(self.instructioner)
 
     def next_expanded(self):
+        instr_tok = self.next_unexpanded()
         # If the token is an unexpanded control sequence call, and expansion is
         # not suppressed, then we must resolve the call:
         # - A user control sequence will become a macro instruction token.
@@ -37,10 +38,9 @@ class Resolver:
         # NOTE: I've made this mistake twice now: we can't make this resolution
         # into a two-call process, where we resolve the token, put the resolved
         # token on the input, then handle it in the next call. This is because,
-        # for example, \expandafter expects a single call to this method to do
-        # resolution and actual expansion. Basically this method has certain
-        # responsibilites to do a certain amount to a token in each call.
-        instr_tok = self.next_unexpanded()
+        # for example, \expandafter expects a single call to the banisher to
+        # both resolve *and* expand a macro. Basically this method must do a
+        # certain amount to a token in each call.
         if instr_tok.instruction in unexpanded_cs_instructions:
             name = instr_tok.value['name']
             try:

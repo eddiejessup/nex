@@ -1,3 +1,5 @@
+from collections import deque
+
 import pytest
 
 from nex.constants.instructions import Instructions
@@ -264,3 +266,49 @@ def test_space_factor(state):
     state.add_character_char('a')
     state.add_rule(10, 10, 10)
     assert state.specials.get(Specials.space_factor) == 1000
+
+
+class DummyTokenQueue:
+
+    def replace_tokens_on_input(self, tokens):
+        pass
+
+
+def test_after_group(state):
+    # Input "{\aftergroup\space \aftergroup a}".
+
+    state.start_local_group()
+    t_sp = ITok(Instructions.space)
+    state.push_to_after_group_queue(t_sp)
+    assert list(state.after_group_queue) == [t_sp]
+
+    t_a = ITok(Instructions.a)
+    state.push_to_after_group_queue(t_a)
+    assert list(state.after_group_queue) == [t_sp, t_a]
+
+    tok_source = DummyTokenQueue()
+
+    state.end_group(tok_source)
+    assert not state.after_group_queue
+
+
+def test_after_group_scoped(state):
+    # Input "{\aftergroup\space {\aftergroup a}}".
+
+    state.start_local_group()
+    t_sp = ITok(Instructions.space)
+    state.push_to_after_group_queue(t_sp)
+    assert list(state.after_group_queue) == [t_sp]
+
+    # Assume we have 'b' waiting on the queue to be executed.
+    tok_source = DummyTokenQueue()
+
+    state.start_local_group()
+    t_a = ITok(Instructions.a)
+    state.push_to_after_group_queue(t_a)
+    assert list(state.after_group_queue) == [t_a]
+    state.end_group(tok_source)
+    assert list(state.after_group_queue) == [t_sp]
+
+    state.end_group(tok_source)
+    assert not state.after_group_queue
