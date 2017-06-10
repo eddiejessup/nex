@@ -81,14 +81,17 @@ def test_paired_accent(state):
 
 
 def test_v_rule(state):
-    state.add_rule(width=int(1e7), height=int(1e2), depth=0)
-    state.add_rule(width=int(1e7), height=int(1e2), depth=int(1e7))
+    state.push_mode(Mode.horizontal)
+    state.add_v_rule(width=int(1e7), height=int(1e2), depth=0)
+    state.add_v_rule(width=int(1e7), height=int(1e2), depth=int(1e7))
     state.do_paragraph()
     assert len(state.modes) == 1
     assert state.mode == Mode.vertical
     lst = state.current_page
-    assert isinstance(lst[2], box.Rule)
-    assert isinstance(lst[3], box.Rule)
+    assert isinstance(lst[2], box.HBox)
+    h_box = lst[2]
+    assert isinstance(h_box.contents[0], box.Rule)
+    assert isinstance(h_box.contents[1], box.Rule)
     write(state, 'test_v_rule.dvi')
 
 
@@ -152,7 +155,7 @@ def test_set_box_void(state):
 
 
 def test_unbox(state):
-    box_item = box.HBox([
+    box_item = box.VBox([
         box.HBox([
             box.Glue(20),
         ]),
@@ -162,11 +165,11 @@ def test_unbox(state):
     i_reg = 2
     state.set_box_register(i=i_reg, item=box_item, is_global=False)
     nr_elems_before = len(state.current_page)
-    state.append_unboxed_register_box(i=i_reg, copy=True, horizontal=True)
+    state.append_unboxed_register_v_box(i=i_reg, copy=True)
     nr_elems_after = len(state.current_page)
     assert nr_elems_after == nr_elems_before + 2
     unboxed_contents = state.get_unboxed_register_box(i=i_reg, copy=False,
-                                                      horizontal=True)
+                                                      horizontal=False)
     inner_glue = unboxed_contents[0].contents[0]
     assert isinstance(inner_glue, box.Glue)
     assert inner_glue.is_set
@@ -183,7 +186,7 @@ def test_unbox_bad_box_type(state):
     box_item = box.HBox(contents=[box.Rule(1, 1, 1), box.Rule(2, 2, 2)])
     state.set_box_register(i=2, item=box_item, is_global=False)
     with pytest.raises(UserError):
-        state.append_unboxed_register_box(i=2, copy=False, horizontal=False)
+        state.append_unboxed_register_v_box(i=2, copy=False)
 
 
 def test_get_box_dimen(state):
@@ -216,6 +219,21 @@ def test_command_token_get_box(state):
     state.get_register_box(i=i_reg, copy=False) is None
 
 
+def test_command_token_add_h_rule(state):
+    add_h_rule_tok = BuiltToken(type_=Instructions.h_rule.value,
+                                value={'width': None,
+                                       'height': None,
+                                       'depth': None})
+    state.execute_command_token(add_h_rule_tok, banisher=None, reader=None)
+    lst = state.current_page
+    assert len(lst) == 3
+    assert isinstance(lst[2], box.Rule)
+    rule = lst[2]
+    assert rule.width == 0
+    assert rule.depth == 0
+    assert rule.height > 0
+
+
 def test_command_token_code_assignment(state):
     set_sf_tok = BuiltToken(type_='code_assignment',
                             value={'code_type': Instructions.space_factor_code.value,
@@ -228,13 +246,13 @@ def test_command_token_code_assignment(state):
 
 def test_command_token_unbox(state):
     i_reg = 3
-    box_item = box.HBox(contents=[box.Rule(1, 1, 1), box.Rule(2, 2, 2)])
+    box_item = box.VBox(contents=[box.Rule(1, 1, 1), box.Rule(2, 2, 2)])
     state.set_box_register(i=i_reg, item=box_item, is_global=False)
     nr_elems_before = len(state.current_page)
 
     get_box_tok = BuiltToken(type_='un_box',
                              value={'nr': nr_tok(i_reg),
-                                    'cmd_type': Instructions.un_h_copy})
+                                    'cmd_type': Instructions.un_v_copy})
     state.execute_command_token(get_box_tok, banisher=None, reader=None)
     nr_elems_after = len(state.current_page)
     assert nr_elems_after == nr_elems_before + 2
@@ -264,7 +282,7 @@ def test_space_factor(state):
     # Make space factor be non-1000, then check adding a non-character box sets
     # it back to 1000.
     state.add_character_char('a')
-    state.add_rule(10, 10, 10)
+    state.add_v_rule(10, 10, 10)
     assert state.specials.get(Specials.space_factor) == 1000
 
 

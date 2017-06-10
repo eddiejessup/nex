@@ -144,6 +144,22 @@ def command_shifts_to_vertical(command):
     return command.type in shift_to_vertical_types
 
 
+def check_not_vertical(method):
+    def inner(self, *args, **kwargs):
+        if self.mode in vertical_modes:
+            raise UserError(f'Cannot do {method} in mode {self.mode}')
+        method(self, *args, **kwargs)
+    return inner
+
+
+def check_not_horizontal(method):
+    def inner(self, *args, **kwargs):
+        if self.mode in horizontal_modes:
+            raise UserError(f'Cannot do {method} in mode {self.mode}')
+        method(self, *args, **kwargs)
+    return inner
+
+
 class ExecuteCommandError(Exception):
 
     def __init__(self, command, exception):
@@ -674,7 +690,7 @@ class GlobalState:
             self.do_un_skip()
             # Do \hskip\parfillskip.
             par_fill_glue = self.parameters.get(Parameters.par_fill_skip)
-            self.add_glue(**par_fill_glue)
+            self.add_h_glue(**par_fill_glue)
             line_penalty = self.parameters.get(Parameters.line_penalty)
             self.add_penalty(line_penalty)
             # Get the horizontal list
@@ -695,20 +711,21 @@ class GlobalState:
         else:
             raise NotImplementedError
 
-    def get_character_item(self, code):
+    def _get_character_item(self, code):
         return Character(code,
                          width=self.current_font.width(code),
                          height=self.current_font.height(code),
                          depth=self.current_font.depth(code))
 
+    @check_not_vertical
     def add_character_code(self, code):
-        self.append_to_list(self.get_character_item(code))
+        self.append_to_list(self._get_character_item(code))
 
     def add_character_char(self, char):
         return self.add_character_code(ord(char))
 
-    def add_accented_character(self, accent_code, char_code):
-        char_item = self.get_character_item(char_code)
+    def _add_accented_character(self, accent_code, char_code):
+        char_item = self._get_character_item(char_code)
         char_w = self.current_font.width(char_code)
         acc_w = self.current_font.width(accent_code)
         # Go back to the middle of the character, than go back half the accent
@@ -723,7 +740,7 @@ class GlobalState:
         # TODO: Slantedness.
         char_h = self.current_font.height(char_code)
         height_to_raise = char_h - self.current_font.x_height
-        acc_char_item = self.get_character_item(accent_code)
+        acc_char_item = self._get_character_item(accent_code)
         acc_item = HBox(contents=[acc_char_item], offset=height_to_raise)
         # TeXbook page 54: The width of the final construction is the width of
         # the character being accented, regardless of the width of the accent.
@@ -731,6 +748,7 @@ class GlobalState:
                     to=char_item.width)
         self.append_to_list(item)
 
+    @check_not_vertical
     def do_accent(self, accent_code, target_code=None):
         logger.info(f"Adding accent \"{accent_code}\"")
         # TeXbook page 286.
@@ -753,7 +771,7 @@ class GlobalState:
         # way that the width of the accent does not influence the width of the
         # resulting horizontal list.
         else:
-            self.add_accented_character(accent_code, target_code)
+            self._add_accented_character(accent_code, target_code)
         # Finally, TeX sets \spacefactor=1000.
         self.specials.set(Specials.space_factor, 1000)
 
@@ -764,38 +782,78 @@ class GlobalState:
         if isinstance(self._layout_list[-1], Glue):
             self._layout_list.pop()
 
-    def add_glue(self, dimen, stretch, shrink):
-        item = Glue(dimen, stretch, shrink)
-        logger.info(f'Adding glue {item}')
-        self.append_to_list(item)
-
     def add_penalty(self, size):
         logger.info(f'Adding penalty {size}')
         self.append_to_list(Penalty(size))
 
-    def add_stretch_or_shrink_glue(self):
+    def _add_glue(self, dimen, stretch, shrink):
+        item = Glue(dimen, stretch, shrink)
+        logger.info(f'Adding glue {item}')
+        self.append_to_list(item)
+
+    def _add_stretch_or_shrink_glue(self):
         one_fil = self.get_infinite_dimen(nr_fils=1, nr_units=1)
         item = Glue(dimen=0, stretch=one_fil, shrink=one_fil)
         logger.info(f'Adding infinite stretch and shrink glue')
         self.append_to_list(item)
 
-    def add_fil_glue(self):
+    def _add_fil_glue(self):
         one_fil = self.get_infinite_dimen(nr_fils=1, nr_units=1)
         item = Glue(dimen=0, stretch=one_fil, shrink=0)
         logger.info(f'Adding first-order infinite-stretch glue')
         self.append_to_list(item)
 
-    def add_fill_glue(self):
+    def _add_fill_glue(self):
         two_fils = self.get_infinite_dimen(nr_fils=2, nr_units=1)
         item = Glue(dimen=0, stretch=two_fils, shrink=0)
         logger.info(f'Adding second-order infinite-stretch glue')
         self.append_to_list(item)
 
-    def add_neg_fil_glue(self):
+    def _add_neg_fil_glue(self):
         one_neg_fil = self.get_infinite_dimen(nr_fils=1, nr_units=-1)
         item = Glue(dimen=0, stretch=one_neg_fil, shrink=one_neg_fil)
         logger.info(f'Adding first-order infinite-negative-stretch glue')
         self.append_to_list(item)
+
+    @check_not_vertical
+    def add_h_glue(self, *args, **kwargs):
+        return self._add_glue(*args, **kwargs)
+
+    @check_not_horizontal
+    def add_v_glue(self, *args, **kwargs):
+        return self._add_glue(*args, **kwargs)
+
+    @check_not_vertical
+    def add_h_stretch_or_shrink_glue(self):
+        return self._add_stretch_or_shrink_glue()
+
+    @check_not_horizontal
+    def add_v_stretch_or_shrink_glue(self):
+        return self._add_stretch_or_shrink_glue()
+
+    @check_not_vertical
+    def add_h_fil_glue(self):
+        return self._add_fil_glue()
+
+    @check_not_horizontal
+    def add_v_fil_glue(self):
+        return self._add_fil_glue()
+
+    @check_not_vertical
+    def add_h_fill_glue(self):
+        return self._add_fill_glue()
+
+    @check_not_horizontal
+    def add_v_fill_glue(self):
+        return self._add_fill_glue()
+
+    @check_not_vertical
+    def add_h_neg_fil_glue(self):
+        return self._add_neg_fil_glue()
+
+    @check_not_horizontal
+    def add_v_neg_fil_glue(self):
+        return self._add_neg_fil_glue()
 
     def do_space(self):
         if self.mode in vertical_modes:
@@ -853,44 +911,34 @@ class GlobalState:
         else:
             raise NotImplementedError
 
-    def add_rule(self, width, height, depth):
+    def _add_rule(self, width, height, depth):
         self.append_to_list(Rule(width, height, depth))
 
+    @check_not_vertical
     def add_v_rule(self, width, height, depth):
         if self.mode not in horizontal_modes:
             raise UserError(f'Cannot add V Rule in non-horizontal '
                             f'mode: {self.mode}')
         if width is None:
             width = pt_to_sp(0.4)
-        else:
-            width = self.eval_number_token(width)
         if height is None:
             height = self.parameters.get(Parameters.v_size)
-        else:
-            height = self.eval_number_token(height)
         if depth is None:
             depth = self.parameters.get(Parameters.v_size)
-        else:
-            depth = self.eval_number_token(depth)
-        self.add_rule(width, height, depth)
+        self._add_rule(width, height, depth)
 
+    @check_not_horizontal
     def add_h_rule(self, width, height, depth):
         if self.mode not in vertical_modes:
             raise UserError(f'Cannot add V Rule in non-vertical '
                             f'mode: {self.mode}')
         if width is None:
             width = self.parameters.get(Parameters.h_size)
-        else:
-            width = self.eval_number_token(width)
         if height is None:
             height = pt_to_sp(0.4)
-        else:
-            height = self.eval_number_token(height)
         if depth is None:
             depth = 0
-        else:
-            depth = self.eval_number_token(depth)
-        self.add_rule(width, height, depth)
+        self._add_rule(width, height, depth)
 
     def do_indent(self):
         def append_parindent_box():
@@ -975,11 +1023,19 @@ class GlobalState:
                 item.unset()
         return unwrapped_box_contents
 
-    def append_unboxed_register_box(self, i, copy, horizontal):
+    @check_not_vertical
+    def append_unboxed_register_h_box(self, i, copy):
         unwrapped_box_contents = self.get_unboxed_register_box(i, copy,
-                                                               horizontal)
+                                                               horizontal=True)
         self.extend_list(unwrapped_box_contents)
 
+    @check_not_horizontal
+    def append_unboxed_register_v_box(self, i, copy):
+        unwrapped_box_contents = self.get_unboxed_register_box(i, copy,
+                                                               horizontal=False)
+        self.extend_list(unwrapped_box_contents)
+
+    @check_not_horizontal
     def do_end(self):
         # TeXbook page 283.
         # "This command is not allowed in internal vertical mode. In
@@ -1009,7 +1065,7 @@ class GlobalState:
             raise TidyEnd
         h_size = self.parameters.get(Parameters.h_size)
         self.append_to_list(HBox([], to=h_size))
-        self.add_fill_glue()
+        self.add_v_fill_glue()
         self.add_penalty(-10000000000)
         # Recurse.
         self.do_end()
@@ -1261,9 +1317,17 @@ class GlobalState:
             self.do_accent(accent_code_eval, target_char_code)
         elif type_ == Instructions.v_rule.value:
             logger.info(f"Adding vertical rule")
+            # Evaluate the number token representing each dimension.
+            for k in v:
+                if v[k] is not None:
+                    v[k] = self.eval_number_token(v[k])
             self.add_v_rule(**v)
         elif type_ == Instructions.h_rule.value:
             logger.info(f"Adding horizontal rule")
+            # Evaluate the number token representing each dimension.
+            for k in v:
+                if v[k] is not None:
+                    v[k] = self.eval_number_token(v[k])
             self.add_h_rule(**v)
         # The box already has its contents in the correct way, built using this
         # very method. Recursion still amazes me sometimes.
@@ -1285,12 +1349,22 @@ class GlobalState:
         elif type_ == 'un_box':
             logger.info(f"Unpacking box from register with '{type_}' command")
             reg_nr = self.eval_number_token(v['nr'])
-            is_copy = v['cmd_type'] in (Instructions.un_h_copy,
-                                        Instructions.un_v_copy)
-            is_h = v['cmd_type'] in (Instructions.un_h_copy,
-                                     Instructions.un_h_box)
-            self.append_unboxed_register_box(i=reg_nr, copy=is_copy,
-                                             horizontal=is_h)
+            cmd_type = v['cmd_type']
+            if cmd_type in (Instructions.un_h_copy, Instructions.un_v_copy):
+                is_copy = True
+            elif cmd_type in (Instructions.un_h_box, Instructions.un_v_box):
+                is_copy = False
+            else:
+                raise ValueError(f'Unknown unbox command type: {cmd_type}')
+            if v['cmd_type'] in (Instructions.un_h_copy,
+                                 Instructions.un_h_box):
+                method = self.append_unboxed_register_h_box
+            elif v['cmd_type'] in (Instructions.un_v_copy,
+                                   Instructions.un_v_box):
+                method = self.append_unboxed_register_v_box
+            else:
+                raise ValueError(f'Unknown unbox command type: {cmd_type}')
+            method(i=reg_nr, copy=is_copy)
         # Commands like font commands aren't exactly boxes, but they go through
         # as DVI commands. Just put them in the box for now to deal with later.
         elif type_ == 'font_selection':
@@ -1449,21 +1523,30 @@ class GlobalState:
             # I think roughly same comments as for left brace above probably
             # apply.
             self.end_group(banisher)
+        # Adding glue.
+        elif type_ == Instructions.h_skip.value:
+            glue = self.eval_glue_token(v)
+            self.add_h_glue(**glue)
         elif type_ == Instructions.v_skip.value:
             glue = self.eval_glue_token(v)
-            self.add_glue(**glue)
-        elif type_ in (Instructions.h_stretch_or_shrink.value,
-                       Instructions.v_stretch_or_shrink.value):
-            self.add_stretch_or_shrink_glue()
-        elif type_ in (Instructions.h_fil.value,
-                       Instructions.v_fil.value):
-            self.add_fil_glue()
-        elif type_ in (Instructions.h_fill.value,
-                       Instructions.v_fill.value):
-            self.add_fill_glue()
-        elif type_ in (Instructions.h_fil_neg.value,
-                       Instructions.v_fil_neg.value):
-            self.add_neg_fil_glue()
+            self.add_v_glue(**glue)
+        elif type_ == Instructions.h_stretch_or_shrink.value:
+            self.add_h_stretch_or_shrink_glue()
+        elif type_ == Instructions.v_stretch_or_shrink.value:
+            self.add_v_stretch_or_shrink_glue()
+        elif type_ == Instructions.h_fil.value:
+            self.add_h_fil_glue()
+        elif type_ == Instructions.v_fil.value:
+            self.add_v_fil_glue()
+        elif type_ == Instructions.h_fill.value:
+            self.add_h_fill_glue()
+        elif type_ == Instructions.v_fill.value:
+            self.add_v_fill_glue()
+        elif type_ == Instructions.h_fil_neg.value:
+            self.add_h_neg_fil_glue()
+        elif type_ == Instructions.v_fil_neg.value:
+            self.add_v_neg_fil_glue()
+        # After group.
         elif type_ == Instructions.after_group.value:
             self.push_to_after_group_queue(v)
         elif type_ == Instructions.after_assignment.value:
