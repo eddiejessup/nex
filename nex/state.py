@@ -1178,8 +1178,7 @@ class GlobalState:
             indent_token = make_primitive_control_sequence_instruction(
                 name='indent', instruction=Instructions.indent)
             # And add it before the tokens we just read.
-            banisher.instructions.replace_tokens_on_input([indent_token] +
-                                                          terminal_tokens)
+            banisher.replace_tokens_on_input([indent_token] + terminal_tokens)
         elif (self.mode == Mode.horizontal and
               command_shifts_to_vertical(command)):
             # "The appearance of a <vertical command> in regular horizontal
@@ -1193,8 +1192,7 @@ class GlobalState:
             logger.info(f'"{type_}" causing shift to vertical mode')
             terminal_tokens = command._terminal_tokens
             par_cs_token = make_unexpanded_control_sequence_instruction('par')
-            banisher.instructions.replace_tokens_on_input([par_cs_token] +
-                                                          terminal_tokens)
+            banisher.replace_tokens_on_input([par_cs_token] + terminal_tokens)
         elif (self.mode == Mode.restricted_horizontal and
               command_shifts_to_vertical(command)):
             # The appearance of a <vertical command> in restricted horizontal

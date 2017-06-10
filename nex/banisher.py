@@ -185,6 +185,9 @@ class Banisher:
             if outputs is not None:
                 return outputs
 
+    def replace_tokens_on_input(self, *args, **kwargs):
+        self.instructions.replace_tokens_on_input(*args, **kwargs)
+
     def _iterate(self):
         # TODO: Check what happens when we try to parse tokens too far in one
         # chunk, and bleed into another chunk that only makes sense once the
@@ -194,7 +197,7 @@ class Banisher:
         if next_inputs and next_outputs:
             raise Exception
         if next_inputs:
-            self.instructions.replace_tokens_on_input(next_inputs)
+            self.replace_tokens_on_input(next_inputs)
         elif next_outputs:
             return next_outputs
         else:

@@ -203,4 +203,4 @@ class ChunkGrabber:
 
     def clean_up(self):
         logger.info(f"Cleaning up tokens on chunk grabber's queue: {self.out_queue.queue}")
-        self.banisher.instructions.replace_tokens_on_input(self.out_queue.queue)
+        self.banisher.replace_tokens_on_input(self.out_queue.queue)
