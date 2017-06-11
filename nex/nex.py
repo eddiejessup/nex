@@ -5,7 +5,7 @@ from .instructioner import Instructioner
 from .resolver import Resolver
 from .banisher import Banisher
 from .parsing.parsing import command_parser
-from .parsing.utils import safe_chunk_grabber
+from .parsing.utils import chunk_iter
 from .box_writer import write_to_dvi_file
 
 
@@ -25,11 +25,11 @@ def run_file(in_path, font_search_paths):
     state = GlobalState.from_defaults(font_search_paths)
     banisher, reader = make_input_chain(in_path, state)
 
-    with safe_chunk_grabber(banisher, command_parser) as command_grabber:
-        try:
-            state.execute_command_tokens(command_grabber, banisher, reader)
-        except TidyEnd:
-            return state
+    command_grabber = chunk_iter(banisher, command_parser)
+    try:
+        state.execute_command_tokens(command_grabber, banisher, reader)
+    except TidyEnd:
+        return state
     return state
 
 

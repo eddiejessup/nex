@@ -20,7 +20,7 @@ from .instructioner import (Instructioner,
                             char_cat_instr_tok)
 from .state import Mode, Group
 from .macro import substitute_params_with_args
-from .parsing.utils import GetBuffer, safe_chunk_grabber
+from .parsing.utils import GetBuffer, get_chunk, chunk_iter
 from .parsing import parsing
 from .feedback import truncate_list
 from .router import short_hand_def_type_to_token_instr
@@ -295,9 +295,8 @@ class Banisher:
 
     def _handle_if(self, first_token):
         logger.debug(f'Handling condition "{first_token.instruction.name} …"')
-        with safe_chunk_grabber(self, condition_parser,
-                                initial=[first_token]) as condition_grabber:
-            if_token = next(condition_grabber)
+        # Put 'if' token on input so parsing works.
+        if_token = get_chunk(self, condition_parser, initial=[first_token])
         i_block_to_pick = self.state.evaluate_if_token_to_block(if_token)
         # Now get the body of the condition text.
 
@@ -373,12 +372,11 @@ class Banisher:
         # Done with the context.
         self._pop_context()
 
-        box_parser = command_parser
-        with safe_chunk_grabber(self, parser=box_parser) as chunk_grabber:
-            # Matching right brace should trigger EndOfSubExecutor and return.
-            self.state.execute_command_tokens(chunk_grabber,
-                                              banisher=self,
-                                              reader=self.reader)
+        command_grabber = chunk_iter(self, command_parser)
+        # Matching right brace should trigger EndOfSubExecutor and return.
+        self.state.execute_command_tokens(command_grabber,
+                                          banisher=self,
+                                          reader=self.reader)
 
         # [After ending the group, then TeX] packages the hbox (using the
         # size that was saved on the stack), and completes the setbox
@@ -454,12 +452,10 @@ class Banisher:
         return [], output
 
     def _handle_change_case(self, first_token):
+        logger.info(f'Adding context due to {first_token.instruction}')
+        self._push_context(ContextMode.awaiting_balanced_text_start)
         # Get the succeeding general text token for processing.
-        with safe_chunk_grabber(self,
-                                general_text_parser) as general_text_grabber:
-            logger.info(f'Adding context due to {first_token.instruction}')
-            self._push_context(ContextMode.awaiting_balanced_text_start)
-            general_text_token = next(general_text_grabber)
+        general_text_token = get_chunk(self, general_text_parser)
 
         case_funcs_map = {
             Instructions.lower_case: self.state.codes.get_lower_case_code,
