@@ -72,10 +72,10 @@ class Lexer:
         self.get_cat_code = get_cat_code_func
 
     @classmethod
-    def from_string(cls, s, *args, **kwargs):
+    def from_string(cls, s, get_cat_code_func):
         reader = Reader()
         reader.insert_string(s)
-        return cls(reader, *args, **kwargs)
+        return cls(reader, get_cat_code_func)
 
     def __iter__(self):
         return self

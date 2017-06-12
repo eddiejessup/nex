@@ -3,8 +3,7 @@ from collections import deque
 
 from ..tokens import BuiltToken
 from ..utils import LogicError
-from ..router import NoSuchControlSequence
-from ..instructioner import non_active_letters_map
+from ..router import NoSuchControlSequence, non_active_letters_map
 
 logger = logging.getLogger(__name__)
 

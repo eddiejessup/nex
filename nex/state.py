@@ -13,8 +13,8 @@ from .constants.codes import CatCode
 from .constants.units import (PhysicalUnit, MuUnit, InternalUnit,
                               units_in_scaled_points, MAX_DIMEN)
 from .utils import UserError, LogicError, pt_to_sp
-from .instructioner import (make_primitive_control_sequence_instruction,
-                            make_unexpanded_control_sequence_instruction)
+from .router import (make_primitive_control_sequence_instruction,
+                     make_unexpanded_control_sequence_instruction)
 from .accessors import is_register_type, SpecialsAccessor
 from . import box
 from .box import (HBox, VBox, Rule, Glue, Character, FontDefinition,

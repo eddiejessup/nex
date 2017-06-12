@@ -15,15 +15,15 @@ from .constants.parameters import Parameters
 from .tokens import InstructionToken
 from .lexer import (is_control_sequence_call, is_char_cat,
                     char_cat_lex_type, control_sequence_lex_type)
-from .instructioner import (Instructioner,
-                            make_unexpanded_control_sequence_instruction,
-                            char_cat_instr_tok)
+from .router import (short_hand_def_type_to_token_instr,
+                     Instructioner,
+                     make_unexpanded_control_sequence_instruction,
+                     char_cat_instr_tok)
 from .state import Mode, Group
 from .macro import substitute_params_with_args
 from .parsing.utils import GetBuffer, get_chunk, chunk_iter
 from .parsing import parsing
 from .feedback import truncate_list
-from .router import short_hand_def_type_to_token_instr
 from .utils import UserError
 
 
@@ -155,8 +155,12 @@ class Banisher:
 
     @classmethod
     def from_string(cls, s, state):
-        instrs = Instructioner.from_string(s, state.codes.get_cat_code)
-        return cls(instrs, state, instrs.lexer.reader)
+        instructions = Instructioner.from_string(
+            s=s,
+            resolve_cs_func=state.router.resolve_control_sequence,
+            get_cat_code_func=state.codes.get_cat_code,
+        )
+        return cls(instructions, state, instructions.lexer.reader)
 
     def _push_context(self, context_mode):
         logger.info(f'Entering {context_mode}')

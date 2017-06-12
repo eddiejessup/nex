@@ -1,8 +1,7 @@
 from .state import GlobalState, TidyEnd
 from .reader import Reader
 from .lexer import Lexer
-from .instructioner import Instructioner
-from .resolver import Resolver
+from .router import Instructioner
 from .banisher import Banisher
 from .parsing.parsing import command_parser
 from .parsing.utils import chunk_iter
@@ -13,10 +12,14 @@ def make_input_chain(in_path, state):
     reader = Reader()
     reader.insert_file(in_path)
     lexer = Lexer(reader, get_cat_code_func=state.codes.get_cat_code)
-    instructioner = Instructioner(lexer)
-    resolver = Resolver(instructioner, router=state.router)
+    instructioner = Instructioner(
+        lexer=lexer,
+        resolve_cs_func=state.router.lookup_control_sequence
+    )
     banisher = Banisher(
-        instructions=resolver, state=state, reader=reader,
+        instructions=instructioner,
+        state=state,
+        reader=reader,
     )
     return banisher, reader
 

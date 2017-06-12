@@ -4,9 +4,9 @@ import pytest
 
 from nex.constants.codes import CatCode
 from nex.constants.instructions import Instructions, unexpanded_cs_instructions
-from nex.instructioner import (Instructioner,
-                               make_unexpanded_control_sequence_instruction,
-                               char_cat_instr_tok)
+from nex.router import (Instructioner,
+                        make_unexpanded_control_sequence_instruction,
+                        char_cat_instr_tok)
 from nex.utils import ascii_characters
 from nex.parsing import parsing
 
@@ -45,17 +45,14 @@ def process(s):
     Just resolves control sequences, enough to allow convenient string input
     in tests.
     """
+    def resolve_cs(name, *args, **kwargs):
+        return cs_map[name]
     instrs = Instructioner.from_string(
-        s, get_cat_code_func=char_to_cat.get)
-    while True:
-        try:
-            t = next(instrs)
-        except EOFError:
-            return
-        else:
-            if t.instruction in unexpanded_cs_instructions:
-                t = cs_map[t.value['name']]
-            yield t
+        s=s,
+        resolve_cs_func=resolve_cs,
+        get_cat_code_func=char_to_cat.get,
+    )
+    return instrs.advance_to_end(expand=True)
 
 
 def test_h_rule():

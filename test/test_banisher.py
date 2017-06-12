@@ -6,10 +6,10 @@ from nex.constants.codes import CatCode
 from nex.constants.parameters import Parameters
 from nex.constants.instructions import Instructions
 from nex.banisher import Banisher
-from nex.instructioner import (make_unexpanded_control_sequence_instruction,
-                               char_cat_instr_tok)
-from nex.resolver import Resolver
-from nex.router import make_macro_token
+from nex.router import (Instructioner,
+                        make_unexpanded_control_sequence_instruction,
+                        make_macro_token,
+                        char_cat_instr_tok)
 from nex.utils import ascii_characters, UserError
 
 from common import DummyInstructions, ITok
@@ -93,9 +93,12 @@ class DummyState:
 def string_to_banisher(s, cs_map, char_to_cat=None, param_map=None):
     state = DummyState(cs_map=cs_map,
                        param_map=param_map, char_to_cat=char_to_cat)
-    resolver = Resolver.from_string(state.router, s,
-                                    get_cat_code_func=state.codes.get_cat_code)
-    return Banisher(resolver, state, resolver.instructioner.lexer.reader)
+    instructions = Instructioner.from_string(
+        resolve_cs_func=state.router.lookup_control_sequence,
+        s=s,
+        get_cat_code_func=state.codes.get_cat_code
+    )
+    return Banisher(instructions, state, instructions.lexer.reader)
 
 
 def test_resolver():

@@ -9,7 +9,7 @@ from nex.utils import ensure_extension, get_default_font_paths
 from nex.nex import run_and_write
 from nex.reader import logger as read_logger
 from nex.lexer import logger as lex_logger
-from nex.instructioner import logger as instr_logger
+from nex.router import logger as instr_logger
 from nex.banisher import logger as banish_logger
 from nex.parsing.utils import logger as chunk_logger
 from nex.state import logger as state_logger
@@ -75,7 +75,7 @@ if __name__ == '__main__':
         lex_logger.setLevel(logging.WARNING)
         instr_logger.setLevel(logging.INFO)
         banish_logger.setLevel(logging.INFO)
-        chunk_logger.setLevel(logging.INFO)
+        chunk_logger.setLevel(logging.DEBUG)
         state_logger.setLevel(logging.INFO)
 
     font_search_paths = default_font_search_paths[:]
