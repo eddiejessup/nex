@@ -26,8 +26,8 @@ def state():
     else:
         global_font_state = DummyGlobalFontState()
     state = GlobalState.from_defaults(global_font_state=global_font_state)
-    font_id = state.define_new_font(file_name='cmr10', at_clause=None)
-    state.select_font(is_global=True, font_id=font_id)
+    font_id = state.load_new_font(file_name='cmr10', at_clause=None)
+    state._select_font(is_global=True, font_id=font_id)
     return state
 
 
@@ -57,9 +57,9 @@ def test_token_executor(state):
     tok = ITok(instruction=DummyInstructions.test, value=None)
     with pytest.raises(ValueError):
         state.execute_command_token(tok, banisher=None, reader=None)
-    with pytest.raises(ExecuteCommandError):
+    with pytest.raises(ValueError):
         state.execute_command_tokens(iter([tok]), banisher=None, reader=None)
-    with pytest.raises(ExecuteCommandError):
+    with pytest.raises(ValueError):
         state.execute_next_command_token(iter([tok]), banisher=None, reader=None)
 
 
@@ -141,7 +141,7 @@ def test_if_case(state):
 
 def test_set_box(state):
     box_item = box.HBox(contents=[])
-    state.set_box_register(i=2, item=box_item, is_global=False)
+    state.set_box_register(token_source=None, i=2, item=box_item, is_global=False)
     state.append_register_box(i=2, copy=False)
     lst = state.current_page
     assert lst[-1].contents is box_item.contents
@@ -163,7 +163,7 @@ def test_unbox(state):
     ])
 
     i_reg = 2
-    state.set_box_register(i=i_reg, item=box_item, is_global=False)
+    state.set_box_register(token_source=None, i=i_reg, item=box_item, is_global=False)
     nr_elems_before = len(state.current_page)
     state.append_unboxed_register_v_box(i=i_reg, copy=True)
     nr_elems_after = len(state.current_page)
@@ -184,14 +184,14 @@ def test_unbox(state):
 
 def test_unbox_bad_box_type(state):
     box_item = box.HBox(contents=[box.Rule(1, 1, 1), box.Rule(2, 2, 2)])
-    state.set_box_register(i=2, item=box_item, is_global=False)
+    state.set_box_register(token_source=None, i=2, item=box_item, is_global=False)
     with pytest.raises(UserError):
         state.append_unboxed_register_v_box(i=2, copy=False)
 
 
 def test_get_box_dimen(state):
     box_item = box.HBox(contents=[], to=100)
-    state.set_box_register(i=2, item=box_item, is_global=False)
+    state.set_box_register(token_source=None, i=2, item=box_item, is_global=False)
     b = state.get_box_dimen(i=2, type_=Instructions.box_dimen_width.value)
     assert b == 100
 
@@ -209,7 +209,7 @@ def test_command_token_get_box(state):
     i_reg = 5
     # Get a box in to retrieve.
     box_item = box.HBox(contents=[])
-    state.set_box_register(i=i_reg, item=box_item, is_global=False)
+    state.set_box_register(token_source=None, i=i_reg, item=box_item, is_global=False)
 
     get_box_tok = BuiltToken(type_=Instructions.box.value,
                              value=nr_tok(i_reg))
@@ -247,7 +247,7 @@ def test_command_token_code_assignment(state):
 def test_command_token_unbox(state):
     i_reg = 3
     box_item = box.VBox(contents=[box.Rule(1, 1, 1), box.Rule(2, 2, 2)])
-    state.set_box_register(i=i_reg, item=box_item, is_global=False)
+    state.set_box_register(token_source=None, i=i_reg, item=box_item, is_global=False)
     nr_elems_before = len(state.current_page)
 
     get_box_tok = BuiltToken(type_='un_box',

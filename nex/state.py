@@ -160,6 +160,15 @@ def check_not_horizontal(method):
     return inner
 
 
+def after_assignment(method):
+    def inner(self, token_source, *args, **kwargs):
+        method(self, token_source, *args, **kwargs)
+        if self.after_assignment_token is not None:
+            token_source.replace_tokens_on_input([self.after_assignment_token])
+            self.after_assignment_token = None
+    return inner
+
+
 class ExecuteCommandError(Exception):
 
     def __init__(self, command, exception):
@@ -519,19 +528,22 @@ class GlobalState:
         for acc in self._scoped_accessors:
             acc.pop_scope()
         if self.current_font_id != GlobalFontState.null_font_id:
-            self.select_font(is_global=False, font_id=self.current_font_id)
+            self._select_font(is_global=False, font_id=self.current_font_id)
 
     # Fonts.
 
-    def define_new_font(self, file_name, at_clause):
+    def load_new_font(self, file_name, at_clause):
         # Affects both global and scoped state: fonts are stored in the global
         # state, but the current font and control sequences to access them are
         # scoped.
         # Load the font.
+        logger.info(f"Loading font at '{file_name}'")
         new_font_id = self.global_font_state.define_new_font(file_name,
                                                              at_clause)
         # Add an instruction in the layout list to define a font.
         font_info = self.global_font_state.get_font(new_font_id)
+        # Commands like font commands aren't exactly boxes, but they go through
+        # as DVI commands. Just put them in the box for now to deal with later.
         font_define_item = FontDefinition(font_nr=new_font_id,
                                           font_name=font_info.font_name,
                                           file_name=font_info.file_name,
@@ -546,11 +558,6 @@ class GlobalState:
     @property
     def current_font(self):
         return self.global_font_state.get_font(self.current_font_id)
-
-    def select_font(self, is_global, font_id):
-        self.scoped_font_state.set_current_font(is_global, font_id)
-        font_select_item = FontSelection(font_nr=font_id)
-        self.append_to_list(font_select_item)
 
     # Evaluate quantities.
 
@@ -965,10 +972,6 @@ class GlobalState:
         else:
             raise NotImplementedError
 
-    def set_box_register(self, i, item, is_global):
-        self.registers.set(type_=Instructions.set_box.value, i=i,
-                           value=item, is_global=is_global)
-
     def get_register_box(self, i, copy):
         if copy:
             get_func = self.registers.get
@@ -1092,6 +1095,118 @@ class GlobalState:
     def push_to_after_group_queue(self, token):
         self.after_group_queue.append(token)
 
+    def set_after_assignment_token(self, token):
+        self.after_assignment_token = token
+
+    @after_assignment
+    def do_macro_assigment(self, token_source,
+                           name, parameter_text, replacement_text,
+                           def_type, prefixes):
+        logger.info(f"Defining macro '{name}'")
+        self.router.set_macro(
+                name, parameter_text=parameter_text,
+                replacement_text=replacement_text,
+                def_type=def_type, prefixes=prefixes,
+        )
+
+    @after_assignment
+    def set_register(self, token_source, is_global, type_, i, value):
+        logger.info(f"Setting '{type_}' register '{i}' to '{value}'")
+        self.registers.set(is_global, type_, i, value)
+
+    @after_assignment
+    def modify_register(self, token_source, is_global, type_, i, by_operand,
+                        operation):
+        logger.info(f"Modifying '{type_}' register '{i}'")
+        self.registers.modify_register_value(is_global, type_, i,
+                                             by_operand, operation)
+
+    @after_assignment
+    def set_parameter(self, token_source, is_global, name, value):
+        logger.info(f"Setting parameter '{name}' to '{value}'")
+        self.parameters.set_parameter(is_global, name, value)
+
+    @after_assignment
+    def modify_parameter(self, token_source, is_global, parameter,
+                         by_operand, operation):
+        logger.info(f"Modifying parameter '{parameter}'")
+        self.parameters.modify_parameter_value(is_global, parameter,
+                                               by_operand, operation)
+
+    @after_assignment
+    def set_code(self, token_source, is_global, code_type,
+                 char_size, code_size):
+        logger.info(f"Setting '{code_type}' code '{code_size}' to '{char_size}'")
+        self.codes.set_by_nrs(
+            is_global=is_global,
+            code_type=code_type,
+            char_size=char_size,
+            code_size=code_size,
+        )
+
+    @after_assignment
+    def do_let_assignment(self, token_source, new_name, *args, **kwargs):
+        logger.info(f"Doing let assignment to '{new_name}'")
+        self.router.do_let_assignment(new_name=new_name, *args, **kwargs)
+
+    @after_assignment
+    def do_short_hand_definition(self, token_source, is_global, name,
+                                 def_type, code):
+        logger.info(f"Defining short macro '{name}' as {code}")
+        self.router.do_short_hand_definition(
+            is_global=is_global,
+            name=name,
+            def_type=def_type,
+            code=code,
+        )
+
+    def _select_font(self, is_global, font_id):
+        self.scoped_font_state.set_current_font(is_global, font_id)
+        font_select_item = FontSelection(font_nr=font_id)
+        # Commands like font commands aren't exactly boxes, but they go through
+        # as DVI commands. Just put them in the box for now to deal with later.
+        self.append_to_list(font_select_item)
+
+    @after_assignment
+    def select_font(self, token_source, is_global, font_id):
+        logger.info(f"Selecting font '{font_id}'")
+        self._select_font(is_global=is_global, font_id=font_id)
+
+    @after_assignment
+    def set_font_family(self, token_source, is_global, family_nr, font_range, font_id):
+        logger.info(f"Setting font family '{family_nr}'")
+        self.scoped_font_state.set_font_family(
+            is_global=is_global,
+            family_nr=family_nr,
+            font_range=font_range,
+            font_id=font_id
+        )
+
+    @after_assignment
+    def set_box_register(self, token_source, i, item, is_global):
+        logger.info(f"Setting box register")
+        self.registers.set(type_=Instructions.set_box.value, i=i,
+                           value=item, is_global=is_global)
+
+    @after_assignment
+    def define_new_font(self, token_source,
+                        file_name, at_clause, cs_name, is_global):
+        new_font_id = self.load_new_font(file_name, at_clause)
+        logger.info(f"Defining new font '{new_font_id}' as '{cs_name}'")
+        # Make a control sequence pointing to it.
+        self.router.define_new_font_control_sequence(
+            is_global, cs_name, new_font_id)
+
+    @after_assignment
+    def set_skew_char(self, token_source, *args, **kwargs):
+        logger.info(f"Setting skew character")
+        self.global_font_state.set_skew_char(*args, **kwargs)
+
+    @after_assignment
+    def set_hyphen_char(self, token_source, *args, **kwargs):
+        logger.info(f"Setting hyphen character")
+        self.global_font_state.set_hyphen_char(*args, **kwargs)
+
     # Driving with tokens.
 
     def execute_command_tokens(self, commands, banisher, reader):
@@ -1105,12 +1220,7 @@ class GlobalState:
 
     def execute_next_command_token(self, commands, banisher, reader):
         command = next(commands)
-        try:
-            self.execute_command_token(command, banisher, reader)
-        except (EOFError, EndOfSubExecutor, TidyEnd):
-            raise
-        except Exception as e:
-            raise ExecuteCommandError(command, e)
+        self.execute_command_token(command, banisher, reader)
 
     def _parse_box_token(self, v, horizontal):
         conts = v['contents']
@@ -1361,29 +1471,6 @@ class GlobalState:
             else:
                 raise ValueError(f'Unknown unbox command type: {cmd_type}')
             method(i=reg_nr, copy=is_copy)
-        # Commands like font commands aren't exactly boxes, but they go through
-        # as DVI commands. Just put them in the box for now to deal with later.
-        elif type_ == 'font_selection':
-            logger.info(f"Selecting font {v['font_id']}")
-            self.select_font(v['global'], v['font_id'])
-        elif type_ == 'font_definition':
-            file_name = v['file_name'].value
-            cs_name = v['control_sequence_name']
-            logger.info(f"Defining font at '{file_name}' as '{cs_name}'")
-            new_font_id = self.define_new_font(
-                file_name, v['at_clause'],
-            )
-            # Make a control sequence pointing to it.
-            self.router.define_new_font_control_sequence(
-                v['global'], cs_name, new_font_id)
-        elif type_ == 'family_assignment':
-            family_nr_uneval = v['family_nr']
-            family_nr_eval = self.eval_number_token(family_nr_uneval)
-            logger.info(f"Setting font family {family_nr_eval}")
-            self.scoped_font_state.set_font_family(v['global'],
-                                                   family_nr_eval,
-                                                   v['font_range'],
-                                                   v['font_id'])
         elif type_ == 'input':
             file_name = command.value['file_name']
             logger.info(f"Inserting new file '{file_name}'")
@@ -1392,103 +1479,6 @@ class GlobalState:
         # EOFError anywhere. But for now, whatever.
         elif type_ == Instructions.end.value:
             self.do_end()
-        elif type_ == 'short_hand_definition':
-            code_uneval = v['code']
-            code_eval = self.eval_number_token(code_uneval)
-            cs_name = v['control_sequence_name']
-            # TODO: Log symbolic argument too.
-            logger.info(f'Defining short macro "{cs_name}" as {code_eval}')
-            self.router.do_short_hand_definition(
-                v['global'], cs_name, v['def_type'],
-                code_eval
-            )
-        elif type_ == 'macro_assignment':
-            name = v['name']
-            logger.info(f'Defining macro "{name}"')
-            self.router.set_macro(
-                name, parameter_text=v['parameter_text'],
-                replacement_text=v['replacement_text'],
-                def_type=v['def_type'], prefixes=v['prefixes']
-            )
-        elif type_ == 'variable_assignment':
-            logger.info(f'Doing variable assignment')
-            variable, value = v['variable'], v['value']
-            # The value might be a variable reference or something, so we must
-            # evaluate it to its contents first before assigning a variable to
-            # it.
-            value_evaluate_map = {
-                'number': self.eval_number_token,
-                'dimen': self.eval_number_token,
-                'glue': self.eval_glue_token,
-                'token_list': self.eval_token_list_token,
-            }
-            value_evaluate_func = value_evaluate_map[value.type]
-            evaled_value = value_evaluate_func(value)
-            if is_register_type(variable.type):
-                evaled_i = self.eval_number_token(variable.value)
-                self.registers.set(
-                    type_=variable.type, i=evaled_i, value=evaled_value,
-                    is_global=v['global'],
-                )
-            elif is_parameter_type(variable.type):
-                parameter = variable.value['parameter']
-                self.parameters.set_parameter(
-                    name=parameter, value=evaled_value,
-                    is_global=v['global'],
-                )
-        elif type_ == 'advance':
-            logger.info(f"Doing variable modification of type {type_}")
-            variable, value = v['variable'], v['value']
-            # See 'variable_assignment' case.
-            evaled_value = self.eval_number_token(value)
-            kwargs = {'is_global': v['global'],
-                      'by_operand': evaled_value,
-                      'operation': Operation.advance}
-            if is_register_type(variable.type):
-                evaled_i = self.eval_number_token(variable.value)
-                self.registers.modify_register_value(
-                    type_=variable.type, i=evaled_i, **kwargs
-                )
-            elif is_parameter_type(variable.type):
-                self.parameters.modify_parameter_value(
-                    name=variable.value['parameter'], **kwargs
-                )
-            else:
-                raise ValueError(f"Unknown unknown variable type: "
-                                 f"'{variable.type}'")
-        elif type_ == Instructions.set_box.value:
-            logger.info(f"Setting box register")
-            evaled_i = self.eval_number_token(v['nr'])
-            box_type = v['box'].type
-            horizontal = box_type == Instructions.h_box.value
-            box_item = self._parse_box_token(v['box'].value,
-                                             horizontal=horizontal)
-            self.set_box_register(evaled_i, box_item, v['global'])
-        elif type_ == Instructions.patterns.value:
-            raise NotImplementedError
-        elif type_ == Instructions.hyphenation.value:
-            raise NotImplementedError
-        elif type_ == 'code_assignment':
-            code_type = v['code_type']
-            logger.info(f"Assigning code value of type '{code_type}'")
-            char_size = self.eval_number_token(v['char'])
-            code_size = self.eval_number_token(v['code'])
-            self.codes.set_by_nrs(is_global=v['global'],
-                                  code_type=code_type,
-                                  char_size=char_size,
-                                  code_size=code_size)
-        elif type_ == 'let_assignment':
-            logger.info(f"Doing let assignment to '{v['name']}'")
-            self.router.do_let_assignment(v['global'], new_name=v['name'],
-                                          target_token=v['target_token'])
-        elif type_ == 'skew_char_assignment':
-            logger.info(f"Setting skew character")
-            code_eval = self.eval_number_token(v['code'])
-            self.global_font_state.set_hyphen_char(v['font_id'], code_eval)
-        elif type_ == 'hyphen_char_assignment':
-            logger.info(f"Setting hyphen character")
-            code_eval = self.eval_number_token(v['code'])
-            self.global_font_state.set_hyphen_char(v['font_id'], code_eval)
         elif type_ == 'message':
             logger.info(f"Doing 'message' command")
             conts = v['content'].value
@@ -1547,6 +1537,133 @@ class GlobalState:
             self.push_to_after_group_queue(v)
         elif type_ == Instructions.after_assignment.value:
             self.set_after_assignment_token(v)
+        # Start of assignments.
+        elif type_ == 'macro_assignment':
+            self.do_macro_assigment(
+                token_source=banisher,
+                name=v['name'],
+                parameter_text=v['parameter_text'],
+                replacement_text=v['replacement_text'],
+                def_type=v['def_type'],
+                prefixes=v['prefixes'],
+            )
+        elif type_ == 'variable_assignment':
+            variable, value = v['variable'], v['value']
+            # The value might be a variable reference or something, so we must
+            # evaluate it to its contents first before assigning a variable to
+            # it.
+            value_evaluate_map = {
+                'number': self.eval_number_token,
+                'dimen': self.eval_number_token,
+                'glue': self.eval_glue_token,
+                'token_list': self.eval_token_list_token,
+            }
+            value_evaluate_func = value_evaluate_map[value.type]
+            evaled_value = value_evaluate_func(value)
+            if is_register_type(variable.type):
+                evaled_i = self.eval_number_token(variable.value)
+                self.set_register(
+                    token_source=banisher,
+                    type_=variable.type,
+                    i=evaled_i,
+                    value=evaled_value,
+                    is_global=v['global'],
+                )
+            elif is_parameter_type(variable.type):
+                parameter = variable.value['parameter']
+                self.set_parameter(
+                    token_source=banisher,
+                    name=parameter,
+                    value=evaled_value,
+                    is_global=v['global'],
+                )
+            else:
+                raise ValueError(f"Unknown variable type: '{variable.type}'")
+        elif type_ == 'advance':
+            variable, value = v['variable'], v['value']
+            # See 'variable_assignment' case.
+            evaled_value = self.eval_number_token(value)
+            kwargs = {'is_global': v['global'],
+                      'by_operand': evaled_value,
+                      'operation': Operation.advance}
+            if is_register_type(variable.type):
+                evaled_i = self.eval_number_token(variable.value)
+                self.modify_register(
+                    token_source=banisher,
+                    type_=variable.type,
+                    i=evaled_i,
+                    **kwargs
+                )
+            elif is_parameter_type(variable.type):
+                parameter = variable.value['parameter']
+                self.modify_parameter(
+                    token_source=banisher,
+                    name=parameter,
+                    **kwargs
+                )
+            else:
+                raise ValueError(f"Unknown variable type: '{variable.type}'")
+        elif type_ == 'code_assignment':
+            char_size = self.eval_number_token(v['char'])
+            code_size = self.eval_number_token(v['code'])
+            self.set_code(
+                token_source=banisher,
+                is_global=v['global'],
+                code_type=v['code_type'],
+                char_size=char_size,
+                code_size=code_size,
+            )
+        elif type_ == 'let_assignment':
+            self.do_let_assignment(
+                token_source=banisher,
+                is_global=v['global'],
+                new_name=v['name'],
+                target_token=v['target_token']
+            )
+        elif type_ == 'short_hand_definition':
+            code_uneval = v['code']
+            # TODO: Log symbolic argument too.
+            code_eval = self.eval_number_token(code_uneval)
+            cs_name = v['control_sequence_name']
+            self.do_short_hand_definition(
+                banisher, v['global'], cs_name, v['def_type'],
+                code_eval,
+            )
+        elif type_ == 'font_selection':
+            self.select_font(banisher, v['global'], v['font_id'])
+        elif type_ == 'family_assignment':
+            family_nr_eval = self.eval_number_token(v['family_nr'])
+            self.set_font_family(banisher, v['global'], family_nr_eval,
+                                 v['font_range'], v['font_id'])
+        elif type_ == Instructions.set_box.value:
+            evaled_i = self.eval_number_token(v['nr'])
+            box_type = v['box'].type
+            horizontal = box_type == Instructions.h_box.value
+            box_item = self._parse_box_token(v['box'].value,
+                                             horizontal=horizontal)
+            self.set_box_register(banisher, evaled_i, box_item, v['global'])
+        elif type_ == 'font_definition':
+            self.define_new_font(banisher,
+                                 v['file_name'].value, v['at_clause'],
+                                 v['control_sequence_name'], v['global'])
+        elif type_ == 'skew_char_assignment':
+            code_eval = self.eval_number_token(v['code'])
+            self.set_skew_char(banisher, v['font_id'], code_eval)
+        elif type_ == 'hyphen_char_assignment':
+            code_eval = self.eval_number_token(v['code'])
+            self.set_hyphen_char(banisher, v['font_id'], code_eval)
+        # TODO: implement this, and mark method with 'assignment' decorator.
+        elif type_ == Instructions.hyphenation.value:
+            raise NotImplementedError
+        # TODO: implement this, and mark method with 'assignment' decorator.
+        elif type_ == Instructions.patterns.value:
+            raise NotImplementedError
+        # TODO: handle these commands, and mark them with 'assignments'
+        # decorator:
+        # box_size_assignment
+        # interaction_mode_assignment
+        # intimate_assignment
+        # End of assignments.
         else:
             raise ValueError(f"Command type '{type_}' not recognised.")
 
