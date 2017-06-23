@@ -13,10 +13,6 @@ and the number of constants using::
 
   len(enum1)
 
-The enum factory :func:`ExplicitEnumFactory` permits to specify the values of the constants::
-        
-  enum2 = ExplicitEnumFactory('Enum2', {'cst1':1, 'cst2':3})
-
 We can test if a value is in the enum using::
 
   constant_value in enum2
@@ -24,7 +20,7 @@ We can test if a value is in the enum using::
 """
 
 
-__all__ = ['EnumFactory', 'ExplicitEnumFactory']
+__all__ = ['EnumFactory']
 
 
 class ReadOnlyMetaClass(type):
@@ -45,15 +41,6 @@ class EnumMetaClass(ReadOnlyMetaClass):
         return self._size
 
 
-class ExplicitEnumMetaClass(ReadOnlyMetaClass):
-
-    """ This meta class implements the operator ``in``. """
-
-    def __contains__(self, item):
-
-        return item in self.constants
-
-
 def EnumFactory(cls_name, constant_names):
     """ Return an :class:`EnumMetaClass` instance, where *cls_name* is the class name and
     *constant_names* is an iterable of constant's names.
@@ -65,16 +52,3 @@ def EnumFactory(cls_name, constant_names):
         dict_[str(name)] = index
 
     return EnumMetaClass(cls_name, (), dict_)
-
-
-def ExplicitEnumFactory(cls_name, constant_dict):
-    """ Return an :class:`ExplicitEnumMetaClass` instance, where *cls_name* is the class name and
-    *constant_dict* is a dict of constant's names and their values.
-    """
-
-    dict_ = {}
-    dict_['constants'] = list(constant_dict.values())
-    for name, value in list(constant_dict.items()):
-        dict_[name] = value
-
-    return ExplicitEnumMetaClass(cls_name, (), dict_)

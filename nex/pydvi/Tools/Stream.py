@@ -1,8 +1,7 @@
 __all__ = ['AbstractStream', 'StandardStream',
-           'FileStream', 'ByteStream', 'to_fix_word']
+           'FileStream', 'to_fix_word']
 
 
-import io
 import mmap
 import os
 
@@ -207,15 +206,3 @@ class FileStream(StandardStream):
 
         self.stream.close()
         self.file.close()
-
-
-class ByteStream(StandardStream):
-
-    def __init__(self, string_bytes):
-
-        self._length = len(string_bytes)
-        self.stream = io.BytesIO(string_bytes)
-        # self.seek(0)
-
-    def end_of_stream(self):
-        return self.tell() == self._length
