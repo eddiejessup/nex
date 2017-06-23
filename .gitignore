@@ -1,15 +1,21 @@
+# general things to ignore
+build/
+dist/
+*.egg-info/
+*.egg
+*.py[cod]
 __pycache__/
-texbook.tex
+*.so
+*~
+
 parser.out
 parsetab.py
 .DS_Store
 *.log
-*.pyc
 *.pdf
 *.dvi
 *.tfm
 .cache/
-manmac.tex
-tex.web
 .coverage
 htmlcov/
+.mypy_cache/
