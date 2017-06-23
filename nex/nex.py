@@ -4,13 +4,14 @@ import os.path as opath
 import sys
 
 from .utils import ensure_extension, get_default_font_paths
-from .run_utils import run_and_write
-from .reader import logger as read_logger
-from .lexer import logger as lex_logger
-from .router import logger as instr_logger
-from .banisher import logger as banish_logger
-from .parsing.utils import logger as chunk_logger
-from .state import logger as state_logger
+from .reader import logger as read_logger, Reader
+from .lexer import logger as lex_logger, Lexer
+from .router import logger as instr_logger, Instructioner
+from .banisher import logger as banish_logger, Banisher
+from .parsing.utils import logger as chunk_logger, chunk_iter
+from .parsing.parsing import command_parser
+from .state import logger as state_logger, GlobalState, TidyEnd
+from .box_writer import write_to_dvi_file
 
 dir_path = opath.dirname(opath.realpath(__file__))
 
@@ -19,6 +20,50 @@ default_font_search_paths = get_default_font_paths() + [
     dir_path,
     opath.join(dir_path, 'fonts'),
 ]
+
+
+def make_input_chain(state):
+    reader = Reader()
+    lexer = Lexer(reader, get_cat_code_func=state.codes.get_cat_code)
+    instructioner = Instructioner(
+        lexer=lexer,
+        resolve_cs_func=state.router.lookup_control_sequence
+    )
+    banisher = Banisher(
+        instructions=instructioner,
+        state=state,
+        reader=reader,
+    )
+    return banisher, reader
+
+
+def run_state(state, input_paths):
+    banisher, reader = make_input_chain(state)
+
+    command_grabber = chunk_iter(banisher, command_parser)
+    for input_path in input_paths:
+        reader.insert_file(input_path)
+        state.execute_command_tokens(command_grabber, banisher, reader)
+
+    while True:
+        s = input('In: ')
+        reader.insert_string(s + '\n')
+        command_grabber = chunk_iter(banisher, command_parser)
+        state.execute_command_tokens(command_grabber, banisher, reader)
+
+
+def run_files(font_search_paths, input_paths):
+    state = GlobalState.from_defaults(font_search_paths)
+    try:
+        run_state(state, input_paths)
+    except TidyEnd:
+        return state
+    raise Exception('Left run_state without TidyEnd occurring.')
+
+
+def run_and_write(font_search_paths, input_paths, dvi_path, write_pdf):
+    state = run_files(font_search_paths, input_paths)
+    write_to_dvi_file(state, dvi_path, write_pdf=write_pdf)
 
 
 def log_level(v):
