@@ -111,8 +111,7 @@ shift_to_horizontal_instructions = (
     # Instructions.control_hyphen,
     # TODO: Add control-space primitive, parsing and control sequence.
     # Instructions.control_space,
-)
-shift_to_horizontal_instructions += tuple(h_add_glue_instructions)
+) + tuple(h_add_glue_instructions)
 shift_to_horizontal_types = instructions_to_types(shift_to_horizontal_instructions)
 shift_to_horizontal_cat_codes = (CatCode.letter,
                                  CatCode.other,
@@ -126,8 +125,7 @@ shift_to_vertical_instructions = (
     Instructions.h_rule,
     Instructions.end,
     # Instructions.dump,
-)
-shift_to_vertical_instructions += tuple(v_add_glue_instructions)
+) + tuple(v_add_glue_instructions)
 shift_to_vertical_types = instructions_to_types(shift_to_vertical_instructions)
 
 

@@ -165,7 +165,7 @@ class ScopedFontState(ScopedAccessor):
         return cls(FontState.default_initial(), FontState.default_local)
 
     @property
-    def current_font_id(self, *args, **kwargs):
+    def current_font_id(self):
         return self.try_scope_attr_until_success('current_font_id')
 
     def set_current_font(self, is_global, *args, **kwargs):
