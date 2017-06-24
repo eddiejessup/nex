@@ -4,6 +4,7 @@ Define the list of internal parameters that TeX requires to run. For example,
 types, roughly: integers, dimensions (physical lengths), 'glue' (a physical
 length that can vary to some extent), and lists of tokens.
 """
+from typing import Dict, Tuple, Iterable
 
 from enum import Enum
 
@@ -117,7 +118,7 @@ class Parameters(Enum):
     err_help = 'ERR_HELP'
 
 
-param_to_instr = {
+param_to_instr: Dict[Parameters, Instructions] = {
     Parameters.pre_tolerance: Instructions.integer_parameter,
     Parameters.tolerance: Instructions.integer_parameter,
     Parameters.h_badness: Instructions.integer_parameter,
@@ -222,21 +223,26 @@ param_to_instr = {
     Parameters.every_cr: Instructions.token_parameter,
     Parameters.err_help: Instructions.token_parameter,
 }
-param_to_type = {p: instr.value for p, instr in param_to_instr.items()}
 
-param_instrs = (
+param_to_type: Dict[Parameters, str] = {
+    p: instr.value
+    for p, instr in param_to_instr.items()
+}
+
+param_instrs: Tuple[Instructions, ...] = (
     Instructions.integer_parameter,
     Instructions.dimen_parameter,
     Instructions.glue_parameter,
     Instructions.mu_glue_parameter,
     Instructions.token_parameter,
 )
-parameter_instr_types = instructions_to_types(param_instrs)
+
+parameter_instr_types: Tuple[str, ...] = instructions_to_types(param_instrs)
 
 
-def param_instr_subset(instr):
-    return filter(lambda p: param_to_instr[p] == instr, Parameters)
+def param_instr_subset(instr: Instructions) -> Iterable[Parameters]:
+    return (p for p in Parameters if param_to_instr[p] == instr)
 
 
-def is_parameter_type(type_):
+def is_parameter_type(type_: str) -> bool:
     return type_ in parameter_instr_types

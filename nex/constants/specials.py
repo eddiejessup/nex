@@ -5,6 +5,8 @@ page so far. These may vary while TeX runs, as opposed to the more static
 'Parameters'. However, they are similar in many ways.
 They have two types: integers, and dimensions (physical lengths).
 """
+from typing import Dict, Tuple
+
 from enum import Enum
 
 from .instructions import Instructions
@@ -47,7 +49,7 @@ class Specials(Enum):
     page_shrink = 'PAGE_SHRINK'
 
 
-special_to_instr = {
+special_to_instr: Dict[Specials, Instructions] = {
     Specials.space_factor: Instructions.special_integer,
     # The number of lines in the paragraph most recently completed or partially
     # completed.
@@ -82,14 +84,19 @@ special_to_instr = {
     # The amount of finite shrinkability in the current page.
     Specials.page_shrink: Instructions.special_dimen,
 }
-special_to_type = {p: instr.value for p, instr in special_to_instr.items()}
 
-special_instrs = (
+special_to_type: Dict[Specials, str] = {
+    s: instr.value
+    for s, instr in special_to_instr.items()
+}
+
+special_instrs: Tuple[Instructions, ...] = (
     Instructions.special_integer,
     Instructions.special_dimen,
 )
-special_instr_types = instructions_to_types(special_instrs)
+
+special_instr_types: Tuple[str, ...] = instructions_to_types(special_instrs)
 
 
-def is_special_type(type_):
+def is_special_type(type_: str) -> bool:
     return type_ in special_instr_types

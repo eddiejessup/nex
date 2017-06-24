@@ -4,7 +4,8 @@ to values such as their category (letter, space, comment and such),
 how they behave in mathematics (binary relation, large operator and such),
 and their status as delimiters.
 """
-from collections import namedtuple
+from typing import NamedTuple
+
 from enum import Enum
 
 
@@ -46,14 +47,24 @@ class MathClass(Enum):
     special_active = 8  # Weird special case.
 
 
-GlyphCode = namedtuple('GlyphCode', ('family', 'position'))
+class GlyphCode(NamedTuple):
+    family: int
+    position: int
+
+
+class MathCode(NamedTuple):
+    math_class: MathClass
+    glyph_code: GlyphCode
+
+
+class DelimiterCode(NamedTuple):
+    small_glyph_code: GlyphCode
+    large_glyph_code: GlyphCode
+
+
 ignored_glyph_code = GlyphCode(family=0, position=0)
-
-MathCode = namedtuple('MathCode', ('math_class', 'glyph_code'))
-active_math_code = MathCode(MathClass.special_active, ignored_glyph_code)
-
-DelimiterCode = namedtuple('DelimiterCode',
-                           ('small_glyph_code', 'large_glyph_code'))
+active_math_code = MathCode(math_class=MathClass.special_active,
+                            glyph_code=ignored_glyph_code)
 not_a_delimiter_code = DelimiterCode(small_glyph_code=None,
                                      large_glyph_code=None)
 ignored_delimiter_code = DelimiterCode(small_glyph_code=ignored_glyph_code,
