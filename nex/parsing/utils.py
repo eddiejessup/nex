@@ -3,22 +3,71 @@ from collections import deque
 
 from ..tokens import BuiltToken
 from ..utils import LogicError
-from ..router import NoSuchControlSequence, non_active_letters_map
+from ..router import NoSuchControlSequence
+from ..constants.instructions import Instructions
 
 logger = logging.getLogger(__name__)
 
 # Stuff specific to *my parsing*.
 
-letter_to_non_active_uncased_type_map = {}
-for c, instr in non_active_letters_map.items():
-    type_ = instr.value
+letter_to_non_active_uncased_type_map = {
     #  For hex characters, need to look for the composite production, not the
     #  terminal production, because could be, for example, 'A' or
-    #  'NON_ACTIVE_UNCASED_a', so we should look for the composite production,
+    #  'NON_ACTIVE_UNCASED_A', so we should look for the composite production,
     #  'non_active_uncased_a'.
-    if c in ('A', 'B', 'C', 'D', 'E', 'F'):
-        type_ = type_.lower()
-    letter_to_non_active_uncased_type_map[c] = type_
+    'A': 'non_active_uncased_a',
+    'B': 'non_active_uncased_b',
+    'C': 'non_active_uncased_c',
+    'D': 'non_active_uncased_d',
+    'E': 'non_active_uncased_e',
+    'F': 'non_active_uncased_f',
+    'a': Instructions.non_active_uncased_a.value,
+    'b': Instructions.non_active_uncased_b.value,
+    'c': Instructions.non_active_uncased_c.value,
+    'd': Instructions.non_active_uncased_d.value,
+    'e': Instructions.non_active_uncased_e.value,
+    'f': Instructions.non_active_uncased_f.value,
+    'g': Instructions.non_active_uncased_g.value,
+    'h': Instructions.non_active_uncased_h.value,
+    'i': Instructions.non_active_uncased_i.value,
+    'j': Instructions.non_active_uncased_j.value,
+    'k': Instructions.non_active_uncased_k.value,
+    'l': Instructions.non_active_uncased_l.value,
+    'm': Instructions.non_active_uncased_m.value,
+    'n': Instructions.non_active_uncased_n.value,
+    'o': Instructions.non_active_uncased_o.value,
+    'p': Instructions.non_active_uncased_p.value,
+    'q': Instructions.non_active_uncased_q.value,
+    'r': Instructions.non_active_uncased_r.value,
+    's': Instructions.non_active_uncased_s.value,
+    't': Instructions.non_active_uncased_t.value,
+    'u': Instructions.non_active_uncased_u.value,
+    'v': Instructions.non_active_uncased_v.value,
+    'w': Instructions.non_active_uncased_w.value,
+    'x': Instructions.non_active_uncased_x.value,
+    'y': Instructions.non_active_uncased_y.value,
+    'z': Instructions.non_active_uncased_z.value,
+    'G': Instructions.non_active_uncased_g.value,
+    'H': Instructions.non_active_uncased_h.value,
+    'I': Instructions.non_active_uncased_i.value,
+    'J': Instructions.non_active_uncased_j.value,
+    'K': Instructions.non_active_uncased_k.value,
+    'L': Instructions.non_active_uncased_l.value,
+    'M': Instructions.non_active_uncased_m.value,
+    'N': Instructions.non_active_uncased_n.value,
+    'O': Instructions.non_active_uncased_o.value,
+    'P': Instructions.non_active_uncased_p.value,
+    'Q': Instructions.non_active_uncased_q.value,
+    'R': Instructions.non_active_uncased_r.value,
+    'S': Instructions.non_active_uncased_s.value,
+    'T': Instructions.non_active_uncased_t.value,
+    'U': Instructions.non_active_uncased_u.value,
+    'V': Instructions.non_active_uncased_v.value,
+    'W': Instructions.non_active_uncased_w.value,
+    'X': Instructions.non_active_uncased_x.value,
+    'Y': Instructions.non_active_uncased_y.value,
+    'Z': Instructions.non_active_uncased_z.value,
+}
 
 
 def make_literal_token(p):

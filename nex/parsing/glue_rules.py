@@ -64,7 +64,7 @@ def add_glue_rules(pg):
         return BuiltToken(type_='dimen', value={'signs': p[0], 'size': size_token},
                           position_like=p)
 
-    @pg.production('fil_unit : fil_unit NON_ACTIVE_UNCASED_l')
+    @pg.production('fil_unit : fil_unit NON_ACTIVE_UNCASED_L')
     def fil_unit_append(p):
         # Add one infinity for every letter 'l'.
         unit = p[0]

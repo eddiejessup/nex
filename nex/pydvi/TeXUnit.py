@@ -14,6 +14,8 @@ The DVI format uses the measure 100 nm as base unit. A scaled point is defined a
 
 For a resolution of 1200 dpi, a pixel measures 21 um.
 """
+from typing import SupportsFloat, cast
+
 import fractions
 
 # x_in_y means number of x corresponding to 1 y
@@ -38,7 +40,7 @@ inch_in_point = 1 / point_in_inch
 mm_in_point = 1 / point_in_mm
 pt_in_sp = fractions.Fraction(1, scaled_point_in_point)
 
-inch_in_mm_f = float(inch_in_mm)
+inch_in_mm_f = float(cast(SupportsFloat, inch_in_mm))
 inch_in_point_f = float(inch_in_point)
 mm_in_inch_f = float(mm_in_inch)
 mm_in_point_f = float(mm_in_point)

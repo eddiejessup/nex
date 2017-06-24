@@ -1,5 +1,3 @@
-from string import ascii_lowercase
-
 from ..constants.instructions import (Instructions as I,
                                       message_instructions,
                                       hyphenation_instructions,
@@ -119,11 +117,33 @@ terminal_instructions = (
     I.unexpanded_control_word,
     I.after_assignment,
     I.after_group,
+    I.non_active_uncased_a,
+    I.non_active_uncased_b,
+    I.non_active_uncased_c,
+    I.non_active_uncased_d,
+    I.non_active_uncased_e,
+    I.non_active_uncased_f,
+    I.non_active_uncased_g,
+    I.non_active_uncased_h,
+    I.non_active_uncased_i,
+    I.non_active_uncased_j,
+    I.non_active_uncased_k,
+    I.non_active_uncased_l,
+    I.non_active_uncased_m,
+    I.non_active_uncased_n,
+    I.non_active_uncased_o,
+    I.non_active_uncased_p,
+    I.non_active_uncased_q,
+    I.non_active_uncased_r,
+    I.non_active_uncased_s,
+    I.non_active_uncased_t,
+    I.non_active_uncased_u,
+    I.non_active_uncased_v,
+    I.non_active_uncased_w,
+    I.non_active_uncased_x,
+    I.non_active_uncased_y,
+    I.non_active_uncased_z,
 )
-# Add ordinary character literals.
-char_instructions = tuple(I['non_active_uncased_{}'.format(c.lower())]
-                          for c in ascii_lowercase)
-terminal_instructions += char_instructions
 terminal_instructions += register_instructions
 terminal_instructions += message_instructions
 terminal_instructions += hyphenation_instructions

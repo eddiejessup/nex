@@ -38,7 +38,7 @@ def add_assignment_rules(pg):
                                      **p[2].value),
                           position_like=p)
 
-    @pg.production('def : DEF_')
+    @pg.production('def : DEF')
     @pg.production('def : G_DEF')
     @pg.production('def : E_DEF')
     @pg.production('def : X_DEF')

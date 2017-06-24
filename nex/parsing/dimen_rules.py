@@ -166,17 +166,17 @@ def add_dimen_rules(pg):
         return make_unit_tok(PhysicalUnit.centimetre, p)
 
     @pg.production(pu.get_literal_production_rule('mm', target='physical_unit'))
-    def physical_unit_centimetre(p):
+    def physical_unit_millimetre(p):
         return make_unit_tok(PhysicalUnit.millimetre, p)
 
     @pg.production(pu.get_literal_production_rule('dd', target='physical_unit'))
-    def physical_unit_centimetre(p):
+    def physical_unit_didot_point(p):
         return make_unit_tok(PhysicalUnit.didot_point, p)
 
     @pg.production(pu.get_literal_production_rule('cc', target='physical_unit'))
-    def physical_unit_centimetre(p):
+    def physical_unit_cicero(p):
         return make_unit_tok(PhysicalUnit.cicero, p)
 
     @pg.production(pu.get_literal_production_rule('sp', target='physical_unit'))
-    def physical_unit_centimetre(p):
+    def physical_unit_scaled_point(p):
         return make_unit_tok(PhysicalUnit.scaled_point, p)

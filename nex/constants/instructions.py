@@ -4,260 +4,280 @@ might constitute full commands by themselves (such as 'end' to end the
 document), or they might need to be composed with other pieces to form
 commands, such as 'input', which requires a file-name as an argument.
 """
-from string import ascii_lowercase
 from enum import Enum
 
 
-instructions = (
-    'CAT_CODE',
-    'MATH_CODE',
-    'UPPER_CASE_CODE',
-    'LOWER_CASE_CODE',
-    'SPACE_FACTOR_CODE',
-    'DELIMITER_CODE',
+class Instructions(Enum):
+    cat_code = 'CAT_CODE'
+    math_code = 'MATH_CODE'
+    upper_case_code = 'UPPER_CASE_CODE'
+    lower_case_code = 'LOWER_CASE_CODE'
+    space_factor_code = 'SPACE_FACTOR_CODE'
+    delimiter_code = 'DELIMITER_CODE'
 
-    'LET',
+    let = 'LET'
 
-    'ADVANCE',
+    advance = 'ADVANCE'
 
-    'PAR',
-    'RELAX',
-    'IMMEDIATE',
+    par = 'PAR'
+    relax = 'RELAX'
+    immediate = 'IMMEDIATE'
 
-    'FONT',
+    font = 'FONT'
 
     # Font assignment things.
-    'SKEW_CHAR',
-    'HYPHEN_CHAR',
-    'FONT_DIMEN',
+    skew_char = 'SKEW_CHAR'
+    hyphen_char = 'HYPHEN_CHAR'
+    font_dimen = 'FONT_DIMEN'
 
     # Font ranges.
-    'TEXT_FONT',
-    'SCRIPT_FONT',
-    'SCRIPT_SCRIPT_FONT',
+    text_font = 'TEXT_FONT'
+    script_font = 'SCRIPT_FONT'
+    script_script_font = 'SCRIPT_SCRIPT_FONT'
 
-    'UNDEFINED',
+    undefined = 'UNDEFINED'
 
     # Macro modifiers.
-    'GLOBAL_MOD',
-    'LONG_MOD',
-    'OUTER_MOD',
+    global_mod = 'GLOBAL_MOD'
+    long_mod = 'LONG_MOD'
+    outer_mod = 'OUTER_MOD'
 
     # Box register assignment.
-    'SET_BOX',
+    set_box = 'SET_BOX'
     # Box register calls.
     # This one deletes the register contents when called.
-    'BOX',
+    box = 'BOX'
     # This one does not.
-    'COPY',
+    copy = 'COPY'
 
-    'UN_H_BOX',
-    'UN_H_COPY',
-    'UN_V_BOX',
-    'UN_V_COPY',
+    un_h_box = 'UN_H_BOX'
+    un_h_copy = 'UN_H_COPY'
+    un_v_box = 'UN_V_BOX'
+    un_v_copy = 'UN_V_COPY'
 
     # Remove and return (pop) the most recent h- or v-box, if any.
-    'LAST_BOX',
+    last_box = 'LAST_BOX'
     # Make a vbox by splitting off a certain amount of material from a box
     # register.
-    'V_SPLIT',
+    v_split = 'V_SPLIT'
 
-    'BOX_DIMEN_HEIGHT',
-    'BOX_DIMEN_WIDTH',
-    'BOX_DIMEN_DEPTH',
+    box_dimen_height = 'BOX_DIMEN_HEIGHT'
+    box_dimen_width = 'BOX_DIMEN_WIDTH'
+    box_dimen_depth = 'BOX_DIMEN_DEPTH'
 
-    'KERN',
-    'MATH_KERN',
+    kern = 'KERN'
+    math_kern = 'MATH_KERN'
 
-    'ACCENT',
+    accent = 'ACCENT'
 
-    'V_RULE',
-    'H_RULE',
+    v_rule = 'V_RULE'
+    h_rule = 'H_RULE'
 
-    'INPUT',
+    input = 'INPUT'
 
-    'END',
+    end = 'END'
 
-    'CHAR',
-    'INDENT',
+    char = 'CHAR'
+    indent = 'INDENT'
 
     # Messages.
-    'MESSAGE',
-    'ERROR_MESSAGE',
-    'WRITE',
+    message = 'MESSAGE'
+    error_message = 'ERROR_MESSAGE'
+    write = 'WRITE'
 
     # Hyphenation.
-    'HYPHENATION',
-    'PATTERNS',
+    hyphenation = 'HYPHENATION'
+    patterns = 'PATTERNS'
 
-    'H_SKIP',
-    'H_FIL',
-    'H_FILL',
-    'H_STRETCH_OR_SHRINK',
-    'H_FIL_NEG',
-    'V_SKIP',
-    'V_FIL',
-    'V_FILL',
-    'V_STRETCH_OR_SHRINK',
-    'V_FIL_NEG',
+    h_skip = 'H_SKIP'
+    h_fil = 'H_FIL'
+    h_fill = 'H_FILL'
+    h_stretch_or_shrink = 'H_STRETCH_OR_SHRINK'
+    h_fil_neg = 'H_FIL_NEG'
+    v_skip = 'V_SKIP'
+    v_fil = 'V_FIL'
+    v_fill = 'V_FILL'
+    v_stretch_or_shrink = 'V_STRETCH_OR_SHRINK'
+    v_fil_neg = 'V_FIL_NEG'
 
     # Explicit boxes.
-    'H_BOX',
-    'V_BOX',
-    # Like 'vbox', but its baseline is that of the top box inside,
+    h_box = 'H_BOX'
+    v_box = 'V_BOX'
+    # Like 'vbox' but its baseline is that of the top box inside,
     # rather than the bottom box inside.
-    'V_TOP',
+    v_top = 'V_TOP'
 
     # Registers.
     # Also remember SET_BOX, although it's slightly different.
-    'COUNT',
-    'DIMEN',
-    'SKIP',
-    'MU_SKIP',
-    'TOKS',
+    count = 'COUNT'
+    dimen = 'DIMEN'
+    skip = 'SKIP'
+    mu_skip = 'MU_SKIP'
+    toks = 'TOKS'
 
     # Short-hand definitions.
     # Short-hand character definitions.
-    'CHAR_DEF',
-    'MATH_CHAR_DEF',
+    char_def = 'CHAR_DEF'
+    math_char_def = 'MATH_CHAR_DEF'
     # Short-hand register definitions.
-    'COUNT_DEF',
-    'DIMEN_DEF',
-    'SKIP_DEF',
-    'MU_SKIP_DEF',
-    'TOKS_DEF',
+    count_def = 'COUNT_DEF'
+    dimen_def = 'DIMEN_DEF'
+    skip_def = 'SKIP_DEF'
+    mu_skip_def = 'MU_SKIP_DEF'
+    toks_def = 'TOKS_DEF'
 
     # Definitions.
-    'DEF_',
-    'G_DEF',
-    'E_DEF',
-    'X_DEF',
+    def_ = 'DEF'
+    g_def = 'G_DEF'
+    e_def = 'E_DEF'
+    x_def = 'X_DEF'
 
     # Conditions
     # \ifnum <number_1> <relation> <number_2>
     # Compare two integers. The <relation> must be "<_12", "=_12" or ">_12".
-    'IF_NUM',
+    if_num = 'IF_NUM'
     # \ifdim <dimen_1> <relation> <dimen_2>
     # Compare two dimensions. Otherwise, same as above.
-    'IF_DIMEN',
-    'IF_ODD',
-    'IF_V_MODE',
-    'IF_H_MODE',
-    'IF_M_MODE',
-    'IF_INNER',
-    'IF_CHAR',
-    'IF_CAT',
-    'IF_TOKEN',
-    'IF_VOID',
-    'IF_H_BOX',
-    'IF_V_BOX',
-    'IF_END_OF_FILE',
-    'IF_TRUE',
-    'IF_FALSE',
-    'IF_CASE',
+    if_dimen = 'IF_DIMEN'
+    if_odd = 'IF_ODD'
+    if_v_mode = 'IF_V_MODE'
+    if_h_mode = 'IF_H_MODE'
+    if_m_mode = 'IF_M_MODE'
+    if_inner = 'IF_INNER'
+    if_char = 'IF_CHAR'
+    if_cat = 'IF_CAT'
+    if_token = 'IF_TOKEN'
+    if_void = 'IF_VOID'
+    if_h_box = 'IF_H_BOX'
+    if_v_box = 'IF_V_BOX'
+    if_end_of_file = 'IF_END_OF_FILE'
+    if_true = 'IF_TRUE'
+    if_false = 'IF_FALSE'
+    if_case = 'IF_CASE'
 
     # Condition sub-instructions
     # Can't call it 'else' for Python syntax reasons when I make the enum.
-    'ELSE_',
-    'END_IF',
-    'OR_',
+    else_ = 'ELSE'
+    end_if = 'END_IF'
+    or_ = 'OR'
 
     # Instructions that are handled before parsing, in the banisher.
-    'MACRO',
-    'STRING',
-    'CS_NAME',
-    'END_CS_NAME',
-    'EXPAND_AFTER',
-    'UPPER_CASE',
-    'LOWER_CASE',
-    'CR',
-    'AFTER_ASSIGNMENT',
-    'AFTER_GROUP',
+    macro = 'MACRO'
+    string = 'STRING'
+    cs_name = 'CS_NAME'
+    end_cs_name = 'END_CS_NAME'
+    expand_after = 'EXPAND_AFTER'
+    upper_case = 'UPPER_CASE'
+    lower_case = 'LOWER_CASE'
+    cr = 'CR'
+    after_assignment = 'AFTER_ASSIGNMENT'
+    after_group = 'AFTER_GROUP'
 
     # Short-hand definition tokens (produced internally).
-    'CHAR_DEF_TOKEN',
-    'MATH_CHAR_DEF_TOKEN',
-    'COUNT_DEF_TOKEN',
-    'DIMEN_DEF_TOKEN',
-    'SKIP_DEF_TOKEN',
-    'MU_SKIP_DEF_TOKEN',
-    'TOKS_DEF_TOKEN',
+    char_def_token = 'CHAR_DEF_TOKEN'
+    math_char_def_token = 'MATH_CHAR_DEF_TOKEN'
+    count_def_token = 'COUNT_DEF_TOKEN'
+    dimen_def_token = 'DIMEN_DEF_TOKEN'
+    skip_def_token = 'SKIP_DEF_TOKEN'
+    mu_skip_def_token = 'MU_SKIP_DEF_TOKEN'
+    toks_def_token = 'TOKS_DEF_TOKEN'
     # Not defined by a short-hand def, but acts similarly.
-    'FONT_DEF_TOKEN',
+    font_def_token = 'FONT_DEF_TOKEN'
 
     # Strange internal instructions that are produced by the banisher.
-    'ARBITRARY_TOKEN',
+    arbitrary_token = 'ARBITRARY_TOKEN'
     # Control sequence names produced as part of a definition and such.
-    'UNEXPANDED_CONTROL_SYMBOL',
-    'UNEXPANDED_CONTROL_WORD',
+    unexpanded_control_symbol = 'UNEXPANDED_CONTROL_SYMBOL'
+    unexpanded_control_word = 'UNEXPANDED_CONTROL_WORD'
     # Parameter placeholder in macro definitions.
-    'DELIMITED_PARAM',
-    'UNDELIMITED_PARAM',
-    'PARAM_NUMBER',
-    'PARAMETER_TEXT',
-    'BALANCED_TEXT_AND_RIGHT_BRACE',
-    'HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE',
-    'VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE',
+    delimited_param = 'DELIMITED_PARAM'
+    undelimited_param = 'UNDELIMITED_PARAM'
+    param_number = 'PARAM_NUMBER'
+    parameter_text = 'PARAMETER_TEXT'
+    balanced_text_and_right_brace = 'BALANCED_TEXT_AND_RIGHT_BRACE'
+    horizontal_mode_material_and_right_brace = 'HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE'
+    vertical_mode_material_and_right_brace = 'VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE'
 
     # Instructions usually created by char-cat pairs.
 
-    'LESS_THAN',
-    'GREATER_THAN',
-    'EQUALS',
-    'PLUS_SIGN',
-    'MINUS_SIGN',
-    'SINGLE_QUOTE',
-    'DOUBLE_QUOTE',
-    'BACKTICK',
-    'POINT',
-    'COMMA',
+    less_than = 'LESS_THAN'
+    greater_than = 'GREATER_THAN'
+    equals = 'EQUALS'
+    plus_sign = 'PLUS_SIGN'
+    minus_sign = 'MINUS_SIGN'
+    single_quote = 'SINGLE_QUOTE'
+    double_quote = 'DOUBLE_QUOTE'
+    backtick = 'BACKTICK'
+    point = 'POINT'
+    comma = 'COMMA'
 
-    'ZERO',
-    'ONE',
-    'TWO',
-    'THREE',
-    'FOUR',
-    'FIVE',
-    'SIX',
-    'SEVEN',
-    'EIGHT',
-    'NINE',
+    zero = 'ZERO'
+    one = 'ONE'
+    two = 'TWO'
+    three = 'THREE'
+    four = 'FOUR'
+    five = 'FIVE'
+    six = 'SIX'
+    seven = 'SEVEN'
+    eight = 'EIGHT'
+    nine = 'NINE'
 
     # Hex letters.
-    'A',
-    'B',
-    'C',
-    'D',
-    'E',
-    'F',
+    a = 'A'
+    b = 'B'
+    c = 'C'
+    d = 'D'
+    e = 'E'
+    f = 'F'
 
-    'SPACE',
-    'LEFT_BRACE',
-    'RIGHT_BRACE',
-    'ACTIVE_CHARACTER',
-    'PARAMETER',
-    'MATH_SHIFT',
-    'ALIGN_TAB',
-    'SUPERSCRIPT',
-    'SUBSCRIPT',
-    'MISC_CHAR_CAT_PAIR',
+    space = 'SPACE'
+    left_brace = 'LEFT_BRACE'
+    right_brace = 'RIGHT_BRACE'
+    active_character = 'ACTIVE_CHARACTER'
+    parameter = 'PARAMETER'
+    math_shift = 'MATH_SHIFT'
+    align_tab = 'ALIGN_TAB'
+    superscript = 'SUPERSCRIPT'
+    subscript = 'SUBSCRIPT'
+    misc_char_cat_pair = 'MISC_CHAR_CAT_PAIR'
 
-    'INTEGER_PARAMETER',
-    'DIMEN_PARAMETER',
-    'GLUE_PARAMETER',
-    'MU_GLUE_PARAMETER',
-    'TOKEN_PARAMETER',
+    integer_parameter = 'INTEGER_PARAMETER'
+    dimen_parameter = 'DIMEN_PARAMETER'
+    glue_parameter = 'GLUE_PARAMETER'
+    mu_glue_parameter = 'MU_GLUE_PARAMETER'
+    token_parameter = 'TOKEN_PARAMETER'
 
-    'SPECIAL_INTEGER',
-    'SPECIAL_DIMEN',
-)
-# Add instructions representing ordinary character literal char-cats.
-# TODO: Check if all these are really needed.
-instructions += tuple('NON_ACTIVE_UNCASED_{}'.format(c)
-                      for c in ascii_lowercase)
+    special_integer = 'SPECIAL_INTEGER'
+    special_dimen = 'SPECIAL_DIMEN'
+
+    non_active_uncased_a = 'NON_ACTIVE_UNCASED_A'
+    non_active_uncased_b = 'NON_ACTIVE_UNCASED_B'
+    non_active_uncased_c = 'NON_ACTIVE_UNCASED_C'
+    non_active_uncased_d = 'NON_ACTIVE_UNCASED_D'
+    non_active_uncased_e = 'NON_ACTIVE_UNCASED_E'
+    non_active_uncased_f = 'NON_ACTIVE_UNCASED_F'
+    non_active_uncased_g = 'NON_ACTIVE_UNCASED_G'
+    non_active_uncased_h = 'NON_ACTIVE_UNCASED_H'
+    non_active_uncased_i = 'NON_ACTIVE_UNCASED_I'
+    non_active_uncased_j = 'NON_ACTIVE_UNCASED_J'
+    non_active_uncased_k = 'NON_ACTIVE_UNCASED_K'
+    non_active_uncased_l = 'NON_ACTIVE_UNCASED_L'
+    non_active_uncased_m = 'NON_ACTIVE_UNCASED_M'
+    non_active_uncased_n = 'NON_ACTIVE_UNCASED_N'
+    non_active_uncased_o = 'NON_ACTIVE_UNCASED_O'
+    non_active_uncased_p = 'NON_ACTIVE_UNCASED_P'
+    non_active_uncased_q = 'NON_ACTIVE_UNCASED_Q'
+    non_active_uncased_r = 'NON_ACTIVE_UNCASED_R'
+    non_active_uncased_s = 'NON_ACTIVE_UNCASED_S'
+    non_active_uncased_t = 'NON_ACTIVE_UNCASED_T'
+    non_active_uncased_u = 'NON_ACTIVE_UNCASED_U'
+    non_active_uncased_v = 'NON_ACTIVE_UNCASED_V'
+    non_active_uncased_w = 'NON_ACTIVE_UNCASED_W'
+    non_active_uncased_x = 'NON_ACTIVE_UNCASED_X'
+    non_active_uncased_y = 'NON_ACTIVE_UNCASED_Y'
+    non_active_uncased_z = 'NON_ACTIVE_UNCASED_Z'
 
 
-Instructions = Enum('Instructions', {s.lower(): s for s in instructions})
 I = Instructions
 
 unexpanded_cs_instructions = (

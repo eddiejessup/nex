@@ -42,17 +42,17 @@ def add_character_rules(pg):
     # We split out some types of these letters for parsing into hexadecimal
     # constants. Here we allow them to be considered as normal characters.
     @pg.production('non_active_uncased_a : A')
-    @pg.production('non_active_uncased_a : NON_ACTIVE_UNCASED_a')
+    @pg.production('non_active_uncased_a : NON_ACTIVE_UNCASED_A')
     @pg.production('non_active_uncased_b : B')
-    @pg.production('non_active_uncased_b : NON_ACTIVE_UNCASED_b')
+    @pg.production('non_active_uncased_b : NON_ACTIVE_UNCASED_B')
     @pg.production('non_active_uncased_c : C')
-    @pg.production('non_active_uncased_c : NON_ACTIVE_UNCASED_c')
+    @pg.production('non_active_uncased_c : NON_ACTIVE_UNCASED_C')
     @pg.production('non_active_uncased_d : D')
-    @pg.production('non_active_uncased_d : NON_ACTIVE_UNCASED_d')
+    @pg.production('non_active_uncased_d : NON_ACTIVE_UNCASED_D')
     @pg.production('non_active_uncased_e : E')
-    @pg.production('non_active_uncased_e : NON_ACTIVE_UNCASED_e')
+    @pg.production('non_active_uncased_e : NON_ACTIVE_UNCASED_E')
     @pg.production('non_active_uncased_f : F')
-    @pg.production('non_active_uncased_f : NON_ACTIVE_UNCASED_f')
+    @pg.production('non_active_uncased_f : NON_ACTIVE_UNCASED_F')
     def non_active_uncased_hex_letter(p):
         return p[0]
 
