@@ -74,6 +74,7 @@ class Instructions(Enum):
     h_rule = 'H_RULE'
 
     input = 'INPUT'
+    ship_out = 'SHIP_OUT'
 
     end = 'END'
 

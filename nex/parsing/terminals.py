@@ -99,6 +99,7 @@ base_terminal_instructions = (
     I.v_rule,
     I.h_rule,
     I.input,
+    I.ship_out,
     I.end,
     I.char,
     I.indent,

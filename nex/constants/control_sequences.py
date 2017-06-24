@@ -50,6 +50,7 @@ primitive_control_sequences = {
     'vrule': Instructions.v_rule,
     'hrule': Instructions.h_rule,
     'input': Instructions.input,
+    'shipout': Instructions.ship_out,
     'end': Instructions.end,
     'char': Instructions.char,
     'indent': Instructions.indent,

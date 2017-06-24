@@ -383,6 +383,7 @@ def add_command_rules(pg):
     @pg.production('command : vertical_rule')
     @pg.production('command : horizontal_rule')
     @pg.production('command : input')
+    @pg.production('command : ship_out')
     @pg.production('command : RIGHT_BRACE')
     @pg.production('command : LEFT_BRACE')
     @pg.production('command : END')
@@ -528,6 +529,12 @@ def add_command_rules(pg):
     def input_file(p):
         return BuiltToken(type_='input',
                           value={'file_name': p[1].value},
+                          position_like=p)
+
+    @pg.production('ship_out : SHIP_OUT box')
+    def ship_out(p):
+        return BuiltToken(type_=p[0].type,
+                          value=p[1].value,
                           position_like=p)
 
     @pg.production('file_name : character')

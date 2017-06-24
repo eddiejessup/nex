@@ -1488,6 +1488,8 @@ class GlobalState:
             file_name = command.value['file_name']
             logger.info(f"Inserting new file '{file_name}'")
             reader.insert_file(file_name)
+        elif type_ == Instructions.ship_out.value:
+            raise NotImplementedError
         # I think technically only this should cause the program to end, not
         # EOFError anywhere. But for now, whatever.
         elif type_ == Instructions.end.value:

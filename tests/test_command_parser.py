@@ -85,3 +85,13 @@ def test_after_group():
     ts = [ITok(Instructions.after_group),
           ITok(Instructions.arbitrary_token)]
     parser.parse(iter(ts))
+
+
+def test_ship_out():
+    ts = [
+        ITok(Instructions.ship_out),
+        ITok(Instructions.h_box),
+        ITok(Instructions.left_brace),
+        ITok(Instructions.horizontal_mode_material_and_right_brace),
+    ]
+    parser.parse(iter(ts))
