@@ -111,93 +111,284 @@ def _encode_integer_to_bytes(length, value, signed=False,
     return value.to_bytes(length=length, signed=signed, byteorder='big')
 
 
-op_codes = {
+class OpCode(Enum):
+
     # 0 to 127: set that character number.
+    set_char_0 = 0
+    set_char_1 = 1
+    set_char_2 = 2
+    set_char_3 = 3
+    set_char_4 = 4
+    set_char_5 = 5
+    set_char_6 = 6
+    set_char_7 = 7
+    set_char_8 = 8
+    set_char_9 = 9
+    set_char_10 = 10
+    set_char_11 = 11
+    set_char_12 = 12
+    set_char_13 = 13
+    set_char_14 = 14
+    set_char_15 = 15
+    set_char_16 = 16
+    set_char_17 = 17
+    set_char_18 = 18
+    set_char_19 = 19
+    set_char_20 = 20
+    set_char_21 = 21
+    set_char_22 = 22
+    set_char_23 = 23
+    set_char_24 = 24
+    set_char_25 = 25
+    set_char_26 = 26
+    set_char_27 = 27
+    set_char_28 = 28
+    set_char_29 = 29
+    set_char_30 = 30
+    set_char_31 = 31
+    set_char_32 = 32
+    set_char_33 = 33
+    set_char_34 = 34
+    set_char_35 = 35
+    set_char_36 = 36
+    set_char_37 = 37
+    set_char_38 = 38
+    set_char_39 = 39
+    set_char_40 = 40
+    set_char_41 = 41
+    set_char_42 = 42
+    set_char_43 = 43
+    set_char_44 = 44
+    set_char_45 = 45
+    set_char_46 = 46
+    set_char_47 = 47
+    set_char_48 = 48
+    set_char_49 = 49
+    set_char_50 = 50
+    set_char_51 = 51
+    set_char_52 = 52
+    set_char_53 = 53
+    set_char_54 = 54
+    set_char_55 = 55
+    set_char_56 = 56
+    set_char_57 = 57
+    set_char_58 = 58
+    set_char_59 = 59
+    set_char_60 = 60
+    set_char_61 = 61
+    set_char_62 = 62
+    set_char_63 = 63
+    set_char_64 = 64
+    set_char_65 = 65
+    set_char_66 = 66
+    set_char_67 = 67
+    set_char_68 = 68
+    set_char_69 = 69
+    set_char_70 = 70
+    set_char_71 = 71
+    set_char_72 = 72
+    set_char_73 = 73
+    set_char_74 = 74
+    set_char_75 = 75
+    set_char_76 = 76
+    set_char_77 = 77
+    set_char_78 = 78
+    set_char_79 = 79
+    set_char_80 = 80
+    set_char_81 = 81
+    set_char_82 = 82
+    set_char_83 = 83
+    set_char_84 = 84
+    set_char_85 = 85
+    set_char_86 = 86
+    set_char_87 = 87
+    set_char_88 = 88
+    set_char_89 = 89
+    set_char_90 = 90
+    set_char_91 = 91
+    set_char_92 = 92
+    set_char_93 = 93
+    set_char_94 = 94
+    set_char_95 = 95
+    set_char_96 = 96
+    set_char_97 = 97
+    set_char_98 = 98
+    set_char_99 = 99
+    set_char_100 = 100
+    set_char_101 = 101
+    set_char_102 = 102
+    set_char_103 = 103
+    set_char_104 = 104
+    set_char_105 = 105
+    set_char_106 = 106
+    set_char_107 = 107
+    set_char_108 = 108
+    set_char_109 = 109
+    set_char_110 = 110
+    set_char_111 = 111
+    set_char_112 = 112
+    set_char_113 = 113
+    set_char_114 = 114
+    set_char_115 = 115
+    set_char_116 = 116
+    set_char_117 = 117
+    set_char_118 = 118
+    set_char_119 = 119
+    set_char_120 = 120
+    set_char_121 = 121
+    set_char_122 = 122
+    set_char_123 = 123
+    set_char_124 = 124
+    set_char_125 = 125
+    set_char_126 = 126
+    set_char_127 = 127
 
-    'set_1_byte_char': 128,
-    'set_2_byte_char': 129,
-    'set_3_byte_char': 130,
-    'set_4_byte_char': 131,
+    set_1_byte_char = 128
+    set_2_byte_char = 129
+    set_3_byte_char = 130
+    set_4_byte_char = 131
 
-    'set_rule': 132,
+    set_rule = 132
 
-    'put_1_byte_char': 133,
-    'put_2_byte_char': 134,
-    'put_3_byte_char': 135,
-    'put_4_byte_char': 136,
+    put_1_byte_char = 133
+    put_2_byte_char = 134
+    put_3_byte_char = 135
+    put_4_byte_char = 136
 
-    'put_rule': 137,
+    put_rule = 137
 
-    'no_op': 138,
+    no_op = 138
 
-    'begin_page': 139,
-    'end_page': 140,
+    begin_page = 139
+    end_page = 140
 
-    'push': 141,
-    'pop': 142,
+    push = 141
+    pop = 142
 
-    'right_1_byte': 143,
-    'right_2_byte': 144,
-    'right_3_byte': 145,
-    'right_4_byte': 146,
+    right_1_byte = 143
+    right_2_byte = 144
+    right_3_byte = 145
+    right_4_byte = 146
 
-    'right_w': 147,
-    'set_1_byte_w_then_right_w': 148,
-    'set_2_byte_w_then_right_w': 149,
-    'set_3_byte_w_then_right_w': 150,
-    'set_4_byte_w_then_right_w': 151,
+    right_w = 147
+    set_1_byte_w_then_right_w = 148
+    set_2_byte_w_then_right_w = 149
+    set_3_byte_w_then_right_w = 150
+    set_4_byte_w_then_right_w = 151
 
-    'right_x': 152,
-    'set_1_byte_x_then_right_x': 153,
-    'set_2_byte_x_then_right_x': 154,
-    'set_3_byte_x_then_right_x': 155,
-    'set_4_byte_x_then_right_x': 156,
+    right_x = 152
+    set_1_byte_x_then_right_x = 153
+    set_2_byte_x_then_right_x = 154
+    set_3_byte_x_then_right_x = 155
+    set_4_byte_x_then_right_x = 156
 
-    'down_1_byte': 157,
-    'down_2_byte': 158,
-    'down_3_byte': 159,
-    'down_4_byte': 160,
+    down_1_byte = 157
+    down_2_byte = 158
+    down_3_byte = 159
+    down_4_byte = 160
 
-    'down_y': 161,
-    'set_1_byte_y_then_down_y': 162,
-    'set_2_byte_y_then_down_y': 163,
-    'set_3_byte_y_then_down_y': 164,
-    'set_4_byte_y_then_down_y': 165,
+    down_y = 161
+    set_1_byte_y_then_down_y = 162
+    set_2_byte_y_then_down_y = 163
+    set_3_byte_y_then_down_y = 164
+    set_4_byte_y_then_down_y = 165
 
-    'down_z': 166,
-    'set_1_byte_z_then_down_z': 167,
-    'set_2_byte_z_then_down_z': 168,
-    'set_3_byte_z_then_down_z': 169,
-    'set_4_byte_z_then_down_z': 170,
+    down_z = 166
+    set_1_byte_z_then_down_z = 167
+    set_2_byte_z_then_down_z = 168
+    set_3_byte_z_then_down_z = 169
+    set_4_byte_z_then_down_z = 170
 
     # 171 to 234: Select font number.
+    select_font_nr_0 = 171
+    select_font_nr_1 = 172
+    select_font_nr_2 = 173
+    select_font_nr_3 = 174
+    select_font_nr_4 = 175
+    select_font_nr_5 = 176
+    select_font_nr_6 = 177
+    select_font_nr_7 = 178
+    select_font_nr_8 = 179
+    select_font_nr_9 = 180
+    select_font_nr_10 = 181
+    select_font_nr_11 = 182
+    select_font_nr_12 = 183
+    select_font_nr_13 = 184
+    select_font_nr_14 = 185
+    select_font_nr_15 = 186
+    select_font_nr_16 = 187
+    select_font_nr_17 = 188
+    select_font_nr_18 = 189
+    select_font_nr_19 = 190
+    select_font_nr_20 = 191
+    select_font_nr_21 = 192
+    select_font_nr_22 = 193
+    select_font_nr_23 = 194
+    select_font_nr_24 = 195
+    select_font_nr_25 = 196
+    select_font_nr_26 = 197
+    select_font_nr_27 = 198
+    select_font_nr_28 = 199
+    select_font_nr_29 = 200
+    select_font_nr_30 = 201
+    select_font_nr_31 = 202
+    select_font_nr_32 = 203
+    select_font_nr_33 = 204
+    select_font_nr_34 = 205
+    select_font_nr_35 = 206
+    select_font_nr_36 = 207
+    select_font_nr_37 = 208
+    select_font_nr_38 = 209
+    select_font_nr_39 = 210
+    select_font_nr_40 = 211
+    select_font_nr_41 = 212
+    select_font_nr_42 = 213
+    select_font_nr_43 = 214
+    select_font_nr_44 = 215
+    select_font_nr_45 = 216
+    select_font_nr_46 = 217
+    select_font_nr_47 = 218
+    select_font_nr_48 = 219
+    select_font_nr_49 = 220
+    select_font_nr_50 = 221
+    select_font_nr_51 = 222
+    select_font_nr_52 = 223
+    select_font_nr_53 = 224
+    select_font_nr_54 = 225
+    select_font_nr_55 = 226
+    select_font_nr_56 = 227
+    select_font_nr_57 = 228
+    select_font_nr_58 = 229
+    select_font_nr_59 = 230
+    select_font_nr_60 = 231
+    select_font_nr_61 = 232
+    select_font_nr_62 = 233
+    select_font_nr_63 = 234
 
-    'select_1_byte_font_nr': 235,
-    'select_2_byte_font_nr': 236,
-    'select_3_byte_font_nr': 237,
-    'select_4_byte_font_nr': 238,
+    select_1_byte_font_nr = 235
+    select_2_byte_font_nr = 236
+    select_3_byte_font_nr = 237
+    select_4_byte_font_nr = 238
 
-    'do_1_byte_special': 239,
-    'do_2_byte_special': 240,
-    'do_3_byte_special': 241,
-    'do_4_byte_special': 242,
+    do_1_byte_special = 239
+    do_2_byte_special = 240
+    do_3_byte_special = 241
+    do_4_byte_special = 242
 
-    'define_1_byte_font_nr': 243,
-    'define_2_byte_font_nr': 244,
-    'define_3_byte_font_nr': 245,
-    'define_4_byte_font_nr': 246,
+    define_1_byte_font_nr = 243
+    define_2_byte_font_nr = 244
+    define_3_byte_font_nr = 245
+    define_4_byte_font_nr = 246
 
-    'preamble': 247,
-    'postamble': 248,
-    'post_postamble': 249,
-}
-no_arg_char_op_codes = list(range(128))
-op_codes.update({'set_char_{}'.format(i): i
-                 for i in no_arg_char_op_codes})
-no_arg_select_font_nr_op_codes = list(range(171, 235))
-op_codes.update({'select_font_nr_{}'.format(i): i
-                 for i in no_arg_select_font_nr_op_codes})
-OpCode = Enum('OpCode', op_codes)
+    preamble = 247
+    postamble = 248
+    post_postamble = 249
+
+
+no_arg_char_op_codes = [OpCode[f'set_char_{i}']
+                        for i in range(128)]
+no_arg_select_font_nr_op_codes = [OpCode[f'select_font_nr_{i}']
+                                  for i in range(63)]
 
 
 def get_simple_instruction_func(op_code, *string_getters):
@@ -255,6 +446,7 @@ def get_do_special_instruction_func(op_code, command_length_bytes):
         return EncodedInstruction(op_code,
                                   command_length_encoded, command_encoded)
     return get_do_special_instruction
+
 
 # Rules.
 
@@ -349,17 +541,19 @@ get_no_op_instruction = get_simple_instruction_func(OpCode.no_op)
 # Explicit op-codes for setting characters and selecting fonts.
 
 def get_small_set_char_instruction_func(char):
-    if char not in no_arg_char_op_codes:
-        raise ValueError
-    op_code_nr = char
-    return EncodedInstruction(OpCode(op_code_nr))
+    op_code = OpCode(char)
+    if op_code not in no_arg_char_op_codes:
+        raise ValueError(f'Character {char} cannot be set with a small '
+                         f'instruction')
+    return EncodedInstruction(op_code)
 
 
 def get_small_select_font_nr_instruction(font_nr):
-    if font_nr not in no_arg_select_font_nr_op_codes:
-        raise ValueError
-    op_code_nr = font_nr + no_arg_select_font_nr_op_codes[0]
-    return EncodedInstruction(OpCode(op_code_nr))
+    op_code_nr = font_nr + OpCode.select_font_nr_0.value
+    op_code = OpCode(op_code_nr)
+    if op_code not in no_arg_select_font_nr_op_codes:
+        raise ValueError(f'Cannot select font number {font_nr}')
+    return EncodedInstruction(op_code)
 
 
 postamble_parameters = [
