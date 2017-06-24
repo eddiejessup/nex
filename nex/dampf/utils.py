@@ -1,16 +1,13 @@
 import math
-import sys
-
-IS_PYTHON_3 = sys.version_info[0] == 3
 
 
-def is_signed_nr_expressible_in_n_bits(n, nr_bits):
+def is_signed_nr_expressible_in_n_bits(n: int, nr_bits: int) -> bool:
     min_signed_val = -(2 ** (nr_bits - 1))
     max_signed_val = 2 ** (nr_bits - 1) - 1
     return min_signed_val <= n <= max_signed_val
 
 
-def get_bytes_needed(n, signed, is_check_sum=False):
+def get_bytes_needed(n: int, signed: bool, is_check_sum: bool=False) -> int:
     if n < 0 and not signed:
         raise ValueError
     if n == 0:
