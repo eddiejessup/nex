@@ -1,7 +1,3 @@
-__all__ = ['AbstractStream', 'StandardStream',
-           'FileStream', 'to_fix_word']
-
-
 import mmap
 import os
 

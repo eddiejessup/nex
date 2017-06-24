@@ -18,9 +18,6 @@ code as index on the :class:`Tfm` class instance.  For example to get the metric
    tfm[ord('A')]
 
 """
-
-__all__ = ['Tfm', 'TfmChar', 'TfmExtensibleChar', 'TfmKern', 'TfmLigature']
-
 import string
 
 from ..Tools.Logging import print_card

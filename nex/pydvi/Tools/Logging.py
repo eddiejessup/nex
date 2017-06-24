@@ -1,6 +1,3 @@
-__ALL__ = ['remove_enclosing_new_line', 'format_card', 'print_card']
-
-
 def remove_enclosing_new_line(text):
     """ Return a copy of the string *text* with leading and trailing newline removed.
     """

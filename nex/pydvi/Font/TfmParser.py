@@ -15,9 +15,6 @@ always a multiple of 4, we could also regard the file as a sequence of 32-bit wo
 bytes are considered to be unsigned numbers.
 
 """
-
-__all__ = ['TfmParser']
-
 from ..Tools.EnumFactory import EnumFactory
 from ..Tools.FuncTools import repeat_call
 from ..Tools.Stream import FileStream
@@ -103,7 +100,7 @@ class TfmParser(object):
         return self.stream.read_fix_word(self._position_in_table(table, index))
 
     def _read_four_byte_numbers_in_table(self, table, index):
-        """ Return the four numbers in table *table* at index *index*. 
+        """ Return the four numbers in table *table* at index *index*.
         """
 
         return self.stream.read_four_byte_numbers(self._position_in_table(table, index))

@@ -14,14 +14,6 @@ The DVI format uses the measure 100 nm as base unit. A scaled point is defined a
 
 For a resolution of 1200 dpi, a pixel measures 21 um.
 """
-
-__all__ = ['dpi2mm',
-           'in2mm', 'in2pt', 'in2sp',
-           'mm2in',
-           'pt2in', 'pt2mm', 'pt2sp',
-           'sp2in', 'sp2mm', 'sp2pt', 'sp2dpi',
-           ]
-
 import fractions
 
 # x_in_y means number of x corresponding to 1 y

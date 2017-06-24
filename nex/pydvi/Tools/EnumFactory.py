@@ -4,9 +4,9 @@ The enum factory :func:`EnumFactory` builds a enumerate from a list of names and
 constants a value from 0 to ``N-1``, where ``N`` is the number of constants::
 
   enum1 = EnumFactory('Enum1', ('cst1', 'cst2'))
-   
+
 then we can get a constant's value with::
-     
+
   enum1.cst1
 
 and the number of constants using::
@@ -18,9 +18,6 @@ We can test if a value is in the enum using::
   constant_value in enum2
 
 """
-
-
-__all__ = ['EnumFactory']
 
 
 class ReadOnlyMetaClass(type):
