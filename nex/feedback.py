@@ -26,7 +26,7 @@ def strep(s):
             )
 
 
-def csep(args):
+def csep(args, str_func=repr):
     """Get string representations of a sequence of items. Intended for use in
     __repr__ and such."""
     sargs = []
@@ -36,7 +36,7 @@ def csep(args):
         if isinstance(arg, str):
             sarg = arg
         else:
-            sarg = repr(arg)
+            sarg = str_func(arg)
         sargs.append(sarg)
     return ', '.join(sargs)
 

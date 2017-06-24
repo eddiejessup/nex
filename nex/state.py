@@ -169,9 +169,13 @@ def after_assignment(method):
 
 class ExecuteCommandError(Exception):
 
-    def __init__(self, command, exception):
+    def __init__(self, command, position_str, *args, **kwargs):
         self.command = command
-        self.exception = exception
+        self.position_str = position_str
+
+    def __str__(self):
+        return (f'\n{self.position_str}\n'
+                f'While running {self.command}:\n')
 
 
 class TidyEnd(Exception):
@@ -1207,19 +1211,6 @@ class GlobalState:
 
     # Driving with tokens.
 
-    def execute_command_tokens(self, commands, banisher, reader):
-        while True:
-            try:
-                self.execute_next_command_token(commands, banisher, reader)
-            except EOFError:
-                return
-            except EndOfSubExecutor:
-                return
-
-    def execute_next_command_token(self, commands, banisher, reader):
-        command = next(commands)
-        self.execute_command_token(command, banisher, reader)
-
     def _parse_box_token(self, v, horizontal):
         conts = v['contents']
         spec = v['specification']
@@ -1346,7 +1337,31 @@ class GlobalState:
             raise NotImplementedError
         return evaluated_token_list
 
+    def execute_command_tokens(self, commands, banisher, reader):
+        while True:
+            try:
+                self.execute_command_token(next(commands), banisher, reader)
+            except EOFError:
+                return
+            except EndOfSubExecutor:
+                return
+
     def execute_command_token(self, command, banisher, reader):
+        try:
+            self._execute_command_token(command, banisher, reader)
+        except (EOFError, EndOfSubExecutor, TidyEnd):
+            raise
+        except Exception as e:
+            if reader is not None:
+                ps = command.get_position_str(reader)
+            else:
+                ps = ''
+            raise ExecuteCommandError(
+                command=command,
+                position_str=ps,
+            ) from e
+
+    def _execute_command_token(self, command, banisher, reader):
         # Reader needed to allow us to insert new input in response to
         # commands.
         # Banisher needed to allow us to put output back on the queue in

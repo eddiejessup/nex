@@ -55,12 +55,10 @@ def test_single_letter(state):
 
 def test_token_executor(state):
     tok = ITok(instruction=DummyInstructions.test, value=None)
-    with pytest.raises(ValueError):
+    with pytest.raises(ExecuteCommandError):
         state.execute_command_token(tok, banisher=None, reader=None)
-    with pytest.raises(ValueError):
+    with pytest.raises(ExecuteCommandError):
         state.execute_command_tokens(iter([tok]), banisher=None, reader=None)
-    with pytest.raises(ValueError):
-        state.execute_next_command_token(iter([tok]), banisher=None, reader=None)
 
 
 def test_solo_accent(state):

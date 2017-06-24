@@ -5,7 +5,7 @@ from .feedback import strep, csep
 colorama.init()
 
 
-def get_position_str(chars, char_nr, char_len, line_nr):
+def get_position_str(chars, char_nr, char_len, line_nr, col_nr):
     here_i = char_nr
     context_len = 60
 
@@ -36,7 +36,7 @@ def get_position_str(chars, char_nr, char_len, line_nr):
 
     s = pre_context + here + post_context
     s = strep(s)
-    intro = f'Line {line_nr}: '
+    intro = f'{line_nr}:{col_nr}\t'
     return intro + s
 
 
@@ -52,7 +52,27 @@ class BaseToken:
 
     @property
     def value_repr(self):
-        return self.value if self.value is not None else ''
+        if self.value is None:
+            return ''
+        elif isinstance(self.value, dict):
+            v = self.value.copy()
+            if 'lex_type' in v:
+                v.pop('lex_type')
+            return v
+        else:
+            return repr(self.value)
+
+    @property
+    def value_str(self):
+        if self.value is None:
+            return ''
+        elif isinstance(self.value, dict):
+            v = self.value.copy()
+            if 'lex_type' in v:
+                v.pop('lex_type')
+            return str(v)
+        else:
+            return str(self.value)
 
     def __repr__(self):
         return '{}({}: {})'.format(self.__class__.__name__,
@@ -124,9 +144,10 @@ class PositionToken(BaseToken):
         buff = reader.get_buffer(self.file_hash)
         cs = buff.chars
         name = buff.name
-        s = get_position_str(cs, self.char_nr, self.char_len, self.line_nr)
+        s = get_position_str(cs, self.char_nr, self.char_len, self.line_nr,
+                             self.col_nr)
         if name:
-            s = f'{name}, {s}'
+            s = f'{name}:{s}'
         return s
 
 
@@ -158,6 +179,15 @@ class BuiltToken(PositionToken):
             return f"{self.value['factor']} fi{ells}"
         else:
             return super().__repr__()
+
+    def __str__(self):
+        if self.type == 'fil_dimension':
+            ells = 'l' * self.value['number_of_fils']
+            return f"{self.value['factor']} fi{ells}"
+        else:
+            a = []
+            a.append(f'{self.value_str}')
+            return f'{self.type}({csep(a, str_func=str)})'
 
 
 class LexToken(PositionToken):
@@ -223,13 +253,13 @@ class InstructionToken(PositionToken, PLYTokenMixin):
         else:
             pos = ''
         a.append(pos)
-        val_r = self.value_repr
-        if val_r:
-            val = f'v={val_r}'
-        else:
-            val = ''
-        a.append(val)
+        a.append(f'v={self.value_repr}')
         return f'IT({csep(a)})'
+
+    def __str__(self):
+        a = []
+        a.append(f'{self.value_str}')
+        return f'{self.instruction.name}({csep(a, str_func=str)})'
 
 
 def instructions_to_types(instructions):
