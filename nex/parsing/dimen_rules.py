@@ -1,5 +1,5 @@
 from ..tokens import BuiltToken
-from ..constants.units import PhysicalUnit, MuUnit, InternalUnit
+from ..constants.units import Unit, MuUnit, InternalUnit
 
 from . import utils as pu
 
@@ -147,36 +147,36 @@ def add_dimen_rules(pg):
 
     @pg.production(pu.get_literal_production_rule('pt', target='physical_unit'))
     def physical_unit_point(p):
-        return make_unit_tok(PhysicalUnit.point, p)
+        return make_unit_tok(Unit.point, p)
 
     @pg.production(pu.get_literal_production_rule('pc', target='physical_unit'))
     def physical_unit_pica(p):
-        return make_unit_tok(PhysicalUnit.pica, p)
+        return make_unit_tok(Unit.pica, p)
 
     @pg.production(pu.get_literal_production_rule('in', target='physical_unit'))
     def physical_unit_inch(p):
-        return make_unit_tok(PhysicalUnit.inch, p)
+        return make_unit_tok(Unit.inch, p)
 
     @pg.production(pu.get_literal_production_rule('bp', target='physical_unit'))
     def physical_unit_big_point(p):
-        return make_unit_tok(PhysicalUnit.big_point, p)
+        return make_unit_tok(Unit.big_point, p)
 
     @pg.production(pu.get_literal_production_rule('cm', target='physical_unit'))
     def physical_unit_centimetre(p):
-        return make_unit_tok(PhysicalUnit.centimetre, p)
+        return make_unit_tok(Unit.centimetre, p)
 
     @pg.production(pu.get_literal_production_rule('mm', target='physical_unit'))
     def physical_unit_millimetre(p):
-        return make_unit_tok(PhysicalUnit.millimetre, p)
+        return make_unit_tok(Unit.millimetre, p)
 
     @pg.production(pu.get_literal_production_rule('dd', target='physical_unit'))
     def physical_unit_didot_point(p):
-        return make_unit_tok(PhysicalUnit.didot_point, p)
+        return make_unit_tok(Unit.didot_point, p)
 
     @pg.production(pu.get_literal_production_rule('cc', target='physical_unit'))
     def physical_unit_cicero(p):
-        return make_unit_tok(PhysicalUnit.cicero, p)
+        return make_unit_tok(Unit.cicero, p)
 
     @pg.production(pu.get_literal_production_rule('sp', target='physical_unit'))
     def physical_unit_scaled_point(p):
-        return make_unit_tok(PhysicalUnit.scaled_point, p)
+        return make_unit_tok(Unit.scaled_point, p)

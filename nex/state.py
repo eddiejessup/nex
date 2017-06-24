@@ -10,8 +10,8 @@ from .constants.instructions import (Instructions,
 from .constants.parameters import Parameters, is_parameter_type
 from .constants.specials import Specials
 from .constants.codes import CatCode
-from .constants.units import (PhysicalUnit, MuUnit, InternalUnit,
-                              units_in_scaled_points, MAX_DIMEN)
+from .constants.units import (Unit, MuUnit, InternalUnit,
+                              units_in_sp, MAX_DIMEN)
 from .utils import UserError, LogicError, pt_to_sp
 from .router import (make_primitive_control_sequence_instruction,
                      make_unexpanded_control_sequence_instruction)
@@ -587,7 +587,7 @@ class GlobalState:
         elif unit == InternalUnit.ex:
             unit_scale = self.current_font.x_height
         else:
-            unit_scale = units_in_scaled_points[unit]
+            unit_scale = units_in_sp[unit]
             if is_true_unit:
                 magnification = self.parameters.get(Parameters.mag)
                 # ['true'] unmagnifies the units, so that the subsequent
@@ -1283,7 +1283,7 @@ class GlobalState:
             nr_units = self.eval_size_token(v.value['factor'])
             unit_attrs = v.value['unit']
             unit = unit_attrs['unit']
-            if unit == PhysicalUnit.fil:
+            if unit == Unit.fil:
                 nr_fils = unit_attrs['number_of_fils']
                 return self.get_infinite_dimen(nr_fils, nr_units)
             else:

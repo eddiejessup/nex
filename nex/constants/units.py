@@ -8,7 +8,7 @@ from typing import Dict
 from enum import Enum
 
 
-class PhysicalUnit(Enum):
+class Unit(Enum):
     point = 'pt'
     pica = 'pc'
     inch = 'in'
@@ -30,16 +30,16 @@ class InternalUnit(Enum):
     ex = 'ex'
 
 
-units_in_scaled_points: Dict[PhysicalUnit, int] = {}
-units_in_scaled_points[PhysicalUnit.scaled_point] = 1
-units_in_scaled_points[PhysicalUnit.point] = 65536 * units_in_scaled_points[PhysicalUnit.scaled_point]
-units_in_scaled_points[PhysicalUnit.pica] = 12 * units_in_scaled_points[PhysicalUnit.point]
-units_in_scaled_points[PhysicalUnit.inch] = round(72.27 * units_in_scaled_points[PhysicalUnit.point])
-units_in_scaled_points[PhysicalUnit.big_point] = round((1.0 / 72.0) * units_in_scaled_points[PhysicalUnit.inch])
-units_in_scaled_points[PhysicalUnit.centimetre] = round((1.0 / 2.54) * units_in_scaled_points[PhysicalUnit.inch])
-units_in_scaled_points[PhysicalUnit.millimetre] = round(0.1 * units_in_scaled_points[PhysicalUnit.centimetre])
-units_in_scaled_points[PhysicalUnit.didot_point] = round((1238.0 / 1157.0) * units_in_scaled_points[PhysicalUnit.point])
-units_in_scaled_points[PhysicalUnit.cicero] = 12 * units_in_scaled_points[PhysicalUnit.didot_point]
+units_in_sp: Dict[Unit, int] = {}
+units_in_sp[Unit.scaled_point] = 1
+units_in_sp[Unit.point] = 65536 * units_in_sp[Unit.scaled_point]
+units_in_sp[Unit.pica] = 12 * units_in_sp[Unit.point]
+units_in_sp[Unit.inch] = round(72.27 * units_in_sp[Unit.point])
+units_in_sp[Unit.big_point] = round((1 / 72) * units_in_sp[Unit.inch])
+units_in_sp[Unit.centimetre] = round((1 / 2.54) * units_in_sp[Unit.inch])
+units_in_sp[Unit.millimetre] = round(0.1 * units_in_sp[Unit.centimetre])
+units_in_sp[Unit.didot_point] = round((1238 / 1157) * units_in_sp[Unit.point])
+units_in_sp[Unit.cicero] = 12 * units_in_sp[Unit.didot_point]
 
 
 # TeXbook page 58.

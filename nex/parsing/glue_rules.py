@@ -1,5 +1,5 @@
 from ..tokens import BuiltToken
-from ..constants.units import PhysicalUnit
+from ..constants.units import Unit
 from ..accessors import glue_keys
 
 from . import utils as pu
@@ -73,7 +73,7 @@ def add_glue_rules(pg):
 
     @pg.production('fil_unit : fil')
     def fil_unit(p):
-        unit = {'unit': PhysicalUnit.fil, 'number_of_fils': 1}
+        unit = {'unit': Unit.fil, 'number_of_fils': 1}
         return BuiltToken(type_='fil_unit',
                           value=unit,
                           position_like=p)
