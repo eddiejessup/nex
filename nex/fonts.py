@@ -13,7 +13,7 @@ from .feedback import drep
 
 @lru_cache(maxsize=512)
 def scale(design_size, d):
-    return int(round(pt2sp(d * design_size)))
+    return round(pt2sp(d * design_size))
 
 
 class FontInfo:

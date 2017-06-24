@@ -343,7 +343,7 @@ class AbstractBox(ListElement):
                 raise ValueError(f'Unknown line state: {line_state}')
             # Notice that stretching or shrinking occurs only when the glue
             # has the highest order of infinity that doesn't cancel out.
-            self.contents[i].set(int(round(g.natural_length + glue_diff)))
+            self.contents[i].set(round(g.natural_length + glue_diff))
         self.set_glue = True
 
     def badness(self):
@@ -380,7 +380,7 @@ class AbstractBox(ListElement):
                             GlueRatio.no_shrinkability):
             return 10000
         else:
-            return min(int(round(100 * glue_ratio ** 3)), 10000)
+            return min(round(100 * glue_ratio ** 3), 10000)
 
 
 class HBox(AbstractBox):

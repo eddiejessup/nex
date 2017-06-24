@@ -7,7 +7,7 @@ from .pydvi.TeXUnit import pt2sp, sp2pt
 
 
 def pt_to_sp(pt):
-    return int(round(pt2sp(pt)))
+    return round(pt2sp(pt))
 
 
 def sp_to_pt(pt):

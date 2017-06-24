@@ -597,7 +597,7 @@ class GlobalState:
                 # true cm' is equivalent to `\vskip 0.25 cm' if you have
                 # previously said `\magnification=2000'.
                 unit_scale *= 1000.0 / magnification
-        size = int(round(nr_units * unit_scale))
+        size = round(nr_units * unit_scale)
         return size
 
     # Evaluate conditions.
@@ -734,7 +734,7 @@ class GlobalState:
         # Go back to the middle of the character, than go back half the accent
         # width, so that the middle of the accent will be the same as that of
         # the character.
-        kern_item = Kern(int(round(-char_w / 2 - acc_w / 2)))
+        kern_item = Kern(round(-char_w / 2 - acc_w / 2))
         # TeXbook page 54: The accent is assumed to be properly positioned for
         # a character whose height equals the x-height of the current font;
         # taller or shorter characters cause the accent to be raised or
@@ -897,8 +897,8 @@ class GlobalState:
                 stretch = extra_space_skip['stretch']
                 shrink = extra_space_skip['shrink']
 
-                stretch *= int(round(f / 1000))
-                shrink *= int(round(1000 / f))
+                stretch *= round(f / 1000)
+                shrink *= round(1000 / f)
             else:
                 dimen = self.current_font.spacing
                 stretch = self.current_font.space_stretch
@@ -906,8 +906,8 @@ class GlobalState:
                 if f > 2000:
                     dimen += self.current_font.extra_space
 
-                stretch *= int(round(f / 1000))
-                shrink *= int(round(1000 / f))
+                stretch *= round(f / 1000)
+                shrink *= round(1000 / f)
 
             space_glue_item = Glue(dimen, stretch, shrink)
             self.append_to_list(space_glue_item)
