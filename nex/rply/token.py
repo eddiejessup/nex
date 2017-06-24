@@ -1,14 +1,4 @@
-class BaseBox(object):
-    """
-    A base class for polymorphic boxes that wrap parser results. Simply use
-    this as a base class for anything you return in a production function of a
-    parser. This is necessary because RPython unlike Python expects functions
-    to always return objects of the same type.
-    """
-    _attrs_ = []
-
-
-class Token(BaseBox):
+class Token(object):
     """
     Represents a syntactically relevant piece of text.
 

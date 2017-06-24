@@ -10,7 +10,7 @@ from ..constants.instructions import (Instructions as I,
                                       )
 from ..tokens import instructions_to_types
 
-terminal_instructions = (
+base_terminal_instructions = (
     I.box_dimen_height,
     I.box_dimen_width,
     I.box_dimen_depth,
@@ -144,12 +144,15 @@ terminal_instructions = (
     I.non_active_uncased_y,
     I.non_active_uncased_z,
 )
-terminal_instructions += register_instructions
-terminal_instructions += message_instructions
-terminal_instructions += hyphenation_instructions
-terminal_instructions += h_add_glue_instructions
-terminal_instructions += v_add_glue_instructions
-terminal_instructions += short_hand_def_instructions
-terminal_instructions += def_instructions
-terminal_instructions += if_instructions
+terminal_instructions = (
+    base_terminal_instructions
+    + register_instructions
+    + message_instructions
+    + hyphenation_instructions
+    + h_add_glue_instructions
+    + v_add_glue_instructions
+    + short_hand_def_instructions
+    + def_instructions
+    + if_instructions
+)
 terminal_types = instructions_to_types(terminal_instructions)
