@@ -10,7 +10,8 @@ from .constants.instructions import (Instructions,
                                      if_instructions,
                                      message_instructions,
                                      unexpanded_cs_instructions,
-                                     hyphenation_instructions)
+                                     hyphenation_instructions,
+                                     mark_instructions)
 from .constants.parameters import Parameters
 from .tokens import InstructionToken
 from .lexer import (is_control_sequence_call, is_char_cat,
@@ -544,9 +545,64 @@ class Banisher:
         first_token = self.instructions.next_expanded()
         instr = first_token.instruction
 
+        # Start of expanding cases shown from TeXBook page 212 onwards.
         # A user control sequence.
         if instr == Instructions.macro:
             return self._handle_macro(first_token)
+        # Such as \ifnum.
+        elif instr in if_instructions:
+            return self._handle_if(first_token)
+        # \number.
+        elif instr == Instructions.number:
+            raise NotImplementedError
+        # \romannumeral.
+        elif instr == Instructions.roman_numeral:
+            raise NotImplementedError
+        # \string.
+        elif instr == Instructions.string:
+            return self._handle_string(first_token)
+        # \jobname.
+        elif instr == Instructions.job_name:
+            raise NotImplementedError
+        # \fontname.
+        elif instr == Instructions.font_name:
+            raise NotImplementedError
+        # \meaning.
+        elif instr == Instructions.meaning:
+            raise NotImplementedError
+        # \csname.
+        elif instr == Instructions.cs_name:
+            logger.debug(f'Doing "cs-name" instruction')
+            return self._handle_cs_name(first_token)
+        # \expandafter.
+        elif instr == Instructions.expand_after:
+            logger.debug(f'Evaluating expand-after')
+            # Read a token without expansion.
+            unexpanded_token = self.instructions.next_unexpanded()
+            # Then get the next token *with* expansion.
+            next_input_tokens, next_output_tokens = self._expand_next_input_token()
+            # Order doesn't matter because only one should have elements anyway.
+            next_tokens = next_input_tokens + next_output_tokens
+            # Then replace the first unexpanded token, and results of second
+            # expansion, on the input queue.
+            replace = [unexpanded_token] + next_tokens
+            return replace, []
+        # \no_expand.
+        elif instr == Instructions.no_expand:
+            raise NotImplementedError
+        # \topmark, \firstmark, \botmark, \splitfirstmark, \splitbotmark.
+        elif instr in mark_instructions:
+            raise NotImplementedError
+        # \input.
+        # elif instr == Instructions.input:
+        #     raise NotImplementedError
+        # \endinput.
+        elif instr == Instructions.end_input:
+            raise NotImplementedError
+        # \the.
+        elif instr == Instructions.the:
+            raise NotImplementedError
+        # End of expanding cases.
         # Waiting to absorb a balanced text, and see a "{".
         elif (self.context_mode in (ContextMode.awaiting_balanced_text_start,
                                     ContextMode.awaiting_balanced_text_or_token_variable_start)
@@ -604,19 +660,6 @@ class Banisher:
             logger.info(f'Adding context due to {instr}')
             self._push_context(ContextMode.awaiting_balanced_text_or_token_variable_start)
             return [], [first_token]
-        # \expandafter.
-        elif instr == Instructions.expand_after:
-            logger.debug(f'Evaluating expand-after')
-            # Read a token without expansion.
-            unexpanded_token = self.instructions.next_unexpanded()
-            # Then get the next token *with* expansion.
-            next_input_tokens, next_output_tokens = self._expand_next_input_token()
-            # Order doesn't matter because only one should have elements anyway.
-            next_tokens = next_input_tokens + next_output_tokens
-            # Then replace the first unexpanded token, and results of second
-            # expansion, on the input queue.
-            replace = [unexpanded_token] + next_tokens
-            return replace, []
         # Such as \message.
         elif instr in message_instructions + hyphenation_instructions:
             logger.info(f'Adding context due to {instr}')
@@ -626,16 +669,6 @@ class Banisher:
             # implemented.
             self._push_context(ContextMode.awaiting_balanced_text_start)
             return [], [first_token]
-        # Such as \ifnum.
-        elif instr in if_instructions:
-            return self._handle_if(first_token)
-        # \string.
-        elif instr == Instructions.string:
-            return self._handle_string(first_token)
-        # \csname.
-        elif instr == Instructions.cs_name:
-            logger.debug(f'Doing "cs-name" instruction')
-            return self._handle_cs_name(first_token)
         # \upper.
         elif instr in (Instructions.upper_case, Instructions.lower_case):
             logger.debug(f'Doing "{instr.name}" instruction')

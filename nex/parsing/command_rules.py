@@ -370,29 +370,73 @@ def add_assignment_rules(pg):
 
 
 def add_command_rules(pg):
+    # Mode-independent commands, that do not directly affect list-building.
     @pg.production('command : assignment')
-    @pg.production('command : add_kern')
-    @pg.production('command : add_glue')
-    @pg.production('command : PAR')
-    @pg.production('command : SPACE')
-    @pg.production('command : message')
-    @pg.production('command : write')
     @pg.production('command : RELAX')
-    @pg.production('command : box')
-    @pg.production('command : un_box')
-    @pg.production('command : vertical_rule')
-    @pg.production('command : horizontal_rule')
-    @pg.production('command : input')
-    @pg.production('command : ship_out')
     @pg.production('command : RIGHT_BRACE')
-    @pg.production('command : LEFT_BRACE')
-    @pg.production('command : END')
-    @pg.production('command : INDENT')
-    @pg.production('command : solo_accent')
-    @pg.production('command : paired_accent')
-    @pg.production('command : character_like')
+    # @pg.production('command : begin_group')
+    # @pg.production('command : end_group')
+    # @pg.production('command : show_token')
+    # @pg.production('command : show_box')
+    # @pg.production('command : show_lists')
+    # @pg.production('command : show_the')
+    @pg.production('command : ship_out')
+    # @pg.production('command : ignore_spaces')
     @pg.production('command : after_assignment')
     @pg.production('command : after_group')
+    # [Upper and lowercase are handled in banisher.]
+    @pg.production('command : message')
+    @pg.production('command : error_message')
+    # @pg.production('command : open_input')
+    # @pg.production('command : open_output')
+    # @pg.production('command : close_input')
+    # @pg.production('command : close_output')
+    @pg.production('command : write')
+    # Almost mode-independent commands, that just deal with different types of
+    # lists.
+    # @pg.production('command : special')
+    # @pg.production('command : add_penalty')
+    @pg.production('command : add_kern')
+    @pg.production('command : add_math_kern')
+    # @pg.production('command : un_penalty')
+    # @pg.production('command : un_kern')
+    # @pg.production('command : un_glue')
+    # @pg.production('command : mark')
+    # @pg.production('command : insert')
+    # @pg.production('command : v_adjust')
+    # These are a bit cheaty to put in mode-independent section.
+    # They are described separately in each mode in the TeXBook.
+    @pg.production('command : add_glue')
+    # @pg.production('command : leaders')
+    @pg.production('command : SPACE')
+    @pg.production('command : box')
+    @pg.production('command : un_box')
+    @pg.production('command : INDENT')
+    @pg.production('command : PAR')
+    @pg.production('command : LEFT_BRACE')
+    # @pg.production('command : NO_INDENT')
+    # Vertical commands.
+    # @pg.production('command : move_left')
+    # @pg.production('command : move_right')
+    @pg.production('command : horizontal_rule')
+    # @pg.production('command : h_align')
+    @pg.production('command : END')
+    # @pg.production('command : dump')
+    # Horizontal commands.
+    # @pg.production('command : control_space')
+    # @pg.production('command : raise_box')
+    # @pg.production('command : lower_box')
+    @pg.production('command : vertical_rule')
+    # @pg.production('command : v_align')
+    @pg.production('command : character_like')
+    @pg.production('command : solo_accent')
+    @pg.production('command : paired_accent')
+    # @pg.production('command : italic_correction')
+    # @pg.production('command : discretionary')
+    # @pg.production('command : discretionary_hyphen')
+    # @pg.production('command : math_shift')
+    # TODO: This belongs in banisher, it isn't a command.
+    @pg.production('command : input')
     def command(p):
         return p[0]
 
@@ -452,16 +496,20 @@ def add_command_rules(pg):
                                  'prefix': None},
                           position_like=p)
 
-    @pg.production('message : ERROR_MESSAGE general_text')
+    @pg.production('error_message : ERROR_MESSAGE general_text')
+    def error_message(p):
+        return BuiltToken(type_='error_message',
+                          value={'content': p[1]},
+                          position_like=p)
+
     @pg.production('message : MESSAGE general_text')
     def message(p):
-        # TODO: Implement.
         return BuiltToken(type_='message',
                           value={'content': p[1]},
                           position_like=p)
 
     @pg.production('add_kern : KERN dimen')
-    @pg.production('add_kern : MATH_KERN mu_dimen')
+    @pg.production('add_math_kern : MATH_KERN mu_dimen')
     def add_kern(p):
         # TODO: Implement.
         return BuiltToken(type_=p[0].type, value=p[1],

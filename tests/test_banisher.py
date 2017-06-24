@@ -418,3 +418,12 @@ def test_afters():
         assert out[1].instruction == Instructions.arbitrary_token
         target_tok = out[1].value
         assert target_tok.value['name'] == 'something'
+
+
+# def test_input():
+#     cs_map = {
+#         'putIn': ITok(Instructions.input),
+#     }
+#     b = string_to_banisher('$putIn abc', cs_map)
+#     out = list(b.advance_to_end())
+#     print(out)

@@ -73,7 +73,6 @@ class Instructions(Enum):
     v_rule = 'V_RULE'
     h_rule = 'H_RULE'
 
-    input = 'INPUT'
     ship_out = 'SHIP_OUT'
 
     end = 'END'
@@ -164,10 +163,25 @@ class Instructions(Enum):
 
     # Instructions that are handled before parsing, in the banisher.
     macro = 'MACRO'
+    number = 'NUMBER'
+    roman_numeral = 'ROMAN_NUMERAL'
     string = 'STRING'
+    job_name = 'JOB_NAME'
+    font_name = 'FONT_NAME'
+    meaning = 'MEANING'
     cs_name = 'CS_NAME'
     end_cs_name = 'END_CS_NAME'
     expand_after = 'EXPAND_AFTER'
+    no_expand = 'NO_EXPAND'
+    top_mark = 'TOP_MARK'
+    first_mark = 'FIRST_MARK'
+    bottom_mark = 'BOTTOM_MARK'
+    split_first_mark = 'SPLIT_FIRST_MARK'
+    split_bottom_mark = 'SPLIT_BOTTOM_MARK'
+    input = 'INPUT'
+    end_input = 'END_INPUT'
+    the = 'THE'
+    # Other banisher commands.
     upper_case = 'UPPER_CASE'
     lower_case = 'LOWER_CASE'
     cr = 'CR'
@@ -279,90 +293,95 @@ class Instructions(Enum):
     non_active_uncased_z = 'NON_ACTIVE_UNCASED_Z'
 
 
-I = Instructions
-
 unexpanded_cs_instructions = (
-    I.unexpanded_control_symbol,
-    I.unexpanded_control_word,
+    Instructions.unexpanded_control_symbol,
+    Instructions.unexpanded_control_word,
 )
 
 message_instructions = (
-    I.message,
-    I.error_message,
-    I.write,
+    Instructions.message,
+    Instructions.error_message,
+    Instructions.write,
 )
 
 hyphenation_instructions = (
-    I.hyphenation,
-    I.patterns,
+    Instructions.hyphenation,
+    Instructions.patterns,
 )
 
 h_add_glue_instructions = (
-    I.h_skip,
-    I.h_fil,
-    I.h_fill,
-    I.h_stretch_or_shrink,
-    I.h_fil_neg,
+    Instructions.h_skip,
+    Instructions.h_fil,
+    Instructions.h_fill,
+    Instructions.h_stretch_or_shrink,
+    Instructions.h_fil_neg,
 )
 
 
 v_add_glue_instructions = (
-    I.v_skip,
-    I.v_fil,
-    I.v_fill,
-    I.v_stretch_or_shrink,
-    I.v_fil_neg,
+    Instructions.v_skip,
+    Instructions.v_fil,
+    Instructions.v_fill,
+    Instructions.v_stretch_or_shrink,
+    Instructions.v_fil_neg,
 )
 
 explicit_box_instructions = (
-    I.h_box,
-    I.v_box,
-    I.v_top,
+    Instructions.h_box,
+    Instructions.v_box,
+    Instructions.v_top,
 )
 
 register_instructions = (
-    I.count,
-    I.dimen,
-    I.skip,
-    I.mu_skip,
-    I.toks,
+    Instructions.count,
+    Instructions.dimen,
+    Instructions.skip,
+    Instructions.mu_skip,
+    Instructions.toks,
 )
 
 short_hand_def_instructions = (
-    I.char_def,
-    I.math_char_def,
+    Instructions.char_def,
+    Instructions.math_char_def,
     # Short-hand register definitions.
-    I.count_def,
-    I.dimen_def,
-    I.skip_def,
-    I.mu_skip_def,
-    I.toks_def,
+    Instructions.count_def,
+    Instructions.dimen_def,
+    Instructions.skip_def,
+    Instructions.mu_skip_def,
+    Instructions.toks_def,
 )
 
 def_instructions = (
-    I.def_,
-    I.g_def,
-    I.e_def,
-    I.x_def,
+    Instructions.def_,
+    Instructions.g_def,
+    Instructions.e_def,
+    Instructions.x_def,
 )
 
-
 if_instructions = (
-    I.if_num,
-    I.if_dimen,
-    I.if_odd,
-    I.if_v_mode,
-    I.if_h_mode,
-    I.if_m_mode,
-    I.if_inner,
-    I.if_char,
-    I.if_cat,
-    I.if_token,
-    I.if_void,
-    I.if_h_box,
-    I.if_v_box,
-    I.if_end_of_file,
-    I.if_true,
-    I.if_false,
-    I.if_case,
+    Instructions.if_num,
+    Instructions.if_dimen,
+    Instructions.if_odd,
+    Instructions.if_v_mode,
+    Instructions.if_h_mode,
+    Instructions.if_m_mode,
+    Instructions.if_inner,
+    Instructions.if_char,
+    Instructions.if_cat,
+    Instructions.if_token,
+    Instructions.if_void,
+    Instructions.if_h_box,
+    Instructions.if_v_box,
+    Instructions.if_end_of_file,
+    Instructions.if_true,
+    Instructions.if_false,
+    Instructions.if_case,
+)
+
+mark_instructions = (
+    Instructions.top_mark,
+    Instructions.first_mark,
+    Instructions.bottom_mark,
+    Instructions.split_first_mark,
+    Instructions.split_bottom_mark,
 )
