@@ -616,51 +616,54 @@ class GlobalState:
 
     evaluate_if_dim = evaluate_if_num
 
-    def evaluate_if_odd(self, number):
+    def evaluate_if_odd(self, number) -> bool:
         return number % 2
 
-    def evaluate_if_v_mode(self):
+    def evaluate_if_v_mode(self) -> bool:
         return self.mode in vertical_modes
 
-    def evaluate_if_h_mode(self):
+    def evaluate_if_h_mode(self) -> bool:
         return self.mode in horizontal_modes
 
-    def evaluate_if_m_mode(self):
+    def evaluate_if_m_mode(self) -> bool:
         return self.mode in math_modes
 
-    def evaluate_if_inner_mode(self):
+    def evaluate_if_inner_mode(self) -> bool:
         return self.mode in inner_modes
 
-    def evaluate_if_chars_equal(self, tok_1, tok_2):
+    def evaluate_if_chars_equal(self, tok_1, tok_2) -> bool:
         # TODO: we will assume tokens are not expandable. Maybe check for this?
         # Instructions in TeXBook page 209.
         raise NotImplementedError
 
-    def evaluate_if_cats_equal(self, tok_1, tok_2):
+    def evaluate_if_cats_equal(self, tok_1, tok_2) -> bool:
         # Instructions in TeXBook page 209.
         raise NotImplementedError
 
-    def evaluate_if_tokens_equal(self, tok_1, tok_2):
+    def evaluate_if_tokens_equal(self, tok_1, tok_2) -> bool:
         # Instructions in TeXBook page 210.
         raise NotImplementedError
 
-    def evaluate_if_box_register_void(self, reg_nr):
+    def evaluate_if_box_register_void(self, reg_nr) -> bool:
         # Instructions in TeXBook page 210.
         raise NotImplementedError
 
-    def evaluate_if_box_register_h_box(self, reg_nr):
+    def evaluate_if_box_register_h_box(self, reg_nr) -> bool:
         # Instructions in TeXBook page 210.
         raise NotImplementedError
 
-    def evaluate_if_box_register_v_box(self, reg_nr):
+    def evaluate_if_box_register_v_box(self, reg_nr) -> bool:
         # Instructions in TeXBook page 210.
         raise NotImplementedError
 
-    def evaluate_if_end_of_file(self, input_stream_nr):
+    def evaluate_if_end_of_file(self, input_stream_nr) -> bool:
         # Instructions in TeXBook page 210.
-        raise NotImplementedError
+        logger.warning(f"TODO: if end-of-file of "
+                       f"input stream '{input_stream_nr}'")
+        # raise NotImplementedError
+        return False
 
-    def evaluate_if_case(self, number):
+    def evaluate_if_case(self, number) -> int:
         if number < 0:
             raise ValueError(f'if-case should not return negative number: '
                              f'{number}')
@@ -1498,12 +1501,12 @@ class GlobalState:
             logger.info(f"Doing 'message' command")
             conts = v['content'].value
             s = ''.join(t.value['char'] for t in conts)
-            print(f'MESSAGE: {s}')
+            logger.warning(f'TODO: MESSAGE: {s}')
         elif type_ == 'write':
             logger.info(f"Doing 'write' command")
             conts = v['content'].value
             # s = ''.join(t.value['char'] for t in conts)
-            print(f'LOG: <TODO>')
+            logger.warning(f'TODO: LOG: <TODO>')
             # TODO: This should be read with expansion, but at the moment we
             # read it unexpanded, so what we get here is not printable.
             pass
@@ -1550,7 +1553,8 @@ class GlobalState:
         elif type_ == Instructions.open_input.value:
             stream_nr = self.eval_number_token(v['stream_nr'])
             file_name = v['file_name'].value
-            print(f"TODO: Open input file '{file_name}' as stream {stream_nr}")
+            logger.warning(f"TODO: Open input file '{file_name}' as stream "
+                           f"{stream_nr}")
             # raise NotImplementedError
         # After group.
         elif type_ == Instructions.after_group.value:
@@ -1689,28 +1693,59 @@ class GlobalState:
 
     # This method has a long name to emphasize that it will return the index of
     # the token block to pick, not the result of the condition.
-    def evaluate_if_token_to_block(self, if_token):
+    def evaluate_if_token_to_block(self, if_token) -> int:
         v = if_token.value
         t = if_token.type
-        if t == 'IF_NUM':
+        if t == Instructions.if_num.value:
             relation_str = v['relation'].value['char']
             left_nr = self.eval_number_token(v['left_number'])
             right_nr = self.eval_number_token(v['right_number'])
             outcome = self.evaluate_if_num(left_nr, right_nr, relation_str)
-        elif t == 'IF_DIMEN':
+        elif t == Instructions.if_dimen.value:
             relation_str = v['relation'].value['char']
-            outcome = self.evaluate_if_dim(v['left_dimen'], v['right_dimen'],
-                                           relation_str)
-        elif t == 'IF_CASE':
+            left_dim = self.eval_number_token(v['left_dimen'])
+            right_dim = self.eval_number_token(v['right_dimen'])
+            outcome = self.evaluate_if_dim(left_dim, right_dim, relation_str)
+        elif t == Instructions.if_odd.value:
+            nr = self.eval_number_token(v['number'])
+            outcome = self.evaluate_if_odd(nr)
+        elif t == Instructions.if_v_mode.value:
+            outcome = self.evaluate_if_v_mode()
+        elif t == Instructions.if_h_mode.value:
+            outcome = self.evaluate_if_h_mode()
+        elif t == Instructions.if_m_mode.value:
+            outcome = self.evaluate_if_m_mode()
+        elif t == Instructions.if_inner_mode.value:
+            outcome = self.evaluate_if_inner_mode()
+        elif t == Instructions.if_char.value:
+            outcome = self.evaluate_if_chars_equal(v['tok_1'], v['tok_2'])
+        elif t == Instructions.if_cat.value:
+            outcome = self.evaluate_if_cats_equal(v['tok_1'], v['tok_2'])
+        elif t == Instructions.if_token.value:
+            outcome = self.evaluate_if_tokens_equal(v['tok_1'], v['tok_2'])
+        elif t == Instructions.if_void.value:
+            nr = self.eval_number_token(v['number'])
+            outcome = self.evaluate_if_box_register_void(reg_nr=nr)
+        elif t == Instructions.if_h_box.value:
+            nr = self.eval_number_token(v['number'])
+            outcome = self.evaluate_if_box_register_h_box(reg_nr=nr)
+        elif t == Instructions.if_v_box.value:
+            nr = self.eval_number_token(v['number'])
+            outcome = self.evaluate_if_box_register_v_box(reg_nr=nr)
+        elif t == Instructions.if_end_of_file.value:
+            nr = self.eval_number_token(v['number'])
+            outcome = self.evaluate_if_end_of_file(input_stream_nr=nr)
+        elif t == Instructions.if_true.value:
+            outcome = True
+        elif t == Instructions.if_false.value:
+            outcome = False
+        elif t == Instructions.if_case.value:
             number_eval = self.eval_number_token(v['number'])
             outcome = self.evaluate_if_case(number_eval)
-        elif t == 'IF_TRUE':
-            outcome = True
-        elif t == 'IF_FALSE':
-            outcome = False
         else:
-            raise NotImplementedError
-        if t == 'IF_CASE':
+            raise ValueError(f"Unknown 'if' token of type '{t}'")
+        i_block_to_pick: int
+        if t == Instructions.if_case:
             i_block_to_pick = outcome
         else:
             i_block_to_pick = 0 if outcome else 1

@@ -95,7 +95,7 @@ primitive_control_sequences = {
     'ifvmode': Instructions.if_v_mode,
     'ifhmode': Instructions.if_h_mode,
     'ifmmode': Instructions.if_m_mode,
-    'ifinner': Instructions.if_inner,
+    'ifinner': Instructions.if_inner_mode,
     'if': Instructions.if_char,
     'ifcat': Instructions.if_cat,
     'ifx': Instructions.if_token,

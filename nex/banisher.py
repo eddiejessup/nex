@@ -300,7 +300,7 @@ class Banisher:
 
     def _handle_if(self, first_token):
         logger.debug(f'Handling condition "{first_token.instruction.name} …"')
-        # Put 'if' token on input so parsing works.
+        # Put 'if' token we just fetched on input, then grab a condition token.
         if_token = get_chunk(self, condition_parser, initial=[first_token])
         i_block_to_pick = self.state.evaluate_if_token_to_block(if_token)
         # Now get the body of the condition text.

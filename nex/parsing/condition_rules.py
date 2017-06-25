@@ -23,7 +23,7 @@ def add_condition_rules(pg):
     @pg.production('condition : IF_V_MODE')
     @pg.production('condition : IF_H_MODE')
     @pg.production('condition : IF_M_MODE')
-    @pg.production('condition : IF_INNER')
+    @pg.production('condition : IF_INNER_MODE')
     def condition_if_mode(p):
         return BuiltToken(type_=p[0].type, value=None)
 
@@ -39,15 +39,15 @@ def add_condition_rules(pg):
     # def condition_if_token(p):
     #     return BuiltToken(type_=p[0].type, value=None)
 
-    # @pg.production('condition : IF_VOID somethingsomething')
-    # @pg.production('condition : IF_H_BOX somethingsomething')
-    # @pg.production('condition : IF_V_BOX somethingsomething')
-    # def condition_if_box(p):
-    #     return BuiltToken(type_=p[0].type, value=None)
+    @pg.production('condition : IF_VOID number')
+    @pg.production('condition : IF_H_BOX number')
+    @pg.production('condition : IF_V_BOX number')
+    def condition_if_box(p):
+        return BuiltToken(type_=p[0].type, value={'number': p[1]})
 
-    # @pg.production('condition : IF_END_OF_FILE somethingsomething')
-    # def condition_if_end_of_file(p):
-    #     return BuiltToken(type_=p[0].type, value=None)
+    @pg.production('condition : IF_END_OF_FILE number')
+    def condition_if_end_of_file(p):
+        return BuiltToken(type_=p[0].type, value={'number': p[1]})
 
     @pg.production('condition : IF_TRUE')
     @pg.production('condition : IF_FALSE')

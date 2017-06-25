@@ -145,7 +145,7 @@ class Instructions(Enum):
     if_v_mode = 'IF_V_MODE'
     if_h_mode = 'IF_H_MODE'
     if_m_mode = 'IF_M_MODE'
-    if_inner = 'IF_INNER'
+    if_inner_mode = 'IF_INNER_MODE'
     if_char = 'IF_CHAR'
     if_cat = 'IF_CAT'
     if_token = 'IF_TOKEN'
@@ -364,7 +364,7 @@ if_instructions = (
     Instructions.if_v_mode,
     Instructions.if_h_mode,
     Instructions.if_m_mode,
-    Instructions.if_inner,
+    Instructions.if_inner_mode,
     Instructions.if_char,
     Instructions.if_cat,
     Instructions.if_token,
