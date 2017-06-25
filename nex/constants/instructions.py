@@ -343,7 +343,6 @@ unexpanded_cs_instructions = (
 message_instructions = (
     Instructions.message,
     Instructions.error_message,
-    Instructions.write,
 )
 
 hyphenation_instructions = (

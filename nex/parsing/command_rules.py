@@ -411,16 +411,16 @@ def add_command_rules(pg):
     @pg.production('command : write')
     # Almost mode-independent commands, that just deal with different types of
     # lists.
-    # @pg.production('command : special')
-    # @pg.production('command : add_penalty')
+    @pg.production('command : special')
+    @pg.production('command : add_penalty')
     @pg.production('command : add_kern')
     @pg.production('command : add_math_kern')
     @pg.production('command : UN_PENALTY')
     @pg.production('command : UN_KERN')
     @pg.production('command : UN_GLUE')
-    # @pg.production('command : mark')
-    # @pg.production('command : insert')
-    # @pg.production('command : v_adjust')
+    @pg.production('command : mark')
+    @pg.production('command : insert')
+    @pg.production('command : v_adjust')
     # These are a bit cheaty to put in mode-independent section.
     # They are described separately in each mode in the TeXBook.
     @pg.production('command : add_glue')
@@ -510,17 +510,46 @@ def add_command_rules(pg):
 
     @pg.production('write : WRITE number general_text')
     def write(p):
-        # TODO: Implement.
         return BuiltToken(type_='write',
-                          value={'stream_number': p[1], 'content': p[2],
+                          value={'stream_number': p[1],
+                                 'content': p[2],
                                  'prefix': None},
+                          position_like=p)
+
+    @pg.production('special : SPECIAL general_text')
+    def special(p):
+        return BuiltToken(type_=p[0].type,
+                          value={'content': p[1]},
+                          position_like=p)
+
+    @pg.production('add_penalty : ADD_PENALTY number')
+    def add_penalty(p):
+        return BuiltToken(type_=p[0].type, value=p[1],
                           position_like=p)
 
     @pg.production('add_kern : KERN dimen')
     @pg.production('add_math_kern : MATH_KERN mu_dimen')
     def add_kern(p):
-        # TODO: Implement.
         return BuiltToken(type_=p[0].type, value=p[1],
+                          position_like=p)
+
+    @pg.production('mark : MARK general_text')
+    def mark(p):
+        return BuiltToken(type_=p[0].type,
+                          value={'content': p[1]},
+                          position_like=p)
+
+    @pg.production('insert : INSERT number filler LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
+    def insert(p):
+        return BuiltToken(type_=p[0].type,
+                          value={'number': p[1],
+                                 'content': p[4]},
+                          position_like=p)
+
+    @pg.production('v_adjust : V_ADJUST filler LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
+    def v_adjust(p):
+        return BuiltToken(type_=p[0].type,
+                          value={'content': p[3]},
                           position_like=p)
 
     @pg.production('add_glue : H_FIL')

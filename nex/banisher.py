@@ -36,16 +36,21 @@ token_variable_start_instructions = (
     Instructions.toks,
 )
 
-
-command_parser = parsing.command_parser
-condition_parser = parsing.get_parser(start='condition')
-general_text_parser = parsing.get_parser(start='general_text')
-file_name_parser = parsing.get_parser(start='file_name')
+general_text_instructions = (
+    message_instructions
+    + hyphenation_instructions
+    + (Instructions.write,)
+)
 
 shorties = short_hand_def_instructions + (
     Instructions.font,
     Instructions.backtick,
 )
+
+command_parser = parsing.command_parser
+condition_parser = parsing.get_parser(start='condition')
+general_text_parser = parsing.get_parser(start='general_text')
+file_name_parser = parsing.get_parser(start='file_name')
 
 
 def stringify_instrs(ts):
@@ -667,7 +672,7 @@ class Banisher:
             self._push_context(ContextMode.awaiting_balanced_text_or_token_variable_start)
             return [], [first_token]
         # Such as \message.
-        elif instr in message_instructions + hyphenation_instructions:
+        elif instr in general_text_instructions:
             logger.info(f'Adding context due to {instr}')
             # TODO: I think the balanced text contents *are* expanded, at least
             # for \[err]message. Unlike upper/lower-case. Not sure how best to

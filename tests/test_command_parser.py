@@ -76,6 +76,11 @@ cs_map = {
     'italCorrect': ITok(Instructions.italic_correction),
     'maybeHyphen': ITok(Instructions.discretionary_hyphen),
     'ignoreSpaces': ITok(Instructions.ignore_spaces),
+    'doSpecial': ITok(Instructions.special),
+    'addPenalty': ITok(Instructions.add_penalty),
+    'addMark': ITok(Instructions.mark),
+    'addInsertion': ITok(Instructions.insert),
+    'vAdjust': ITok(Instructions.v_adjust),
 }
 
 
@@ -142,9 +147,29 @@ def test_write():
     parser.parse(process('$print 1 [$someText'))
 
 
+def test_special():
+    parser.parse(process('$doSpecial [$someText'))
+
+
+def test_penalty():
+    parser.parse(process('$addPenalty 1000'))
+
+
 def test_kern():
     parser.parse(process('$kern 30sp'))
     parser.parse(process('$mKern 30mu'))
+
+
+def test_mark():
+    parser.parse(process('$addMark [$someText'))
+
+
+def test_insert():
+    parser.parse(process('$addInsertion 28   [$VMaterial'))
+
+
+def test_v_adjust():
+    parser.parse(process('$vAdjust  [$VMaterial'))
 
 
 def test_un_stuff():
