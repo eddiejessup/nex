@@ -1,3 +1,5 @@
+from typing import Union
+
 import math
 import operator
 import logging
@@ -574,14 +576,14 @@ class GlobalState:
         else:
             raise ValueError(f'Unknown box dimension requested: {v.type}')
 
-    def get_infinite_dimen(self, nr_fils, nr_units):
+    def get_infinite_dimen(self, nr_fils, nr_units) -> BuiltToken:
         return BuiltToken(
             type_='fil_dimension',
             value={'factor': nr_units,
                    'number_of_fils': nr_fils}
         )
 
-    def get_finite_dimen(self, unit, nr_units, is_true_unit):
+    def get_finite_dimen(self, unit, nr_units, is_true_unit) -> int:
         # Only one unit in mu units, a mu. I don't know what a mu is
         # though...
         if unit == MuUnit.mu:
@@ -1231,7 +1233,11 @@ class GlobalState:
         box_item = BoxCls(contents=conts, to=to, spread=spread)
         return box_item
 
-    def eval_size_token(self, size_token):
+    def eval_size_token(self, size_token) -> Union[int, BuiltToken]:
+        """Evaluate the components of an unsigned quantity and return the
+        result. Usually this will be an integer, but it may also be a token
+        representing an infinite size of some order.
+        """
         v = size_token.value
         # If the size is the contents of an integer or dimen parameter.
         if isinstance(v, InstructionToken) and v.type in (Instructions.integer_parameter.value,
@@ -1286,7 +1292,11 @@ class GlobalState:
         else:
             raise ValueError
 
-    def eval_number_token(self, number_token):
+    def eval_number_token(self, number_token) -> Union[int, BuiltToken]:
+        """Evaluate the components of a signed quantity and return the result.
+        Usually this will be an integer, but it may also be a token
+        representing an infinite number of some order and sign.
+        """
         number_value = number_token.value
         # Occurs if the number is a register-def-token.
         if isinstance(number_value, BuiltToken) and number_value.type == 'internal_number':
@@ -1303,7 +1313,7 @@ class GlobalState:
         else:
             raise ValueError
 
-    def eval_glue_token(self, glue_token):
+    def eval_glue_token(self, glue_token) -> dict:
         v = glue_token.value
         if isinstance(v, BuiltToken) and v.type == 'explicit':
             # Should contain a dict specifying three dimens (in the general sense
@@ -1317,21 +1327,22 @@ class GlobalState:
                 else:
                     evaluated_dimen = self.eval_number_token(dimen_tok)
                 evaluated_glue[dimen_name] = evaluated_dimen
+            return evaluated_glue
         # If the size is the contents of a glue or mu glue register.
         elif isinstance(v, BuiltToken) and v.type in (Instructions.skip.value,
                                                       Instructions.mu_skip.value):
             # The register number is a generic 'number' token, so evaluate this
             # first.
             evaled_i = self.eval_number_token(v.value)
-            v = self.registers.get(v.type, i=evaled_i)
-            return v
+            return self.registers.get(v.type, i=evaled_i)
         # If the size is the contents of a parameter.
         elif isinstance(v, InstructionToken) and v.type in (Instructions.glue_parameter.value,
                                                             Instructions.mu_glue_parameter.value):
             return self.parameters.get(v.value['parameter'])
-        return evaluated_glue
+        else:
+            raise ValueError(f"Unknown glue token '{glue_token}'")
 
-    def eval_token_list_token(self, token_list_token):
+    def eval_token_list_token(self, token_list_token) -> list:
         token_list_value = token_list_token.value
         if token_list_value.type == 'general_text':
             evaluated_token_list = token_list_value.value
