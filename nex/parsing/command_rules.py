@@ -388,8 +388,8 @@ def add_command_rules(pg):
     @pg.production('command : message')
     @pg.production('command : error_message')
     @pg.production('command : open_input')
-    # @pg.production('command : open_output')
     # @pg.production('command : close_input')
+    # @pg.production('command : open_output')
     # @pg.production('command : close_output')
     @pg.production('command : write')
     # Almost mode-independent commands, that just deal with different types of
@@ -412,9 +412,9 @@ def add_command_rules(pg):
     @pg.production('command : box')
     @pg.production('command : un_box')
     @pg.production('command : INDENT')
+    # @pg.production('command : NO_INDENT')
     @pg.production('command : PAR')
     @pg.production('command : LEFT_BRACE')
-    # @pg.production('command : NO_INDENT')
     # Vertical commands.
     # @pg.production('command : move_left')
     # @pg.production('command : move_right')
