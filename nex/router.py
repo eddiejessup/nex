@@ -451,6 +451,7 @@ class CSRouter:
         route_id = r.value
         value_maps_map = {
             ControlSequenceType.parameter: self.parameters,
+            ControlSequenceType.special: self.specials,
             ControlSequenceType.primitive: self.primitives,
             ControlSequenceType.macro: self.macros,
             ControlSequenceType.let_character: self.let_chars,
