@@ -398,16 +398,16 @@ def add_command_rules(pg):
     @pg.production('command : SHOW_LISTS')
     # @pg.production('command : show_the')
     @pg.production('command : ship_out')
-    # @pg.production('command : ignore_spaces')
+    @pg.production('command : ignore_spaces')
     @pg.production('command : after_assignment')
     @pg.production('command : after_group')
     # [Upper and lowercase are handled in banisher.]
     @pg.production('command : message')
     @pg.production('command : error_message')
     @pg.production('command : open_input')
-    # @pg.production('command : close_input')
-    # @pg.production('command : open_output')
-    # @pg.production('command : close_output')
+    @pg.production('command : close_input')
+    @pg.production('command : open_output')
+    @pg.production('command : close_output')
     @pg.production('command : write')
     # Almost mode-independent commands, that just deal with different types of
     # lists.
@@ -463,6 +463,12 @@ def add_command_rules(pg):
                           value=p[1].value,
                           position_like=p)
 
+    @pg.production('ignore_spaces : IGNORE_SPACES optional_spaces')
+    def ignore_spaces(p):
+        return BuiltToken(type_=p[0].type,
+                          value=None,
+                          position_like=p)
+
     @pg.production('after_assignment : AFTER_ASSIGNMENT ARBITRARY_TOKEN')
     @pg.production('after_group : AFTER_GROUP ARBITRARY_TOKEN')
     def after_event(p):
@@ -483,10 +489,18 @@ def add_command_rules(pg):
                           position_like=p)
 
     @pg.production('open_input : OPEN_INPUT number equals file_name')
-    def open_input(p):
+    @pg.production('open_output : OPEN_OUTPUT number equals file_name')
+    def open_io(p):
         return BuiltToken(type_=p[0].type,
                           value={'stream_nr': p[1],
                                  'file_name': p[3]},
+                          position_like=p)
+
+    @pg.production('close_input : CLOSE_INPUT number')
+    @pg.production('close_output : CLOSE_OUTPUT number')
+    def close_io(p):
+        return BuiltToken(type_=p[0].type,
+                          value={'stream_nr': p[1]},
                           position_like=p)
 
     @pg.production('write : IMMEDIATE write')

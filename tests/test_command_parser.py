@@ -50,6 +50,9 @@ cs_map = {
     'finishGroup': ITok(Instructions.end_group),
     'displayLists': ITok(Instructions.show_lists),
     'openInput': ITok(Instructions.open_input),
+    'openOutput': ITok(Instructions.open_output),
+    'closeInput': ITok(Instructions.close_input),
+    'closeOutput': ITok(Instructions.close_output),
     'print': ITok(Instructions.write),
     'tell': ITok(Instructions.message),
     'errTell': ITok(Instructions.error_message),
@@ -72,6 +75,7 @@ cs_map = {
     'dumpOut': ITok(Instructions.dump),
     'italCorrect': ITok(Instructions.italic_correction),
     'maybeHyphen': ITok(Instructions.discretionary_hyphen),
+    'ignoreSpaces': ITok(Instructions.ignore_spaces),
 }
 
 
@@ -124,8 +128,14 @@ def test_message():
     parser.parse(process('$errTell [$someText'))
 
 
-def test_open_input():
-    parser.parse(process('$openInput 1 =aFile'))
+def test_open_io():
+    parser.parse(process('$openInput 1 =inFile'))
+    parser.parse(process('$openOutput 2 =outFile'))
+
+
+def test_close_io():
+    parser.parse(process('$closeInput 1'))
+    parser.parse(process('$closeOutput 2'))
 
 
 def test_write():
@@ -207,3 +217,7 @@ def test_discretionary():
 
 def test_math_shift():
     parser.parse(process('`'))
+
+
+def test_ignore_spaces():
+    parser.parse(process('$ignoreSpaces       '))
