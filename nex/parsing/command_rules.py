@@ -69,8 +69,9 @@ def add_assignment_rules(pg):
     def non_macro_assignment(p):
         tok = p[0]
         # A simple assignment is local (non-global) unless indicated otherwise.
-        # The only way to be already global is if the simple assigment is of type
-        # 'global assignment'. In this case, we should not touch the value.
+        # The only way to be already global is if the simple assigment is of
+        # type 'global assignment'. In this case, we should not touch the
+        # value.
         if 'global' not in tok.value:
             tok.value['global'] = False
         return tok
@@ -146,7 +147,11 @@ def add_assignment_rules(pg):
     @pg.production('code_assignment : code_name number equals number')
     def code_assignment(p):
         return BuiltToken(type_='code_assignment',
-                          value={'code_type': p[0].type, 'char': p[1], 'code': p[3]},
+                          value={
+                            'code_type': p[0].type,
+                            'char': p[1],
+                            'code': p[3]
+                          },
                           position_like=p)
 
     @pg.production('code_name : CAT_CODE')
@@ -167,7 +172,10 @@ def add_assignment_rules(pg):
         target_token = p[4].value
         new_name = p[1].value['name']
         return BuiltToken(type_='let_assignment',
-                          value={'name': new_name, 'target_token': target_token},
+                          value={
+                            'name': new_name,
+                            'target_token': target_token
+                          },
                           position_like=p)
 
     # End of 'let assignment', a simple assignment.
@@ -180,8 +188,11 @@ def add_assignment_rules(pg):
         def_type = p[0].type
         control_sequence_name = p[1].value['name']
         return BuiltToken(type_='short_hand_definition',
-                          value={'code': code, 'def_type': def_type,
-                                 'control_sequence_name': control_sequence_name},
+                          value={
+                            'code': code,
+                            'def_type': def_type,
+                            'control_sequence_name': control_sequence_name
+                          },
                           position_like=p)
 
     @pg.production('short_hand_def : CHAR_DEF')
@@ -200,12 +211,14 @@ def add_assignment_rules(pg):
 
     @pg.production('family_assignment : family_member equals font')
     def family_assignment(p):
-        # TODO: will this work for productions of font other than FONT_DEF_TOKEN?
+        # TODO: will this work for productions of font other than
+        # FONT_DEF_TOKEN?
         font_id = p[2].value
         font_range = p[0].type
         family_nr = p[0].value
         return BuiltToken(type_='family_assignment',
-                          value={'family_nr': family_nr, 'font_range': font_range,
+                          value={'family_nr': family_nr,
+                                 'font_range': font_range,
                                  'font_id': font_id},
                           position_like=p)
 
@@ -238,7 +251,8 @@ def add_assignment_rules(pg):
     @pg.production('box : V_TOP box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
     def box_h_box(p):
         return BuiltToken(type_=p[0].type,
-                          value={'specification': p[1], 'contents': p[3].value},
+                          value={'specification': p[1],
+                                 'contents': p[3].value},
                           position_like=p)
 
     @pg.production('box : BOX number')
@@ -280,8 +294,10 @@ def add_assignment_rules(pg):
     def font_definition(p):
         control_sequence_name = p[1].value['name']
         return BuiltToken(type_='font_definition',
-                          value={'file_name': p[4], 'at_clause': p[6],
-                                 'control_sequence_name': control_sequence_name},
+                          value={
+                            'file_name': p[4], 'at_clause': p[6],
+                            'control_sequence_name': control_sequence_name
+                          },
                           position_like=p)
 
     @pg.production('control_sequence : UNEXPANDED_CONTROL_WORD')
@@ -327,15 +343,16 @@ def add_assignment_rules(pg):
     # @pg.production('global_assignment : intimate_assignment')
     def global_assignment(p):
         tok = p[0]
-        # Global assignments are always global, even without the \global prefix.
+        # Global assignments are always global, even without the \global
+        # prefix.
         tok.value['global'] = True
         return tok
 
     @pg.production('font_assignment : SKEW_CHAR font equals number')
     @pg.production('font_assignment : HYPHEN_CHAR font equals number')
     def font_assignment(p):
-        # TODO: as for font definition, does this work for non-FONT_DEF_TOKEN font
-        # productions?
+        # TODO: as for font definition, does this work for non-FONT_DEF_TOKEN
+        # font productions?
         font_id = p[1].value
         type_ = '{}_assignment'.format(p[0].type.lower())
         return BuiltToken(type_=type_,
@@ -374,11 +391,11 @@ def add_command_rules(pg):
     @pg.production('command : assignment')
     @pg.production('command : RELAX')
     @pg.production('command : RIGHT_BRACE')
-    # @pg.production('command : begin_group')
-    # @pg.production('command : end_group')
+    @pg.production('command : BEGIN_GROUP')
+    @pg.production('command : END_GROUP')
     # @pg.production('command : show_token')
     # @pg.production('command : show_box')
-    # @pg.production('command : show_lists')
+    @pg.production('command : SHOW_LISTS')
     # @pg.production('command : show_the')
     @pg.production('command : ship_out')
     # @pg.production('command : ignore_spaces')
@@ -398,9 +415,9 @@ def add_command_rules(pg):
     # @pg.production('command : add_penalty')
     @pg.production('command : add_kern')
     @pg.production('command : add_math_kern')
-    # @pg.production('command : un_penalty')
-    # @pg.production('command : un_kern')
-    # @pg.production('command : un_glue')
+    @pg.production('command : UN_PENALTY')
+    @pg.production('command : UN_KERN')
+    @pg.production('command : UN_GLUE')
     # @pg.production('command : mark')
     # @pg.production('command : insert')
     # @pg.production('command : v_adjust')
@@ -412,7 +429,7 @@ def add_command_rules(pg):
     @pg.production('command : box')
     @pg.production('command : un_box')
     @pg.production('command : INDENT')
-    # @pg.production('command : NO_INDENT')
+    @pg.production('command : NO_INDENT')
     @pg.production('command : PAR')
     @pg.production('command : LEFT_BRACE')
     # Vertical commands.
@@ -421,9 +438,9 @@ def add_command_rules(pg):
     @pg.production('command : horizontal_rule')
     # @pg.production('command : h_align')
     @pg.production('command : END')
-    # @pg.production('command : dump')
+    @pg.production('command : DUMP')
     # Horizontal commands.
-    # @pg.production('command : control_space')
+    @pg.production('command : CONTROL_SPACE')
     # @pg.production('command : raise_box')
     # @pg.production('command : lower_box')
     @pg.production('command : vertical_rule')
@@ -431,45 +448,19 @@ def add_command_rules(pg):
     @pg.production('command : character_like')
     @pg.production('command : solo_accent')
     @pg.production('command : paired_accent')
-    # @pg.production('command : italic_correction')
+    @pg.production('command : ITALIC_CORRECTION')
     # @pg.production('command : discretionary')
-    # @pg.production('command : discretionary_hyphen')
-    # @pg.production('command : math_shift')
+    @pg.production('command : DISCRETIONARY_HYPHEN')
+    @pg.production('command : MATH_SHIFT')
     def command(p):
         return p[0]
 
-    @pg.production('paired_accent : solo_accent character_like')
-    def accent_with_character(p):
-        t = BuiltToken(type_='ACCENT', value=p[0].value, position_like=p)
-        t.value['target_char'] = p[1]
-        return t
+    add_assignment_rules(pg)
 
-    @pg.production('solo_accent : ACCENT number optional_assignments')
-    def accent_without_character(p):
-        return BuiltToken(type_='ACCENT', value={'assignments': p[2],
-                                                 'accent_code': p[1],
-                                                 'target_char': None},
-                          position_like=p)
-
-    @pg.production('optional_assignments : empty')
-    def optional_assignments_none(p):
-        return BuiltToken(type_='assignments', value=[], position_like=p)
-
-    @pg.production('optional_assignments : assignment optional_assignments')
-    def optional_assignments(p):
-        t = BuiltToken(type_=p[1].type, value=p[1].value, position_like=p)
-        t.value.append(p[0])
-        return t
-
-    @pg.production('character_like : character')
-    @pg.production('character_like : CHAR_DEF_TOKEN')
-    def character_like(p):
-        return p[0]
-
-    @pg.production('character_like : CHAR number')
-    def character_like_char(p):
-        return BuiltToken(type_='char',
-                          value={'code': p[1]},
+    @pg.production('ship_out : SHIP_OUT box')
+    def ship_out(p):
+        return BuiltToken(type_=p[0].type,
+                          value=p[1].value,
                           position_like=p)
 
     @pg.production('after_assignment : AFTER_ASSIGNMENT ARBITRARY_TOKEN')
@@ -477,21 +468,6 @@ def add_command_rules(pg):
     def after_event(p):
         return BuiltToken(type_=p[0].type,
                           value=p[1],
-                          position_like=p)
-
-    add_assignment_rules(pg)
-
-    @pg.production('write : IMMEDIATE write')
-    def immediate_write(p):
-        p[1].value['prefix'] = 'immediate'
-        return p[1]
-
-    @pg.production('write : WRITE number general_text')
-    def write(p):
-        # TODO: Implement.
-        return BuiltToken(type_='write',
-                          value={'stream_number': p[1], 'content': p[2],
-                                 'prefix': None},
                           position_like=p)
 
     @pg.production('message : MESSAGE general_text')
@@ -513,6 +489,19 @@ def add_command_rules(pg):
                                  'file_name': p[3]},
                           position_like=p)
 
+    @pg.production('write : IMMEDIATE write')
+    def immediate_write(p):
+        p[1].value['prefix'] = 'immediate'
+        return p[1]
+
+    @pg.production('write : WRITE number general_text')
+    def write(p):
+        # TODO: Implement.
+        return BuiltToken(type_='write',
+                          value={'stream_number': p[1], 'content': p[2],
+                                 'prefix': None},
+                          position_like=p)
+
     @pg.production('add_kern : KERN dimen')
     @pg.production('add_math_kern : MATH_KERN mu_dimen')
     def add_kern(p):
@@ -529,23 +518,65 @@ def add_command_rules(pg):
     @pg.production('add_glue : V_STRETCH_OR_SHRINK')
     @pg.production('add_glue : V_FIL_NEG')
     def add_special_glue(p):
-        # TODO: Implement.
         return BuiltToken(type_=p[0].type, value=None,
                           position_like=p)
 
     @pg.production('add_glue : H_SKIP glue')
     @pg.production('add_glue : V_SKIP glue')
     def add_glue(p):
-        # TODO: Implement.
         return BuiltToken(type_=p[0].type, value=p[1],
+                          position_like=p)
+
+    @pg.production('un_box : UN_H_BOX number')
+    @pg.production('un_box : UN_H_COPY number')
+    @pg.production('un_box : UN_V_BOX number')
+    @pg.production('un_box : UN_V_COPY number')
+    def un_box(p):
+        return BuiltToken(type_='un_box',
+                          value={'nr': p[1], 'cmd_type': p[0].type},
                           position_like=p)
 
     @pg.production('vertical_rule : V_RULE rule_specification')
     @pg.production('horizontal_rule : H_RULE rule_specification')
     def rule(p):
-        # TODO: Implement.
         return BuiltToken(type_=p[0].type, value=p[1].value,
                           position_like=p)
+
+    @pg.production('character_like : character')
+    @pg.production('character_like : CHAR_DEF_TOKEN')
+    def character_like(p):
+        return p[0]
+
+    @pg.production('character_like : CHAR number')
+    def character_like_char(p):
+        return BuiltToken(type_='char',
+                          value={'code': p[1]},
+                          position_like=p)
+
+    @pg.production('paired_accent : solo_accent character_like')
+    def accent_with_character(p):
+        t = BuiltToken(type_='ACCENT', value=p[0].value, position_like=p)
+        t.value['target_char'] = p[1]
+        return t
+
+    @pg.production('solo_accent : ACCENT number optional_assignments')
+    def accent_without_character(p):
+        return BuiltToken(type_='ACCENT', value={'assignments': p[2],
+                                                 'accent_code': p[1],
+                                                 'target_char': None},
+                          position_like=p)
+
+    # End of assignments. The remainder below are intermediate productions.
+
+    @pg.production('optional_assignments : empty')
+    def optional_assignments_none(p):
+        return BuiltToken(type_='assignments', value=[], position_like=p)
+
+    @pg.production('optional_assignments : assignment optional_assignments')
+    def optional_assignments(p):
+        t = BuiltToken(type_=p[1].type, value=p[1].value, position_like=p)
+        t.value.append(p[0])
+        return t
 
     @pg.production('rule_specification : rule_dimension rule_specification')
     def rule_specification(p):
@@ -562,8 +593,8 @@ def add_command_rules(pg):
         return BuiltToken(type_='rule_specification', value=dims,
                           position_like=p)
 
-    # TODO: these literals are getting unclear. Introduce some convention to make
-    # clear which (non-terminal) tokens represent literals.
+    # TODO: these literals are getting unclear. Introduce some convention to
+    # make clear which (non-terminal) tokens represent literals.
     @pg.production('rule_dimension : width dimen')
     @pg.production('rule_dimension : height dimen')
     @pg.production('rule_dimension : depth dimen')
@@ -578,12 +609,6 @@ def add_command_rules(pg):
     def literal_dimension(p):
         return make_literal_token(p)
 
-    @pg.production('ship_out : SHIP_OUT box')
-    def ship_out(p):
-        return BuiltToken(type_=p[0].type,
-                          value=p[1].value,
-                          position_like=p)
-
     @pg.production('file_name : character')
     @pg.production('file_name : file_name character')
     def file_name(p):
@@ -594,13 +619,4 @@ def add_command_rules(pg):
             s = p[0].value['char']
         return BuiltToken(type_='file_name',
                           value=s,
-                          position_like=p)
-
-    @pg.production('un_box : UN_H_BOX number')
-    @pg.production('un_box : UN_H_COPY number')
-    @pg.production('un_box : UN_V_BOX number')
-    @pg.production('un_box : UN_V_COPY number')
-    def un_box(p):
-        return BuiltToken(type_='un_box',
-                          value={'nr': p[1], 'cmd_type': p[0].type},
                           position_like=p)

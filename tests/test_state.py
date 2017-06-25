@@ -1,5 +1,3 @@
-from collections import deque
-
 import pytest
 
 from nex.constants.instructions import Instructions
