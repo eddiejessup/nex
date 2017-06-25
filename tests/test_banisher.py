@@ -420,10 +420,10 @@ def test_afters():
         assert target_tok.value['name'] == 'something'
 
 
-# def test_input():
-#     cs_map = {
-#         'putIn': ITok(Instructions.input),
-#     }
-#     b = string_to_banisher('$putIn abc', cs_map)
-#     out = list(b.advance_to_end())
-#     print(out)
+def test_input():
+    cs_map = {
+        'putIn': ITok(Instructions.input),
+    }
+    b = string_to_banisher('$putIn tests/test_files/test', cs_map)
+    out = list(b.advance_to_end())
+    print(out)

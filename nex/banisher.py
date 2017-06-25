@@ -40,6 +40,7 @@ token_variable_start_instructions = (
 command_parser = parsing.command_parser
 condition_parser = parsing.get_parser(start='condition')
 general_text_parser = parsing.get_parser(start='general_text')
+file_name_parser = parsing.get_parser(start='file_name')
 
 shorties = short_hand_def_instructions + (
     Instructions.font,
@@ -379,9 +380,7 @@ class Banisher:
 
         command_grabber = chunk_iter(self, command_parser)
         # Matching right brace should trigger EndOfSubExecutor and return.
-        self.state.execute_command_tokens(command_grabber,
-                                          banisher=self,
-                                          reader=self.reader)
+        self.state.execute_command_tokens(command_grabber, banisher=self)
 
         # [After ending the group, then TeX] packages the hbox (using the
         # size that was saved on the stack), and completes the setbox
@@ -594,8 +593,15 @@ class Banisher:
         elif instr in mark_instructions:
             raise NotImplementedError
         # \input.
-        # elif instr == Instructions.input:
-        #     raise NotImplementedError
+        elif instr == Instructions.input:
+            # The expansion is null; but TeX prepares to read from the
+            # specified file before looking at any more tokens from its current
+            # source.
+            file_name_token = get_chunk(self, file_name_parser)
+            file_name = file_name_token.value
+            logger.info(f"Inserting new file '{file_name}'")
+            self.reader.insert_file(file_name)
+            return [], []
         # \endinput.
         elif instr == Instructions.end_input:
             raise NotImplementedError

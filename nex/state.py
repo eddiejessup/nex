@@ -1351,31 +1351,27 @@ class GlobalState:
             raise NotImplementedError
         return evaluated_token_list
 
-    def execute_command_tokens(self, commands, banisher, reader):
+    def execute_command_tokens(self, commands, banisher):
         while True:
             try:
-                self.execute_command_token(next(commands), banisher, reader)
+                self.execute_command_token(next(commands), banisher)
             except EOFError:
                 return
             except EndOfSubExecutor:
                 return
 
-    def execute_command_token(self, command, banisher, reader):
+    def execute_command_token(self, command, banisher):
         try:
-            self._execute_command_token(command, banisher, reader)
+            self._execute_command_token(command, banisher)
         except (EOFError, EndOfSubExecutor, TidyEnd):
             raise
         except Exception as e:
-            if reader is not None:
-                ps = command.get_position_str(reader)
-            else:
-                ps = ''
             raise ExecuteCommandError(
                 command=command,
-                position_str=ps,
+                position_str='',
             ) from e
 
-    def _execute_command_token(self, command, banisher, reader):
+    def _execute_command_token(self, command, banisher):
         # Reader needed to allow us to insert new input in response to
         # commands.
         # Banisher needed to allow us to put output back on the queue in
@@ -1446,7 +1442,7 @@ class GlobalState:
             # appear between the accent number and the character to be
             # accented, but grouping operations must not intervene."
             for assignment in assignments:
-                self.execute_command_token(assignment, banisher, reader)
+                self.execute_command_token(assignment, banisher)
             self.do_accent(accent_code_eval, target_char_code)
         elif type_ == Instructions.v_rule.value:
             logger.info(f"Adding vertical rule")
@@ -1498,10 +1494,6 @@ class GlobalState:
             else:
                 raise ValueError(f'Unknown unbox command type: {cmd_type}')
             method(i=reg_nr, copy=is_copy)
-        elif type_ == 'input':
-            file_name = command.value['file_name']
-            logger.info(f"Inserting new file '{file_name}'")
-            reader.insert_file(file_name)
         elif type_ == Instructions.ship_out.value:
             raise NotImplementedError
         # I think technically only this should cause the program to end, not

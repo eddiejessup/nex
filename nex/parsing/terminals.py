@@ -98,7 +98,6 @@ base_terminal_instructions = (
     Instructions.math_kern,
     Instructions.v_rule,
     Instructions.h_rule,
-    Instructions.input,
     Instructions.ship_out,
     Instructions.end,
     Instructions.char,

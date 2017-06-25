@@ -56,9 +56,9 @@ def test_single_letter(state):
 def test_token_executor(state):
     tok = ITok(instruction=DummyInstructions.test, value=None)
     with pytest.raises(ExecuteCommandError):
-        state.execute_command_token(tok, banisher=None, reader=None)
+        state.execute_command_token(tok, banisher=None)
     with pytest.raises(ExecuteCommandError):
-        state.execute_command_tokens(iter([tok]), banisher=None, reader=None)
+        state.execute_command_tokens(iter([tok]), banisher=None)
 
 
 def test_solo_accent(state):
@@ -200,7 +200,7 @@ def test_command_token_set_box(state):
                          value={'contents': [], 'specification': None})
     set_box_tok = BuiltToken(type_=Instructions.set_box.value,
                              value={'box': box_tok, 'nr': nr_tok(i_reg), 'global': True})
-    state.execute_command_token(set_box_tok, banisher=None, reader=None)
+    state.execute_command_token(set_box_tok, banisher=None)
 
 
 def test_command_token_get_box(state):
@@ -211,7 +211,7 @@ def test_command_token_get_box(state):
 
     get_box_tok = BuiltToken(type_=Instructions.box.value,
                              value=nr_tok(i_reg))
-    state.execute_command_token(get_box_tok, banisher=None, reader=None)
+    state.execute_command_token(get_box_tok, banisher=None)
     lst = state.current_page
     assert lst[-1].contents is box_item.contents
     state.get_register_box(i=i_reg, copy=False) is None
@@ -222,7 +222,7 @@ def test_command_token_add_h_rule(state):
                                 value={'width': None,
                                        'height': None,
                                        'depth': None})
-    state.execute_command_token(add_h_rule_tok, banisher=None, reader=None)
+    state.execute_command_token(add_h_rule_tok, banisher=None)
     lst = state.current_page
     assert len(lst) == 3
     assert isinstance(lst[2], box.Rule)
@@ -238,7 +238,7 @@ def test_command_token_code_assignment(state):
                                    'char': nr_tok(ord('a')),
                                    'code': nr_tok(900),
                                    'global': True})
-    state.execute_command_token(set_sf_tok, banisher=None, reader=None)
+    state.execute_command_token(set_sf_tok, banisher=None)
     assert state.codes.get_space_factor_code('a') == 900
 
 
@@ -251,7 +251,7 @@ def test_command_token_unbox(state):
     get_box_tok = BuiltToken(type_='un_box',
                              value={'nr': nr_tok(i_reg),
                                     'cmd_type': Instructions.un_v_copy})
-    state.execute_command_token(get_box_tok, banisher=None, reader=None)
+    state.execute_command_token(get_box_tok, banisher=None)
     nr_elems_after = len(state.current_page)
     assert nr_elems_after == nr_elems_before + 2
     # Should still work, since copy == True.

@@ -435,8 +435,6 @@ def add_command_rules(pg):
     # @pg.production('command : discretionary')
     # @pg.production('command : discretionary_hyphen')
     # @pg.production('command : math_shift')
-    # TODO: This belongs in banisher, it isn't a command.
-    @pg.production('command : input')
     def command(p):
         return p[0]
 
@@ -580,12 +578,6 @@ def add_command_rules(pg):
     def literal_dimension(p):
         return make_literal_token(p)
 
-    @pg.production('input : INPUT file_name')
-    def input_file(p):
-        return BuiltToken(type_='input',
-                          value={'file_name': p[1].value},
-                          position_like=p)
-
     @pg.production('ship_out : SHIP_OUT box')
     def ship_out(p):
         return BuiltToken(type_=p[0].type,
@@ -595,7 +587,7 @@ def add_command_rules(pg):
     @pg.production('file_name : character')
     @pg.production('file_name : file_name character')
     def file_name(p):
-        # TODO: Move this logic into state.
+        # TODO: Move this logic out of parser.
         if len(p) > 1:
             s = p[0].value + p[1].value['char']
         else:

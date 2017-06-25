@@ -43,13 +43,13 @@ def run_state(state, input_paths):
     command_grabber = chunk_iter(banisher, command_parser)
     for input_path in input_paths:
         reader.insert_file(input_path)
-        state.execute_command_tokens(command_grabber, banisher, reader)
+        state.execute_command_tokens(command_grabber, banisher)
 
     while True:
         s = input('In: ')
         reader.insert_string(s + '\n')
         command_grabber = chunk_iter(banisher, command_parser)
-        state.execute_command_tokens(command_grabber, banisher, reader)
+        state.execute_command_tokens(command_grabber, banisher)
 
 
 def run_files(font_search_paths, input_paths):
