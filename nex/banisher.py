@@ -38,7 +38,7 @@ token_variable_start_instructions = (
 
 
 command_parser = parsing.command_parser
-condition_parser = parsing.get_parser(start='condition_wrap')
+condition_parser = parsing.get_parser(start='condition')
 general_text_parser = parsing.get_parser(start='general_text')
 
 shorties = short_hand_def_instructions + (

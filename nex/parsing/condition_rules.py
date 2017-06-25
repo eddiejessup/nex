@@ -2,10 +2,6 @@ from ..tokens import BuiltToken
 
 
 def add_condition_rules(pg):
-    @pg.production('condition_wrap : condition')
-    def condition_wrap(p):
-        return p[0]
-
     @pg.production('condition : IF_TRUE')
     def condition_if_true(p):
         return BuiltToken(type_=p[0].type, value=None)
