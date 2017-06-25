@@ -387,7 +387,7 @@ def add_command_rules(pg):
     # [Upper and lowercase are handled in banisher.]
     @pg.production('command : message')
     @pg.production('command : error_message')
-    # @pg.production('command : open_input')
+    @pg.production('command : open_input')
     # @pg.production('command : open_output')
     # @pg.production('command : close_input')
     # @pg.production('command : close_output')
@@ -496,16 +496,23 @@ def add_command_rules(pg):
                                  'prefix': None},
                           position_like=p)
 
+    @pg.production('message : MESSAGE general_text')
+    def message(p):
+        return BuiltToken(type_='message',
+                          value={'content': p[1]},
+                          position_like=p)
+
     @pg.production('error_message : ERROR_MESSAGE general_text')
     def error_message(p):
         return BuiltToken(type_='error_message',
                           value={'content': p[1]},
                           position_like=p)
 
-    @pg.production('message : MESSAGE general_text')
-    def message(p):
-        return BuiltToken(type_='message',
-                          value={'content': p[1]},
+    @pg.production('open_input : OPEN_INPUT number equals file_name')
+    def open_input(p):
+        return BuiltToken(type_=p[0].type,
+                          value={'stream_nr': p[1],
+                                 'file_name': p[3]},
                           position_like=p)
 
     @pg.production('add_kern : KERN dimen')
@@ -588,6 +595,7 @@ def add_command_rules(pg):
     @pg.production('file_name : character')
     @pg.production('file_name : file_name character')
     def file_name(p):
+        # TODO: Move this logic into state.
         if len(p) > 1:
             s = p[0].value + p[1].value['char']
         else:

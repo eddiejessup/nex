@@ -19,8 +19,17 @@ class Instructions(Enum):
 
     advance = 'ADVANCE'
 
-    par = 'PAR'
     relax = 'RELAX'
+    right_brace = 'RIGHT_BRACE'
+    ship_out = 'SHIP_OUT'
+    after_assignment = 'AFTER_ASSIGNMENT'
+    after_group = 'AFTER_GROUP'
+    message = 'MESSAGE'
+    error_message = 'ERROR_MESSAGE'
+    open_input = 'OPEN_INPUT'
+    write = 'WRITE'
+
+    par = 'PAR'
     immediate = 'IMMEDIATE'
 
     font = 'FONT'
@@ -73,17 +82,10 @@ class Instructions(Enum):
     v_rule = 'V_RULE'
     h_rule = 'H_RULE'
 
-    ship_out = 'SHIP_OUT'
-
     end = 'END'
 
     char = 'CHAR'
     indent = 'INDENT'
-
-    # Messages.
-    message = 'MESSAGE'
-    error_message = 'ERROR_MESSAGE'
-    write = 'WRITE'
 
     # Hyphenation.
     hyphenation = 'HYPHENATION'
@@ -185,8 +187,6 @@ class Instructions(Enum):
     upper_case = 'UPPER_CASE'
     lower_case = 'LOWER_CASE'
     cr = 'CR'
-    after_assignment = 'AFTER_ASSIGNMENT'
-    after_group = 'AFTER_GROUP'
 
     # Short-hand definition tokens (produced internally).
     char_def_token = 'CHAR_DEF_TOKEN'
@@ -247,7 +247,6 @@ class Instructions(Enum):
 
     space = 'SPACE'
     left_brace = 'LEFT_BRACE'
-    right_brace = 'RIGHT_BRACE'
     active_character = 'ACTIVE_CHARACTER'
     parameter = 'PARAMETER'
     math_shift = 'MATH_SHIFT'

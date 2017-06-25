@@ -121,6 +121,7 @@ primitive_control_sequences = {
     'aftergroup': Instructions.after_group,
     # Other.
     'accent': Instructions.accent,
+    'openin': Instructions.open_input,
 }
 
 # Control sequence to parameter map.

@@ -1547,6 +1547,11 @@ class GlobalState:
             self.add_h_neg_fil_glue()
         elif type_ == Instructions.v_fil_neg.value:
             self.add_v_neg_fil_glue()
+        elif type_ == Instructions.open_input.value:
+            stream_nr = self.eval_number_token(v['stream_nr'])
+            file_name = v['file_name'].value
+            print(f"TODO: Open input file '{file_name}' as stream {stream_nr}")
+            # raise NotImplementedError
         # After group.
         elif type_ == Instructions.after_group.value:
             self.push_to_after_group_queue(v)
