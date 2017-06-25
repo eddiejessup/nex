@@ -1103,7 +1103,7 @@ class GlobalState:
         self.after_group_queue.append(token)
 
     def set_after_assignment_token(self, token):
-        self.after_assignment_token = token
+        self.after_assignment_token = token.value
 
     @after_assignment
     def do_macro_assigment(self, token_source,
