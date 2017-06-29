@@ -450,7 +450,7 @@ def add_command_rules(pg):
     @pg.production('command : solo_accent')
     @pg.production('command : paired_accent')
     @pg.production('command : ITALIC_CORRECTION')
-    # @pg.production('command : discretionary')
+    @pg.production('command : discretionary')
     @pg.production('command : DISCRETIONARY_HYPHEN')
     @pg.production('command : MATH_SHIFT')
     def command(p):
@@ -654,6 +654,16 @@ def add_command_rules(pg):
         return BuiltToken(type_='ACCENT', value={'assignments': p[2],
                                                  'accent_code': p[1],
                                                  'target_char': None},
+                          position_like=p)
+
+    @pg.production('discretionary : DISCRETIONARY general_text general_text general_text')
+    def discretionary(p):
+        return BuiltToken(type_=p[0].type,
+                          value={
+                            'item_1': p[1],
+                            'item_2': p[2],
+                            'item_3': p[3],
+                          },
                           position_like=p)
 
     # End of assignments. The remainder below are intermediate productions.

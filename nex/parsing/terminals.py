@@ -44,6 +44,7 @@ base_terminal_instructions = (
     Instructions.dump,
     Instructions.control_space,
     Instructions.italic_correction,
+    Instructions.discretionary,
     Instructions.discretionary_hyphen,
     Instructions.math_shift,
 

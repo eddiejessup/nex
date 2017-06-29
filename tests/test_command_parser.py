@@ -74,6 +74,7 @@ cs_map = {
     'finish': ITok(Instructions.end),
     'dumpOut': ITok(Instructions.dump),
     'italCorrect': ITok(Instructions.italic_correction),
+    'discretionary': ITok(Instructions.discretionary),
     'maybeHyphen': ITok(Instructions.discretionary_hyphen),
     'ignoreSpaces': ITok(Instructions.ignore_spaces),
     'doSpecial': ITok(Instructions.special),
@@ -265,6 +266,10 @@ def test_italic_correction():
 
 
 def test_discretionary():
+    parser.parse(process('$discretionary [$someText [$someText [$someText'))
+
+
+def test_discretionary_hyphen():
     parser.parse(process('$maybeHyphen'))
 
 
