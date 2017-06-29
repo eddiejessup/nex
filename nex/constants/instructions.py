@@ -332,6 +332,7 @@ class Instructions(Enum):
     balanced_text_and_right_brace = 'BALANCED_TEXT_AND_RIGHT_BRACE'
     horizontal_mode_material_and_right_brace = 'HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE'
     vertical_mode_material_and_right_brace = 'VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE'
+    alignment_material = 'ALIGNMENT_MATERIAL'
     misc_char_cat_pair = 'MISC_CHAR_CAT_PAIR'
 
 

@@ -86,6 +86,9 @@ cs_map = {
     'expandedLeaders': ITok(Instructions.expanded_leaders),
     'moveLeft': ITok(Instructions.move_left),
     'moveRight': ITok(Instructions.move_right),
+    'hAlign': ITok(Instructions.h_align),
+    'vAlign': ITok(Instructions.v_align),
+    'alignMaterial': ITok(Instructions.alignment_material),
 }
 
 
@@ -232,6 +235,11 @@ def test_rule():
 def test_move_sideways():
     parser.parse(process('$moveLeft 2pt $HBox to 2pt[$HMaterial'))
     parser.parse(process('$moveRight 2pt $HBox to 2pt[$HMaterial'))
+
+
+def test_align():
+    parser.parse(process('$hAlign to 2pt [$alignMaterial]'))
+    parser.parse(process('$vAlign[$alignMaterial]'))
 
 
 def test_endings():

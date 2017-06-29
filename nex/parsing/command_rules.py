@@ -436,7 +436,7 @@ def add_command_rules(pg):
     @pg.production('command : move_left')
     @pg.production('command : move_right')
     @pg.production('command : horizontal_rule')
-    # @pg.production('command : h_align')
+    @pg.production('command : h_align')
     @pg.production('command : END')
     @pg.production('command : DUMP')
     # Horizontal commands.
@@ -445,7 +445,7 @@ def add_command_rules(pg):
     # @pg.production('command : raise_box')
     # @pg.production('command : lower_box')
     @pg.production('command : vertical_rule')
-    # @pg.production('command : v_align')
+    @pg.production('command : v_align')
     @pg.production('command : character_like')
     @pg.production('command : solo_accent')
     @pg.production('command : paired_accent')
@@ -611,6 +611,16 @@ def add_command_rules(pg):
                           value={
                             'offset': p[1],
                             'box': p[2],
+                          },
+                          position_like=p)
+
+    @pg.production('h_align : H_ALIGN box_specification LEFT_BRACE ALIGNMENT_MATERIAL RIGHT_BRACE')
+    @pg.production('v_align : V_ALIGN box_specification LEFT_BRACE ALIGNMENT_MATERIAL RIGHT_BRACE')
+    def align(p):
+        return BuiltToken(type_=p[0].type,
+                          value={
+                            'box_specification': p[1],
+                            'alignment_material': p[3],
                           },
                           position_like=p)
 
