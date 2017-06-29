@@ -124,6 +124,8 @@ base_terminal_instructions = (
     Instructions.un_v_copy,
     Instructions.move_left,
     Instructions.move_right,
+    Instructions.raise_box,
+    Instructions.lower_box,
     Instructions.v_align,
     Instructions.h_align,
     Instructions.alignment_material,

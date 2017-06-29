@@ -89,6 +89,8 @@ cs_map = {
     'hAlign': ITok(Instructions.h_align),
     'vAlign': ITok(Instructions.v_align),
     'alignMaterial': ITok(Instructions.alignment_material),
+    'raise': ITok(Instructions.raise_box),
+    'lower': ITok(Instructions.lower_box),
 }
 
 
@@ -232,9 +234,11 @@ def test_rule():
     parser.parse(process('$vRule height 20em width 10cc depth 2.5in'))
 
 
-def test_move_sideways():
+def test_shift_box():
     parser.parse(process('$moveLeft 2pt $HBox to 2pt[$HMaterial'))
     parser.parse(process('$moveRight 2pt $HBox to 2pt[$HMaterial'))
+    parser.parse(process('$raise 2pt $HBox to 2pt[$HMaterial'))
+    parser.parse(process('$lower 2pt $HBox to 2pt[$HMaterial'))
 
 
 def test_align():

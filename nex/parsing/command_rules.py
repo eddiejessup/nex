@@ -433,8 +433,8 @@ def add_command_rules(pg):
     @pg.production('command : LEFT_BRACE')
     # Vertical commands.
     @pg.production('command : vertical_glue')
-    @pg.production('command : move_left')
-    @pg.production('command : move_right')
+    @pg.production('command : move_box_left')
+    @pg.production('command : move_box_right')
     @pg.production('command : horizontal_rule')
     @pg.production('command : h_align')
     @pg.production('command : END')
@@ -442,8 +442,8 @@ def add_command_rules(pg):
     # Horizontal commands.
     @pg.production('command : horizontal_glue')
     @pg.production('command : CONTROL_SPACE')
-    # @pg.production('command : raise_box')
-    # @pg.production('command : lower_box')
+    @pg.production('command : raise_box')
+    @pg.production('command : lower_box')
     @pg.production('command : vertical_rule')
     @pg.production('command : v_align')
     @pg.production('command : character_like')
@@ -604,9 +604,11 @@ def add_command_rules(pg):
                           value={'nr': p[1], 'cmd_type': p[0].type},
                           position_like=p)
 
-    @pg.production('move_left : MOVE_LEFT dimen box')
-    @pg.production('move_right : MOVE_RIGHT dimen box')
-    def move_horizontally(p):
+    @pg.production('move_box_left : MOVE_LEFT dimen box')
+    @pg.production('move_box_right : MOVE_RIGHT dimen box')
+    @pg.production('raise_box : RAISE_BOX dimen box')
+    @pg.production('lower_box : LOWER_BOX dimen box')
+    def shifted_box(p):
         return BuiltToken(type_=p[0].type,
                           value={
                             'offset': p[1],
