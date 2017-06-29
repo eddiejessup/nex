@@ -81,6 +81,9 @@ cs_map = {
     'addMark': ITok(Instructions.mark),
     'addInsertion': ITok(Instructions.insert),
     'vAdjust': ITok(Instructions.v_adjust),
+    'normalLeaders': ITok(Instructions.leaders),
+    'centeredLeaders': ITok(Instructions.centered_leaders),
+    'expandedLeaders': ITok(Instructions.expanded_leaders),
 }
 
 
@@ -186,6 +189,12 @@ def test_glue():
 def test_space():
     parser.parse(process('$normalSpace'))
     parser.parse(process('$controlSpace'))
+
+
+def test_add_leaders():
+    parser.parse(process('$normalLeaders $hRule height 20pt $hGlue 10em'))
+    parser.parse(process('$centeredLeaders $vRule width 20pt $vGlue 1.3cc'))
+    parser.parse(process('$expandedLeaders $hRule depth 20pt $hGlue 1.3cc'))
 
 
 def test_box_literal():

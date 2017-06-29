@@ -423,8 +423,7 @@ def add_command_rules(pg):
     @pg.production('command : v_adjust')
     # These are a bit cheaty to put in mode-independent section.
     # They are described separately in each mode in the TeXBook.
-    @pg.production('command : add_glue')
-    # @pg.production('command : leaders')
+    @pg.production('command : add_leaders')
     @pg.production('command : SPACE')
     @pg.production('command : box')
     @pg.production('command : un_box')
@@ -433,6 +432,7 @@ def add_command_rules(pg):
     @pg.production('command : PAR')
     @pg.production('command : LEFT_BRACE')
     # Vertical commands.
+    @pg.production('command : vertical_glue')
     # @pg.production('command : move_left')
     # @pg.production('command : move_right')
     @pg.production('command : horizontal_rule')
@@ -440,6 +440,7 @@ def add_command_rules(pg):
     @pg.production('command : END')
     @pg.production('command : DUMP')
     # Horizontal commands.
+    @pg.production('command : horizontal_glue')
     @pg.production('command : CONTROL_SPACE')
     # @pg.production('command : raise_box')
     # @pg.production('command : lower_box')
@@ -552,22 +553,46 @@ def add_command_rules(pg):
                           value={'content': p[3]},
                           position_like=p)
 
-    @pg.production('add_glue : H_FIL')
-    @pg.production('add_glue : H_FILL')
-    @pg.production('add_glue : H_STRETCH_OR_SHRINK')
-    @pg.production('add_glue : H_FIL_NEG')
-    @pg.production('add_glue : V_FIL')
-    @pg.production('add_glue : V_FILL')
-    @pg.production('add_glue : V_STRETCH_OR_SHRINK')
-    @pg.production('add_glue : V_FIL_NEG')
-    def add_special_glue(p):
+    @pg.production('vertical_glue : V_FIL')
+    @pg.production('vertical_glue : V_FILL')
+    @pg.production('vertical_glue : V_STRETCH_OR_SHRINK')
+    @pg.production('vertical_glue : V_FIL_NEG')
+    @pg.production('horizontal_glue : H_FIL')
+    @pg.production('horizontal_glue : H_FILL')
+    @pg.production('horizontal_glue : H_STRETCH_OR_SHRINK')
+    @pg.production('horizontal_glue : H_FIL_NEG')
+    def special_glue(p):
         return BuiltToken(type_=p[0].type, value=None,
                           position_like=p)
 
-    @pg.production('add_glue : H_SKIP glue')
-    @pg.production('add_glue : V_SKIP glue')
-    def add_glue(p):
+    @pg.production('vertical_glue : V_SKIP glue')
+    @pg.production('horizontal_glue : H_SKIP glue')
+    def normal_glue(p):
         return BuiltToken(type_=p[0].type, value=p[1],
+                          position_like=p)
+
+    @pg.production('add_leaders : leaders box_or_rule vertical_glue')
+    @pg.production('add_leaders : leaders box_or_rule horizontal_glue')
+    def add_leaders(p):
+        return BuiltToken(type_='leaders',
+                          value={
+                            'type': p[0].type,
+                            'box': p[1],
+                            'glue': p[2],
+                          },
+                          position_like=p)
+
+    @pg.production('box_or_rule : box')
+    @pg.production('box_or_rule : vertical_rule')
+    @pg.production('box_or_rule : horizontal_rule')
+    def box_or_rule(p):
+        return p[0]
+
+    @pg.production('leaders : LEADERS')
+    @pg.production('leaders : CENTERED_LEADERS')
+    @pg.production('leaders : EXPANDED_LEADERS')
+    def leaders(p):
+        return BuiltToken(type_=p[0].type, value=None,
                           position_like=p)
 
     @pg.production('un_box : UN_H_BOX number')
