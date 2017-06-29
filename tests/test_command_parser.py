@@ -92,6 +92,8 @@ cs_map = {
     'alignMaterial': ITok(Instructions.alignment_material),
     'raise': ITok(Instructions.raise_box),
     'lower': ITok(Instructions.lower_box),
+    'showBox': ITok(Instructions.show_box),
+    'showToken': ITok(Instructions.show_token),
 }
 
 
@@ -121,6 +123,14 @@ def test_right_brace():
 def test_delimit_group():
     parser.parse(process('$startGroup'))
     parser.parse(process('$finishGroup'))
+
+
+def test_show_token():
+    parser.parse(process('$showToken $someToken'))
+
+
+def test_show_box():
+    parser.parse(process('$showBox 3'))
 
 
 def test_show_lists():

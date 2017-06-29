@@ -62,6 +62,9 @@ class Instructions(Enum):
     copy = 'COPY'
     #     Remove and return (pop) the most recent h- or v-box, if any.
     last_box = 'LAST_BOX'
+    last_glue = 'LAST_GLUE'
+    last_kern = 'LAST_KERN'
+    last_penalty = 'LAST_PENALTY'
     #     Make a vbox by splitting off a certain amount of material from a box
     #     register.
     v_split = 'V_SPLIT'

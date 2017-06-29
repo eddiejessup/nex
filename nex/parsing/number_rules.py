@@ -59,6 +59,7 @@ def add_number_rules(pg):
     @pg.production('internal_integer : SPECIAL_INTEGER')
     @pg.production('internal_integer : CHAR_DEF_TOKEN')
     @pg.production('internal_integer : MATH_CHAR_DEF_TOKEN')
+    @pg.production('internal_integer : LAST_PENALTY')
     def internal_integer(p):
         return BuiltToken(type_='size',
                           value=p[0],

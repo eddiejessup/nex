@@ -348,20 +348,35 @@ def add_assignment_rules(pg):
         tok.value['global'] = True
         return tok
 
-    @pg.production('font_assignment : SKEW_CHAR font equals number')
-    @pg.production('font_assignment : HYPHEN_CHAR font equals number')
+    @pg.production('font_assignment : dimen_font_variable equals dimen')
+    @pg.production('font_assignment : integer_font_variable equals number')
     def font_assignment(p):
-        # TODO: as for font definition, does this work for non-FONT_DEF_TOKEN
-        # font productions?
-        font_id = p[1].value
-        type_ = '{}_assignment'.format(p[0].type.lower())
-        return BuiltToken(type_=type_,
-                          value={'font_id': font_id, 'code': p[3]},
+        return BuiltToken(type_='font_assignment',
+                          value={
+                            'variable': p[0],
+                            'target': p[2],
+                          },
+                          position_like=p)
+
+    @pg.production('integer_font_variable : SKEW_CHAR font')
+    @pg.production('integer_font_variable : HYPHEN_CHAR font')
+    def integer_font_variable(p):
+        return BuiltToken(type_=p[0].type,
+                          value=p[1],
+                          position_like=p)
+
+    @pg.production('dimen_font_variable : FONT_DIMEN number font')
+    def dimen_font_variable(p):
+        return BuiltToken(type_=p[0].type,
+                          value={
+                            'dimen_number': p[1],
+                            'font': p[2],
+                          },
                           position_like=p)
 
     @pg.production('font : FONT_DEF_TOKEN')
-    # @pg.production('font : family_member')
-    # @pg.production('font : FONT')
+    @pg.production('font : family_member')
+    @pg.production('font : FONT')
     def font(p):
         return p[0]
 
@@ -393,10 +408,10 @@ def add_command_rules(pg):
     @pg.production('command : RIGHT_BRACE')
     @pg.production('command : BEGIN_GROUP')
     @pg.production('command : END_GROUP')
-    # @pg.production('command : show_token')
-    # @pg.production('command : show_box')
+    @pg.production('command : show_token')
+    @pg.production('command : show_box')
     @pg.production('command : SHOW_LISTS')
-    # @pg.production('command : show_the')
+    @pg.production('command : show_the')
     @pg.production('command : ship_out')
     @pg.production('command : ignore_spaces')
     @pg.production('command : after_assignment')
@@ -457,6 +472,52 @@ def add_command_rules(pg):
         return p[0]
 
     add_assignment_rules(pg)
+
+    @pg.production('show_token : SHOW_TOKEN ARBITRARY_TOKEN')
+    def show_token(p):
+        return BuiltToken(type_=p[0].type,
+                          value=p[1],
+                          position_like=p)
+
+    @pg.production('show_box : SHOW_BOX number')
+    def show_box(p):
+        return BuiltToken(type_=p[0].type,
+                          value=p[1],
+                          position_like=p)
+
+    @pg.production('show_the : SHOW_THE internal_quantity')
+    def show_the(p):
+        return BuiltToken(type_=p[0].type,
+                          value=p[1],
+                          position_like=p)
+
+    # Parameter.
+    @pg.production('internal_quantity : INTEGER_PARAMETER')
+    @pg.production('internal_quantity : DIMEN_PARAMETER')
+    @pg.production('internal_quantity : GLUE_PARAMETER')
+    @pg.production('internal_quantity : MU_GLUE_PARAMETER')
+    # Register.
+    @pg.production('internal_quantity : count_register')
+    @pg.production('internal_quantity : dimen_register')
+    @pg.production('internal_quantity : skip_register')
+    @pg.production('internal_quantity : mu_skip_register')
+    @pg.production('internal_quantity : code_name number')
+    # Special 'register' as the TeXBook calls it. Seems more like a parameter
+    # to me...
+    @pg.production('internal_quantity : SPECIAL_INTEGER')
+    @pg.production('internal_quantity : SPECIAL_DIMEN')
+    @pg.production('internal_quantity : dimen_font_variable')
+    @pg.production('internal_quantity : integer_font_variable')
+    @pg.production('internal_quantity : LAST_PENALTY')
+    @pg.production('internal_quantity : LAST_KERN')
+    @pg.production('internal_quantity : LAST_GLUE')
+    # Defined character.
+    @pg.production('internal_quantity : CHAR_DEF_TOKEN')
+    @pg.production('internal_quantity : MATH_CHAR_DEF_TOKEN')
+    @pg.production('internal_quantity : font')
+    @pg.production('internal_quantity : token_variable')
+    def internal_quantity(p):
+        return p[0]
 
     @pg.production('ship_out : SHIP_OUT box')
     def ship_out(p):

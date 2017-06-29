@@ -22,7 +22,9 @@ def add_glue_rules(pg):
     @pg.production('internal_mu_glue : mu_skip_register')
     @pg.production('internal_glue : skip_register')
     @pg.production('internal_mu_glue : MU_GLUE_PARAMETER')
+    @pg.production('internal_mu_glue : LAST_GLUE')
     @pg.production('internal_glue : GLUE_PARAMETER')
+    @pg.production('internal_glue : LAST_GLUE')
     def internal_glue(p):
         return p[0]
 

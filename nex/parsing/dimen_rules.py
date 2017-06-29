@@ -50,6 +50,7 @@ def add_dimen_rules(pg):
     @pg.production('internal_dimen : DIMEN_PARAMETER')
     @pg.production('internal_dimen : dimen_register')
     @pg.production('internal_dimen : SPECIAL_DIMEN')
+    @pg.production('internal_dimen : LAST_KERN')
     def internal_dimen(p):
         return BuiltToken(type_='size', value=p[0], position_like=p)
 
