@@ -351,10 +351,10 @@ def add_assignment_rules(pg):
     @pg.production('font_assignment : dimen_font_variable equals dimen')
     @pg.production('font_assignment : integer_font_variable equals number')
     def font_assignment(p):
-        return BuiltToken(type_='font_assignment',
+        return BuiltToken(type_=p[0].type,
                           value={
                             'variable': p[0],
-                            'target': p[2],
+                            'value': p[2],
                           },
                           position_like=p)
 
@@ -362,7 +362,9 @@ def add_assignment_rules(pg):
     @pg.production('integer_font_variable : HYPHEN_CHAR font')
     def integer_font_variable(p):
         return BuiltToken(type_=p[0].type,
-                          value=p[1],
+                          value={
+                            'font': p[1],
+                          },
                           position_like=p)
 
     @pg.production('dimen_font_variable : FONT_DIMEN number font')

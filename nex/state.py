@@ -1649,7 +1649,6 @@ class GlobalState:
             )
         elif type_ == 'short_hand_definition':
             code_uneval = v['code']
-            # TODO: Log symbolic argument too.
             code_eval = self.eval_number_token(code_uneval)
             cs_name = v['control_sequence_name']
             self.do_short_hand_definition(
@@ -1673,12 +1672,18 @@ class GlobalState:
             self.define_new_font(banisher,
                                  v['file_name'].value, v['at_clause'],
                                  v['control_sequence_name'], v['global'])
-        elif type_ == 'skew_char_assignment':
-            code_eval = self.eval_number_token(v['code'])
-            self.set_skew_char(banisher, v['font_id'], code_eval)
-        elif type_ == 'hyphen_char_assignment':
-            code_eval = self.eval_number_token(v['code'])
-            self.set_hyphen_char(banisher, v['font_id'], code_eval)
+        elif type_ == Instructions.skew_char.value:
+            var, value = v['variable'], v['value']
+            code_eval = self.eval_number_token(value)
+            font_tok = var.value['font']
+            font_id = font_tok.value
+            self.set_skew_char(banisher, font_id, code_eval)
+        elif type_ == Instructions.hyphen_char.value:
+            var, value = v['variable'], v['value']
+            code_eval = self.eval_number_token(value)
+            font_tok = var.value['font']
+            font_id = font_tok.value
+            self.set_hyphen_char(banisher, font_id, code_eval)
         # TODO: implement this, and mark method with 'assignment' decorator.
         elif type_ == Instructions.hyphenation.value:
             raise NotImplementedError
