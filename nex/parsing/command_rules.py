@@ -342,11 +342,7 @@ def add_assignment_rules(pg):
     # @pg.production('global_assignment : interaction_mode_assignment')
     # @pg.production('global_assignment : intimate_assignment')
     def global_assignment(p):
-        tok = p[0]
-        # Global assignments are always global, even without the \global
-        # prefix.
-        tok.value['global'] = True
-        return tok
+        return p[0]
 
     @pg.production('font_assignment : dimen_font_variable equals dimen')
     @pg.production('font_assignment : integer_font_variable equals number')
