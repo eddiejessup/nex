@@ -3,7 +3,7 @@ from string import ascii_letters
 import pytest
 
 from nex.constants.codes import CatCode
-from nex.constants.instructions import Instructions, unexpanded_cs_instructions
+from nex.constants.instructions import Instructions
 from nex.router import (Instructioner,
                         make_unexpanded_control_sequence_instruction,
                         char_cat_instr_tok)
@@ -84,6 +84,8 @@ cs_map = {
     'normalLeaders': ITok(Instructions.leaders),
     'centeredLeaders': ITok(Instructions.centered_leaders),
     'expandedLeaders': ITok(Instructions.expanded_leaders),
+    'moveLeft': ITok(Instructions.move_left),
+    'moveRight': ITok(Instructions.move_right),
 }
 
 
@@ -225,6 +227,11 @@ def test_left_brace():
 def test_rule():
     parser.parse(process('$hRule height 20pt width 10pt depth 30pt'))
     parser.parse(process('$vRule height 20em width 10cc depth 2.5in'))
+
+
+def test_move_sideways():
+    parser.parse(process('$moveLeft 2pt $HBox to 2pt[$HMaterial'))
+    parser.parse(process('$moveRight 2pt $HBox to 2pt[$HMaterial'))
 
 
 def test_endings():

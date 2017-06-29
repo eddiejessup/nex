@@ -433,8 +433,8 @@ def add_command_rules(pg):
     @pg.production('command : LEFT_BRACE')
     # Vertical commands.
     @pg.production('command : vertical_glue')
-    # @pg.production('command : move_left')
-    # @pg.production('command : move_right')
+    @pg.production('command : move_left')
+    @pg.production('command : move_right')
     @pg.production('command : horizontal_rule')
     # @pg.production('command : h_align')
     @pg.production('command : END')
@@ -602,6 +602,16 @@ def add_command_rules(pg):
     def un_box(p):
         return BuiltToken(type_='un_box',
                           value={'nr': p[1], 'cmd_type': p[0].type},
+                          position_like=p)
+
+    @pg.production('move_left : MOVE_LEFT dimen box')
+    @pg.production('move_right : MOVE_RIGHT dimen box')
+    def move_horizontally(p):
+        return BuiltToken(type_=p[0].type,
+                          value={
+                            'offset': p[1],
+                            'box': p[2],
+                          },
                           position_like=p)
 
     @pg.production('vertical_rule : V_RULE rule_specification')
