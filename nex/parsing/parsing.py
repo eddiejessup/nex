@@ -1,7 +1,7 @@
 import warnings
 import logging
 
-from ..rply import ParserGenerator
+from ..rply.parsergenerator import ParserGenerator
 
 from . import (number_rules, dimen_rules, glue_rules, character_rules,
                command_rules, condition_rules, variable_rules)

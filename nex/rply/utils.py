@@ -1,4 +1,3 @@
-import sys
 from collections import MutableMapping
 
 
@@ -26,7 +25,7 @@ class IdentityDict(MutableMapping):
         return len(self._contents)
 
     def __iter__(self):
-        for key, _, _ in itervalues(self._contents):
+        for key, _, _ in self._contents.values():
             yield key
 
 
@@ -36,17 +35,3 @@ class Counter(object):
 
     def incr(self):
         self.value += 1
-
-
-if sys.version_info >= (3,):
-    def itervalues(d):
-        return d.values()
-
-    def iteritems(d):
-        return d.items()
-else:
-    def itervalues(d):
-        return d.itervalues()
-
-    def iteritems(d):
-        return d.iteritems()

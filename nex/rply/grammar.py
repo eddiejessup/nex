@@ -1,5 +1,4 @@
 from .errors import ParserGeneratorError
-from .utils import iteritems
 
 
 def rightmost_terminal(symbols, terminals):
@@ -80,12 +79,12 @@ class Grammar(object):
     def unused_terminals(self):
         return [
             t
-            for t, prods in iteritems(self.terminals)
+            for t, prods in self.terminals.items()
             if not prods and t != "error"
         ]
 
     def unused_productions(self):
-        return [p for p, prods in iteritems(self.nonterminals) if not prods]
+        return [p for p, prods in self.nonterminals.items() if not prods]
 
     def build_lritems(self):
         """

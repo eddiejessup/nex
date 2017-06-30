@@ -39,25 +39,3 @@ class Token(object):
         Returns the string represented by this token.
         """
         return self.value
-
-
-class SourcePosition(object):
-    """
-    Represents the position of a character in some source string.
-
-    :param idx: The index of the character in the source.
-    :param lineno: The number of the line in which the character occurs.
-    :param colno: The number of the column in which the character occurs.
-
-    The values passed to this object can be retrieved using the identically
-    named attributes.
-    """
-    def __init__(self, idx, lineno, colno):
-        self.idx = idx
-        self.lineno = lineno
-        self.colno = colno
-
-    def __repr__(self):
-        return "SourcePosition(idx={0}, lineno={1}, colno={2})".format(
-            self.idx, self.lineno, self.colno
-        )
