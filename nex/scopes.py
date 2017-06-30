@@ -123,8 +123,11 @@ class ScopedCodes(ScopedAccessor):
     def set_space_factor_code(self, is_global, *args, **kwargs):
         self.apply_scope_func(is_global, 'set_space_factor_code', *args, **kwargs)
 
-    def set_by_nrs(self, is_global, *args, **kwargs):
-        self.apply_scope_func(is_global, 'set_by_nrs', *args, **kwargs)
+    def set_math_code(self, is_global, *args, **kwargs):
+        self.apply_scope_func(is_global, 'set_math_code', *args, **kwargs)
+
+    def set_delimiter_code(self, is_global, *args, **kwargs):
+        self.apply_scope_func(is_global, 'set_delimiter_code', *args, **kwargs)
 
 
 class ScopedRegisters(ScopedAccessor):

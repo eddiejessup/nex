@@ -374,17 +374,8 @@ class Codes:
         # Check key already exists.
         self._check_and_get_char_map_value(code_type, char)
         char_map = self._check_and_get_char_map(code_type)
+        # TODO: Check code type
         char_map[char] = code
-
-    def set_by_nrs(self, code_type, char_size, code_size):
-        """Convenience function to allow defining the character, and the target
-        code, by integers, rather than their enum members, or whatever type a
-        code's contents is."""
-        char = chr(char_size)
-        code = self._code_size_to_code(code_type, code_size)
-        self.set(code_type, char, code)
-
-    # Some inelegant but handy getters and setters.
 
     def get_cat_code(self, char):
         return self.get(Instructions.cat_code.value, char)
@@ -398,44 +389,42 @@ class Codes:
     def get_space_factor_code(self, char):
         return self.get(Instructions.space_factor_code.value, char)
 
-    def set_cat_code(self, char, code):
-        self.set(Instructions.cat_code.value, char, code)
+    def set_cat_code(self, char_size, code_size):
+        cat_code = CatCode(code_size)
+        self.set(Instructions.cat_code.value,
+                 chr(char_size), cat_code)
 
-    def set_upper_case_code(self, char, code):
-        self.set(Instructions.upper_case_code.value, char, code)
+    def set_upper_case_code(self, char_size, code_size):
+        self.set(Instructions.upper_case_code.value,
+                 chr(char_size), chr(code_size))
 
-    def set_lower_case_code(self, char, code):
-        self.set(Instructions.lower_case_code.value, char, code)
+    def set_lower_case_code(self, char_size, code_size):
+        self.set(Instructions.lower_case_code.value,
+                 chr(char_size), chr(code_size))
 
-    def set_space_factor_code(self, char, code):
-        self.set(Instructions.space_factor_code.value, char, code)
+    def set_space_factor_code(self, char_size, code_size):
+        self.set(Instructions.space_factor_code.value,
+                 chr(char_size), code_size)
 
-    # End of inelegance.
+    def set_math_code(self, char_size, code_size):
+        parts = evaler.split_hex_code(code_size,
+                                      hex_length=4, inds=(1, 2))
+        math_class_i, family, position = parts
+        math_class = MathClass(math_class_i)
+        glyph_code = GlyphCode(family, position)
+        math_code = MathCode(math_class, glyph_code)
+        self.set(Instructions.math_code.value,
+                 chr(char_size), math_code)
 
-    def _code_size_to_code(self, code_type, code_size):
-        if code_type == Instructions.cat_code.value:
-            return CatCode(code_size)
-        elif code_type == Instructions.math_code.value:
-            parts = evaler.split_hex_code(code_size,
-                                          hex_length=4, inds=(1, 2))
-            math_class_i, family, position = parts
-            math_class = MathClass(math_class_i)
-            glyph_code = GlyphCode(family, position)
-            return MathCode(math_class, glyph_code)
-        elif code_type in (Instructions.upper_case_code.value,
-                           Instructions.lower_case_code.value):
-            return chr(code_size)
-        elif code_type == Instructions.space_factor_code.value:
-            return code_size
-        elif code_type == Instructions.delimiter_code.value:
-            parts = evaler.split_hex_code(code_size,
-                                          hex_length=6, inds=(1, 3, 4))
-            small_family, small_position, large_family, large_position = parts
-            small_glyph_code = GlyphCode(small_family, small_position)
-            large_glyph_code = GlyphCode(large_family, large_position)
-            return DelimiterCode(small_glyph_code, large_glyph_code)
-        else:
-            raise ValueError(f'Unknown code type: {code_type}')
+    def set_delimiter_code(self, char_size, code_size):
+        parts = evaler.split_hex_code(code_size,
+                                      hex_length=6, inds=(1, 3, 4))
+        small_family, small_position, large_family, large_position = parts
+        small_glyph_code = GlyphCode(small_family, small_position)
+        large_glyph_code = GlyphCode(large_family, large_position)
+        delimiter_code = DelimiterCode(small_glyph_code, large_glyph_code)
+        self.set(Instructions.delimiter_code.value,
+                 chr(char_size), delimiter_code)
 
     def _check_and_get_char_map(self, code_type):
         if code_type not in self.code_type_to_char_map:

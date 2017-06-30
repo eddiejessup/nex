@@ -144,14 +144,19 @@ def add_assignment_rules(pg):
 
     # Start of 'code assignment', a simple assignment.
 
-    @pg.production('code_assignment : code_name number equals number')
+    @pg.production('code_assignment : code_variable equals number')
     def code_assignment(p):
         return BuiltToken(type_='code_assignment',
                           value={
-                            'code_type': p[0].type,
-                            'char': p[1],
-                            'code': p[3]
+                            'variable': p[0],
+                            'code': p[2],
                           },
+                          position_like=p)
+
+    @pg.production('code_variable : code_name number')
+    def code_variable(p):
+        return BuiltToken(type_=p[0].type,
+                          value=p[1],
                           position_like=p)
 
     @pg.production('code_name : CAT_CODE')
@@ -499,7 +504,7 @@ def add_command_rules(pg):
     @pg.production('internal_quantity : dimen_register')
     @pg.production('internal_quantity : skip_register')
     @pg.production('internal_quantity : mu_skip_register')
-    @pg.production('internal_quantity : code_name number')
+    @pg.production('internal_quantity : code_variable')
     # Special 'register' as the TeXBook calls it. Seems more like a parameter
     # to me...
     @pg.production('internal_quantity : SPECIAL_INTEGER')

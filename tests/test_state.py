@@ -231,9 +231,10 @@ def test_command_token_add_h_rule(state):
 
 
 def test_command_token_code_assignment(state):
+    sf_variable = BuiltToken(type_=Instructions.space_factor_code.value,
+                             value=nr_tok(ord('a')))
     set_sf_tok = BuiltToken(type_='code_assignment',
-                            value={'code_type': Instructions.space_factor_code.value,
-                                   'char': nr_tok(ord('a')),
+                            value={'variable': sf_variable,
                                    'code': nr_tok(900),
                                    'global': True})
     state.execute_command_token(set_sf_tok, banisher=None)

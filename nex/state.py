@@ -1144,9 +1144,17 @@ class GlobalState:
     def set_code(self, token_source, is_global, code_type,
                  char_size, code_size):
         logger.info(f"Setting '{code_type}' code '{code_size}' to '{char_size}'")
-        self.codes.set_by_nrs(
+        set_code_func_map = {
+                Instructions.cat_code.value: self.codes.set_cat_code,
+                Instructions.math_code.value: self.codes.set_math_code,
+                Instructions.upper_case_code.value: self.codes.set_upper_case_code,
+                Instructions.lower_case_code.value: self.codes.set_lower_case_code,
+                Instructions.space_factor_code.value: self.codes.set_space_factor_code,
+                Instructions.delimiter_code.value: self.codes.set_delimiter_code,
+            }
+        set_code_func = set_code_func_map[code_type]
+        set_code_func(
             is_global=is_global,
-            code_type=code_type,
             char_size=char_size,
             code_size=code_size,
         )
@@ -1418,6 +1426,26 @@ class GlobalState:
             # mode is forbidden.
             raise UserError(f"Cannot do command {type_} in restricted "
                             f"horizontal mode")
+        elif type_ == Instructions.relax.value:
+            logger.info(f"Doing 'relax' command")
+            pass
+        elif type_ == Instructions.right_brace.value:
+            logger.debug(f"Ending current group '{self.group}' due to right brace")
+            # I think roughly same comments as for left brace above probably
+            # apply.
+            self.end_group(banisher)
+        elif type_ == Instructions.begin_group.value:
+            raise NotImplementedError
+        elif type_ == Instructions.end_group.value:
+            raise NotImplementedError
+        elif type_ == Instructions.show_token.value:
+            raise NotImplementedError
+        elif type_ == Instructions.show_box.value:
+            raise NotImplementedError
+        elif type_ == Instructions.show_lists.value:
+            raise NotImplementedError
+        elif type_ == Instructions.show_the.value:
+            raise NotImplementedError
         elif type_ == Instructions.space.value:
             logger.debug(f'Doing space')
             self.do_space()
@@ -1513,9 +1541,6 @@ class GlobalState:
             # TODO: This should be read with expansion, but at the moment we
             # read it unexpanded, so what we get here is not printable.
             pass
-        elif type_ == Instructions.relax.value:
-            logger.info(f"Doing 'relax' command")
-            pass
         elif type_ == Instructions.indent.value:
             logger.debug(f"Doing 'indent'")
             self.do_indent()
@@ -1525,11 +1550,6 @@ class GlobalState:
             # \bgroup that has been \let equal to such a character token,
             # causes TeX to start a new level of grouping.
             self.start_local_group()
-        elif type_ == Instructions.right_brace.value:
-            logger.debug(f"Ending current group '{self.group}' due to right brace")
-            # I think roughly same comments as for left brace above probably
-            # apply.
-            self.end_group(banisher)
         # Adding glue.
         elif type_ == Instructions.h_skip.value:
             glue = self.eval_glue_token(v)
@@ -1631,12 +1651,12 @@ class GlobalState:
             else:
                 raise ValueError(f"Unknown variable type: '{variable.type}'")
         elif type_ == 'code_assignment':
-            char_size = self.eval_number_token(v['char'])
+            char_size = self.eval_number_token(v['variable'].value)
             code_size = self.eval_number_token(v['code'])
             self.set_code(
                 token_source=banisher,
                 is_global=v['global'],
-                code_type=v['code_type'],
+                code_type=v['variable'].type,
                 char_size=char_size,
                 code_size=code_size,
             )
@@ -1672,18 +1692,18 @@ class GlobalState:
             self.define_new_font(banisher,
                                  v['file_name'].value, v['at_clause'],
                                  v['control_sequence_name'], v['global'])
-        elif type_ == Instructions.skew_char.value:
+        elif type_ in (Instructions.skew_char.value,
+                       Instructions.hyphen_char.value):
             var, value = v['variable'], v['value']
             code_eval = self.eval_number_token(value)
             font_tok = var.value['font']
             font_id = font_tok.value
-            self.set_skew_char(banisher, font_id, code_eval)
-        elif type_ == Instructions.hyphen_char.value:
-            var, value = v['variable'], v['value']
-            code_eval = self.eval_number_token(value)
-            font_tok = var.value['font']
-            font_id = font_tok.value
-            self.set_hyphen_char(banisher, font_id, code_eval)
+            if type_ == Instructions.skew_char.value:
+                self.set_skew_char(banisher, font_id, code_eval)
+            elif type_ == Instructions.hyphen_char.value:
+                self.set_hyphen_char(banisher, font_id, code_eval)
+            else:
+                raise ValueError(f'Unknown font assignment type: {type_}')
         # TODO: implement this, and mark method with 'assignment' decorator.
         elif type_ == Instructions.hyphenation.value:
             raise NotImplementedError
