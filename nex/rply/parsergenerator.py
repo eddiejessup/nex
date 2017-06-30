@@ -154,13 +154,13 @@ class ParserGenerator(object):
 
         g.set_start(start=start)
 
-        for unused_term in g.unused_terminals():
+        for unused_term in g.unused_terminals:
             warnings.warn(
                 "Token %r is unused" % unused_term,
                 ParserGeneratorWarning,
                 stacklevel=2
             )
-        for unused_prod in g.unused_productions():
+        for unused_prod in g.unused_productions:
             warnings.warn(
                 "Production %r is not reachable" % unused_prod,
                 ParserGeneratorWarning,
@@ -298,7 +298,7 @@ class LRTable(object):
             st_actionp = {}
             st_goto = {}
             for p in I:
-                if p.getlength() == p.lr_index + 1:
+                if len(p) == p.lr_index + 1:
                     if p.name == "S'":
                         # Start symbol. Accept!
                         st_action["$end"] = 0
@@ -467,7 +467,7 @@ class LRTable(object):
         num_nullable = 0
         while True:
             for p in grammar.productions[1:]:
-                if p.getlength() == 0:
+                if len(p) == 0:
                     nullable.add(p.name)
                     continue
                 for t in p.prod:
@@ -485,7 +485,7 @@ class LRTable(object):
         trans = []
         for idx, state in enumerate(C):
             for p in state:
-                if p.lr_index < p.getlength() - 1:
+                if p.lr_index < len(p) - 1:
                     t = (idx, p.prod[p.lr_index + 1])
                     if t[1] in grammar.nonterminals and t not in trans:
                         trans.append(t)
@@ -514,7 +514,7 @@ class LRTable(object):
 
         g = cls.lr0_goto(C[state], N, add_count, goto_cache)
         for p in g:
-            if p.lr_index < p.getlength() - 1:
+            if p.lr_index < len(p) - 1:
                 a = p.prod[p.lr_index + 1]
                 if a in grammar.terminals and a not in terms:
                     terms.append(a)
@@ -530,7 +530,7 @@ class LRTable(object):
         g = cls.lr0_goto(C[state], N, add_count, goto_cache)
         j = cidhash.get(g, -1)
         for p in g:
-            if p.lr_index < p.getlength() - 1:
+            if p.lr_index < len(p) - 1:
                 a = p.prod[p.lr_index + 1]
                 if a in empty:
                     rel.append((j, a))
@@ -552,13 +552,13 @@ class LRTable(object):
 
                 lr_index = p.lr_index
                 j = state
-                while lr_index < p.getlength() - 1:
+                while lr_index < len(p) - 1:
                     lr_index += 1
                     t = p.prod[lr_index]
 
                     if (j, t) in dtrans:
                         li = lr_index + 1
-                        while li < p.getlength():
+                        while li < len(p):
                             if p.prod[li] in grammar.terminals:
                                 break
                             if p.prod[li] not in nullable:
@@ -573,7 +573,7 @@ class LRTable(object):
                 for r in C[j]:
                     if r.name != p.name:
                         continue
-                    if r.getlength() != p.getlength():
+                    if len(r) != len(p):
                         continue
                     i = 0
                     while i < r.lr_index:

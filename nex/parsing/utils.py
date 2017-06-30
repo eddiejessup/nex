@@ -115,7 +115,7 @@ end_tag = '$end'
 
 
 def is_end_token(t):
-    return hasattr(t, 'name') and t.name == end_tag and t.value == end_tag
+    return t.type == end_tag and t.value == end_tag
 
 
 class GetBuffer:

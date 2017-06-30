@@ -1,14 +1,27 @@
 from .errors import ParsingError
 
 
+class Token(object):
+    """
+    Represents a syntactically relevant piece of text.
+
+    :param type_: A string describing the kind of text represented.
+    :param value: The actual text represented.
+    """
+    def __init__(self, type_, value):
+        self.type = type_
+        self.value = value
+
+    def __repr__(self):
+        return "Token(%r, %r)" % (self.type, self.value)
+
+
 class LRParser(object):
     def __init__(self, lr_table, error_handler):
         self.lr_table = lr_table
         self.error_handler = error_handler
 
     def parse(self, tokenizer, state=None):
-        from .token import Token
-
         lookahead = None
         lookaheadstack = []
 
@@ -39,12 +52,11 @@ class LRParser(object):
                     could_only_end = len(self.lr_table.lr_action[current_state]) == 1
                     lookahead = Token("$end", "$end")
 
-            ltype = lookahead.gettokentype()
             # Check if the next token is a valid next step, given our current
             # state.
-            if ltype in self.lr_table.lr_action[current_state]:
+            if lookahead.type in self.lr_table.lr_action[current_state]:
                 # Get the next action.
-                t = self.lr_table.lr_action[current_state][ltype]
+                t = self.lr_table.lr_action[current_state][lookahead.type]
                 # Shift.
                 if t > 0:
                     statestack.append(t)
@@ -86,7 +98,7 @@ class LRParser(object):
         # reduce a symbol on the stack and emit a production
         p = self.lr_table.grammar.productions[-t]
         pname = p.name
-        plen = p.getlength()
+        plen = len(p)
         start = len(symstack) + (-plen - 1)
         assert start >= 0
         targ = symstack[start + 1:]

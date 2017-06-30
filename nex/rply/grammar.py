@@ -10,17 +10,17 @@ def rightmost_terminal(symbols, terminals):
 
 class Grammar(object):
     def __init__(self, terminals):
-        # A list of all the productions
+        # A list of all the productions.
         self.productions = [None]
-        # A dictionary mapping the names of non-terminals to a list of all
-        # productions of that nonterminal
+        # A map from the names of non-terminals to a list of all its
+        # productions.
         self.prod_names = {}
-        # A dictionary mapping the names of terminals to a list of the rules
-        # where they are used
+        # A map from the names of terminals to a list of the rules
+        # where they are used.
         self.terminals = dict((t, []) for t in terminals)
         self.terminals["error"] = []
-        # A dictionary mapping names of nonterminals to a list of rule numbers
-        # where they are used
+        # A map from the names of non-terminals to a list of rule numbers
+        # where they are used.
         self.nonterminals = {}
         self.first = {}
         self.follow = {}
@@ -76,6 +76,7 @@ class Grammar(object):
         self.nonterminals[start].append(0)
         self.start = start
 
+    @property
     def unused_terminals(self):
         return [
             t
@@ -83,6 +84,7 @@ class Grammar(object):
             if not prods and t != "error"
         ]
 
+    @property
     def unused_productions(self):
         return [p for p, prods in self.nonterminals.items() if not prods]
 
@@ -92,12 +94,12 @@ class Grammar(object):
         items.
         """
         for p in self.productions:
-            lastlri = p
+            last_lr_item = p
             i = 0
             lr_items = []
             while True:
-                if i > p.getlength():
-                    lri = None
+                if i > len(p):
+                    lr_item = None
                 else:
                     try:
                         before = p.prod[i - 1]
@@ -107,12 +109,12 @@ class Grammar(object):
                         after = self.prod_names[p.prod[i]]
                     except (IndexError, KeyError):
                         after = []
-                    lri = LRItem(p, i, before, after)
-                lastlri.lr_next = lri
-                if lri is None:
+                    lr_item = LRItem(p, i, before, after)
+                last_lr_item.lr_next = lr_item
+                if lr_item is None:
                     break
-                lr_items.append(lri)
-                lastlri = lri
+                lr_items.append(lr_item)
+                last_lr_item = lr_item
                 i += 1
             p.lr_items = lr_items
 
@@ -200,7 +202,7 @@ class Production(object):
     def __repr__(self):
         return "Production(%s -> %s)" % (self.name, " ".join(self.prod))
 
-    def getlength(self):
+    def __len__(self):
         return len(self.prod)
 
 
@@ -219,5 +221,5 @@ class LRItem(object):
     def __repr__(self):
         return "LRItem(%s -> %s)" % (self.name, " ".join(self.prod))
 
-    def getlength(self):
+    def __len__(self):
         return len(self.prod)

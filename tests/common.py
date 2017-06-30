@@ -1,7 +1,7 @@
 import os
 from enum import Enum
 
-from nex.tokens import InstructionToken, PLYTokenMixin
+from nex.tokens import InstructionToken
 from nex.parsing import utils as pu
 from nex.fonts import GlobalFontState
 
@@ -28,7 +28,7 @@ ITok = InstructionToken
 
 # Parsing.
 
-class PTok(PLYTokenMixin):
+class PTok:
     def __init__(self, type_, v=None):
         self.type = type_
         self.value = v
