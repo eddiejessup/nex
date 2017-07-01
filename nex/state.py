@@ -1426,164 +1426,6 @@ class GlobalState:
             # mode is forbidden.
             raise UserError(f"Cannot do command {type_} in restricted "
                             f"horizontal mode")
-        elif type_ == Instructions.relax.value:
-            logger.info(f"Doing 'relax' command")
-            pass
-        elif type_ == Instructions.right_brace.value:
-            logger.debug(f"Ending current group '{self.group}' due to right brace")
-            # I think roughly same comments as for left brace above probably
-            # apply.
-            self.end_group(banisher)
-        elif type_ == Instructions.begin_group.value:
-            raise NotImplementedError
-        elif type_ == Instructions.end_group.value:
-            raise NotImplementedError
-        elif type_ == Instructions.show_token.value:
-            raise NotImplementedError
-        elif type_ == Instructions.show_box.value:
-            raise NotImplementedError
-        elif type_ == Instructions.show_lists.value:
-            raise NotImplementedError
-        elif type_ == Instructions.show_the.value:
-            raise NotImplementedError
-        elif type_ == Instructions.space.value:
-            logger.debug(f'Doing space')
-            self.do_space()
-        elif type_ == Instructions.par.value:
-            logger.debug(f'Doing paragraph')
-            self.do_paragraph()
-        elif type_ == 'character':
-            logger.debug(f"Adding character \"{v['char']}\"")
-            self.add_character_char(v['char'])
-        elif type_ == Instructions.accent.value:
-            logger.info(f'Adding accented character')
-            assignments = v['assignments'].value
-            accent_code_eval = self.eval_number_token(v['accent_code'])
-            char_tok = v['target_char']
-            if char_tok is None:
-                target_char_code = None
-            elif char_tok.type == 'character':
-                target_char_code = ord(char_tok.value['char'])
-            else:
-                raise NotImplementedError
-            # TeXbook page 54: "Mode-independent commands like font changes may
-            # appear between the accent number and the character to be
-            # accented, but grouping operations must not intervene."
-            for assignment in assignments:
-                self.execute_command_token(assignment, banisher)
-            self.do_accent(accent_code_eval, target_char_code)
-        elif type_ == Instructions.v_rule.value:
-            logger.info(f"Adding vertical rule")
-            # Evaluate the number token representing each dimension.
-            for k in v:
-                if v[k] is not None:
-                    v[k] = self.eval_number_token(v[k])
-            self.add_v_rule(**v)
-        elif type_ == Instructions.h_rule.value:
-            logger.info(f"Adding horizontal rule")
-            # Evaluate the number token representing each dimension.
-            for k in v:
-                if v[k] is not None:
-                    v[k] = self.eval_number_token(v[k])
-            self.add_h_rule(**v)
-        # The box already has its contents in the correct way, built using this
-        # very method. Recursion still amazes me sometimes.
-        elif type_ in (Instructions.h_box.value,
-                       Instructions.v_box.value, Instructions.v_top.value):
-            horizontal = type_ == Instructions.h_box.value
-            if horizontal:
-                logger.info(f'Adding horizontal box')
-            else:
-                logger.info(f'Adding vertical box')
-            box_item = self._parse_box_token(v, horizontal=horizontal)
-            self.append_to_list(box_item)
-        elif type_ in (Instructions.box.value, Instructions.copy.value):
-            logger.info(f"Getting box from register with '{type_}' command")
-            evaled_i = self.eval_number_token(v)
-            # \box empties the register; \copy doesn't
-            is_copy = type_ == Instructions.copy.value
-            self.append_register_box(i=evaled_i, copy=is_copy)
-        elif type_ == 'un_box':
-            logger.info(f"Unpacking box from register with '{type_}' command")
-            reg_nr = self.eval_number_token(v['nr'])
-            cmd_type = v['cmd_type']
-            if cmd_type in (Instructions.un_h_copy, Instructions.un_v_copy):
-                is_copy = True
-            elif cmd_type in (Instructions.un_h_box, Instructions.un_v_box):
-                is_copy = False
-            else:
-                raise ValueError(f'Unknown unbox command type: {cmd_type}')
-            if v['cmd_type'] in (Instructions.un_h_copy,
-                                 Instructions.un_h_box):
-                method = self.append_unboxed_register_h_box
-            elif v['cmd_type'] in (Instructions.un_v_copy,
-                                   Instructions.un_v_box):
-                method = self.append_unboxed_register_v_box
-            else:
-                raise ValueError(f'Unknown unbox command type: {cmd_type}')
-            method(i=reg_nr, copy=is_copy)
-        elif type_ == Instructions.ship_out.value:
-            raise NotImplementedError
-        # I think technically only this should cause the program to end, not
-        # EOFError anywhere. But for now, whatever.
-        elif type_ == Instructions.end.value:
-            self.do_end()
-        elif type_ == 'message':
-            logger.info(f"Doing 'message' command")
-            conts = v['content'].value
-            s = ''.join(t.value['char'] for t in conts)
-            logger.warning(f'TODO: MESSAGE: {s}')
-        elif type_ == 'write':
-            logger.info(f"Doing 'write' command")
-            conts = v['content'].value
-            # s = ''.join(t.value['char'] for t in conts)
-            logger.warning(f'TODO: LOG: <TODO>')
-            # TODO: This should be read with expansion, but at the moment we
-            # read it unexpanded, so what we get here is not printable.
-            pass
-        elif type_ == Instructions.indent.value:
-            logger.debug(f"Doing 'indent'")
-            self.do_indent()
-        elif type_ == Instructions.left_brace.value:
-            logger.debug(f"Starting local group due to left brace")
-            # A character token of category 1, or a control sequence like
-            # \bgroup that has been \let equal to such a character token,
-            # causes TeX to start a new level of grouping.
-            self.start_local_group()
-        # Adding glue.
-        elif type_ == Instructions.h_skip.value:
-            glue = self.eval_glue_token(v)
-            self.add_h_glue(**glue)
-        elif type_ == Instructions.v_skip.value:
-            glue = self.eval_glue_token(v)
-            self.add_v_glue(**glue)
-        elif type_ == Instructions.h_stretch_or_shrink.value:
-            self.add_h_stretch_or_shrink_glue()
-        elif type_ == Instructions.v_stretch_or_shrink.value:
-            self.add_v_stretch_or_shrink_glue()
-        elif type_ == Instructions.h_fil.value:
-            self.add_h_fil_glue()
-        elif type_ == Instructions.v_fil.value:
-            self.add_v_fil_glue()
-        elif type_ == Instructions.h_fill.value:
-            self.add_h_fill_glue()
-        elif type_ == Instructions.v_fill.value:
-            self.add_v_fill_glue()
-        elif type_ == Instructions.h_fil_neg.value:
-            self.add_h_neg_fil_glue()
-        elif type_ == Instructions.v_fil_neg.value:
-            self.add_v_neg_fil_glue()
-        elif type_ == Instructions.open_input.value:
-            stream_nr = self.eval_number_token(v['stream_nr'])
-            file_name = v['file_name'].value
-            logger.warning(f"TODO: Open input file '{file_name}' as stream "
-                           f"{stream_nr}")
-            # raise NotImplementedError
-        # After group.
-        elif type_ == Instructions.after_group.value:
-            self.push_to_after_group_queue(v)
-        elif type_ == Instructions.after_assignment.value:
-            self.set_after_assignment_token(v)
         # Start of assignments.
         elif type_ == 'macro_assignment':
             self.do_macro_assigment(
@@ -1716,6 +1558,220 @@ class GlobalState:
         # interaction_mode_assignment
         # intimate_assignment
         # End of assignments.
+        elif type_ == Instructions.relax.value:
+            logger.info(f"Doing 'relax' command")
+            pass
+        elif type_ == Instructions.right_brace.value:
+            logger.debug(f"Ending current group '{self.group}' due to right brace")
+            # I think roughly same comments as for left brace above probably
+            # apply.
+            self.end_group(banisher)
+        elif type_ == Instructions.begin_group.value:
+            raise NotImplementedError
+        elif type_ == Instructions.end_group.value:
+            raise NotImplementedError
+        elif type_ == Instructions.show_token.value:
+            raise NotImplementedError
+        elif type_ == Instructions.show_box.value:
+            raise NotImplementedError
+        elif type_ == Instructions.show_lists.value:
+            raise NotImplementedError
+        elif type_ == Instructions.show_the.value:
+            raise NotImplementedError
+        elif type_ == Instructions.ship_out.value:
+            raise NotImplementedError
+        elif type_ == Instructions.ignore_spaces.value:
+            raise NotImplementedError
+        elif type_ == Instructions.after_assignment.value:
+            self.set_after_assignment_token(v)
+        elif type_ == Instructions.after_group.value:
+            self.push_to_after_group_queue(v)
+        elif type_ == 'message':
+            logger.info(f"Doing 'message' command")
+            conts = v['content'].value
+            s = ''.join(t.value['char'] for t in conts)
+            logger.warning(f'TODO: MESSAGE: {s}')
+        elif type_ == Instructions.open_input.value:
+            stream_nr = self.eval_number_token(v['stream_nr'])
+            file_name = v['file_name'].value
+            logger.warning(f"TODO: Open input file '{file_name}' as stream "
+                           f"{stream_nr}")
+            # raise NotImplementedError
+        elif type_ == Instructions.close_input.value:
+            raise NotImplementedError
+        elif type_ == Instructions.open_output.value:
+            raise NotImplementedError
+        elif type_ == Instructions.close_output.value:
+            raise NotImplementedError
+        elif type_ == Instructions.write.value:
+            logger.info(f"Doing 'write' command")
+            conts = v['content'].value
+            # s = ''.join(t.value['char'] for t in conts)
+            logger.warning(f'TODO: LOG: <TODO>')
+            # TODO: This should be read with expansion, but at the moment we
+            # read it unexpanded, so what we get here is not printable.
+            pass
+        elif type_ == Instructions.special.value:
+            raise NotImplementedError
+        elif type_ == Instructions.add_penalty.value:
+            raise NotImplementedError
+        elif type_ == Instructions.kern.value:
+            raise NotImplementedError
+        elif type_ == Instructions.math_kern.value:
+            raise NotImplementedError
+        elif type_ == Instructions.un_penalty.value:
+            raise NotImplementedError
+        elif type_ == Instructions.un_kern.value:
+            raise NotImplementedError
+        elif type_ == Instructions.un_glue.value:
+            raise NotImplementedError
+        elif type_ == Instructions.mark.value:
+            raise NotImplementedError
+        elif type_ == Instructions.insert.value:
+            raise NotImplementedError
+        elif type_ == Instructions.v_adjust.value:
+            raise NotImplementedError
+        elif type_ == 'leaders':
+            raise NotImplementedError
+        elif type_ == Instructions.space.value:
+            logger.debug(f'Doing space')
+            self.do_space()
+        elif type_ in (Instructions.h_box.value,
+                       Instructions.v_box.value, Instructions.v_top.value):
+            horizontal = type_ == Instructions.h_box.value
+            if horizontal:
+                logger.info(f'Adding horizontal box')
+            else:
+                logger.info(f'Adding vertical box')
+            box_item = self._parse_box_token(v, horizontal=horizontal)
+            self.append_to_list(box_item)
+        elif type_ in (Instructions.box.value, Instructions.copy.value):
+            logger.info(f"Getting box from register with '{type_}' command")
+            evaled_i = self.eval_number_token(v)
+            # \box empties the register; \copy doesn't
+            is_copy = type_ == Instructions.copy.value
+            self.append_register_box(i=evaled_i, copy=is_copy)
+        elif type_ == Instructions.last_box.value:
+            raise NotImplementedError
+        elif type_ == Instructions.v_split.value:
+            raise NotImplementedError
+        elif type_ == 'un_box':
+            logger.info(f"Unpacking box from register with '{type_}' command")
+            reg_nr = self.eval_number_token(v['nr'])
+            cmd_type = v['cmd_type']
+            if cmd_type in (Instructions.un_h_copy, Instructions.un_v_copy):
+                is_copy = True
+            elif cmd_type in (Instructions.un_h_box, Instructions.un_v_box):
+                is_copy = False
+            else:
+                raise ValueError(f'Unknown unbox command type: {cmd_type}')
+            if v['cmd_type'] in (Instructions.un_h_copy,
+                                 Instructions.un_h_box):
+                method = self.append_unboxed_register_h_box
+            elif v['cmd_type'] in (Instructions.un_v_copy,
+                                   Instructions.un_v_box):
+                method = self.append_unboxed_register_v_box
+            else:
+                raise ValueError(f'Unknown unbox command type: {cmd_type}')
+            method(i=reg_nr, copy=is_copy)
+        elif type_ == Instructions.indent.value:
+            logger.debug(f"Doing 'indent'")
+            self.do_indent()
+        elif type_ == Instructions.no_indent.value:
+            raise NotImplementedError
+        elif type_ == Instructions.par.value:
+            logger.debug(f'Doing paragraph')
+            self.do_paragraph()
+        elif type_ == Instructions.left_brace.value:
+            logger.debug(f"Starting local group due to left brace")
+            # A character token of category 1, or a control sequence like
+            # \bgroup that has been \let equal to such a character token,
+            # causes TeX to start a new level of grouping.
+            self.start_local_group()
+        # Adding glue.
+        elif type_ == Instructions.h_skip.value:
+            glue = self.eval_glue_token(v)
+            self.add_h_glue(**glue)
+        elif type_ == Instructions.v_skip.value:
+            glue = self.eval_glue_token(v)
+            self.add_v_glue(**glue)
+        elif type_ == Instructions.h_stretch_or_shrink.value:
+            self.add_h_stretch_or_shrink_glue()
+        elif type_ == Instructions.v_stretch_or_shrink.value:
+            self.add_v_stretch_or_shrink_glue()
+        elif type_ == Instructions.h_fil.value:
+            self.add_h_fil_glue()
+        elif type_ == Instructions.v_fil.value:
+            self.add_v_fil_glue()
+        elif type_ == Instructions.h_fill.value:
+            self.add_h_fill_glue()
+        elif type_ == Instructions.v_fill.value:
+            self.add_v_fill_glue()
+        elif type_ == Instructions.h_fil_neg.value:
+            self.add_h_neg_fil_glue()
+        elif type_ == Instructions.v_fil_neg.value:
+            self.add_v_neg_fil_glue()
+        elif type_ in (Instructions.move_left.value,
+                       Instructions.move_right.value,
+                       Instructions.raise_box.value,
+                       Instructions.lower_box.value):
+            raise NotImplementedError
+        elif type_ == Instructions.h_rule.value:
+            logger.info(f"Adding horizontal rule")
+            # Evaluate the number token representing each dimension.
+            for k in v:
+                if v[k] is not None:
+                    v[k] = self.eval_number_token(v[k])
+            self.add_h_rule(**v)
+        elif type_ == Instructions.v_rule.value:
+            logger.info(f"Adding vertical rule")
+            # Evaluate the number token representing each dimension.
+            for k in v:
+                if v[k] is not None:
+                    v[k] = self.eval_number_token(v[k])
+            self.add_v_rule(**v)
+        elif type_ == Instructions.h_align.value:
+            raise NotImplementedError
+        elif type_ == Instructions.v_align.value:
+            raise NotImplementedError
+        # I think technically only this should cause the program to end, not
+        # EOFError anywhere. But for now, whatever.
+        elif type_ == Instructions.end.value:
+            self.do_end()
+        elif type_ == Instructions.dump.value:
+            raise NotImplementedError
+        elif type_ == Instructions.control_space.value:
+            raise NotImplementedError
+        elif type_ == 'character':
+            logger.debug(f"Adding character \"{v['char']}\"")
+            self.add_character_char(v['char'])
+        elif type_ == Instructions.accent.value:
+            logger.info(f'Adding accented character')
+            assignments = v['assignments'].value
+            accent_code_eval = self.eval_number_token(v['accent_code'])
+            char_tok = v['target_char']
+            if char_tok is None:
+                target_char_code = None
+            elif char_tok.type == 'character':
+                target_char_code = ord(char_tok.value['char'])
+            else:
+                raise NotImplementedError
+            # TeXbook page 54: "Mode-independent commands like font changes may
+            # appear between the accent number and the character to be
+            # accented, but grouping operations must not intervene."
+            for assignment in assignments:
+                self.execute_command_token(assignment, banisher)
+            self.do_accent(accent_code_eval, target_char_code)
+        elif type_ == Instructions.italic_correction.value:
+            raise NotImplementedError
+        elif type_ == Instructions.italic_correction.value:
+            raise NotImplementedError
+        elif type_ == Instructions.discretionary.value:
+            raise NotImplementedError
+        elif type_ == Instructions.discretionary_hyphen.value:
+            raise NotImplementedError
+        elif type_ == Instructions.math_shift.value:
+            raise NotImplementedError
         else:
             raise ValueError(f"Command type '{type_}' not recognised.")
 

@@ -575,7 +575,7 @@ def add_command_rules(pg):
 
     @pg.production('write : WRITE number general_text')
     def write(p):
-        return BuiltToken(type_='write',
+        return BuiltToken(type_=p[0].type,
                           value={'stream_number': p[1],
                                  'content': p[2],
                                  'prefix': None},
