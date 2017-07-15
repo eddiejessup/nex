@@ -1379,6 +1379,36 @@ class GlobalState:
                 position_str='',
             ) from e
 
+    def _shift_to_horizontal(self, command, banisher):
+        # "If any of these tokens occurs as a command in vertical mode or
+        # internal vertical mode, TeX automatically performs an \indent
+        # command as explained above. This leads into horizontal mode with
+        # the \everypar tokens in the input, after which TeX will see the
+        # horizontal command again."
+        # Put the terminal tokens that led to this command back on the
+        # input queue.
+        logger.info(f'"{command.type}" causing shift to horizontal mode')
+        terminal_tokens = command._terminal_tokens
+        # Get a primitive token for the indent command.
+        indent_token = make_primitive_control_sequence_instruction(
+            name='indent', instruction=Instructions.indent)
+        # And add it before the tokens we just read.
+        banisher.replace_tokens_on_input([indent_token] + terminal_tokens)
+
+    def _shift_to_vertical(self, command, banisher):
+        # "The appearance of a <vertical command> in regular horizontal
+        # mode causes TeX to insert the token 'par' into the input; after
+        # reading and expanding this 'par' token, TeX will see the
+        # <vertical command> token again. (The current meaning of the
+        # control sequence \par will be used; 'par' might no longer stand
+        # for TeX's \par primitive.)"
+        # Put the terminal tokens that led to this command back on the
+        # input queue.
+        logger.info(f'"{command.type}" causing shift to vertical mode')
+        terminal_tokens = command._terminal_tokens
+        par_cs_token = make_unexpanded_control_sequence_instruction('par')
+        banisher.replace_tokens_on_input([par_cs_token] + terminal_tokens)
+
     def _execute_command_token(self, command, banisher):
         # Reader needed to allow us to insert new input in response to
         # commands.
@@ -1392,34 +1422,10 @@ class GlobalState:
         # char-cat pair might end up as part of a filename or something.
         if (self.mode in vertical_modes and
                 command_shifts_to_horizontal(command)):
-            # "If any of these tokens occurs as a command in vertical mode or
-            # internal vertical mode, TeX automatically performs an \indent
-            # command as explained above. This leads into horizontal mode with
-            # the \everypar tokens in the input, after which TeX will see the
-            # horizontal command again."
-            # Put the terminal tokens that led to this command back on the
-            # input queue.
-            logger.info(f'"{type_}" causing shift to horizontal mode')
-            terminal_tokens = command._terminal_tokens
-            # Get a primitive token for the indent command.
-            indent_token = make_primitive_control_sequence_instruction(
-                name='indent', instruction=Instructions.indent)
-            # And add it before the tokens we just read.
-            banisher.replace_tokens_on_input([indent_token] + terminal_tokens)
+            self._shift_to_horizontal(command, banisher)
         elif (self.mode == Mode.horizontal and
               command_shifts_to_vertical(command)):
-            # "The appearance of a <vertical command> in regular horizontal
-            # mode causes TeX to insert the token 'par' into the input; after
-            # reading and expanding this 'par' token, TeX will see the
-            # <vertical command> token again. (The current meaning of the
-            # control sequence \par will be used; 'par' might no longer stand
-            # for TeX's \par primitive.)"
-            # Put the terminal tokens that led to this command back on the
-            # input queue.
-            logger.info(f'"{type_}" causing shift to vertical mode')
-            terminal_tokens = command._terminal_tokens
-            par_cs_token = make_unexpanded_control_sequence_instruction('par')
-            banisher.replace_tokens_on_input([par_cs_token] + terminal_tokens)
+            self._shift_to_vertical(command, banisher)
         elif (self.mode == Mode.restricted_horizontal and
               command_shifts_to_vertical(command)):
             # The appearance of a <vertical command> in restricted horizontal
@@ -1637,7 +1643,8 @@ class GlobalState:
             logger.debug(f'Doing space')
             self.do_space()
         elif type_ in (Instructions.h_box.value,
-                       Instructions.v_box.value, Instructions.v_top.value):
+                       Instructions.v_box.value,
+                       Instructions.v_top.value):
             horizontal = type_ == Instructions.h_box.value
             if horizontal:
                 logger.info(f'Adding horizontal box')
