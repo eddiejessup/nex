@@ -212,6 +212,67 @@ class GlobalState:
 
         self.after_assignment_token = None
 
+        self.command_to_method_map = {
+            Commands.assign: self.tok_assign,
+            Commands.relax: self.tok_relax,
+            Commands.left_brace: self.tok_left_brace,
+            Commands.right_brace: self.tok_right_brace,
+            Commands.begin_group: self.tok_begin_group,
+            Commands.end_group: self.tok_end_group,
+            Commands.show_token: self.tok_show_token,
+            Commands.show_box: self.tok_show_box,
+            Commands.show_lists: self.tok_show_lists,
+            Commands.show_the: self.tok_show_the,
+            Commands.ship_out: self.tok_ship_out,
+            Commands.ignore_spaces: self.tok_ignore_spaces,
+            Commands.set_after_assignment_token: self.tok_set_after_assignment_token,
+            Commands.add_to_after_group_tokens: self.tok_add_to_after_group_tokens,
+            Commands.message: self.tok_message,
+            Commands.error_message: self.tok_error_message,
+            Commands.open_input: self.tok_open_input,
+            Commands.close_input: self.tok_close_input,
+            Commands.open_output: self.tok_open_output,
+            Commands.close_output: self.tok_close_output,
+            Commands.write: self.tok_write,
+            Commands.do_special: self.tok_do_special,
+            Commands.add_penalty: self.tok_add_penalty,
+            Commands.add_kern: self.tok_add_kern,
+            Commands.add_math_kern: self.tok_add_math_kern,
+            Commands.un_penalty: self.tok_un_penalty,
+            Commands.un_kern: self.tok_un_kern,
+            Commands.un_glue: self.tok_un_glue,
+            Commands.mark: self.tok_mark,
+            Commands.insert: self.tok_insert,
+            Commands.vertical_adjust: self.tok_vertical_adjust,
+            Commands.add_leaders: self.tok_add_leaders,
+            Commands.add_space: self.tok_add_space,
+            Commands.add_box: self.tok_add_box,
+            Commands.unpack_horizontal_box: self.tok_unpack_box,
+            Commands.unpack_vertical_box: self.tok_unpack_box,
+            Commands.indent: self.tok_indent,
+            Commands.no_indent: self.tok_no_indent,
+            Commands.par: self.tok_par,
+            Commands.add_horizontal_glue: self.tok_add_glue,
+            Commands.add_vertical_glue: self.tok_add_glue,
+            Commands.move_box_left: self.tok_translate_box,
+            Commands.move_box_right: self.tok_translate_box,
+            Commands.raise_box: self.tok_translate_box,
+            Commands.lower_box: self.tok_translate_box,
+            Commands.add_horizontal_rule: self.tok_add_horizontal_rule,
+            Commands.add_vertical_rule: self.tok_add_vertical_rule,
+            Commands.horizontal_align: self.tok_horizontal_align,
+            Commands.vertical_align: self.tok_vertical_align,
+            Commands.end: self.tok_end,
+            Commands.dump: self.tok_dump,
+            Commands.add_control_space: self.tok_add_control_space,
+            Commands.add_character_explicit: self.tok_add_character_explicit,
+            Commands.add_accent: self.tok_add_accent,
+            Commands.add_italic_correction: self.tok_add_italic_correction,
+            Commands.add_discretionary: self.tok_add_discretionary,
+            Commands.add_discretionary_hyphen: self.tok_add_discretionary_hyphen,
+            Commands.do_math_shift: self.tok_do_math_shift,
+        }
+
     @classmethod
     def from_defaults(cls, font_search_paths=None, global_font_state=None):
         # We allow passing this in for testing purposes, because it touches the
@@ -1035,6 +1096,8 @@ class GlobalState:
 
     @check_not_horizontal
     def do_end(self):
+        # I think technically only this should cause the program to end, not
+        # EOFError anywhere. But for now, whatever.
         # TeXbook page 283.
         # "This command is not allowed in internal vertical mode. In
         # regular vertical mode it terminates TeX if the main vertical list
@@ -1426,8 +1489,8 @@ class GlobalState:
         par_cs_token = make_unexpanded_control_sequence_instruction('par')
         banisher.replace_tokens_on_input([par_cs_token] + terminal_tokens)
 
-    def assign(self, assign_type, assign_values, banisher):
-        v = assign_values
+    def tok_assign(self, cmd_value, banisher):
+        assign_type, v = cmd_value.type, cmd_value.value
         # Start of assignments.
         if assign_type == 'macro_assignment':
             self.do_macro_assigment(
@@ -1560,6 +1623,260 @@ class GlobalState:
         # interaction_mode_assignment
         # intimate_assignment
 
+    def tok_relax(self, cmd_value, banisher):
+        logger.info(f"Doing 'relax' command")
+        pass
+
+    def tok_left_brace(self, cmd_value, banisher):
+        logger.debug(f"Starting local group due to left brace")
+        # A character token of category 1, or a control sequence like
+        # \bgroup that has been \let equal to such a character token,
+        # causes TeX to start a new level of grouping.
+        self.start_local_group()
+
+    def tok_right_brace(self, cmd_value, banisher):
+        logger.debug(f"Ending current group '{self.group}' due to right brace")
+        # I think roughly same comments as for left brace above probably
+        # apply.
+        self.end_group(banisher)
+
+    def tok_begin_group(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_end_group(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_show_token(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_show_box(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_show_lists(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_show_the(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_ship_out(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_ignore_spaces(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_set_after_assignment_token(self, cmd_value, banisher):
+        self.set_after_assignment_token(cmd_value)
+
+    def tok_add_to_after_group_tokens(self, cmd_value, banisher):
+        self.push_to_after_group_queue(cmd_value)
+
+    def tok_message(self, cmd_value, banisher):
+        logger.info(f"Putting out message")
+        conts = cmd_value['content']
+        s = ''.join(t.value['char'] for t in conts)
+        logger.warning(f'TODO: MESSAGE: {s}')
+
+    def tok_error_message(self, cmd_value, banisher):
+        logger.info(f"Putting out error message")
+        conts = cmd_value['content']
+        s = ''.join(t.value['char'] for t in conts)
+        logger.warning(f'TODO: ERROR_MESSAGE: {s}')
+
+    def tok_open_input(self, cmd_value, banisher):
+        stream_nr = self.eval_number_token(cmd_value['stream_nr'])
+        file_name = cmd_value['file_name'].value
+        logger.warning(f"TODO: Open input file '{file_name}' as stream "
+                       f"{stream_nr}")
+        # raise NotImplementedError
+
+    def tok_close_input(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_open_output(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_close_output(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_write(self, cmd_value, banisher):
+        logger.info(f"Doing 'write' command")
+        conts = cmd_value['content'].value
+        # s = ''.join(t.value['char'] for t in conts)
+        logger.warning(f'TODO: LOG: <TODO>')
+        # TODO: This should be read with expansion, but at the moment we
+        # read it unexpanded, so what we get here is not printable.
+        pass
+
+    def tok_do_special(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_add_penalty(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_add_kern(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_add_math_kern(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_un_penalty(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_un_kern(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_un_glue(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_mark(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_insert(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_vertical_adjust(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_add_leaders(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_add_space(self, cmd_value, banisher):
+        logger.debug(f'Doing space')
+        self.do_space()
+
+    def tok_add_box(self, cmd_value, banisher):
+        box_item = self._parse_box_token(token=cmd_value)
+        # If void box, do nothing.
+        if box_item is not None:
+            self.append_to_list(box_item)
+
+    def tok_unpack_box(self, cmd_value, banisher):
+        reg_nr = self.eval_number_token(cmd_value['nr'])
+        cmd_type = cmd_value['cmd_type']
+        logger.info(f"Unpacking '{cmd_type}' box from register '{reg_nr}'")
+        if cmd_type in (Instructions.un_h_copy, Instructions.un_v_copy):
+            is_copy = True
+        elif cmd_type in (Instructions.un_h_box, Instructions.un_v_box):
+            is_copy = False
+        else:
+            raise ValueError(f'Unknown unbox command type: {cmd_type}')
+        if cmd_value['cmd_type'] in (Instructions.un_h_copy,
+                                     Instructions.un_h_box):
+            method = self.append_unboxed_register_h_box
+        elif cmd_value['cmd_type'] in (Instructions.un_v_copy,
+                                       Instructions.un_v_box):
+            method = self.append_unboxed_register_v_box
+        else:
+            raise ValueError(f'Unknown unbox command type: {cmd_type}')
+        method(i=reg_nr, copy=is_copy)
+
+    def tok_indent(self, cmd_value, banisher):
+        logger.debug(f"Doing 'indent'")
+        self.do_indent()
+
+    def tok_no_indent(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_par(self, cmd_value, banisher):
+        logger.debug(f'Doing paragraph')
+        self.do_paragraph()
+
+    def tok_add_glue(self, cmd_value, banisher):
+        glue_type = cmd_value.type
+        if glue_type == Instructions.h_skip.value:
+            glue = self.eval_glue_token(cmd_value)
+            self.add_h_glue(**glue)
+        elif glue_type == Instructions.h_stretch_or_shrink.value:
+            self.add_h_stretch_or_shrink_glue()
+        elif glue_type == Instructions.h_fil.value:
+            self.add_h_fil_glue()
+        elif glue_type == Instructions.h_fill.value:
+            self.add_h_fill_glue()
+        elif glue_type == Instructions.h_fil_neg.value:
+            self.add_h_neg_fil_glue()
+        elif glue_type == Instructions.v_skip.value:
+            glue = self.eval_glue_token(cmd_value)
+            self.add_v_glue(**glue)
+        elif glue_type == Instructions.v_stretch_or_shrink.value:
+            self.add_v_stretch_or_shrink_glue()
+        elif glue_type == Instructions.v_fil.value:
+            self.add_v_fil_glue()
+        elif glue_type == Instructions.v_fill.value:
+            self.add_v_fill_glue()
+        elif glue_type == Instructions.v_fil_neg.value:
+            self.add_v_neg_fil_glue()
+        else:
+            raise LogicError(f"Unknown glue type: '{glue_type}'")
+
+    def tok_translate_box(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_add_horizontal_rule(self, cmd_value, banisher):
+        logger.info(f"Adding horizontal rule")
+        # Evaluate the number token representing each dimension.
+        for k in cmd_value:
+            if cmd_value[k] is not None:
+                cmd_value[k] = self.eval_number_token(cmd_value[k])
+        self.add_h_rule(**cmd_value)
+
+    def tok_add_vertical_rule(self, cmd_value, banisher):
+        logger.info(f"Adding vertical rule")
+        # Evaluate the number token representing each dimension.
+        for k in cmd_value:
+            if cmd_value[k] is not None:
+                cmd_value[k] = self.eval_number_token(cmd_value[k])
+        self.add_v_rule(**cmd_value)
+
+    def tok_horizontal_align(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_vertical_align(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_end(self, cmd_value, banisher):
+        self.do_end()
+
+    def tok_dump(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_add_control_space(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_add_character_explicit(self, cmd_value, banisher):
+        logger.debug(f"Adding character \"{cmd_value['char']}\"")
+        self.add_character_char(cmd_value['char'])
+
+    def tok_add_accent(self, cmd_value, banisher):
+        logger.info(f'Adding accented character')
+        assignments = cmd_value['assignments'].value
+        accent_code_eval = self.eval_number_token(cmd_value['accent_code'])
+        char_tok = cmd_value['target_char']
+        if char_tok is None:
+            target_char_code = None
+        elif char_tok.type == 'character':
+            target_char_code = ord(char_tok.value['char'])
+        else:
+            raise NotImplementedError
+        # TeXbook page 54: "Mode-independent commands like font changes may
+        # appear between the accent number and the character to be
+        # accented, but grouping operations must not intervene."
+        for assignment in assignments:
+            self.execute_command_token(assignment, banisher)
+        self.do_accent(accent_code_eval, target_char_code)
+
+    def tok_add_italic_correction(self, cmd_value, banisher):
+        logger.warning(f'TODO: ITALIC CORRECTION')
+        # raise NotImplementedError
+
+    def tok_add_discretionary(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_add_discretionary_hyphen(self, cmd_value, banisher):
+        raise NotImplementedError
+
+    def tok_do_math_shift(self, cmd_value, banisher):
+        raise NotImplementedError
+
     # Banisher needed to allow us to put tokens on the queue in response to
     # commands.
     def _execute_command_token(self, token, banisher):
@@ -1577,219 +1894,9 @@ class GlobalState:
             # mode is forbidden.
             raise UserError(f"Cannot do command {command} in restricted "
                             f"horizontal mode")
-        elif command == Commands.assign:
-            assign_type = v.type
-            assign_values = v.value
-            self.assign(assign_type, assign_values, banisher)
-        elif command == Commands.relax:
-            logger.info(f"Doing 'relax' command")
-            pass
-        elif command == Commands.left_brace:
-            logger.debug(f"Starting local group due to left brace")
-            # A character token of category 1, or a control sequence like
-            # \bgroup that has been \let equal to such a character token,
-            # causes TeX to start a new level of grouping.
-            self.start_local_group()
-        elif command == Commands.right_brace:
-            logger.debug(f"Ending current group '{self.group}' due to right brace")
-            # I think roughly same comments as for left brace above probably
-            # apply.
-            self.end_group(banisher)
-        elif command == Commands.begin_group:
-            raise NotImplementedError
-        elif command == Commands.end_group:
-            raise NotImplementedError
-        elif command == Commands.show_token:
-            raise NotImplementedError
-        elif command == Commands.show_box:
-            raise NotImplementedError
-        elif command == Commands.show_lists:
-            raise NotImplementedError
-        elif command == Commands.show_the:
-            raise NotImplementedError
-        elif command == Commands.ship_out:
-            raise NotImplementedError
-        elif command == Commands.ignore_spaces:
-            raise NotImplementedError
-        elif command == Commands.set_after_assignment_token:
-            self.set_after_assignment_token(v)
-        elif command == Commands.add_to_after_group_tokens:
-            self.push_to_after_group_queue(v)
-        elif command == Commands.message:
-            logger.info(f"Doing '{command}'")
-            conts = v['content'].value
-            s = ''.join(t.value['char'] for t in conts)
-            logger.warning(f'TODO: MESSAGE: {s}')
-        elif command == Commands.error_message:
-            logger.info(f"Doing '{command}'")
-            conts = v['content'].value
-            s = ''.join(t.value['char'] for t in conts)
-            logger.warning(f'TODO: ERROR_MESSAGE: {s}')
-        elif command == Commands.open_input:
-            stream_nr = self.eval_number_token(v['stream_nr'])
-            file_name = v['file_name'].value
-            logger.warning(f"TODO: Open input file '{file_name}' as stream "
-                           f"{stream_nr}")
-            # raise NotImplementedError
-        elif command == Commands.close_input:
-            raise NotImplementedError
-        elif command == Commands.open_output:
-            raise NotImplementedError
-        elif command == Commands.close_output:
-            raise NotImplementedError
-        elif command == Commands.write:
-            logger.info(f"Doing 'write' command")
-            conts = v['content'].value
-            # s = ''.join(t.value['char'] for t in conts)
-            logger.warning(f'TODO: LOG: <TODO>')
-            # TODO: This should be read with expansion, but at the moment we
-            # read it unexpanded, so what we get here is not printable.
-            pass
-        elif command == Commands.do_special:
-            raise NotImplementedError
-        elif command == Commands.add_penalty:
-            raise NotImplementedError
-        elif command == Commands.add_kern:
-            raise NotImplementedError
-        elif command == Commands.add_math_kern:
-            raise NotImplementedError
-        elif command == Commands.un_penalty:
-            raise NotImplementedError
-        elif command == Commands.un_kern:
-            raise NotImplementedError
-        elif command == Commands.un_glue:
-            raise NotImplementedError
-        elif command == Commands.mark:
-            raise NotImplementedError
-        elif command == Commands.insert:
-            raise NotImplementedError
-        elif command == Commands.vertical_adjust:
-            raise NotImplementedError
-        elif command == Commands.add_leaders:
-            raise NotImplementedError
-        elif command == Commands.add_space:
-            logger.debug(f'Doing space')
-            self.do_space()
-        elif command == Commands.add_box:
-            box_item = self._parse_box_token(token=v)
-            # If void box, do nothing.
-            if box_item is not None:
-                self.append_to_list(box_item)
-        elif command in (Commands.unpack_horizontal_box,
-                         Commands.unpack_vertical_box):
-            logger.info(f"Unpacking box from register with '{command}'")
-            reg_nr = self.eval_number_token(v['nr'])
-            cmd_type = v['cmd_type']
-            if cmd_type in (Instructions.un_h_copy, Instructions.un_v_copy):
-                is_copy = True
-            elif cmd_type in (Instructions.un_h_box, Instructions.un_v_box):
-                is_copy = False
-            else:
-                raise ValueError(f'Unknown unbox command type: {cmd_type}')
-            if v['cmd_type'] in (Instructions.un_h_copy,
-                                 Instructions.un_h_box):
-                method = self.append_unboxed_register_h_box
-            elif v['cmd_type'] in (Instructions.un_v_copy,
-                                   Instructions.un_v_box):
-                method = self.append_unboxed_register_v_box
-            else:
-                raise ValueError(f'Unknown unbox command type: {cmd_type}')
-            method(i=reg_nr, copy=is_copy)
-        elif command == Commands.indent:
-            logger.debug(f"Doing 'indent'")
-            self.do_indent()
-        elif command == Commands.no_indent:
-            raise NotImplementedError
-        elif command == Commands.par:
-            logger.debug(f'Doing paragraph')
-            self.do_paragraph()
-        elif command in (Commands.add_horizontal_glue,
-                         Commands.add_vertical_glue):
-            glue_type = v.type
-            if glue_type == Instructions.h_skip.value:
-                glue = self.eval_glue_token(v)
-                self.add_h_glue(**glue)
-            elif glue_type == Instructions.h_stretch_or_shrink.value:
-                self.add_h_stretch_or_shrink_glue()
-            elif glue_type == Instructions.h_fil.value:
-                self.add_h_fil_glue()
-            elif glue_type == Instructions.h_fill.value:
-                self.add_h_fill_glue()
-            elif glue_type == Instructions.h_fil_neg.value:
-                self.add_h_neg_fil_glue()
-            elif glue_type == Instructions.v_skip.value:
-                glue = self.eval_glue_token(v)
-                self.add_v_glue(**glue)
-            elif glue_type == Instructions.v_stretch_or_shrink.value:
-                self.add_v_stretch_or_shrink_glue()
-            elif glue_type == Instructions.v_fil.value:
-                self.add_v_fil_glue()
-            elif glue_type == Instructions.v_fill.value:
-                self.add_v_fill_glue()
-            elif glue_type == Instructions.v_fil_neg.value:
-                self.add_v_neg_fil_glue()
-            else:
-                raise LogicError(f"Unknown glue type: '{glue_type}'")
-        elif command in (Commands.move_box_left, Commands.move_box_right,
-                         Commands.raise_box, Commands.lower_box):
-            raise NotImplementedError
-        elif command == Commands.add_horizontal_rule:
-            logger.info(f"Adding horizontal rule")
-            # Evaluate the number token representing each dimension.
-            for k in v:
-                if v[k] is not None:
-                    v[k] = self.eval_number_token(v[k])
-            self.add_h_rule(**v)
-        elif command == Commands.add_vertical_rule:
-            logger.info(f"Adding vertical rule")
-            # Evaluate the number token representing each dimension.
-            for k in v:
-                if v[k] is not None:
-                    v[k] = self.eval_number_token(v[k])
-            self.add_v_rule(**v)
-        elif command == Commands.horizontal_align:
-            raise NotImplementedError
-        elif command == Commands.vertical_align:
-            raise NotImplementedError
-        # I think technically only this should cause the program to end, not
-        # EOFError anywhere. But for now, whatever.
-        elif command == Commands.end:
-            self.do_end()
-        elif command == Commands.dump:
-            raise NotImplementedError
-        elif command == Commands.add_control_space:
-            raise NotImplementedError
-        elif command == Commands.add_character_explicit:
-            logger.debug(f"Adding character \"{v['char']}\"")
-            self.add_character_char(v['char'])
-        elif command == Commands.add_accent:
-            logger.info(f'Adding accented character')
-            assignments = v['assignments'].value
-            accent_code_eval = self.eval_number_token(v['accent_code'])
-            char_tok = v['target_char']
-            if char_tok is None:
-                target_char_code = None
-            elif char_tok.type == 'character':
-                target_char_code = ord(char_tok.value['char'])
-            else:
-                raise NotImplementedError
-            # TeXbook page 54: "Mode-independent commands like font changes may
-            # appear between the accent number and the character to be
-            # accented, but grouping operations must not intervene."
-            for assignment in assignments:
-                self.execute_command_token(assignment, banisher)
-            self.do_accent(accent_code_eval, target_char_code)
-        elif command == Commands.add_italic_correction:
-            logger.warning(f'TODO: ITALIC CORRECTION')
-            # raise NotImplementedError
-        elif command == Commands.add_discretionary:
-            raise NotImplementedError
-        elif command == Commands.add_discretionary_hyphen:
-            raise NotImplementedError
-        elif command == Commands.do_math_shift:
-            raise NotImplementedError
         else:
-            raise ValueError(f"Command type '{command}' not recognised.")
+            tok_method = self.command_to_method_map[command]
+            tok_method(v, banisher)
 
     # This method has a long name to emphasize that it will return the index of
     # the token block to pick, not the result of the condition.

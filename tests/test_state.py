@@ -345,3 +345,12 @@ def test_command_token_unbox(state):
     assert nr_elems_after == nr_elems_before + 2
     # Should still work, since we unpacked with copy.
     state.get_register_box(i=i_reg, copy=False)
+
+
+def test_command_token_message(state):
+    message_tok = CTok(command=Commands.message,
+                       value={'content': []})
+    err_message_tok = CTok(command=Commands.error_message,
+                           value={'content': []})
+    state.execute_command_token(message_tok, banisher=None)
+    state.execute_command_token(err_message_tok, banisher=None)

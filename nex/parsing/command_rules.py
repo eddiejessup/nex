@@ -335,13 +335,13 @@ def add_command_rules(pg):
     @pg.production('message : MESSAGE general_text')
     def message(p):
         return BuiltToken(type_='message',
-                          value={'content': p[1]},
+                          value={'content': p[1].value},
                           position_like=p)
 
     @pg.production('error_message : ERROR_MESSAGE general_text')
     def error_message(p):
         return BuiltToken(type_='error_message',
-                          value={'content': p[1]},
+                          value={'content': p[1].value},
                           position_like=p)
 
     @pg.production('open_input : OPEN_INPUT number equals file_name')
