@@ -196,7 +196,7 @@ def _get_chunk(input_queue, parser):
                 fluff_tok = parse_queue.pop()
                 logger.debug(f'Replacing fluff token {fluff_tok} on to-parse queue.')
                 input_queue.queue.appendleft(fluff_tok)
-                logger.info(f'Got chunk "{chunk.type}", through failed parsing')
+                logger.info(f'Got chunk "{chunk}", through failed parsing')
                 return chunk, parse_queue
             # If we have not yet parsed, then something is wrong.
             else:
@@ -214,7 +214,7 @@ def _get_chunk(input_queue, parser):
             # must handle bad handling of the post-chunk tokens caused by
             # not acting on this chunk.
             if chunk._could_only_end:
-                logger.info(f'Got chunk "{chunk.type}", through inevitability')
+                logger.info(f'Got chunk "{chunk}", through inevitability')
                 return chunk, parse_queue
             have_parsed = True
 
@@ -230,7 +230,7 @@ def _get_chunk(input_queue, parser):
             # return this parse-chunk, then next time round we will be
             # done.
             elif have_parsed:
-                logger.info(f'Got chunk "{chunk.type}", through end-of-file')
+                logger.info(f'Got chunk "{chunk}", through end-of-file')
                 return chunk, parse_queue
             # If we get to the end of the file and we have a chunk queue
             # that can't be parsed, something is wrong.
@@ -245,7 +245,7 @@ def _get_chunk(input_queue, parser):
             if have_parsed:
                 # This might always be fine, but log it anyway.
                 logger.warning('Ignoring failed expansion in chunk grabber')
-                logger.info(f'Got chunk "{chunk.type}", through failed expansion')
+                logger.info(f'Got chunk "{chunk}", through failed expansion')
                 return chunk, parse_queue
             # Otherwise, indeed something is wrong.
             else:

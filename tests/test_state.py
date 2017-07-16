@@ -1,16 +1,18 @@
 import pytest
 
 from nex.constants.instructions import Instructions
+from nex.constants.commands import Commands
 from nex.constants.specials import Specials
 from nex.state import Mode, GlobalState
 from nex import box
 from nex.box_writer import write_to_dvi_file
 from nex.state import ExecuteCommandError
 from nex.utils import UserError
-from nex.tokens import BuiltToken
+from nex.tokens import (BuiltToken,
+                        CommandToken as CTok, InstructionToken as ITok)
 from nex.fonts import GlobalFontState
 
-from common import ITok, DummyInstructions, DummyGlobalFontState
+from common import DummyCommands, DummyGlobalFontState
 
 
 do_output = False
@@ -34,6 +36,17 @@ def write(state, file_name):
         write_to_dvi_file(state, file_name, write_pdf=True)
 
 
+def nr_tok(n):
+    v = BuiltToken(type_='internal_number', value=n)
+    return BuiltToken(type_='number', value=v)
+
+
+class DummyTokenQueue:
+
+    def replace_tokens_on_input(self, tokens):
+        pass
+
+
 def test_single_letter(state):
     state.do_indent()
     state.add_character_char('a')
@@ -49,14 +62,6 @@ def test_single_letter(state):
     assert isinstance(hbox.contents[0], box.HBox)
     assert isinstance(hbox.contents[1], box.Character)
     write(state, 'test_single_letter.dvi')
-
-
-def test_token_executor(state):
-    tok = ITok(instruction=DummyInstructions.test, value=None)
-    with pytest.raises(ExecuteCommandError):
-        state.execute_command_token(tok, banisher=None)
-    with pytest.raises(ExecuteCommandError):
-        state.execute_command_tokens(iter([tok]), banisher=None)
 
 
 def test_solo_accent(state):
@@ -89,11 +94,6 @@ def test_v_rule(state):
     assert isinstance(h_box.contents[0], box.Rule)
     assert isinstance(h_box.contents[1], box.Rule)
     write(state, 'test_v_rule.dvi')
-
-
-def nr_tok(n):
-    v = BuiltToken(type_='internal_number', value=n)
-    return BuiltToken(type_='number', value=v)
 
 
 def test_if_num(state):
@@ -192,71 +192,6 @@ def test_get_box_dimen(state):
     assert b == 100
 
 
-def test_command_token_set_box(state):
-    i_reg = 5
-    box_tok = BuiltToken(type_=Instructions.h_box.value,
-                         value={'contents': [], 'specification': None})
-    set_box_tok = BuiltToken(type_=Instructions.set_box.value,
-                             value={'box': box_tok, 'nr': nr_tok(i_reg), 'global': True})
-    state.execute_command_token(set_box_tok, banisher=None)
-
-
-def test_command_token_get_box(state):
-    i_reg = 5
-    # Get a box in to retrieve.
-    box_item = box.HBox(contents=[])
-    state.set_box_register(token_source=None, i=i_reg, item=box_item, is_global=False)
-
-    get_box_tok = BuiltToken(type_=Instructions.box.value,
-                             value=nr_tok(i_reg))
-    state.execute_command_token(get_box_tok, banisher=None)
-    lst = state.current_page
-    assert lst[-1].contents is box_item.contents
-    state.get_register_box(i=i_reg, copy=False) is None
-
-
-def test_command_token_add_h_rule(state):
-    add_h_rule_tok = BuiltToken(type_=Instructions.h_rule.value,
-                                value={'width': None,
-                                       'height': None,
-                                       'depth': None})
-    state.execute_command_token(add_h_rule_tok, banisher=None)
-    lst = state.current_page
-    assert len(lst) == 3
-    assert isinstance(lst[2], box.Rule)
-    rule = lst[2]
-    assert rule.width == 0
-    assert rule.depth == 0
-    assert rule.height > 0
-
-
-def test_command_token_code_assignment(state):
-    sf_variable = BuiltToken(type_=Instructions.space_factor_code.value,
-                             value=nr_tok(ord('a')))
-    set_sf_tok = BuiltToken(type_='code_assignment',
-                            value={'variable': sf_variable,
-                                   'code': nr_tok(900),
-                                   'global': True})
-    state.execute_command_token(set_sf_tok, banisher=None)
-    assert state.codes.get_space_factor_code('a') == 900
-
-
-def test_command_token_unbox(state):
-    i_reg = 3
-    box_item = box.VBox(contents=[box.Rule(1, 1, 1), box.Rule(2, 2, 2)])
-    state.set_box_register(token_source=None, i=i_reg, item=box_item, is_global=False)
-    nr_elems_before = len(state.current_page)
-
-    get_box_tok = BuiltToken(type_='un_box',
-                             value={'nr': nr_tok(i_reg),
-                                    'cmd_type': Instructions.un_v_copy})
-    state.execute_command_token(get_box_tok, banisher=None)
-    nr_elems_after = len(state.current_page)
-    assert nr_elems_after == nr_elems_before + 2
-    # Should still work, since copy == True.
-    state.get_register_box(i=i_reg, copy=False)
-
-
 def test_space_factor(state):
     state.do_indent()
     a_sf = 900
@@ -281,12 +216,6 @@ def test_space_factor(state):
     state.add_character_char('a')
     state.add_v_rule(10, 10, 10)
     assert state.specials.get(Specials.space_factor) == 1000
-
-
-class DummyTokenQueue:
-
-    def replace_tokens_on_input(self, tokens):
-        pass
 
 
 def test_after_group(state):
@@ -327,3 +256,92 @@ def test_after_group_scoped(state):
 
     state.end_group(tok_source)
     assert not state.after_group_queue
+
+
+def test_token_executor(state):
+    tok = CTok(command=DummyCommands.verb, value=None)
+    with pytest.raises(ExecuteCommandError):
+        state.execute_command_token(tok, banisher=None)
+    with pytest.raises(ExecuteCommandError):
+        state.execute_command_tokens(iter([tok]), banisher=None)
+
+
+def test_command_token_set_box(state):
+    i_reg = 5
+    box_tok = BuiltToken(type_='box',
+                         value=BuiltToken(type_='explicit_box',
+                                          value={'box_type': Instructions.h_box.value,
+                                                 'contents': [],
+                                                 'specification': None}))
+    set_box_tok = CTok(command=Commands.assign,
+                       value=BuiltToken(type_=Instructions.set_box.value,
+                                        value={
+                                            'box': box_tok,
+                                            'nr': nr_tok(i_reg),
+                                            'global': True,
+                                        }))
+    state.execute_command_token(set_box_tok, banisher=None)
+
+
+def test_command_token_get_box(state):
+    i_reg = 5
+    # Get a box in to retrieve.
+    box_item = box.HBox(contents=[])
+    state.set_box_register(token_source=None, i=i_reg, item=box_item, is_global=False)
+
+    get_box_tok = CTok(command=Commands.add_box,
+                       value=BuiltToken(type_='box_register',
+                                        value={
+                                            'retrieve_type': Instructions.box.value,
+                                            'number': nr_tok(i_reg),
+                                        }))
+    state.execute_command_token(get_box_tok, banisher=None)
+    lst = state.current_page
+    assert lst[-1].contents is box_item.contents
+    state.get_register_box(i=i_reg, copy=False) is None
+
+
+def test_command_token_add_h_rule(state):
+    add_h_rule_tok = CTok(command=Commands.add_horizontal_rule,
+                          value={'width': None,
+                                 'height': None,
+                                 'depth': None})
+    state.execute_command_token(add_h_rule_tok, banisher=None)
+    lst = state.current_page
+    assert len(lst) == 3
+    assert isinstance(lst[2], box.Rule)
+    rule = lst[2]
+    assert rule.width == 0
+    assert rule.depth == 0
+    assert rule.height > 0
+
+
+def test_command_token_code_assignment(state):
+    sf_variable = BuiltToken(type_=Instructions.space_factor_code.value,
+                             value=nr_tok(ord('a')))
+    set_sf_tok = CTok(command=Commands.assign,
+                      value=BuiltToken(type_='code_assignment',
+                                       value={
+                                         'variable': sf_variable,
+                                         'code': nr_tok(900),
+                                         'global': True
+                                       }))
+    state.execute_command_token(set_sf_tok, banisher=None)
+    assert state.codes.get_space_factor_code('a') == 900
+
+
+def test_command_token_unbox(state):
+    i_reg = 3
+    box_item = box.VBox(contents=[box.Rule(1, 1, 1), box.Rule(2, 2, 2)])
+    state.set_box_register(token_source=None,
+                           i=i_reg, item=box_item, is_global=False)
+    nr_elems_before = len(state.current_page)
+
+    get_box_tok = CTok(command=Commands.unpack_vertical_box,
+                       value={'nr': nr_tok(i_reg),
+                              'cmd_type': Instructions.un_v_copy})
+    state.execute_command_token(get_box_tok, banisher=None)
+    nr_elems_after = len(state.current_page)
+    assert nr_elems_after == nr_elems_before + 2
+    # Should still work, since we unpacked with copy.
+    state.get_register_box(i=i_reg, copy=False)

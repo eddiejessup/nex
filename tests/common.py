@@ -19,6 +19,10 @@ class DummyInstructions(Enum):
     test = 'TEST'
 
 
+class DummyCommands(Enum):
+    verb = 'VERB'
+
+
 class DummyParameters(Enum):
     ptest = 'TEST_PARAM'
 

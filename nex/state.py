@@ -9,6 +9,7 @@ from collections import deque
 from .constants.instructions import (Instructions,
                                      h_add_glue_instructions,
                                      v_add_glue_instructions)
+from .constants.commands import Commands
 from .constants.parameters import Parameters, is_parameter_type
 from .constants.specials import Specials
 from .constants.codes import CatCode
@@ -26,7 +27,7 @@ from . import evaluator as evaler
 from .fonts import GlobalFontState
 from .scopes import (ScopedCodes, ScopedRegisters, ScopedRouter,
                      ScopedParameters, ScopedFontState, Operation)
-from .tokens import BuiltToken, InstructionToken, instructions_to_types
+from .tokens import BuiltToken, InstructionToken
 
 logger = logging.getLogger(__name__)
 
@@ -101,47 +102,44 @@ sub_executor_groups = (
 )
 
 
-shift_to_horizontal_instructions = (
-    Instructions.char,
-    Instructions.char_def_token,
-    Instructions.un_h_box,
-    Instructions.un_h_copy,
-    # Instructions.v_align
-    Instructions.v_rule,
-    Instructions.accent,
-    # Instructions.discretionary,
-    # Instructions.control_hyphen,
-    # TODO: Add control-space primitive, parsing and control sequence.
-    # Instructions.control_space,
-) + tuple(h_add_glue_instructions)
-shift_to_horizontal_types = instructions_to_types(shift_to_horizontal_instructions)
+shift_to_horizontal_commands = (
+    Commands.add_character_code,
+    Commands.add_character_token,
+    Commands.unpack_horizontal_box,
+    Commands.vertical_align,
+    Commands.add_vertical_rule,
+    Commands.add_accent,
+    Commands.add_discretionary,
+    Commands.add_discretionary_hyphen,
+    Commands.add_control_space,
+    Commands.add_horizontal_glue,
+)
 shift_to_horizontal_cat_codes = (CatCode.letter,
                                  CatCode.other,
                                  CatCode.math_shift)
 
 
-shift_to_vertical_instructions = (
-    Instructions.un_v_box,
-    Instructions.un_v_copy,
-    # Instructions.h_align
-    Instructions.h_rule,
-    Instructions.end,
-    # Instructions.dump,
-) + tuple(v_add_glue_instructions)
-shift_to_vertical_types = instructions_to_types(shift_to_vertical_instructions)
+shift_to_vertical_commands = (
+    Commands.unpack_vertical_box,
+    Commands.horizontal_align,
+    Commands.add_horizontal_rule,
+    Commands.end,
+    Commands.dump,
+    Commands.add_vertical_glue,
+)
 
 
-def command_shifts_to_horizontal(command):
-    if command.type in shift_to_horizontal_types:
+def command_token_shifts_to_horizontal(token):
+    if token.command in shift_to_horizontal_commands:
         return True
-    if (command.type == 'character' and
-            command.value['cat'] in shift_to_horizontal_cat_codes):
+    if (token.command == Commands.add_character_explicit and
+            token.value['cat'] in shift_to_horizontal_cat_codes):
         return True
     return False
 
 
-def command_shifts_to_vertical(command):
-    return command.type in shift_to_vertical_types
+def command_token_shifts_to_vertical(token):
+    return token.command in shift_to_vertical_commands
 
 
 def check_not_vertical(method):
@@ -986,12 +984,6 @@ class GlobalState:
             get_func = self.registers.pop
         return get_func(Instructions.set_box.value, i)
 
-    def append_register_box(self, i, copy):
-        box_item = self.get_register_box(i, copy)
-        # If void box, do nothing.
-        if box_item is not None:
-            self.append_to_list(box_item)
-
     def get_unboxed_register_box(self, i, copy, horizontal):
         # See TeXbook page 120.
         # TODO: implement global voiding:
@@ -1224,22 +1216,47 @@ class GlobalState:
 
     # Driving with tokens.
 
-    def _parse_box_token(self, v, horizontal):
-        conts = v['contents']
-        spec = v['specification']
-        to = None
-        spread = None
-        if spec is not None:
-            d = self.eval_number_token(spec.value)
-            if spec.type == 'to':
-                to = d
-            elif spec.type == 'spread':
-                spread = d
-            else:
-                raise ValueError(f'Unknown specification type {spec.type}')
-        BoxCls = HBox if horizontal else VBox
-        box_item = BoxCls(contents=conts, to=to, spread=spread)
-        return box_item
+    def _parse_box_token(self, token):
+        v = token.value
+        if token.type == 'explicit_box':
+            box_type = v['box_type']
+            if box_type not in (Instructions.h_box.value,
+                                Instructions.v_box.value,
+                                Instructions.v_top.value):
+                raise LogicError(f"Found unknown explicit box type '{box_type}'")
+            horizontal = box_type == Instructions.h_box.value
+            conts = v['contents']
+            spec = v['specification']
+
+            to = None
+            spread = None
+            if spec is not None:
+                d = self.eval_number_token(spec.value)
+                if spec.type == 'to':
+                    to = d
+                elif spec.type == 'spread':
+                    spread = d
+                else:
+                    raise ValueError(f'Unknown specification type {spec.type}')
+            BoxCls = HBox if horizontal else VBox
+            return BoxCls(contents=conts, to=to, spread=spread)
+        elif token.type == 'box_register':
+            logger.info(f"Getting box from register")
+            retrieve_type = v['retrieve_type']
+            is_copy = retrieve_type == Instructions.copy.value
+            evaled_i = self.eval_number_token(v['number'])
+            return self.get_register_box(evaled_i, is_copy)
+        elif token.type == Instructions.last_box.value:
+            raise NotImplementedError
+        elif token.type == Instructions.v_split.value:
+            raise NotImplementedError
+        else:
+            raise LogicError(f"Found unknown box token type: {token.type}")
+
+    def append_register_box(self, i, copy):
+        box_item = self.get_register_box(i, copy)
+        if box_item is not None:
+            self.append_to_list(box_item)
 
     def eval_size_token(self, size_token) -> Union[int, BuiltToken]:
         """Evaluate the components of an unsigned quantity and return the
@@ -1379,7 +1396,7 @@ class GlobalState:
                 position_str='',
             ) from e
 
-    def _shift_to_horizontal(self, command, banisher):
+    def _shift_to_horizontal(self, token, banisher):
         # "If any of these tokens occurs as a command in vertical mode or
         # internal vertical mode, TeX automatically performs an \indent
         # command as explained above. This leads into horizontal mode with
@@ -1387,15 +1404,15 @@ class GlobalState:
         # horizontal command again."
         # Put the terminal tokens that led to this command back on the
         # input queue.
-        logger.info(f'"{command.type}" causing shift to horizontal mode')
-        terminal_tokens = command._terminal_tokens
+        logger.info(f'"{token.command}" causing shift to horizontal mode')
+        terminal_tokens = token._terminal_tokens
         # Get a primitive token for the indent command.
         indent_token = make_primitive_control_sequence_instruction(
             name='indent', instruction=Instructions.indent)
         # And add it before the tokens we just read.
         banisher.replace_tokens_on_input([indent_token] + terminal_tokens)
 
-    def _shift_to_vertical(self, command, banisher):
+    def _shift_to_vertical(self, token, banisher):
         # "The appearance of a <vertical command> in regular horizontal
         # mode causes TeX to insert the token 'par' into the input; after
         # reading and expanding this 'par' token, TeX will see the
@@ -1404,36 +1421,15 @@ class GlobalState:
         # for TeX's \par primitive.)"
         # Put the terminal tokens that led to this command back on the
         # input queue.
-        logger.info(f'"{command.type}" causing shift to vertical mode')
-        terminal_tokens = command._terminal_tokens
+        logger.info(f'"{token.command}" causing shift to vertical mode')
+        terminal_tokens = token._terminal_tokens
         par_cs_token = make_unexpanded_control_sequence_instruction('par')
         banisher.replace_tokens_on_input([par_cs_token] + terminal_tokens)
 
-    def _execute_command_token(self, command, banisher):
-        # Reader needed to allow us to insert new input in response to
-        # commands.
-        # Banisher needed to allow us to put output back on the queue in
-        # response to commands.
-        type_ = command.type
-        v = command.value
-        # Note: It would be nice to do this in the banisher, so we don't have
-        # to mess about unpacking the command. But one cannot know at banisher-
-        # time how a terminal token in isolation will be used. For example, a
-        # char-cat pair might end up as part of a filename or something.
-        if (self.mode in vertical_modes and
-                command_shifts_to_horizontal(command)):
-            self._shift_to_horizontal(command, banisher)
-        elif (self.mode == Mode.horizontal and
-              command_shifts_to_vertical(command)):
-            self._shift_to_vertical(command, banisher)
-        elif (self.mode == Mode.restricted_horizontal and
-              command_shifts_to_vertical(command)):
-            # The appearance of a <vertical command> in restricted horizontal
-            # mode is forbidden.
-            raise UserError(f"Cannot do command {type_} in restricted "
-                            f"horizontal mode")
+    def assign(self, assign_type, assign_values, banisher):
+        v = assign_values
         # Start of assignments.
-        elif type_ == 'macro_assignment':
+        if assign_type == 'macro_assignment':
             self.do_macro_assigment(
                 token_source=banisher,
                 name=v['name'],
@@ -1442,7 +1438,15 @@ class GlobalState:
                 def_type=v['def_type'],
                 prefixes=v['prefixes'],
             )
-        elif type_ == 'variable_assignment':
+        elif assign_type == 'short_hand_definition':
+            code_uneval = v['code']
+            code_eval = self.eval_number_token(code_uneval)
+            cs_name = v['control_sequence_name']
+            self.do_short_hand_definition(
+                banisher, v['global'], cs_name, v['def_type'],
+                code_eval,
+            )
+        elif assign_type == 'variable_assignment':
             variable, value = v['variable'], v['value']
             # The value might be a variable reference or something, so we must
             # evaluate it to its contents first before assigning a variable to
@@ -1474,7 +1478,7 @@ class GlobalState:
                 )
             else:
                 raise ValueError(f"Unknown variable type: '{variable.type}'")
-        elif type_ == 'advance':
+        elif assign_type == 'advance':
             variable, value = v['variable'], v['value']
             # See 'variable_assignment' case.
             evaled_value = self.eval_number_token(value)
@@ -1498,7 +1502,7 @@ class GlobalState:
                 )
             else:
                 raise ValueError(f"Unknown variable type: '{variable.type}'")
-        elif type_ == 'code_assignment':
+        elif assign_type == 'code_assignment':
             char_size = self.eval_number_token(v['variable'].value)
             code_size = self.eval_number_token(v['code'])
             self.set_code(
@@ -1508,108 +1512,132 @@ class GlobalState:
                 char_size=char_size,
                 code_size=code_size,
             )
-        elif type_ == 'let_assignment':
+        elif assign_type == 'let_assignment':
             self.do_let_assignment(
                 token_source=banisher,
                 is_global=v['global'],
                 new_name=v['name'],
                 target_token=v['target_token']
             )
-        elif type_ == 'short_hand_definition':
-            code_uneval = v['code']
-            code_eval = self.eval_number_token(code_uneval)
-            cs_name = v['control_sequence_name']
-            self.do_short_hand_definition(
-                banisher, v['global'], cs_name, v['def_type'],
-                code_eval,
-            )
-        elif type_ == 'font_selection':
+        elif assign_type == 'font_selection':
             self.select_font(banisher, v['global'], v['font_id'])
-        elif type_ == 'family_assignment':
-            family_nr_eval = self.eval_number_token(v['family_nr'])
-            self.set_font_family(banisher, v['global'], family_nr_eval,
-                                 v['font_range'], v['font_id'])
-        elif type_ == Instructions.set_box.value:
-            evaled_i = self.eval_number_token(v['nr'])
-            box_type = v['box'].type
-            horizontal = box_type == Instructions.h_box.value
-            box_item = self._parse_box_token(v['box'].value,
-                                             horizontal=horizontal)
-            self.set_box_register(banisher, evaled_i, box_item, v['global'])
-        elif type_ == 'font_definition':
+        elif assign_type == 'font_definition':
             self.define_new_font(banisher,
                                  v['file_name'].value, v['at_clause'],
                                  v['control_sequence_name'], v['global'])
-        elif type_ in (Instructions.skew_char.value,
-                       Instructions.hyphen_char.value):
+        elif assign_type == 'family_assignment':
+            family_nr_eval = self.eval_number_token(v['family_nr'])
+            self.set_font_family(banisher, v['global'], family_nr_eval,
+                                 v['font_range'], v['font_id'])
+        elif assign_type == Instructions.set_box.value:
+            evaled_i = self.eval_number_token(v['nr'])
+            box_token = v['box'].value
+            box_item = self._parse_box_token(box_token)
+            self.set_box_register(banisher, evaled_i, box_item, v['global'])
+        elif assign_type in (Instructions.skew_char.value,
+                             Instructions.hyphen_char.value):
             var, value = v['variable'], v['value']
             code_eval = self.eval_number_token(value)
             font_tok = var.value['font']
             font_id = font_tok.value
-            if type_ == Instructions.skew_char.value:
+            if assign_type == Instructions.skew_char.value:
                 self.set_skew_char(banisher, font_id, code_eval)
-            elif type_ == Instructions.hyphen_char.value:
+            elif assign_type == Instructions.hyphen_char.value:
                 self.set_hyphen_char(banisher, font_id, code_eval)
             else:
-                raise ValueError(f'Unknown font assignment type: {type_}')
+                raise ValueError(f'Unknown font assignment type: {assign_type}')
         # TODO: implement this, and mark method with 'assignment' decorator.
-        elif type_ == Instructions.hyphenation.value:
+        elif assign_type == Instructions.hyphenation.value:
             raise NotImplementedError
         # TODO: implement this, and mark method with 'assignment' decorator.
-        elif type_ == Instructions.patterns.value:
+        elif assign_type == Instructions.patterns.value:
+            raise NotImplementedError
+        else:
             raise NotImplementedError
         # TODO: handle these commands, and mark them with 'assignments'
         # decorator:
         # box_size_assignment
         # interaction_mode_assignment
         # intimate_assignment
-        # End of assignments.
-        elif type_ == Instructions.relax.value:
+
+    # Banisher needed to allow us to put tokens on the queue in response to
+    # commands.
+    def _execute_command_token(self, token, banisher):
+        command = token.command
+        v = token.value
+        if (self.mode in vertical_modes and
+                command_token_shifts_to_horizontal(token)):
+            self._shift_to_horizontal(token, banisher)
+        elif (self.mode == Mode.horizontal and
+              command_token_shifts_to_vertical(token)):
+            self._shift_to_vertical(token, banisher)
+        elif (self.mode == Mode.restricted_horizontal and
+              command_token_shifts_to_vertical(token)):
+            # The appearance of a <vertical command> in restricted horizontal
+            # mode is forbidden.
+            raise UserError(f"Cannot do command {command} in restricted "
+                            f"horizontal mode")
+        elif command == Commands.assign:
+            assign_type = v.type
+            assign_values = v.value
+            self.assign(assign_type, assign_values, banisher)
+        elif command == Commands.relax:
             logger.info(f"Doing 'relax' command")
             pass
-        elif type_ == Instructions.right_brace.value:
+        elif command == Commands.left_brace:
+            logger.debug(f"Starting local group due to left brace")
+            # A character token of category 1, or a control sequence like
+            # \bgroup that has been \let equal to such a character token,
+            # causes TeX to start a new level of grouping.
+            self.start_local_group()
+        elif command == Commands.right_brace:
             logger.debug(f"Ending current group '{self.group}' due to right brace")
             # I think roughly same comments as for left brace above probably
             # apply.
             self.end_group(banisher)
-        elif type_ == Instructions.begin_group.value:
+        elif command == Commands.begin_group:
             raise NotImplementedError
-        elif type_ == Instructions.end_group.value:
+        elif command == Commands.end_group:
             raise NotImplementedError
-        elif type_ == Instructions.show_token.value:
+        elif command == Commands.show_token:
             raise NotImplementedError
-        elif type_ == Instructions.show_box.value:
+        elif command == Commands.show_box:
             raise NotImplementedError
-        elif type_ == Instructions.show_lists.value:
+        elif command == Commands.show_lists:
             raise NotImplementedError
-        elif type_ == Instructions.show_the.value:
+        elif command == Commands.show_the:
             raise NotImplementedError
-        elif type_ == Instructions.ship_out.value:
+        elif command == Commands.ship_out:
             raise NotImplementedError
-        elif type_ == Instructions.ignore_spaces.value:
+        elif command == Commands.ignore_spaces:
             raise NotImplementedError
-        elif type_ == Instructions.after_assignment.value:
+        elif command == Commands.set_after_assignment_token:
             self.set_after_assignment_token(v)
-        elif type_ == Instructions.after_group.value:
+        elif command == Commands.add_to_after_group_tokens:
             self.push_to_after_group_queue(v)
-        elif type_ == 'message':
-            logger.info(f"Doing 'message' command")
+        elif command == Commands.message:
+            logger.info(f"Doing '{command}'")
             conts = v['content'].value
             s = ''.join(t.value['char'] for t in conts)
             logger.warning(f'TODO: MESSAGE: {s}')
-        elif type_ == Instructions.open_input.value:
+        elif command == Commands.error_message:
+            logger.info(f"Doing '{command}'")
+            conts = v['content'].value
+            s = ''.join(t.value['char'] for t in conts)
+            logger.warning(f'TODO: ERROR_MESSAGE: {s}')
+        elif command == Commands.open_input:
             stream_nr = self.eval_number_token(v['stream_nr'])
             file_name = v['file_name'].value
             logger.warning(f"TODO: Open input file '{file_name}' as stream "
                            f"{stream_nr}")
             # raise NotImplementedError
-        elif type_ == Instructions.close_input.value:
+        elif command == Commands.close_input:
             raise NotImplementedError
-        elif type_ == Instructions.open_output.value:
+        elif command == Commands.open_output:
             raise NotImplementedError
-        elif type_ == Instructions.close_output.value:
+        elif command == Commands.close_output:
             raise NotImplementedError
-        elif type_ == Instructions.write.value:
+        elif command == Commands.write:
             logger.info(f"Doing 'write' command")
             conts = v['content'].value
             # s = ''.join(t.value['char'] for t in conts)
@@ -1617,53 +1645,39 @@ class GlobalState:
             # TODO: This should be read with expansion, but at the moment we
             # read it unexpanded, so what we get here is not printable.
             pass
-        elif type_ == Instructions.special.value:
+        elif command == Commands.do_special:
             raise NotImplementedError
-        elif type_ == Instructions.add_penalty.value:
+        elif command == Commands.add_penalty:
             raise NotImplementedError
-        elif type_ == Instructions.kern.value:
+        elif command == Commands.add_kern:
             raise NotImplementedError
-        elif type_ == Instructions.math_kern.value:
+        elif command == Commands.add_math_kern:
             raise NotImplementedError
-        elif type_ == Instructions.un_penalty.value:
+        elif command == Commands.un_penalty:
             raise NotImplementedError
-        elif type_ == Instructions.un_kern.value:
+        elif command == Commands.un_kern:
             raise NotImplementedError
-        elif type_ == Instructions.un_glue.value:
+        elif command == Commands.un_glue:
             raise NotImplementedError
-        elif type_ == Instructions.mark.value:
+        elif command == Commands.mark:
             raise NotImplementedError
-        elif type_ == Instructions.insert.value:
+        elif command == Commands.insert:
             raise NotImplementedError
-        elif type_ == Instructions.v_adjust.value:
+        elif command == Commands.vertical_adjust:
             raise NotImplementedError
-        elif type_ == 'leaders':
+        elif command == Commands.add_leaders:
             raise NotImplementedError
-        elif type_ == Instructions.space.value:
+        elif command == Commands.add_space:
             logger.debug(f'Doing space')
             self.do_space()
-        elif type_ in (Instructions.h_box.value,
-                       Instructions.v_box.value,
-                       Instructions.v_top.value):
-            horizontal = type_ == Instructions.h_box.value
-            if horizontal:
-                logger.info(f'Adding horizontal box')
-            else:
-                logger.info(f'Adding vertical box')
-            box_item = self._parse_box_token(v, horizontal=horizontal)
-            self.append_to_list(box_item)
-        elif type_ in (Instructions.box.value, Instructions.copy.value):
-            logger.info(f"Getting box from register with '{type_}' command")
-            evaled_i = self.eval_number_token(v)
-            # \box empties the register; \copy doesn't
-            is_copy = type_ == Instructions.copy.value
-            self.append_register_box(i=evaled_i, copy=is_copy)
-        elif type_ == Instructions.last_box.value:
-            raise NotImplementedError
-        elif type_ == Instructions.v_split.value:
-            raise NotImplementedError
-        elif type_ == 'un_box':
-            logger.info(f"Unpacking box from register with '{type_}' command")
+        elif command == Commands.add_box:
+            box_item = self._parse_box_token(token=v)
+            # If void box, do nothing.
+            if box_item is not None:
+                self.append_to_list(box_item)
+        elif command in (Commands.unpack_horizontal_box,
+                         Commands.unpack_vertical_box):
+            logger.info(f"Unpacking box from register with '{command}'")
             reg_nr = self.eval_number_token(v['nr'])
             cmd_type = v['cmd_type']
             if cmd_type in (Instructions.un_h_copy, Instructions.un_v_copy):
@@ -1681,78 +1695,74 @@ class GlobalState:
             else:
                 raise ValueError(f'Unknown unbox command type: {cmd_type}')
             method(i=reg_nr, copy=is_copy)
-        elif type_ == Instructions.indent.value:
+        elif command == Commands.indent:
             logger.debug(f"Doing 'indent'")
             self.do_indent()
-        elif type_ == Instructions.no_indent.value:
+        elif command == Commands.no_indent:
             raise NotImplementedError
-        elif type_ == Instructions.par.value:
+        elif command == Commands.par:
             logger.debug(f'Doing paragraph')
             self.do_paragraph()
-        elif type_ == Instructions.left_brace.value:
-            logger.debug(f"Starting local group due to left brace")
-            # A character token of category 1, or a control sequence like
-            # \bgroup that has been \let equal to such a character token,
-            # causes TeX to start a new level of grouping.
-            self.start_local_group()
-        # Adding glue.
-        elif type_ == Instructions.h_skip.value:
-            glue = self.eval_glue_token(v)
-            self.add_h_glue(**glue)
-        elif type_ == Instructions.v_skip.value:
-            glue = self.eval_glue_token(v)
-            self.add_v_glue(**glue)
-        elif type_ == Instructions.h_stretch_or_shrink.value:
-            self.add_h_stretch_or_shrink_glue()
-        elif type_ == Instructions.v_stretch_or_shrink.value:
-            self.add_v_stretch_or_shrink_glue()
-        elif type_ == Instructions.h_fil.value:
-            self.add_h_fil_glue()
-        elif type_ == Instructions.v_fil.value:
-            self.add_v_fil_glue()
-        elif type_ == Instructions.h_fill.value:
-            self.add_h_fill_glue()
-        elif type_ == Instructions.v_fill.value:
-            self.add_v_fill_glue()
-        elif type_ == Instructions.h_fil_neg.value:
-            self.add_h_neg_fil_glue()
-        elif type_ == Instructions.v_fil_neg.value:
-            self.add_v_neg_fil_glue()
-        elif type_ in (Instructions.move_left.value,
-                       Instructions.move_right.value,
-                       Instructions.raise_box.value,
-                       Instructions.lower_box.value):
+        elif command in (Commands.add_horizontal_glue,
+                         Commands.add_vertical_glue):
+            glue_type = v.type
+            if glue_type == Instructions.h_skip.value:
+                glue = self.eval_glue_token(v)
+                self.add_h_glue(**glue)
+            elif glue_type == Instructions.h_stretch_or_shrink.value:
+                self.add_h_stretch_or_shrink_glue()
+            elif glue_type == Instructions.h_fil.value:
+                self.add_h_fil_glue()
+            elif glue_type == Instructions.h_fill.value:
+                self.add_h_fill_glue()
+            elif glue_type == Instructions.h_fil_neg.value:
+                self.add_h_neg_fil_glue()
+            elif glue_type == Instructions.v_skip.value:
+                glue = self.eval_glue_token(v)
+                self.add_v_glue(**glue)
+            elif glue_type == Instructions.v_stretch_or_shrink.value:
+                self.add_v_stretch_or_shrink_glue()
+            elif glue_type == Instructions.v_fil.value:
+                self.add_v_fil_glue()
+            elif glue_type == Instructions.v_fill.value:
+                self.add_v_fill_glue()
+            elif glue_type == Instructions.v_fil_neg.value:
+                self.add_v_neg_fil_glue()
+            else:
+                raise LogicError(f"Unknown glue type: '{glue_type}'")
+        elif command in (Commands.move_box_left, Commands.move_box_right,
+                         Commands.raise_box, Commands.lower_box):
             raise NotImplementedError
-        elif type_ == Instructions.h_rule.value:
+        elif command == Commands.add_horizontal_rule:
             logger.info(f"Adding horizontal rule")
             # Evaluate the number token representing each dimension.
             for k in v:
                 if v[k] is not None:
                     v[k] = self.eval_number_token(v[k])
             self.add_h_rule(**v)
-        elif type_ == Instructions.v_rule.value:
+        elif command == Commands.add_vertical_rule:
             logger.info(f"Adding vertical rule")
             # Evaluate the number token representing each dimension.
             for k in v:
                 if v[k] is not None:
                     v[k] = self.eval_number_token(v[k])
             self.add_v_rule(**v)
-        elif type_ == Instructions.h_align.value:
+        elif command == Commands.horizontal_align:
             raise NotImplementedError
-        elif type_ == Instructions.v_align.value:
+        elif command == Commands.vertical_align:
             raise NotImplementedError
         # I think technically only this should cause the program to end, not
         # EOFError anywhere. But for now, whatever.
-        elif type_ == Instructions.end.value:
+        elif command == Commands.end:
             self.do_end()
-        elif type_ == Instructions.dump.value:
+        elif command == Commands.dump:
             raise NotImplementedError
-        elif type_ == Instructions.control_space.value:
+        elif command == Commands.add_control_space:
             raise NotImplementedError
-        elif type_ == 'character':
+        elif command == Commands.add_character_explicit:
             logger.debug(f"Adding character \"{v['char']}\"")
             self.add_character_char(v['char'])
-        elif type_ == Instructions.accent.value:
+        elif command == Commands.add_accent:
             logger.info(f'Adding accented character')
             assignments = v['assignments'].value
             accent_code_eval = self.eval_number_token(v['accent_code'])
@@ -1769,18 +1779,17 @@ class GlobalState:
             for assignment in assignments:
                 self.execute_command_token(assignment, banisher)
             self.do_accent(accent_code_eval, target_char_code)
-        elif type_ == Instructions.italic_correction.value:
+        elif command == Commands.add_italic_correction:
+            logger.warning(f'TODO: ITALIC CORRECTION')
+            # raise NotImplementedError
+        elif command == Commands.add_discretionary:
             raise NotImplementedError
-        elif type_ == Instructions.italic_correction.value:
+        elif command == Commands.add_discretionary_hyphen:
             raise NotImplementedError
-        elif type_ == Instructions.discretionary.value:
-            raise NotImplementedError
-        elif type_ == Instructions.discretionary_hyphen.value:
-            raise NotImplementedError
-        elif type_ == Instructions.math_shift.value:
+        elif command == Commands.do_math_shift:
             raise NotImplementedError
         else:
-            raise ValueError(f"Command type '{type_}' not recognised.")
+            raise ValueError(f"Command type '{command}' not recognised.")
 
     # This method has a long name to emphasize that it will return the index of
     # the token block to pick, not the result of the condition.

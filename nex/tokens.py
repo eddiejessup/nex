@@ -151,45 +151,6 @@ class PositionToken(BaseToken):
         return s
 
 
-class BuiltToken(PositionToken):
-
-    def _copy_position_from_token(self, tokens):
-        self.constituent_tokens = tokens
-        # If a single token is passed, make it into a list.
-        try:
-            iter(tokens)
-        except TypeError:
-            tokens = [tokens]
-        if not tokens:
-            self.set_position(None, None, None, None, None)
-        # Ignore tokens that aren't really concrete tokens, like the output
-        # of empty productions (None), or internal tokens.
-        tokens = [t for t in tokens if isinstance(t, PositionToken)]
-        tagged_ts = [t for t in tokens if t.char_nr is not None]
-        if not tagged_ts:
-            self.set_position(None, None, None, None, None)
-        else:
-            # All but char_len are the same as the first tagged token.
-            super()._copy_position_from_token(tagged_ts[0])
-            self.char_len = sum(t.char_len for t in tagged_ts)
-
-    def __repr__(self):
-        if self.type == 'fil_dimension':
-            ells = 'l' * self.value['number_of_fils']
-            return f"{self.value['factor']} fi{ells}"
-        else:
-            return super().__repr__()
-
-    def __str__(self):
-        if self.type == 'fil_dimension':
-            ells = 'l' * self.value['number_of_fils']
-            return f"{self.value['factor']} fi{ells}"
-        else:
-            a = []
-            a.append(f'{self.value_str}')
-            return f'{self.type}({csep(a, str_func=str)})'
-
-
 class LexToken(PositionToken):
 
     pass
@@ -239,6 +200,68 @@ class InstructionToken(PositionToken):
         a = []
         a.append(f'{self.value_str}')
         return f'{self.instruction.name}({csep(a, str_func=str)})'
+
+
+class BuiltToken(PositionToken):
+
+    def _copy_position_from_token(self, tokens):
+        self.constituent_tokens = tokens
+        # If a single token is passed, make it into a list.
+        try:
+            iter(tokens)
+        except TypeError:
+            tokens = [tokens]
+        if not tokens:
+            self.set_position(None, None, None, None, None)
+        # Ignore tokens that aren't really concrete tokens, like the output
+        # of empty productions (None), or internal tokens.
+        tokens = [t for t in tokens if isinstance(t, PositionToken)]
+        tagged_ts = [t for t in tokens if t.char_nr is not None]
+        if not tagged_ts:
+            self.set_position(None, None, None, None, None)
+        else:
+            # All but char_len are the same as the first tagged token.
+            super()._copy_position_from_token(tagged_ts[0])
+            self.char_len = sum(t.char_len for t in tagged_ts)
+
+    def __repr__(self):
+        if self.type == 'fil_dimension':
+            ells = 'l' * self.value['number_of_fils']
+            return f"{self.value['factor']} fi{ells}"
+        else:
+            return super().__repr__()
+
+    def __str__(self):
+        if self.type == 'fil_dimension':
+            ells = 'l' * self.value['number_of_fils']
+            return f"{self.value['factor']} fi{ells}"
+        else:
+            a = []
+            a.append(f'{self.value_str}')
+            return f'{self.type}({csep(a, str_func=str)})'
+
+
+class CommandToken(BuiltToken):
+
+    def __init__(self, command, *args, **kwargs):
+        super().__init__(type_=None, *args, **kwargs)
+        self.command = command
+
+    def __repr__(self):
+        a = [f'C={self.command.name}']
+        pos_summary = self.pos_summary()
+        if pos_summary:
+            pos = '@{}'.format(pos_summary)
+        else:
+            pos = ''
+        a.append(pos)
+        a.append(f'v={self.value_repr}')
+        return f'CT({csep(a)})'
+
+    def __str__(self):
+        a = []
+        a.append(f'{self.value_str}')
+        return f'{self.command.name}({csep(a, str_func=str)})'
 
 
 def instructions_to_types(instructions):

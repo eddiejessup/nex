@@ -3,8 +3,16 @@ import logging
 
 from ..rply.parsergenerator import ParserGenerator
 
-from . import (number_rules, dimen_rules, glue_rules, character_rules,
-               command_rules, condition_rules, variable_rules)
+from . import (
+    number_rules,
+    dimen_rules,
+    glue_rules,
+    character_rules,
+    command_rules,
+    condition_rules,
+    variable_rules,
+    assignment_rules,
+)
 from .terminals import terminal_types
 from .utils import ParsingSyntaxError, ExhaustedTokensError, is_end_token
 
@@ -13,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 pg = ParserGenerator(terminal_types, cache_id="changeme")
 command_rules.add_command_rules(pg)
+assignment_rules.add_assignment_rules(pg)
 condition_rules.add_condition_rules(pg)
 variable_rules.add_variable_rules(pg)
 glue_rules.add_glue_rules(pg)
