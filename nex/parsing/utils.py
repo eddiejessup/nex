@@ -200,6 +200,8 @@ def _get_chunk(input_queue, parser):
                 return chunk, parse_queue
             # If we have not yet parsed, then something is wrong.
             else:
+                exc.bad_token = parse_queue[-1]
+                exc.args += (f'Tokens: {list(parse_queue)}',)
                 exc.args += (f'Tokens: {list(parse_queue)}',)
                 raise
         except ExhaustedTokensError:

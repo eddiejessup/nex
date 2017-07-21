@@ -1441,8 +1441,9 @@ class GlobalState:
 
     def execute_command_tokens(self, commands, banisher):
         while True:
+            next_command = next(commands)
             try:
-                self.execute_command_token(next(commands), banisher)
+                self.execute_command_token(next_command, banisher)
             except EOFError:
                 return
             except EndOfSubExecutor:

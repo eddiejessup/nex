@@ -8,7 +8,8 @@ from .reader import logger as read_logger, Reader
 from .lexer import logger as lex_logger, Lexer
 from .router import logger as instr_logger, Instructioner
 from .banisher import logger as banish_logger, Banisher
-from .parsing.utils import logger as chunk_logger, chunk_iter
+from .parsing.utils import (logger as chunk_logger,
+                            chunk_iter, ParsingSyntaxError)
 from .parsing.parsing import command_parser
 from .state import logger as state_logger, GlobalState, TidyEnd
 from .box_writer import write_to_dvi_file
@@ -43,7 +44,13 @@ def run_state(state, input_paths):
     command_grabber = chunk_iter(banisher, command_parser)
     for input_path in input_paths:
         reader.insert_file(input_path)
-        state.execute_command_tokens(command_grabber, banisher)
+        try:
+            state.execute_command_tokens(command_grabber, banisher)
+        except ParsingSyntaxError as exc:
+            bad_token = exc.bad_token
+            s = bad_token.get_position_str(reader)
+            print(s)
+            raise
 
     while True:
         s = input('In: ')
