@@ -367,7 +367,7 @@ def add_assignment_rules(pg):
     @pg.production('global_assignment : hyphenation_assignment')
     # @pg.production('global_assignment : box_size_assignment')
     # @pg.production('global_assignment : interaction_mode_assignment')
-    # @pg.production('global_assignment : intimate_assignment')
+    @pg.production('global_assignment : intimate_assignment')
     def global_assignment(p):
         return p[0]
 
@@ -375,6 +375,16 @@ def add_assignment_rules(pg):
     @pg.production('font_assignment : integer_font_variable equals number')
     def font_assignment(p):
         return BuiltToken(type_=p[0].type,
+                          value={
+                            'variable': p[0],
+                            'value': p[2],
+                          },
+                          position_like=p)
+
+    @pg.production('intimate_assignment : SPECIAL_INTEGER equals number')
+    @pg.production('intimate_assignment : SPECIAL_DIMEN equals dimen')
+    def intimate_assignment(p):
+        return BuiltToken(type_='intimate_assignment',
                           value={
                             'variable': p[0],
                             'value': p[2],

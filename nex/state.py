@@ -1189,6 +1189,11 @@ class GlobalState:
         self.parameters.set_parameter(is_global, name, value)
 
     @after_assignment
+    def set_special(self, token_source, name, value):
+        logger.info(f"Setting special '{name}' to '{value}'")
+        self.specials.set(name, value)
+
+    @after_assignment
     def modify_parameter(self, token_source, is_global, parameter,
                          by_operand, operation):
         logger.info(f"Modifying parameter '{parameter}'")
@@ -1542,6 +1547,26 @@ class GlobalState:
                 )
             else:
                 raise ValueError(f"Unknown variable type: '{variable.type}'")
+        # TODO: implement this, and mark method with 'assignment' decorator.
+        # Unlike variable assignment, intimate assignment doesn't obey
+        # grouping, it is always global.
+        elif assign_type == 'intimate_assignment':
+            variable, value = v['variable'], v['value']
+            # The value might be a variable reference or something, so we must
+            # evaluate it to its contents first before assigning a variable to
+            # it.
+            value_evaluate_map = {
+                'number': self.eval_number_token,
+                'dimen': self.eval_number_token,
+            }
+            value_evaluate_func = value_evaluate_map[value.type]
+            evaled_value = value_evaluate_func(value)
+            special = variable.value['special']
+            self.set_special(
+                token_source=banisher,
+                name=special,
+                value=evaled_value,
+            )
         elif assign_type == 'advance':
             variable, value = v['variable'], v['value']
             # See 'variable_assignment' case.
@@ -1616,13 +1641,14 @@ class GlobalState:
         # TODO: implement this, and mark method with 'assignment' decorator.
         elif assign_type == Instructions.patterns.value:
             raise NotImplementedError
+        # TODO: implement this, and mark method with 'assignment' decorator.
+        elif assign_type == 'box_size_assignment':
+            raise NotImplementedError
+        # TODO: implement this, and mark method with 'assignment' decorator.
+        elif assign_type == 'interaction_mode_assignment':
+            raise NotImplementedError
         else:
             raise NotImplementedError
-        # TODO: handle these commands, and mark them with 'assignments'
-        # decorator:
-        # box_size_assignment
-        # interaction_mode_assignment
-        # intimate_assignment
 
     def tok_relax(self, cmd_value, banisher):
         logger.info(f"Doing 'relax' command")
