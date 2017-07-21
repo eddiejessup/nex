@@ -633,7 +633,7 @@ class GlobalState:
         elif type_ == Instructions.box_dimen_depth.value:
             return box_item.depth
         else:
-            raise ValueError(f'Unknown box dimension requested: {v.type}')
+            raise ValueError(f'Unknown box dimension requested: {type_}')
 
     def get_infinite_dimen(self, nr_fils, nr_units) -> BuiltToken:
         return BuiltToken(

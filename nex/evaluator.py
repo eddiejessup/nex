@@ -24,7 +24,7 @@ def get_backtick_target_code(target):
     elif target.type == 'character':
         return ord(target.value['char'])
     else:
-        raise ValueError(f'Unknown backtick target type: {v.type}')
+        raise ValueError(f'Unknown backtick target type: {target.type}')
 
 
 def split_at(s, inds):

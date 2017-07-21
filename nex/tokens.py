@@ -1,6 +1,8 @@
 import colorama
 
 from .feedback import strep, csep
+from .constants.instructions import Instructions
+from .constants.commands import Commands
 
 colorama.init()
 
@@ -158,7 +160,7 @@ class LexToken(PositionToken):
 
 class InstructionToken(PositionToken):
 
-    def __init__(self, instruction, *args, **kwargs):
+    def __init__(self, instruction: Instructions, *args, **kwargs) -> None:
         super().__init__(type_=None, *args, **kwargs)
         self.instruction = instruction
 
@@ -243,7 +245,7 @@ class BuiltToken(PositionToken):
 
 class CommandToken(BuiltToken):
 
-    def __init__(self, command, *args, **kwargs):
+    def __init__(self, command: Commands, *args, **kwargs) -> None:
         super().__init__(type_=None, *args, **kwargs)
         self.command = command
 
