@@ -278,13 +278,16 @@ def add_command_rules(pg):
                           value=p[1],
                           position_like=p)
 
+    # 'the_quantity' isn't a command, but it's parsed in the banisher and has
+    # the same structure.
+    @pg.production('the_quantity : THE internal_quantity')
     @pg.production('show_the : SHOW_THE internal_quantity')
     def show_the(p):
         return BuiltToken(type_=p[0].type,
                           value=p[1],
                           position_like=p)
 
-    # Things that can follow 'show_the'.
+    # Things that can follow 'the' and 'show_the'.
     # Parameter.
     @pg.production('internal_quantity : INTEGER_PARAMETER')
     @pg.production('internal_quantity : DIMEN_PARAMETER')

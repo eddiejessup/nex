@@ -47,9 +47,11 @@ def run_state(state, input_paths):
         try:
             state.execute_command_tokens(command_grabber, banisher)
         except ParsingSyntaxError as exc:
-            bad_token = exc.bad_token
-            s = bad_token.get_position_str(reader)
-            print(s)
+            print('While reading:')
+            print(reader.get_position_str())
+            print('While processing token:')
+            print(exc.bad_token.get_position_str(reader))
+
             raise
 
     while True:

@@ -1326,6 +1326,18 @@ class GlobalState:
         if box_item is not None:
             self.append_to_list(box_item)
 
+    def eval_param_token(self, tok):
+        return self.parameters.get(tok.value['parameter'])
+
+    def eval_special_token(self, tok):
+        return self.specials.get(tok.value['special'])
+
+    def eval_register_token(self, tok):
+        # The register number is a generic 'number' token, so evaluate
+        # this.
+        evaled_i = self.eval_number_token(tok.value)
+        return self.registers.get(tok.type, i=evaled_i)
+
     def eval_size_token(self, size_token) -> Union[int, BuiltToken]:
         """Evaluate the components of an unsigned quantity and return the
         result. Usually this will be an integer, but it may also be a token
@@ -1335,14 +1347,11 @@ class GlobalState:
         # If the size is the contents of an integer or dimen parameter.
         if isinstance(v, InstructionToken) and v.type in (Instructions.integer_parameter.value,
                                                           Instructions.dimen_parameter.value):
-            return self.parameters.get(v.value['parameter'])
+            return self.eval_param_token(v)
         # If the size is the contents of a count or dimen register.
         elif isinstance(v, BuiltToken) and v.type in (Instructions.count.value,
                                                       Instructions.dimen.value):
-            # The register number is a generic 'number' token, so evaluate
-            # this.
-            evaled_i = self.eval_number_token(v.value)
-            return self.registers.get(v.type, i=evaled_i)
+            return self.eval_register_token(v)
         elif isinstance(v, BuiltToken) and v.type in (Instructions.box_dimen_height.value,
                                                       Instructions.box_dimen_width.value,
                                                       Instructions.box_dimen_depth.value):
@@ -1355,7 +1364,8 @@ class GlobalState:
         # token has an integer that represents a character code, and is itself
         # the value. A count-def token has an integer that represents the
         # *location* of the actual value.
-        elif isinstance(v, InstructionToken) and v.type in ('CHAR_DEF_TOKEN', 'MATH_CHAR_DEF_TOKEN'):
+        elif isinstance(v, InstructionToken) and v.type in ('CHAR_DEF_TOKEN',
+                                                            'MATH_CHAR_DEF_TOKEN'):
             return v.value
         # If the size is the code of the target of a backtick instruction.
         elif isinstance(v, BuiltToken) and v.type == 'backtick':
@@ -1370,8 +1380,8 @@ class GlobalState:
         # If the size is the value represented by a short-hand def token.
         elif isinstance(v, BuiltToken) and v.type == 'internal':
             return v.value
-        # If the size is a specification of a dimension (this is different to a
-        # call to retrieve the contents of a dimen register).
+        # If the size is the dimension represented by a dimension literal (this
+        # is different to a call to retrieve the contents of a dimen register).
         elif isinstance(v, BuiltToken) and v.type == 'dimen':
             nr_units = self.eval_size_token(v.value['factor'])
             unit_attrs = v.value['unit']
@@ -1443,6 +1453,13 @@ class GlobalState:
         else:
             raise NotImplementedError
         return evaluated_token_list
+
+    def eval_font_token(self, tok):
+        v = tok.value
+        if v.type == Instructions.font_def_token.value:
+            return v.value
+        else:
+            raise NotImplementedError
 
     def execute_command_tokens(self, commands, banisher):
         while True:
@@ -1628,7 +1645,7 @@ class GlobalState:
             var, value = v['variable'], v['value']
             code_eval = self.eval_number_token(value)
             font_tok = var.value['font']
-            font_id = font_tok.value
+            font_id = self.eval_font_token(font_tok)
             if assign_type == Instructions.skew_char.value:
                 self.set_skew_char(banisher, font_id, code_eval)
             elif assign_type == Instructions.hyphen_char.value:
@@ -1727,7 +1744,7 @@ class GlobalState:
 
     def tok_write(self, cmd_value, banisher):
         logger.info(f"Doing 'write' command")
-        conts = cmd_value['content'].value
+        # conts = cmd_value['content'].value
         # s = ''.join(t.value['char'] for t in conts)
         logger.warning(f'TODO: LOG: <TODO>')
         # TODO: This should be read with expansion, but at the moment we

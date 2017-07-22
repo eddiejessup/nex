@@ -17,6 +17,7 @@ base_terminal_instructions = (
     Instructions.show_token,
     Instructions.show_box,
     Instructions.show_lists,
+    Instructions.the,
     Instructions.show_the,
     Instructions.ship_out,
     Instructions.ignore_spaces,

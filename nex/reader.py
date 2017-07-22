@@ -4,6 +4,7 @@ import logging
 
 from .utils import (get_unique_id,
                     ensure_extension, find_file, file_path_to_chars)
+from .tokens import get_position_str
 from .feedback import drep
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,14 @@ class ReaderBuffer:
             a.append(self.name)
         a.append(f'Line {self.line_nr}')
         return drep(self, a)
+
+    def get_position_str(self):
+        s = get_position_str(chars=self.chars, char_nr=self.i,
+                             char_len=None,
+                             line_nr=self.line_nr, col_nr=self.col_nr)
+        if self.name:
+            s = f'{self.name}:{s}'
+        return s
 
     def increment_loc(self):
         """Advance the current position in the buffer by one character."""
@@ -262,3 +271,6 @@ class Reader:
                 yield self.advance_loc()
             except EOFError:
                 break
+
+    def get_position_str(self):
+        return self.current_buffer.get_position_str()

@@ -203,9 +203,8 @@ class Lexer:
                                                    **pos_info)
         elif cat in tokenise_cats:
             logger.debug(f'Tokenizing "{strep(char)}" of category {cat.name}')
-            token = make_char_cat_lex_token(char, cat, **pos_info)
             self.reading_state = ReadingState.line_middle
-            return token
+            return make_char_cat_lex_token(char, cat, **pos_info)
         # If TeX sees a character of category [space], the action
         # depends on the current state.
         elif cat == CatCode.space:
@@ -222,9 +221,8 @@ class Lexer:
                 # character code is 32, and TeX enters state [skipping blanks].
                 # The character code in a space token is always 32.
                 logger.debug('Tokenizing space-category character')
-                token = make_char_cat_lex_token(' ', cat, **pos_info)
                 self.reading_state = ReadingState.skipping_blanks
-                return token
+                return make_char_cat_lex_token(' ', cat, **pos_info)
         elif cat == CatCode.end_of_line:
             # [...] if TeX is in state [new line],
             if self.reading_state == ReadingState.line_begin:

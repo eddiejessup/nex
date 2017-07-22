@@ -413,7 +413,7 @@ def add_assignment_rules(pg):
     @pg.production('font : family_member')
     @pg.production('font : FONT')
     def font(p):
-        return p[0]
+        return BuiltToken(type_='font', value=p[0])
 
     @pg.production('hyphenation_assignment : HYPHENATION general_text')
     @pg.production('hyphenation_assignment : PATTERNS general_text')

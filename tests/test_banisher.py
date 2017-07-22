@@ -2,10 +2,14 @@ from string import ascii_letters
 
 import pytest
 
+from nex.pydvi.TeXUnit import pt2sp
 from nex.constants.codes import CatCode
 from nex.constants.parameters import Parameters
 from nex.constants.instructions import Instructions
-from nex.banisher import Banisher
+from nex.banisher import (Banisher,
+                          get_token_representation_integer,
+                          get_str_representation_dimension,
+                          get_token_representation_dimension)
 from nex.router import (Instructioner,
                         make_unexpanded_control_sequence_instruction,
                         make_macro_token,
@@ -427,3 +431,29 @@ def test_input():
     b = string_to_banisher('$putIn tests/test_files/test', cs_map)
     out = list(b.advance_to_end())
     print(out)
+
+
+def test_integer_tokenize():
+    ts = get_token_representation_integer(-23)
+    assert len(ts) == 3
+    assert ts[0].value['char'] == '-' and ts[0].value['cat'] == CatCode.other
+    assert ts[1].value['char'] == '2' and ts[0].value['cat'] == CatCode.other
+    assert ts[2].value['char'] == '3' and ts[0].value['cat'] == CatCode.other
+
+
+def test_dimension_tokenize():
+    ts = get_token_representation_dimension(pt2sp(-12.2))
+    assert len(ts) == 7
+    assert ''.join(t.value['char'] for t in ts) == '-12.2pt'
+    assert all(t.value['cat'] == CatCode.other for t in ts)
+
+
+# def test_the():
+#     cs_map = {
+#         'stringify': ITok(Instructions.the),
+#         'preTolerance': ITok(Instructions.integer_parameter,
+#                              value={'parameter': Parameters.pre_tolerance}),
+#     }
+#     b = string_to_banisher('$stringify $preTolerance', cs_map)
+#     out = list(b.advance_to_end())
+#     print(out)

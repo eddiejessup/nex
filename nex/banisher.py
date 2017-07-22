@@ -2,6 +2,8 @@ from contextlib import contextmanager
 import logging
 from enum import Enum
 
+from .pydvi.TeXUnit import sp2pt
+from .utils import UserError, LogicError
 from .constants.codes import CatCode
 from .constants.instructions import (Instructions,
                                      explicit_box_instructions,
@@ -25,7 +27,6 @@ from .macro import substitute_params_with_args
 from .parsing.utils import GetBuffer, get_chunk, chunk_iter
 from .parsing import parsing
 from .feedback import truncate_list
-from .utils import UserError
 
 
 logger = logging.getLogger(__name__)
@@ -49,6 +50,7 @@ shorties = short_hand_def_instructions + (
 
 command_parser = parsing.command_parser
 condition_parser = parsing.get_parser(start='condition')
+the_quantity_parser = parsing.get_parser(start='the_quantity')
 general_text_parser = parsing.get_parser(start='general_text')
 file_name_parser = parsing.get_parser(start='file_name')
 
@@ -145,6 +147,41 @@ def get_brace_sign(token):
         return -1
     else:
         return 0
+
+
+def char_to_tok(c: str, *args, **kwargs):
+    # Each character in this token list automatically gets category
+    # code [other], including the backslash that \string inserts to
+    # represent an escape character. However, category [space] will be
+    # assigned to the character ' ' if it somehow sneaks into the name
+    # of a control sequence.
+    if c == ' ':
+        cat = CatCode.space
+    else:
+        cat = CatCode.other
+    return char_cat_instr_tok(c, cat, *args, **kwargs)
+
+
+def chars_to_toks(cs, *args, **kwargs):
+    return list(map(lambda c: char_to_tok(c, *args, **kwargs), cs))
+
+
+def get_str_representation_integer(n: int) -> str:
+    return str(n)
+
+
+def get_token_representation_integer(n: int):
+    return chars_to_toks(get_str_representation_integer(n))
+
+
+def get_str_representation_dimension(n: int) -> str:
+    n_pt = sp2pt(n)
+    s_pt = f'{n_pt:.1f}pt'
+    return s_pt
+
+
+def get_token_representation_dimension(n: int):
+    return chars_to_toks(get_str_representation_dimension(n))
 
 
 class Banisher:
@@ -353,6 +390,75 @@ class Banisher:
 
         return not_skipped_tokens, []
 
+    def _handle_the(self, first_token):
+        logger.debug(f"Handling 'the'")
+        # Put the 'the' token we just fetched on input, then grab a
+        # 'the_quantity' token.
+        the_quantity_token = get_chunk(self, the_quantity_parser,
+                                       initial=[first_token])
+        target = the_quantity_token.value
+        ttype = target.type
+        if ttype == Instructions.integer_parameter.value:
+            evaled_val = self.state.eval_param_token(target)
+            replace_tokens = get_token_representation_integer(evaled_val)
+        elif ttype == Instructions.dimen_parameter.value:
+            evaled_val = self.state.eval_param_token(target)
+            replace_tokens = get_token_representation_dimension(evaled_val)
+        elif ttype == Instructions.glue_parameter.value:
+            raise NotImplementedError
+        elif ttype == Instructions.mu_glue_parameter.value:
+            raise NotImplementedError
+        elif ttype == Instructions.count.value:
+            evaled_val = self.state.eval_register_token(target)
+            replace_tokens = get_token_representation_integer(evaled_val)
+        elif ttype == Instructions.dimen.value:
+            evaled_val = self.state.eval_register_token(target)
+            replace_tokens = get_token_representation_dimension(evaled_val)
+        elif ttype == Instructions.skip.value:
+            raise NotImplementedError
+        elif ttype == Instructions.mu_skip.value:
+            raise NotImplementedError
+        elif ttype in (Instructions.cat_code.value,
+                       Instructions.math_code.value,
+                       Instructions.upper_case_code.value,
+                       Instructions.lower_case_code.value,
+                       Instructions.space_factor_code.value,
+                       Instructions.delimiter_code.value,
+                       ):
+            raise NotImplementedError
+        elif ttype == Instructions.special_integer.value:
+            evaled_val = self.state.eval_special_token(target)
+            replace_tokens = get_token_representation_integer(evaled_val)
+        elif ttype == Instructions.special_dimen.value:
+            evaled_val = self.state.eval_special_token(target)
+            replace_tokens = get_token_representation_dimension(evaled_val)
+        elif ttype == Instructions.skew_char.value:
+            raise NotImplementedError
+        elif ttype == Instructions.hyphen_char.value:
+            raise NotImplementedError
+        elif ttype == Instructions.last_penalty.value:
+            raise NotImplementedError
+        elif ttype == Instructions.last_kern.value:
+            raise NotImplementedError
+        elif ttype == Instructions.char_def_token.value:
+            raise NotImplementedError
+        elif ttype == Instructions.math_char_def_token.value:
+            raise NotImplementedError
+        elif ttype == 'font':
+            raise NotImplementedError
+        # TODO: We have to do this because we don't build an intermediate token
+        # of type 'token variable', we just pass on the various kinds directly.
+        # Make an intermediate to simplify this logic. I think this applies to
+        # the code variables too.
+        elif ttype in (Instructions.toks.value,
+                       Instructions.toks_def_token.value,
+                       Instructions.token_parameter.value,
+                       ):
+            raise NotImplementedError
+        else:
+            raise LogicError(f"Found unknown internal quantity type: {target}")
+        return replace_tokens, []
+
     def _handle_making_box(self, first_token):
         # Left brace initiates a new level of grouping.
         # See Group class for explanation of this bit.
@@ -508,21 +614,7 @@ class Banisher:
             chars += list(target_token.value['name'])
         else:
             chars = [target_token.value['char']]
-
-        output = []
-        for c in chars:
-            # Each character in this token list automatically gets category
-            # code [other], including the backslash that \string inserts to
-            # represent an escape character. However, category [space] will be
-            # assigned to the character ']' if it somehow sneaks into the name
-            # of a control sequence.
-            if c == ' ':
-                cat = CatCode.space
-            else:
-                cat = CatCode.other
-            t = char_cat_instr_tok(c, cat, position_like=target_token)
-            output.append(t)
-
+        output = chars_to_toks(chars, position_like=target_token)
         return [], output
 
     def _handle_cs_name(self, first_token):
@@ -612,7 +704,7 @@ class Banisher:
             raise NotImplementedError
         # \the.
         elif instr == Instructions.the:
-            raise NotImplementedError
+            return self._handle_the(first_token)
         # End of expanding cases.
         # Waiting to absorb a balanced text, and see a "{".
         elif (self.context_mode in (ContextMode.awaiting_balanced_text_start,

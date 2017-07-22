@@ -1,6 +1,5 @@
 from collections import deque
 from enum import Enum
-from string import ascii_letters
 import logging
 
 from .constants.codes import CatCode
@@ -10,7 +9,7 @@ from .constants.instructions import (Instructions, if_instructions,
                                      unexpanded_cs_instructions)
 from .constants import control_sequences
 from .tokens import InstructionToken, BaseToken
-from .utils import get_unique_id
+from .utils import get_unique_id, LogicError
 from .lexer import (Lexer, make_char_cat_lex_token,
                     control_sequence_lex_type, char_cat_lex_type)
 from .macro import parse_replacement_text, parse_parameter_text
@@ -218,7 +217,7 @@ def lex_token_to_instruction_token(lex_token):
             lex_token.value, position_like=lex_token)
     # Aren't any other types of lexed tokens.
     else:
-        raise Exception
+        raise LogicError(f"Unknown lex token type: '{lex_token}'")
 
 
 def make_macro_token(name, replacement_text, parameter_text,
