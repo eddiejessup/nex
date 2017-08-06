@@ -8,15 +8,22 @@ from nex import box
 from nex.box_writer import write_to_dvi_file
 from nex.state import ExecuteCommandError
 from nex.utils import UserError
-from nex.tokens import (BuiltToken,
-                        CommandToken as CTok, InstructionToken as ITok)
+from nex.tokens import BuiltToken, CommandToken
 from nex.fonts import GlobalFontState
 
-from common import DummyCommands, DummyGlobalFontState
+from common import DummyCommands, DummyGlobalFontState, ITok
 
 
 do_output = False
 font_path = '/Users/ejm/projects/nex/fonts'
+
+
+def CTok(command, value):
+    return CommandToken(command=command, value=value, parents=None)
+
+
+def BTok(type_, value):
+    return BuiltToken(type_=type_, value=value, parents=None)
 
 
 @pytest.fixture()
@@ -37,8 +44,8 @@ def write(state, file_name):
 
 
 def nr_tok(n):
-    v = BuiltToken(type_='internal_number', value=n)
-    return BuiltToken(type_='number', value=v)
+    v = BTok(type_='internal_number', value=n)
+    return BTok(type_='number', value=v)
 
 
 class DummyTokenQueue:
@@ -268,13 +275,13 @@ def test_token_executor(state):
 
 def test_command_token_set_box(state):
     i_reg = 5
-    box_tok = BuiltToken(type_='box',
-                         value=BuiltToken(type_='explicit_box',
+    box_tok = BTok(type_='box',
+                         value=BTok(type_='explicit_box',
                                           value={'box_type': Instructions.h_box.value,
                                                  'contents': [],
                                                  'specification': None}))
     set_box_tok = CTok(command=Commands.assign,
-                       value=BuiltToken(type_=Instructions.set_box.value,
+                       value=BTok(type_=Instructions.set_box.value,
                                         value={
                                             'box': box_tok,
                                             'nr': nr_tok(i_reg),
@@ -290,7 +297,7 @@ def test_command_token_get_box(state):
     state.set_box_register(token_source=None, i=i_reg, item=box_item, is_global=False)
 
     get_box_tok = CTok(command=Commands.add_box,
-                       value=BuiltToken(type_='box_register',
+                       value=BTok(type_='box_register',
                                         value={
                                             'retrieve_type': Instructions.box.value,
                                             'number': nr_tok(i_reg),
@@ -317,10 +324,10 @@ def test_command_token_add_h_rule(state):
 
 
 def test_command_token_code_assignment(state):
-    sf_variable = BuiltToken(type_=Instructions.space_factor_code.value,
+    sf_variable = BTok(type_=Instructions.space_factor_code.value,
                              value=nr_tok(ord('a')))
     set_sf_tok = CTok(command=Commands.assign,
-                      value=BuiltToken(type_='code_assignment',
+                      value=BTok(type_='code_assignment',
                                        value={
                                          'variable': sf_variable,
                                          'code': nr_tok(900),

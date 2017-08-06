@@ -10,7 +10,7 @@ from typing import Dict, Tuple
 from enum import Enum
 
 from .instructions import Instructions
-from ..tokens import instructions_to_types
+from ..utils import enums_to_values
 
 
 class Specials(Enum):
@@ -95,7 +95,7 @@ special_instrs: Tuple[Instructions, ...] = (
     Instructions.special_dimen,
 )
 
-special_instr_types: Tuple[str, ...] = instructions_to_types(special_instrs)
+special_instr_types: Tuple[str, ...] = enums_to_values(special_instrs)
 
 
 def is_special_type(type_: str) -> bool:

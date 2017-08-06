@@ -1,12 +1,8 @@
 from string import ascii_letters
 
-import pytest
-
 from nex.constants.codes import CatCode
 from nex.constants.instructions import Instructions
-from nex.router import (Instructioner,
-                        make_unexpanded_control_sequence_instruction,
-                        char_cat_instr_tok)
+from nex.router import Instructioner
 from nex.utils import ascii_characters
 from nex.parsing import parsing
 

@@ -5,7 +5,7 @@ from .utils import make_literal_token, get_literal_production_rule
 
 
 def get_command_token(c, p):
-    return CommandToken(c, value=p[0].value, position_like=p)
+    return CommandToken(c, value=p[0].value, parents=p)
 
 
 def add_command_rules(pg):
@@ -270,13 +270,13 @@ def add_command_rules(pg):
     def show_token(p):
         return BuiltToken(type_=p[0].type,
                           value=p[1],
-                          position_like=p)
+                          parents=p)
 
     @pg.production('show_box : SHOW_BOX number')
     def show_box(p):
         return BuiltToken(type_=p[0].type,
                           value=p[1],
-                          position_like=p)
+                          parents=p)
 
     # 'the_quantity' isn't a command, but it's parsed in the banisher and has
     # the same structure.
@@ -285,7 +285,7 @@ def add_command_rules(pg):
     def show_the(p):
         return BuiltToken(type_=p[0].type,
                           value=p[1],
-                          position_like=p)
+                          parents=p)
 
     # Things that can follow 'the' and 'show_the'.
     # Parameter.
@@ -320,32 +320,32 @@ def add_command_rules(pg):
     def ship_out(p):
         return BuiltToken(type_=p[0].type,
                           value=p[1].value,
-                          position_like=p)
+                          parents=p)
 
     @pg.production('ignore_spaces : IGNORE_SPACES optional_spaces')
     def ignore_spaces(p):
         return BuiltToken(type_=p[0].type,
                           value=None,
-                          position_like=p)
+                          parents=p)
 
     @pg.production('after_assignment : AFTER_ASSIGNMENT ARBITRARY_TOKEN')
     @pg.production('after_group : AFTER_GROUP ARBITRARY_TOKEN')
     def after_event(p):
         return BuiltToken(type_=p[0].type,
                           value=p[1],
-                          position_like=p)
+                          parents=p)
 
     @pg.production('message : MESSAGE general_text')
     def message(p):
         return BuiltToken(type_='message',
                           value={'content': p[1].value},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('error_message : ERROR_MESSAGE general_text')
     def error_message(p):
         return BuiltToken(type_='error_message',
                           value={'content': p[1].value},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('open_input : OPEN_INPUT number equals file_name')
     @pg.production('open_output : OPEN_OUTPUT number equals file_name')
@@ -353,14 +353,14 @@ def add_command_rules(pg):
         return BuiltToken(type_=p[0].type,
                           value={'stream_nr': p[1],
                                  'file_name': p[3]},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('close_input : CLOSE_INPUT number')
     @pg.production('close_output : CLOSE_OUTPUT number')
     def close_io(p):
         return BuiltToken(type_=p[0].type,
                           value={'stream_nr': p[1]},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('write : IMMEDIATE write')
     def immediate_write(p):
@@ -373,43 +373,43 @@ def add_command_rules(pg):
                           value={'stream_number': p[1],
                                  'content': p[2],
                                  'prefix': None},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('special : SPECIAL general_text')
     def special(p):
         return BuiltToken(type_=p[0].type,
                           value={'content': p[1]},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('add_penalty : ADD_PENALTY number')
     def add_penalty(p):
         return BuiltToken(type_=p[0].type, value=p[1],
-                          position_like=p)
+                          parents=p)
 
     @pg.production('add_kern : KERN dimen')
     @pg.production('add_math_kern : MATH_KERN mu_dimen')
     def add_kern(p):
         return BuiltToken(type_=p[0].type, value=p[1],
-                          position_like=p)
+                          parents=p)
 
     @pg.production('mark : MARK general_text')
     def mark(p):
         return BuiltToken(type_=p[0].type,
                           value={'content': p[1]},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('insert : INSERT number filler LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
     def insert(p):
         return BuiltToken(type_=p[0].type,
                           value={'number': p[1],
                                  'content': p[4]},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('v_adjust : V_ADJUST filler LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
     def v_adjust(p):
         return BuiltToken(type_=p[0].type,
                           value={'content': p[3]},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('vertical_glue : V_FIL')
     @pg.production('vertical_glue : V_FILL')
@@ -419,7 +419,7 @@ def add_command_rules(pg):
     def vertical_glue(p):
         return BuiltToken(type_='vertical_glue',
                           value=p[0],
-                          position_like=p)
+                          parents=p)
 
     @pg.production('horizontal_glue : H_FIL')
     @pg.production('horizontal_glue : H_FILL')
@@ -429,14 +429,14 @@ def add_command_rules(pg):
     def horizontal_glue(p):
         return BuiltToken(type_='horizontal_glue',
                           value=p[0],
-                          position_like=p)
+                          parents=p)
 
     @pg.production('normal_vertical_glue : V_SKIP glue')
     @pg.production('normal_horizontal_glue : H_SKIP glue')
     def normal_glue(p):
         return BuiltToken(type_=p[0].type,
                           value=p[1].value,
-                          position_like=p)
+                          parents=p)
 
     @pg.production('add_leaders : leaders box_or_rule vertical_glue')
     @pg.production('add_leaders : leaders box_or_rule horizontal_glue')
@@ -447,7 +447,7 @@ def add_command_rules(pg):
                             'box': p[1],
                             'glue': p[2],
                           },
-                          position_like=p)
+                          parents=p)
 
     @pg.production('box_or_rule : box')
     @pg.production('box_or_rule : vertical_rule')
@@ -460,7 +460,7 @@ def add_command_rules(pg):
     @pg.production('leaders : EXPANDED_LEADERS')
     def leaders(p):
         return BuiltToken(type_=p[0].type, value=None,
-                          position_like=p)
+                          parents=p)
 
     @pg.production('unpack_horizontal_box : UN_H_BOX number')
     @pg.production('unpack_horizontal_box : UN_H_COPY number')
@@ -469,7 +469,7 @@ def add_command_rules(pg):
     def un_box(p):
         return BuiltToken(type_='un_box',
                           value={'nr': p[1], 'cmd_type': p[0].type},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('move_box_left : MOVE_LEFT dimen box')
     @pg.production('move_box_right : MOVE_RIGHT dimen box')
@@ -481,7 +481,7 @@ def add_command_rules(pg):
                             'offset': p[1],
                             'box': p[2],
                           },
-                          position_like=p)
+                          parents=p)
 
     @pg.production('h_align : H_ALIGN box_specification LEFT_BRACE ALIGNMENT_MATERIAL RIGHT_BRACE')
     @pg.production('v_align : V_ALIGN box_specification LEFT_BRACE ALIGNMENT_MATERIAL RIGHT_BRACE')
@@ -491,17 +491,17 @@ def add_command_rules(pg):
                             'box_specification': p[1],
                             'alignment_material': p[3],
                           },
-                          position_like=p)
+                          parents=p)
 
     @pg.production('vertical_rule : V_RULE rule_specification')
     @pg.production('horizontal_rule : H_RULE rule_specification')
     def rule(p):
         return BuiltToken(type_=p[0].type, value=p[1].value,
-                          position_like=p)
+                          parents=p)
 
     @pg.production('paired_accent : solo_accent character_like')
     def accent_with_character(p):
-        t = BuiltToken(type_='ACCENT', value=p[0].value, position_like=p)
+        t = BuiltToken(type_='ACCENT', value=p[0].value, parents=p)
         t.value['target_char'] = p[1]
         return t
 
@@ -515,14 +515,14 @@ def add_command_rules(pg):
     def character_code(p):
         return BuiltToken(type_='char',
                           value={'code': p[1]},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('solo_accent : ACCENT number optional_assignments')
     def accent_without_character(p):
         return BuiltToken(type_='ACCENT', value={'assignments': p[2],
                                                  'accent_code': p[1],
                                                  'target_char': None},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('discretionary : DISCRETIONARY general_text general_text general_text')
     def discretionary(p):
@@ -532,17 +532,17 @@ def add_command_rules(pg):
                             'item_2': p[2],
                             'item_3': p[3],
                           },
-                          position_like=p)
+                          parents=p)
 
     # End of commands. The remainder below are intermediate productions.
 
     @pg.production('optional_assignments : empty')
     def optional_assignments_none(p):
-        return BuiltToken(type_='assignments', value=[], position_like=p)
+        return BuiltToken(type_='assignments', value=[], parents=p)
 
     @pg.production('optional_assignments : assignment optional_assignments')
     def optional_assignments(p):
-        t = BuiltToken(type_=p[1].type, value=p[1].value, position_like=p)
+        t = BuiltToken(type_=p[1].type, value=p[1].value, parents=p)
         t.value.append(p[0])
         return t
 
@@ -559,7 +559,7 @@ def add_command_rules(pg):
     def rule_specification_empty(p):
         dims = {'width': None, 'height': None, 'depth': None}
         return BuiltToken(type_='rule_specification', value=dims,
-                          position_like=p)
+                          parents=p)
 
     # TODO: these literals are getting unclear. Introduce some convention to
     # make clear which (non-terminal) tokens represent literals.
@@ -569,7 +569,7 @@ def add_command_rules(pg):
     def rule_dimension(p):
         return BuiltToken(type_='rule_dimension',
                           value={'axis': p[0].value, 'dimen': p[1]},
-                          position_like=p)
+                          parents=p)
 
     @pg.production(get_literal_production_rule('width'))
     @pg.production(get_literal_production_rule('height'))
@@ -587,4 +587,4 @@ def add_command_rules(pg):
             s = p[0].value['char']
         return BuiltToken(type_='file_name',
                           value=s,
-                          position_like=p)
+                          parents=p)

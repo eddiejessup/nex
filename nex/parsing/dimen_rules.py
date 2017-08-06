@@ -4,12 +4,12 @@ from ..constants.units import Unit, MuUnit, InternalUnit
 from . import utils as pu
 
 
-def digit_coll_to_size_tok(dc, position_like):
+def digit_coll_to_size_tok(dc, parents):
     new_dec_const_tok = BuiltToken(type_='decimal_constant',
                                    value=dc,
-                                   position_like=position_like)
+                                   parents=parents)
     new_size_tok = BuiltToken(type_='size', value=new_dec_const_tok,
-                              position_like=position_like)
+                              parents=parents)
     return new_size_tok
 
 
@@ -19,7 +19,7 @@ def add_dimen_rules(pg):
     def maybe_mu_dimen(p):
         return BuiltToken(type_='dimen',
                           value={'signs': p[0], 'size': p[1]},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('unsigned_mu_dimen : normal_mu_dimen')
     @pg.production('unsigned_mu_dimen : coerced_mu_dimen')
@@ -42,22 +42,22 @@ def add_dimen_rules(pg):
     def normal_maybe_mu_dimen_explicit(p):
         dimen = BuiltToken(type_='dimen',
                            value={'factor': p[0], 'unit': p[1].value},
-                           position_like=p)
+                           parents=p)
         return BuiltToken(type_='size',
                           value=dimen,
-                          position_like=p)
+                          parents=p)
 
     @pg.production('internal_dimen : DIMEN_PARAMETER')
     @pg.production('internal_dimen : dimen_register')
     @pg.production('internal_dimen : SPECIAL_DIMEN')
     @pg.production('internal_dimen : LAST_KERN')
     def internal_dimen(p):
-        return BuiltToken(type_='size', value=p[0], position_like=p)
+        return BuiltToken(type_='size', value=p[0], parents=p)
 
     @pg.production('internal_dimen : box_dimension number')
     def internal_dimen_box_dimen(p):
-        box_reg_token = BuiltToken(type_=p[0].type, value=p[1], position_like=p)
-        return BuiltToken(type_='size', value=box_reg_token, position_like=p)
+        box_reg_token = BuiltToken(type_=p[0].type, value=p[1], parents=p)
+        return BuiltToken(type_='size', value=box_reg_token, parents=p)
 
     @pg.production('box_dimension : BOX_DIMEN_HEIGHT')
     @pg.production('box_dimension : BOX_DIMEN_WIDTH')
@@ -73,13 +73,13 @@ def add_dimen_rules(pg):
     @pg.production('decimal_constant : COMMA')
     def decimal_constant_comma(p):
         digit_coll = pu.DigitCollection(base=10)
-        return digit_coll_to_size_tok(digit_coll, position_like=p)
+        return digit_coll_to_size_tok(digit_coll, parents=p)
 
     @pg.production('decimal_constant : POINT')
     def decimal_constant_point(p):
         digit_coll = pu.DigitCollection(base=10)
         digit_coll.digits = [p[0]]
-        return digit_coll_to_size_tok(digit_coll, position_like=p)
+        return digit_coll_to_size_tok(digit_coll, parents=p)
 
     @pg.production('decimal_constant : digit decimal_constant')
     def decimal_constant_prepend(p):
@@ -87,7 +87,7 @@ def add_dimen_rules(pg):
         dec_const_tok = size_tok.value
         digit_coll = dec_const_tok.value
         digit_coll.digits = [p[0]] + digit_coll.digits
-        return digit_coll_to_size_tok(digit_coll, position_like=p)
+        return digit_coll_to_size_tok(digit_coll, parents=p)
 
     @pg.production('decimal_constant : decimal_constant digit')
     def decimal_constant_append(p):
@@ -95,13 +95,13 @@ def add_dimen_rules(pg):
         dec_const_tok = size_tok.value
         digit_coll = dec_const_tok.value
         digit_coll.digits = digit_coll.digits + [p[1]]
-        return digit_coll_to_size_tok(digit_coll, position_like=p)
+        return digit_coll_to_size_tok(digit_coll, parents=p)
 
     @pg.production(pu.get_literal_production_rule('mu', target='mu_unit') + ' one_optional_space')
     def unit_of_mu_measure(p):
         return BuiltToken(type_='unit_of_measure',
                           value={'unit': MuUnit.mu},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('unit_of_measure : optional_spaces internal_unit')
     def unit_of_measure_internal(p):
@@ -115,7 +115,7 @@ def add_dimen_rules(pg):
     def internal_unit(p):
         return BuiltToken(type_='unit_of_measure',
                           value={'unit': p[0]},
-                          position_like=p)
+                          parents=p)
 
     @pg.production(pu.get_literal_production_rule('em'))
     def em(p):
@@ -132,7 +132,7 @@ def add_dimen_rules(pg):
             assert p[0].value == 'true'
         return BuiltToken(type_='unit_of_measure',
                           value={'unit': p[1].value, 'true': is_true},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('optional_true : true')
     @pg.production('optional_true : empty')
@@ -144,7 +144,7 @@ def add_dimen_rules(pg):
         return pu.make_literal_token(p)
 
     def make_unit_tok(unit, p):
-        return BuiltToken(type_='physical_unit', value=unit, position_like=p)
+        return BuiltToken(type_='physical_unit', value=unit, parents=p)
 
     @pg.production(pu.get_literal_production_rule('pt', target='physical_unit'))
     def physical_unit_point(p):

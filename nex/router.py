@@ -10,7 +10,7 @@ from .constants.instructions import (Instructions, if_instructions,
 from .constants import control_sequences
 from .tokens import InstructionToken, BaseToken
 from .utils import get_unique_id, LogicError
-from .lexer import (Lexer, make_char_cat_lex_token,
+from .lexer import (Lexer,
                     control_sequence_lex_type, char_cat_lex_type)
 from .macro import parse_replacement_text, parse_parameter_text
 
@@ -151,18 +151,25 @@ def get_char_cat_pair_instruction(char, cat):
         raise ValueError(f'Confused by char-cat pair: ({char}, {cat})')
 
 
-def make_char_cat_pair_instruction_token(char_cat_lex_token):
-    v = char_cat_lex_token.value
-    char, cat = v['char'], v['cat']
+def make_char_cat_pair_instruction_token_direct(char, cat, *args, **kwargs):
+    """Make a char-cat instruction token straight from a pair.
+    """
     instruction = get_char_cat_pair_instruction(char, cat)
-    value = char_cat_lex_token.value
-    value['lex_type'] = char_cat_lex_token.type
+    value = {'char': char, 'cat': cat, 'lex_type': char_cat_lex_type}
     token = InstructionToken(
         instruction,
         value=value,
-        position_like=char_cat_lex_token
+        *args, **kwargs,
     )
     return token
+
+
+def make_char_cat_pair_instruction_token(char_cat_lex_token):
+    v = char_cat_lex_token.value
+    return make_char_cat_pair_instruction_token_direct(
+        v['char'], v['cat'],
+        parents=[char_cat_lex_token]
+    )
 
 
 def make_parameter_control_sequence_instruction(name, parameter, instruction):
@@ -185,11 +192,11 @@ def make_primitive_control_sequence_instruction(name, instruction):
     return InstructionToken(
         instruction,
         value={'name': name, 'lex_type': control_sequence_lex_type},
-        line_nr='abstract'
+        parents=[],
     )
 
 
-def make_unexpanded_control_sequence_instruction(name, position_like=None):
+def make_unexpanded_control_sequence_instruction(name, parents):
     if len(name) == 1:
         instruction = Instructions.unexpanded_control_symbol
     else:
@@ -197,15 +204,8 @@ def make_unexpanded_control_sequence_instruction(name, position_like=None):
     return InstructionToken(
         instruction,
         value={'name': name, 'lex_type': control_sequence_lex_type},
-        position_like=position_like
+        parents=parents,
     )
-
-
-def char_cat_instr_tok(char, cat, *pos_args, **pos_kwargs):
-    """Utility function to make a terminal char-cat token straight from a pair.
-    """
-    lex_token = make_char_cat_lex_token(char, cat, *pos_args, **pos_kwargs)
-    return make_char_cat_pair_instruction_token(lex_token)
 
 
 def lex_token_to_instruction_token(lex_token):
@@ -214,13 +214,14 @@ def lex_token_to_instruction_token(lex_token):
         return make_char_cat_pair_instruction_token(lex_token)
     elif lex_token.type == control_sequence_lex_type:
         return make_unexpanded_control_sequence_instruction(
-            lex_token.value, position_like=lex_token)
+            lex_token.value, parents=[lex_token])
     # Aren't any other types of lexed tokens.
     else:
         raise LogicError(f"Unknown lex token type: '{lex_token}'")
 
 
 def make_macro_token(name, replacement_text, parameter_text,
+                     parents,
                      def_type=None, prefixes=None):
     if prefixes is None:
         prefixes = set()
@@ -232,7 +233,7 @@ def make_macro_token(name, replacement_text, parameter_text,
                'parameter_text': parse_parameter_text(parameter_text),
                'def_type': def_type,
                'lex_type': control_sequence_lex_type},
-        line_nr='abstract',
+        parents=parents,
     )
 
 
@@ -312,7 +313,7 @@ class CSRouter:
 
     def _name_means_instruction(self, name, instructions):
         try:
-            tok = self.lookup_control_sequence(name)
+            tok = self.lookup_control_sequence(name, parents=None)
         except NoSuchControlSequence:
             return False
         if isinstance(tok, InstructionToken):
@@ -339,17 +340,21 @@ class CSRouter:
         is one of '\ifnum', '\ifcase' and so on."""
         return self._name_means_instruction(name, if_instructions)
 
-    def lookup_control_sequence(self, name, position_like=None):
+    def lookup_canonical_control_sequence(self, name):
         route_token = self._lookup_route_token(name)
-        canon_token = self._resolve_route_token_to_raw_value(route_token)
-        token = canon_token.copy(position_like=position_like)
-        # Amend tokens to give them the proper control sequence name.
+        return self._resolve_route_token_to_raw_value(route_token)
+
+    def lookup_control_sequence(self, name, parents):
+        canon_token = self.lookup_canonical_control_sequence(name)
+        token = canon_token.copy(parents=parents)
+        # Amend token to give it the proper control sequence name.
         if isinstance(token.value, dict) and 'name' in token.value:
             token.value['name'] = name
         return token
 
     def set_macro(self, name, replacement_text, parameter_text,
-                  def_type, prefixes=None):
+                  def_type, prefixes,
+                  parents):
         if prefixes is None:
             prefixes = set()
 
@@ -358,27 +363,35 @@ class CSRouter:
         macro_token = make_macro_token(name,
                                        replacement_text=replacement_text,
                                        parameter_text=parameter_text,
-                                       def_type=def_type, prefixes=prefixes)
+                                       def_type=def_type, prefixes=prefixes,
+                                       parents=parents)
         self.macros[route_id] = macro_token
 
-    def do_short_hand_definition(self, name, def_type, code):
+    def do_short_hand_definition(self, name, def_type, code,
+                                 target_parents, cmd_parents):
         def_token_instr = short_hand_def_type_to_token_instr[def_type]
         instr_token = InstructionToken(
             def_token_instr,
             value=code,
-            line_nr='abstract'
+            parents=target_parents,
         )
         self.set_macro(name, replacement_text=[instr_token],
-                       parameter_text=[], def_type='sdef', prefixes=None)
+                       parameter_text=[], def_type='sdef', prefixes=None,
+                       parents=cmd_parents)
 
-    def define_new_font_control_sequence(self, name, font_id):
+    def define_new_font_control_sequence(self, name, font_id,
+                                         cmd_parents, target_parents):
         # Note, this token just records the font id; the information
         # is stored in the global font state, because it has internal
         # state that might be modified later; we need to know where to get
         # at it.
-        self.do_short_hand_definition(name=name,
-                                      def_type=Instructions.font.value,
-                                      code=font_id)
+        self.do_short_hand_definition(
+            name=name,
+            def_type=Instructions.font.value,
+            code=font_id,
+            cmd_parents=cmd_parents,
+            target_parents=target_parents,
+        )
 
     def do_let_assignment(self, new_name, target_token):
         if target_token.value['lex_type'] == control_sequence_lex_type:
@@ -499,10 +512,10 @@ class Instructioner:
         else:
             new_lex_token = next(self.lexer)
             t = lex_token_to_instruction_token(new_lex_token)
-        if t.char_nr is not None and logger.isEnabledFor(logging.INFO):
-            source = 'Retrieved' if retrieving else 'Read'
-            if self.lexer.reader.current_buffer.name != 'plain.tex':
-                logger.info(f'{source}: {t.get_position_str(self.lexer.reader)}')
+        # if t.char_nr is not None and logger.isEnabledFor(logging.INFO):
+            # source = 'Retrieved' if retrieving else 'Read'
+            # if self.lexer.reader.current_buffer.name != 'plain.tex':
+            #     logger.info(f'{source}: {t.get_position_str(self.lexer.reader)}')
         return t
 
     def next_expanded(self):
@@ -521,8 +534,8 @@ class Instructioner:
         if instr_tok.instruction in unexpanded_cs_instructions:
             name = instr_tok.value['name']
             try:
-                instr_tok = self.resolve_control_sequence(
-                    name, position_like=instr_tok)
+                instr_tok = self.resolve_control_sequence(name,
+                                                          parents=[instr_tok])
             except NoSuchControlSequence:
                 # Might be that we are parsing too far in a chunk, and just
                 # need to execute a command before this can be understood. Put

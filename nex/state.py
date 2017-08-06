@@ -15,7 +15,7 @@ from .constants.specials import Specials
 from .constants.codes import CatCode
 from .constants.units import (Unit, MuUnit, InternalUnit,
                               units_in_sp, MAX_DIMEN)
-from .utils import UserError, LogicError, pt_to_sp
+from .utils import UserError, LogicError, pt_to_sp, InfiniteDimension
 from .router import (make_primitive_control_sequence_instruction,
                      make_unexpanded_control_sequence_instruction)
 from .accessors import is_register_type, SpecialsAccessor
@@ -635,12 +635,8 @@ class GlobalState:
         else:
             raise ValueError(f'Unknown box dimension requested: {type_}')
 
-    def get_infinite_dimen(self, nr_fils, nr_units) -> BuiltToken:
-        return BuiltToken(
-            type_='fil_dimension',
-            value={'factor': nr_units,
-                   'number_of_fils': nr_fils}
-        )
+    def get_infinite_dimen(self, nr_fils, nr_units) -> InfiniteDimension:
+        return InfiniteDimension(factor=nr_units, nr_fils=nr_fils)
 
     def get_finite_dimen(self, unit, nr_units, is_true_unit) -> int:
         # Only one unit in mu units, a mu. I don't know what a mu is
@@ -1163,12 +1159,14 @@ class GlobalState:
     @after_assignment
     def do_macro_assigment(self, token_source,
                            name, parameter_text, replacement_text,
-                           def_type, prefixes):
+                           def_type, prefixes,
+                           parents):
         logger.info(f"Defining macro '{name}'")
         self.router.set_macro(
-                name, parameter_text=parameter_text,
+                name=name, parameter_text=parameter_text,
                 replacement_text=replacement_text,
                 def_type=def_type, prefixes=prefixes,
+                parents=parents,
         )
 
     @after_assignment
@@ -1226,13 +1224,14 @@ class GlobalState:
 
     @after_assignment
     def do_short_hand_definition(self, token_source, is_global, name,
-                                 def_type, code):
+                                 def_type, code, *args, **kwargs):
         logger.info(f"Defining short macro '{name}' as {code}")
         self.router.do_short_hand_definition(
             is_global=is_global,
             name=name,
             def_type=def_type,
             code=code,
+            *args, **kwargs,
         )
 
     def _select_font(self, is_global, font_id):
@@ -1265,12 +1264,14 @@ class GlobalState:
 
     @after_assignment
     def define_new_font(self, token_source,
-                        file_name, at_clause, cs_name, is_global):
+                        file_name, at_clause, cs_name, is_global,
+                        cmd_parents, target_parents):
         new_font_id = self.load_new_font(file_name, at_clause)
         logger.info(f"Defining new font '{new_font_id}' as '{cs_name}'")
         # Make a control sequence pointing to it.
         self.router.define_new_font_control_sequence(
-            is_global, cs_name, new_font_id)
+            is_global, cs_name, new_font_id,
+            cmd_parents=cmd_parents, target_parents=target_parents)
 
     @after_assignment
     def set_skew_char(self, token_source, *args, **kwargs):
@@ -1338,7 +1339,7 @@ class GlobalState:
         evaled_i = self.eval_number_token(tok.value)
         return self.registers.get(tok.type, i=evaled_i)
 
-    def eval_size_token(self, size_token) -> Union[int, BuiltToken]:
+    def eval_size_token(self, size_token) -> Union[int, InfiniteDimension]:
         """Evaluate the components of an unsigned quantity and return the
         result. Usually this will be an integer, but it may also be a token
         representing an infinite size of some order.
@@ -1395,7 +1396,7 @@ class GlobalState:
         else:
             raise ValueError
 
-    def eval_number_token(self, number_token) -> Union[int, BuiltToken]:
+    def eval_number_token(self, number_token) -> Union[int, InfiniteDimension]:
         """Evaluate the components of a signed quantity and return the result.
         Usually this will be an integer, but it may also be a token
         representing an infinite number of some order and sign.
@@ -1408,8 +1409,8 @@ class GlobalState:
             size_token = number_value['size']
             size = self.eval_size_token(size_token)
             sign = evaler.evaluate_signs(number_value['signs'])
-            if isinstance(size, BuiltToken) and size.type == 'fil_dimension':
-                size.value['factor'] *= sign
+            if isinstance(size, InfiniteDimension):
+                size.factor *= sign
             else:
                 size *= sign
             return size
@@ -1523,6 +1524,7 @@ class GlobalState:
                 replacement_text=v['replacement_text'],
                 def_type=v['def_type'],
                 prefixes=v['prefixes'],
+                parents=[cmd_value],
             )
         elif assign_type == 'short_hand_definition':
             code_uneval = v['code']
@@ -1531,6 +1533,8 @@ class GlobalState:
             self.do_short_hand_definition(
                 banisher, v['global'], cs_name, v['def_type'],
                 code_eval,
+                target_parents=[code_uneval],
+                cmd_parents=[cmd_value],
             )
         elif assign_type == 'variable_assignment':
             variable, value = v['variable'], v['value']
@@ -1623,14 +1627,18 @@ class GlobalState:
                 token_source=banisher,
                 is_global=v['global'],
                 new_name=v['name'],
-                target_token=v['target_token']
+                target_token=v['target_token'],
             )
         elif assign_type == 'font_selection':
             self.select_font(banisher, v['global'], v['font_id'])
         elif assign_type == 'font_definition':
-            self.define_new_font(banisher,
-                                 v['file_name'].value, v['at_clause'],
-                                 v['control_sequence_name'], v['global'])
+            self.define_new_font(
+                banisher,
+                v['file_name'].value, v['at_clause'],
+                v['control_sequence_name'], v['global'],
+                cmd_parents=[cmd_value],
+                target_parents=[v['file_name'], v['at_clause']],
+            )
         elif assign_type == 'family_assignment':
             family_nr_eval = self.eval_number_token(v['family_nr'])
             self.set_font_family(banisher, v['global'], family_nr_eval,

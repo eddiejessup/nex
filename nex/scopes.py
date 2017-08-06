@@ -184,6 +184,10 @@ class ScopedRouter(ScopedAccessor):
     def from_defaults(cls):
         return cls(CSRouter.default_initial(), CSRouter.default_local)
 
+    def lookup_canonical_control_sequence(self, *args, **kwargs):
+        return self.try_scope_func_until_success('lookup_canonical_control_sequence',
+                                                 *args, **kwargs)
+
     def lookup_control_sequence(self, *args, **kwargs):
         return self.try_scope_func_until_success('lookup_control_sequence',
                                                  *args, **kwargs)
@@ -200,7 +204,9 @@ class ScopedRouter(ScopedAccessor):
         return self.try_scope_func_until_success('name_means_start_condition',
                                                  *args, **kwargs)
 
-    def set_macro(self, name, replacement_text, parameter_text, def_type, prefixes):
+    def set_macro(self, name, replacement_text, parameter_text, def_type,
+                  prefixes,
+                  parents):
         # TODO: Consider \globaldefs integer parameter.
         # TODO: do something about \outer. Although it seems a bit fussy...
         # TODO: do something about \long. Although the above also applies...
@@ -212,7 +218,8 @@ class ScopedRouter(ScopedAccessor):
                                           replacement_text=replacement_text,
                                           parameter_text=parameter_text,
                                           def_type=def_type,
-                                          prefixes=prefixes)
+                                          prefixes=prefixes,
+                                          parents=parents)
         return macro_token
 
     def do_short_hand_definition(self, is_global, *args, **kwargs):

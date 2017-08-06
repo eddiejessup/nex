@@ -21,7 +21,7 @@ from .lexer import (is_control_sequence_call, is_char_cat,
 from .router import (short_hand_def_type_to_token_instr,
                      Instructioner,
                      make_unexpanded_control_sequence_instruction,
-                     char_cat_instr_tok)
+                     make_char_cat_pair_instruction_token_direct)
 from .state import Mode, Group
 from .macro import substitute_params_with_args
 from .parsing.utils import GetBuffer, get_chunk, chunk_iter
@@ -159,7 +159,7 @@ def char_to_tok(c: str, *args, **kwargs):
         cat = CatCode.space
     else:
         cat = CatCode.other
-    return char_cat_instr_tok(c, cat, *args, **kwargs)
+    return make_char_cat_pair_instruction_token_direct(c, cat, *args, **kwargs)
 
 
 def chars_to_toks(cs, *args, **kwargs):
@@ -170,8 +170,8 @@ def get_str_representation_integer(n: int) -> str:
     return str(n)
 
 
-def get_token_representation_integer(n: int):
-    return chars_to_toks(get_str_representation_integer(n))
+def get_token_representation_integer(n: int, *args, **kwargs):
+    return chars_to_toks(get_str_representation_integer(n), *args, **kwargs)
 
 
 def get_str_representation_dimension(n: int) -> str:
@@ -180,8 +180,8 @@ def get_str_representation_dimension(n: int) -> str:
     return s_pt
 
 
-def get_token_representation_dimension(n: int):
-    return chars_to_toks(get_str_representation_dimension(n))
+def get_token_representation_dimension(n: int, *args, **kwargs):
+    return chars_to_toks(get_str_representation_dimension(n), *args, **kwargs)
 
 
 class Banisher:
@@ -265,13 +265,16 @@ class Banisher:
         balanced_text = InstructionToken(
             Instructions.balanced_text_and_right_brace,
             value=b_tokens[:-1],
-            position_like=b_tokens[0]
+            parents=b_tokens,
         )
         return balanced_text
 
     def _handle_macro(self, first_token):
         params = first_token.value['parameter_text']
-        replace_text = first_token.value['replacement_text']
+        # Make a copy so that setting the parents doesn't affect the canonical
+        # replacement text, whose parents should be from its definition.
+        replace_text = [t.copy(parents=[first_token])
+                        for t in first_token.value['replacement_text']]
 
         def tokens_equal(t, u):
             if t.value['lex_type'] != u.value['lex_type']:
@@ -400,20 +403,32 @@ class Banisher:
         ttype = target.type
         if ttype == Instructions.integer_parameter.value:
             evaled_val = self.state.eval_param_token(target)
-            replace_tokens = get_token_representation_integer(evaled_val)
+            replace_tokens = get_token_representation_integer(
+                evaled_val,
+                parents=[the_quantity_token]
+            )
         elif ttype == Instructions.dimen_parameter.value:
             evaled_val = self.state.eval_param_token(target)
-            replace_tokens = get_token_representation_dimension(evaled_val)
+            replace_tokens = get_token_representation_dimension(
+                evaled_val,
+                parents=[the_quantity_token],
+            )
         elif ttype == Instructions.glue_parameter.value:
             raise NotImplementedError
         elif ttype == Instructions.mu_glue_parameter.value:
             raise NotImplementedError
         elif ttype == Instructions.count.value:
             evaled_val = self.state.eval_register_token(target)
-            replace_tokens = get_token_representation_integer(evaled_val)
+            replace_tokens = get_token_representation_integer(
+                evaled_val,
+                parents=[the_quantity_token]
+            )
         elif ttype == Instructions.dimen.value:
             evaled_val = self.state.eval_register_token(target)
-            replace_tokens = get_token_representation_dimension(evaled_val)
+            replace_tokens = get_token_representation_dimension(
+                evaled_val,
+                parents=[the_quantity_token],
+            )
         elif ttype == Instructions.skip.value:
             raise NotImplementedError
         elif ttype == Instructions.mu_skip.value:
@@ -428,10 +443,16 @@ class Banisher:
             raise NotImplementedError
         elif ttype == Instructions.special_integer.value:
             evaled_val = self.state.eval_special_token(target)
-            replace_tokens = get_token_representation_integer(evaled_val)
+            replace_tokens = get_token_representation_integer(
+                evaled_val,
+                parents=[the_quantity_token]
+            )
         elif ttype == Instructions.special_dimen.value:
             evaled_val = self.state.eval_special_token(target)
-            replace_tokens = get_token_representation_dimension(evaled_val)
+            replace_tokens = get_token_representation_dimension(
+                evaled_val,
+                parents=[the_quantity_token],
+            )
         elif ttype == Instructions.skew_char.value:
             raise NotImplementedError
         elif ttype == Instructions.hyphen_char.value:
@@ -505,7 +526,8 @@ class Banisher:
         material_token = InstructionToken(
             mode_material_instruction_map[mode],
             value=layout_list,
-            position_like=first_token
+            # TODO: This is weird, a layout list has weird contents.
+            parents=layout_list,
         )
         # Put the LEFT_BRACE on the output queue, and the box material.
         return [], [first_token, material_token]
@@ -526,7 +548,7 @@ class Banisher:
         parameter_text_token = InstructionToken(
             Instructions.parameter_text,
             value=param_instrs,
-            position_like=first_token,
+            parents=param_instrs,
         )
 
         # Get the replacement text.
@@ -560,7 +582,7 @@ class Banisher:
         let_target_instr = InstructionToken(
             Instructions.arbitrary_token,
             value=let_target_tok,
-            position_like=first_token
+            parents=[let_target_tok],
         )
         output = ([first_token, cs_name_token] +
                   let_preamble + [let_target_instr])
@@ -590,8 +612,8 @@ class Banisher:
                     cased_char = un_cased_char
                 # The category codes aren't changed.
                 cat = un_cased_tok.value['cat']
-                return char_cat_instr_tok(cased_char, cat,
-                                          position_like=un_cased_tok)
+                return make_char_cat_pair_instruction_token_direct(
+                    char=cased_char, cat=cat, parents=[un_cased_tok])
             else:
                 return un_cased_tok
 
@@ -614,25 +636,28 @@ class Banisher:
             chars += list(target_token.value['name'])
         else:
             chars = [target_token.value['char']]
-        output = chars_to_toks(chars, position_like=target_token)
+        output = chars_to_toks(chars, parents=[first_token, target_token])
         return [], output
 
     def _handle_cs_name(self, first_token):
-        chars = []
-
         out_queue = GetBuffer(getter=self.get_next_output_list)
+
+        cs_name_toks = []
         for t in out_queue:
             if t.instruction == Instructions.end_cs_name:
+                end_cs_name_tok = t
                 break
             if is_char_cat(t):
-                chars.append(t.value['char'])
+                cs_name_toks.append(t)
             else:
                 raise UserError(f'Found non-character inside '
                                 f'\csname ... \endcsname block: {t}')
 
-        cs_name = ''.join(chars)
+        cs_name = ''.join(t.value['char'] for t in cs_name_toks)
         cs_token = make_unexpanded_control_sequence_instruction(
-            cs_name, position_like=first_token)
+            name=cs_name,
+            parents=[first_token] + cs_name_toks + [end_cs_name_tok],
+        )
         # Put our shiny new control sequence token on the input,
         # along with any spare tokens from the expansion
         return [cs_token] + list(out_queue.queue), []
@@ -747,7 +772,7 @@ class Banisher:
             target_token_instr = InstructionToken(
                 Instructions.arbitrary_token,
                 value=target_token,
-                position_like=target_token,
+                parents=[target_token],
             )
             return [], [first_token, target_token_instr]
         # Such as \def.

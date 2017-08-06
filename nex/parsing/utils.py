@@ -72,7 +72,7 @@ letter_to_non_active_uncased_type_map = {
 
 def make_literal_token(p):
     s = ''.join(t.value['char'] for t in p)
-    return BuiltToken(type_='literal', value=s, position_like=p)
+    return BuiltToken(type_='literal', value=s, parents=p)
 
 
 def str_to_char_types(s):
@@ -201,6 +201,7 @@ def _get_chunk(input_queue, parser):
             # If we have not yet parsed, then something is wrong.
             else:
                 exc.bad_token = parse_queue[-1]
+                exc.bad_chunk = parse_queue
                 exc.args += (f'Tokens: {list(parse_queue)}',)
                 exc.args += (f'Tokens: {list(parse_queue)}',)
                 raise

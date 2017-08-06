@@ -32,7 +32,7 @@ def add_character_rules(pg):
     @pg.production('character : POINT')
     def character(p):
         return BuiltToken(type_='character', value=p[0].value,
-                          position_like=p)
+                          parents=p)
 
     # Add character productions for letters.
     for letter_type in pu.letter_to_non_active_uncased_type_map.values():

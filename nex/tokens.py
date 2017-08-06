@@ -1,8 +1,11 @@
 import colorama
+import networkx as nx
 
 from .feedback import strep, csep
-from .constants.instructions import Instructions
+from .constants.instructions import Instructions, unexpanded_cs_instructions
+from .constants.parameters import is_parameter_instr
 from .constants.commands import Commands
+from .utils import get_unique_id
 
 colorama.init()
 
@@ -47,22 +50,11 @@ class BaseToken:
     def __init__(self, type_, value=None):
         self._type = type_
         self.value = value
+        self.slug = get_unique_id()[:4]
 
     @property
     def type(self):
         return self._type
-
-    @property
-    def value_repr(self):
-        if self.value is None:
-            return ''
-        elif isinstance(self.value, dict):
-            v = self.value.copy()
-            if 'lex_type' in v:
-                v.pop('lex_type')
-            return v
-        else:
-            return repr(self.value)
 
     @property
     def value_str(self):
@@ -72,93 +64,83 @@ class BaseToken:
             v = self.value.copy()
             if 'lex_type' in v:
                 v.pop('lex_type')
-            return str(v)
+            if len(str(v)) > 130:
+                return str({
+                    k: '...' if k not in ['name'] else val
+                    for k, val in v.items()
+                })
+            else:
+                return str(v)
         else:
             return str(self.value)
 
+    @property
+    def label_str(self):
+        return str(self)
+
     def __repr__(self):
-        return '{}({}: {})'.format(self.__class__.__name__,
-                                   self.type, self.value_repr)
+        return f'{self.__class__.__name__}::{self.type}({self.value_str})'
 
     def __str__(self):
-        return self.__repr__()
+        return f'{self.type}({self.value_str})'
 
 
-class PositionToken(BaseToken):
+class AncestryToken(BaseToken):
 
-    def __init__(self,
-                 line_nr='abstract', col_nr=None, char_nr=None, char_len=None,
-                 file_hash=None,
-                 position_like=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if position_like is not None:
-            self._copy_position_from_token(position_like)
-        else:
-            self.set_position(line_nr, col_nr, char_nr, char_len, file_hash)
+    def __init__(self, type_, value, parents):
+        super().__init__(type_=type_, value=value)
+        self.parents = parents
 
-    def pos_summary(self, verbose=False):
-        if self.line_nr == 'abstract':
-            return ''
+    def print_expanded_top(self, state):
+        macros = self.print_expanded(state, indent=0)
+        if macros:
+            s = f"\nUsing {len(macros)} macros:"
+            print(s)
+            print('=' * len(s))
+            print()
+            for macro in macros:
+                macro_def = state.router.lookup_canonical_control_sequence(macro)
+                macro_def.print_expanded(state)
+                print()
 
-        if self.line_nr is not None:
-            s_line = '{:d}'.format(self.line_nr)
-        else:
-            s_line = '?'
+    def print_expanded(self, state, indent=0):
+        s = '  '
+        print(s * indent + self.label_str)
+        macros_all = set()
+        if self.parents is not None:
+            for p in self.parents:
+                if isinstance(p, AncestryToken):
+                    macros = p.print_expanded(state, indent=indent+1)
+                    macros_all.update(macros)
+                else:
+                    print(s * (indent + 1) + str(p))
+        return macros_all
 
-        if self.col_nr is not None:
-            s_col = '{:d}'.format(self.col_nr)
-        else:
-            s_col = '?'
+    def to_graph(self, state):
+        g = nx.DiGraph()
+        self._add_to_graph(g, state)
+        return g
 
-        if self.char_nr is not None:
-            s_pos = '{:d}'.format(self.char_nr)
-        else:
-            s_pos = '?'
-
-        if self.char_len is not None:
-            s_len = '{:d}'.format(self.char_len)
-        else:
-            s_len = '?'
-
-        if verbose:
-            s = 'Line {}, Col {}, Index {}, Length {}'.format(s_line, s_col,
-                                                              s_pos, s_len)
-        else:
-            s = f'L{s_line}'
-        return s
-
-    def set_position(self, line_nr, col_nr, char_nr, char_len, file_hash):
-        self.line_nr = line_nr
-        self.col_nr = col_nr
-        self.char_nr = char_nr
-        self.char_len = char_len
-        self.file_hash = file_hash
-
-    @property
-    def char_nr_end(self):
-        return self.char_nr + self.char_len - 1
-
-    def _copy_position_from_token(self, token):
-        self.set_position(token.line_nr, token.col_nr, token.char_nr,
-                          token.char_len, token.file_hash)
-
-    def get_position_str(self, reader):
-        buff = reader.get_buffer(self.file_hash)
-        cs = buff.chars
-        name = buff.name
-        s = get_position_str(cs, self.char_nr, self.char_len, self.line_nr,
-                             self.col_nr)
-        if name:
-            s = f'{name}:{s}'
-        return s
+    def _add_to_graph(self, g, state):
+        if self.label_str not in g:
+            g.add_node(self.slug, label=self.label_str)
+        if self.parents is not None:
+            for p in self.parents:
+                if p.slug not in g:
+                    g.add_node(p.slug, label=p.label_str)
+                g.add_edge(self.slug, p.slug)
+                if isinstance(p, AncestryToken):
+                    p._add_to_graph(g, state)
 
 
-class LexToken(PositionToken):
+simple_instructions = (
+    Instructions.insert,
+    Instructions.left_brace,
+    Instructions.right_brace,
+)
 
-    pass
 
-
-class InstructionToken(PositionToken):
+class InstructionToken(AncestryToken):
 
     def __init__(self, instruction: Instructions, *args, **kwargs) -> None:
         super().__init__(type_=None, *args, **kwargs)
@@ -189,13 +171,7 @@ class InstructionToken(PositionToken):
 
     def __repr__(self):
         a = [f'I={self.instruction.name}']
-        pos_summary = self.pos_summary()
-        if pos_summary:
-            pos = '@{}'.format(pos_summary)
-        else:
-            pos = ''
-        a.append(pos)
-        a.append(f'v={self.value_repr}')
+        a.append(f'v={self.value_str}')
         return f'IT({csep(a)})'
 
     def __str__(self):
@@ -203,44 +179,34 @@ class InstructionToken(PositionToken):
         a.append(f'{self.value_str}')
         return f'{self.instruction.name}({csep(a, str_func=str)})'
 
-
-class BuiltToken(PositionToken):
-
-    def _copy_position_from_token(self, tokens):
-        self.constituent_tokens = tokens
-        # If a single token is passed, make it into a list.
-        try:
-            iter(tokens)
-        except TypeError:
-            tokens = [tokens]
-        if not tokens:
-            self.set_position(None, None, None, None, None)
-        # Ignore tokens that aren't really concrete tokens, like the output
-        # of empty productions (None), or internal tokens.
-        tokens = [t for t in tokens if isinstance(t, PositionToken)]
-        tagged_ts = [t for t in tokens if t.char_nr is not None]
-        if not tagged_ts:
-            self.set_position(None, None, None, None, None)
+    @property
+    def label_str(self):
+        if is_parameter_instr(self.instruction):
+            return self.value['parameter'].name
+        elif self.instruction == Instructions.macro:
+            return f"Macro \\{self.value['name']}"
+        elif self.instruction in unexpanded_cs_instructions:
+            return f"Call \\{self.value['name']}"
+        elif self.instruction in simple_instructions:
+            return f"Instr {self.instruction.name}"
         else:
-            # All but char_len are the same as the first tagged token.
-            super()._copy_position_from_token(tagged_ts[0])
-            self.char_len = sum(t.char_len for t in tagged_ts)
+            return super().label_str
 
-    def __repr__(self):
-        if self.type == 'fil_dimension':
-            ells = 'l' * self.value['number_of_fils']
-            return f"{self.value['factor']} fi{ells}"
-        else:
-            return super().__repr__()
+    def print_expanded(self, state, indent=0):
+        macros = super().print_expanded(state, indent)
+        if self.instruction == Instructions.macro:
+            macros.add(self.value['name'])
+        return macros
 
-    def __str__(self):
-        if self.type == 'fil_dimension':
-            ells = 'l' * self.value['number_of_fils']
-            return f"{self.value['factor']} fi{ells}"
-        else:
-            a = []
-            a.append(f'{self.value_str}')
-            return f'{self.type}({csep(a, str_func=str)})'
+    def _add_to_graph(self, g, state):
+        # if self.instruction == Instructions.macro:
+        #     for t in self.value['replacement_text']:
+        #         g.add_edge(self.label_str, t.label_str, color='red')
+        super()._add_to_graph(g, state)
+
+
+class BuiltToken(AncestryToken):
+    pass
 
 
 class CommandToken(BuiltToken):
@@ -251,20 +217,10 @@ class CommandToken(BuiltToken):
 
     def __repr__(self):
         a = [f'C={self.command.name}']
-        pos_summary = self.pos_summary()
-        if pos_summary:
-            pos = '@{}'.format(pos_summary)
-        else:
-            pos = ''
-        a.append(pos)
-        a.append(f'v={self.value_repr}')
+        a.append(f'v={self.value_str}')
         return f'CT({csep(a)})'
 
     def __str__(self):
         a = []
         a.append(f'{self.value_str}')
         return f'{self.command.name}({csep(a, str_func=str)})'
-
-
-def instructions_to_types(instructions):
-    return tuple(i.value for i in instructions)

@@ -10,7 +10,7 @@ def add_assignment_rules(pg):
     def assignment(p):
         return BuiltToken(type_='assignment',
                           value=p[0],
-                          position_like=p)
+                          parents=p)
         return p[0]
 
     # Start of 'macro assignment', an assignment.
@@ -30,7 +30,7 @@ def add_assignment_rules(pg):
     def macro_assignment(p):
         macro_token = BuiltToken(type_='macro_assignment',
                                  value=dict(prefixes=set(), **p[0].value),
-                                 position_like=p)
+                                 parents=p)
         return macro_token
 
     @pg.production('definition : def control_sequence definition_text')
@@ -39,7 +39,7 @@ def add_assignment_rules(pg):
                           value=dict(def_type=p[0],
                                      name=p[1].value['name'],
                                      **p[2].value),
-                          position_like=p)
+                          parents=p)
 
     @pg.production('def : DEF')
     @pg.production('def : G_DEF')
@@ -53,7 +53,7 @@ def add_assignment_rules(pg):
         def_text_token = BuiltToken(type_='definition_text',
                                     value={'parameter_text': p[0].value,
                                            'replacement_text': p[2].value},
-                                    position_like=p)
+                                    parents=p)
         return def_text_token
 
     # End of 'macro assignment', an assignment.
@@ -98,20 +98,20 @@ def add_assignment_rules(pg):
     def simple_assignment_font_selection(p):
         return BuiltToken(type_='font_selection',
                           value={'font_id': p[0].value},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('variable_assignment : partial_variable_assignment')
     def variable_assignment(p):
         variable, value = p[0]
         return BuiltToken(type_='variable_assignment',
                           value={'variable': variable, 'value': value},
-                          position_like=p[0])
+                          parents=p[0])
 
     @pg.production('partial_variable_assignment : token_variable equals general_text')
     @pg.production('partial_variable_assignment : token_variable equals filler token_variable')
     def partial_variable_assignment_token_variable(p):
         value = BuiltToken(type_='token_list', value=p[-1],
-                           position_like=p)
+                           parents=p)
         return [p[0], value]
 
     @pg.production('partial_variable_assignment : mu_glue_variable equals mu_glue')
@@ -132,7 +132,7 @@ def add_assignment_rules(pg):
         # TODO: Allow arithmetic on dimen, glue and muglue.
         return BuiltToken(type_='advance',
                           value={'variable': p[1], 'value': p[3]},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('optional_by : by')
     @pg.production('optional_by : optional_spaces')
@@ -154,13 +154,13 @@ def add_assignment_rules(pg):
                             'variable': p[0],
                             'code': p[2],
                           },
-                          position_like=p)
+                          parents=p)
 
     @pg.production('code_variable : code_name number')
     def code_variable(p):
         return BuiltToken(type_=p[0].type,
                           value=p[1],
-                          position_like=p)
+                          parents=p)
 
     @pg.production('code_name : CAT_CODE')
     @pg.production('code_name : MATH_CODE')
@@ -184,7 +184,7 @@ def add_assignment_rules(pg):
                             'name': new_name,
                             'target_token': target_token
                           },
-                          position_like=p)
+                          parents=p)
 
     # End of 'let assignment', a simple assignment.
 
@@ -201,7 +201,7 @@ def add_assignment_rules(pg):
                             'def_type': def_type,
                             'control_sequence_name': control_sequence_name
                           },
-                          position_like=p)
+                          parents=p)
 
     @pg.production('short_hand_def : CHAR_DEF')
     @pg.production('short_hand_def : MATH_CHAR_DEF')
@@ -228,12 +228,12 @@ def add_assignment_rules(pg):
                           value={'family_nr': family_nr,
                                  'font_range': font_range,
                                  'font_id': font_id},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('family_member : font_range number')
     def family_member(p):
         return BuiltToken(type_=p[0].value, value=p[1],
-                          position_like=p)
+                          parents=p)
 
     @pg.production('font_range : TEXT_FONT')
     @pg.production('font_range : SCRIPT_FONT')
@@ -242,7 +242,7 @@ def add_assignment_rules(pg):
         # TODO: Doing too much in the parser.
         return BuiltToken(type_='font_range',
                           value=FontRange(p[0].type),
-                          position_like=p)
+                          parents=p)
 
     # End of 'family assignment', a simple assignment.
 
@@ -252,7 +252,7 @@ def add_assignment_rules(pg):
     def set_box_assignment(p):
         return BuiltToken(type_=p[0].type,
                           value={'nr': p[1], 'box': p[4]},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('box : box_explicit')
     @pg.production('box : box_register')
@@ -261,7 +261,7 @@ def add_assignment_rules(pg):
     def box(p):
         return BuiltToken(type_='box',
                           value=p[0],
-                          position_like=p)
+                          parents=p)
 
     @pg.production('box_explicit : H_BOX box_specification LEFT_BRACE HORIZONTAL_MODE_MATERIAL_AND_RIGHT_BRACE')
     @pg.production('box_explicit : V_BOX box_specification LEFT_BRACE VERTICAL_MODE_MATERIAL_AND_RIGHT_BRACE')
@@ -273,7 +273,7 @@ def add_assignment_rules(pg):
                             'specification': p[1],
                             'contents': p[3].value,
                           },
-                          position_like=p)
+                          parents=p)
 
     @pg.production('box_register : BOX number')
     @pg.production('box_register : COPY number')
@@ -283,7 +283,7 @@ def add_assignment_rules(pg):
                             'retrieve_type': p[0].type,
                             'number': p[1],
                           },
-                          position_like=p)
+                          parents=p)
 
     @pg.production('box_v_split : V_SPLIT number to dimen')
     def box_v_split(p):
@@ -292,17 +292,17 @@ def add_assignment_rules(pg):
                             'number': p[1],
                             'dimen': p[3]
                           },
-                          position_like=p)
+                          parents=p)
 
     @pg.production('box_specification : to dimen filler')
     def box_specification_to(p):
         return BuiltToken(type_='to', value=p[1],
-                          position_like=p)
+                          parents=p)
 
     @pg.production('box_specification : spread dimen filler')
     def box_specification_spread(p):
         return BuiltToken(type_='spread', value=p[1],
-                          position_like=p)
+                          parents=p)
 
     @pg.production(get_literal_production_rule('to'))
     @pg.production(get_literal_production_rule('spread'))
@@ -325,7 +325,7 @@ def add_assignment_rules(pg):
                             'file_name': p[4], 'at_clause': p[6],
                             'control_sequence_name': control_sequence_name
                           },
-                          position_like=p)
+                          parents=p)
 
     @pg.production('control_sequence : UNEXPANDED_CONTROL_WORD')
     @pg.production('control_sequence : UNEXPANDED_CONTROL_SYMBOL')
@@ -343,12 +343,12 @@ def add_assignment_rules(pg):
     @pg.production('at_clause : at dimen')
     def at_clause_dimen(p):
         return BuiltToken(type_='at_dimen', value=p[1],
-                          position_like=p)
+                          parents=p)
 
     @pg.production('at_clause : scaled number')
     def at_clause_scaled(p):
         return BuiltToken(type_='scaled_number', value=p[1],
-                          position_like=p)
+                          parents=p)
 
     @pg.production(get_literal_production_rule('at'))
     @pg.production(get_literal_production_rule('scaled'))
@@ -379,7 +379,7 @@ def add_assignment_rules(pg):
                             'variable': p[0],
                             'value': p[2],
                           },
-                          position_like=p)
+                          parents=p)
 
     @pg.production('intimate_assignment : SPECIAL_INTEGER equals number')
     @pg.production('intimate_assignment : SPECIAL_DIMEN equals dimen')
@@ -389,7 +389,7 @@ def add_assignment_rules(pg):
                             'variable': p[0],
                             'value': p[2],
                           },
-                          position_like=p)
+                          parents=p)
 
     @pg.production('integer_font_variable : SKEW_CHAR font')
     @pg.production('integer_font_variable : HYPHEN_CHAR font')
@@ -398,7 +398,7 @@ def add_assignment_rules(pg):
                           value={
                             'font': p[1],
                           },
-                          position_like=p)
+                          parents=p)
 
     @pg.production('dimen_font_variable : FONT_DIMEN number font')
     def dimen_font_variable(p):
@@ -407,24 +407,26 @@ def add_assignment_rules(pg):
                             'dimen_number': p[1],
                             'font': p[2],
                           },
-                          position_like=p)
+                          parents=p)
 
     @pg.production('font : FONT_DEF_TOKEN')
     @pg.production('font : family_member')
     @pg.production('font : FONT')
     def font(p):
-        return BuiltToken(type_='font', value=p[0])
+        return BuiltToken(type_='font',
+                          value=p[0],
+                          parents=p)
 
     @pg.production('hyphenation_assignment : HYPHENATION general_text')
     @pg.production('hyphenation_assignment : PATTERNS general_text')
     def hyphenation_assignment(p):
         return BuiltToken(type_=p[0].type, value={'content': p[1]},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('general_text : filler LEFT_BRACE BALANCED_TEXT_AND_RIGHT_BRACE')
     def general_text(p):
         return BuiltToken(type_='general_text', value=p[2].value,
-                          position_like=p)
+                          parents=p)
 
     @pg.production('filler : optional_spaces')
     @pg.production('filler : filler RELAX optional_spaces')

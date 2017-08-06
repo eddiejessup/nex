@@ -68,7 +68,10 @@ def parse_parameter_text(tokens):
                        else Instructions.undelimited_param)
         param = InstructionToken(
             instruction,
-            value={'param_nr': param_nr, 'delim_tokens': delim_tokens}
+            value={'param_nr': param_nr, 'delim_tokens': delim_tokens},
+            # Parents are parameter character, parameter number, and delimiter
+            # tokens.
+            parents=[t, t_next] + delim_tokens,
         )
         param_nr += 1
         parameters.append(param)
@@ -105,7 +108,8 @@ def parse_replacement_text(tokens):
                                     f'non-integer "{param_nr_char}"')
                 t_processed = InstructionToken(
                     Instructions.param_number,
-                    value=param_nr
+                    value=param_nr,
+                    parents=[t, t_next],
                 )
         else:
             t_processed = t

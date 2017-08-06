@@ -4,7 +4,7 @@ import logging
 
 from .utils import (get_unique_id,
                     ensure_extension, find_file, file_path_to_chars)
-from .tokens import get_position_str
+from .tokens import get_position_str, BaseToken, AncestryToken
 from .feedback import drep
 logger = logging.getLogger(__name__)
 
@@ -102,6 +102,7 @@ class Reader:
     characters will be read off until it is exhausted, at which point the
     previous buffer will be read from, and so on.
     """
+    reader_token = BaseToken(type_='root', value=None)
 
     def __init__(self, search_paths=None):
         # This implementation is a bit lazy: there's a big map of hashes to
@@ -111,6 +112,7 @@ class Reader:
         # debugging purposes.
         self.active_buffer_hash_stack = []
         self.buffer_map = {}
+        self.buffer_token_map = {}
         # TODO: Avoid multiple entries.
         self.search_paths = [os.getcwd()]
         if search_paths is not None:
@@ -127,7 +129,13 @@ class Reader:
         # a unique hash, so that duplicate names do not collide.
         new_hash = (buff.name, get_unique_id())
         logger.info(f'Adding new buffer {buff}')
+
         self.buffer_map[new_hash] = buff
+        buffer_token = AncestryToken(type_='buffer',
+                                     value=buff,
+                                     parents=[self.reader_token])
+        self.buffer_token_map[new_hash] = buffer_token
+
         self.active_buffer_hash_stack.append(new_hash)
 
     def insert_chars(self, chars, name=''):
@@ -162,6 +170,11 @@ class Reader:
     def current_buffer(self):
         """The buffer currently being read."""
         return self.buffer_map[self.current_hash]
+
+    @property
+    def current_buffer_token(self):
+        """The token representing the buffer currently being read."""
+        return self.buffer_token_map[self.current_hash]
 
     @property
     def current_chars(self):

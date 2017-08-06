@@ -8,9 +8,9 @@ from .constants.specials import Specials, special_to_type
 from .constants.codes import (CatCode, WeirdChar, MathClass, MathCode,
                               GlyphCode, DelimiterCode,
                               not_a_delimiter_code, ignored_delimiter_code)
-from .tokens import InstructionToken, instructions_to_types
+from .tokens import InstructionToken
 from .box import AbstractBox
-from .utils import ascii_characters
+from .utils import ascii_characters, enums_to_values
 from . import evaluator as evaler
 
 
@@ -129,7 +129,7 @@ class ParametersAccessor(TexNamedValues):
             return InstructionToken(
                 Instructions.balanced_text_and_right_brace,
                 value=[],
-                line_nr='abstract',
+                parents=None,
             )
         for p in token_parameters:
             parameter_values[p] = get_empty_token_list()
@@ -174,7 +174,7 @@ short_hand_reg_def_token_type_to_reg_type = {
 }
 
 
-register_types = instructions_to_types(register_instructions)
+register_types = enums_to_values(register_instructions)
 
 
 def is_register_type(type_):

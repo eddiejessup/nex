@@ -42,9 +42,6 @@ def test_trioing():
         assert len(tokens) == 6
         # Check the correct code numbers were returned.
         assert [ord(t.value['char']) for t in tokens] == correct_code_nrs
-        # Check the correct character positions and lengths are returned.
-        assert [t.char_nr for t in tokens] == [0, 1, 2, 3, 6, 9]
-        assert [t.char_len for t in tokens] == [1, 1, 1, 3, 3, 3]
 
 
 def test_comments():
@@ -62,16 +59,6 @@ def test_skipping_blanks():
             [t.value['char'] for t in toks_triple])
     assert ([t.value['cat'] for t in toks_single] ==
             [t.value['cat'] for t in toks_triple])
-    # Check same character lengths are returned.
-    assert ([t.char_len for t in toks_single] ==
-            [t.char_len for t in toks_triple])
-    # Check same character positions are returned, except last token.
-    assert ([t.char_nr for t in toks_single[:-1]] ==
-            [t.char_nr for t in toks_triple[:-1]])
-    # For last tokens, check the spaces are considered correctly when assigning
-    # their positions.
-    assert toks_single[-1].char_nr == 6
-    assert toks_triple[-1].char_nr == 8
 
 
 def test_control_sequence():
@@ -80,17 +67,8 @@ def test_control_sequence():
     assert len(tokens) == 3
 
     assert tokens[0].value['char'] == 'a'
-    assert tokens[0].char_nr == 0
-    assert tokens[0].char_len == 1
-
     assert tokens[1].value == 'howdy'
-    assert tokens[1].char_nr == 1
-    assert tokens[1].char_len == 6
-
     assert tokens[2].value == 'world'
-    assert tokens[2].char_nr == 7
-    assert tokens[2].char_len == 6
-
     # Check control sequences starting with a non-letter, make single-letter
     # control sequences.
     tokens_single = lex_string_to_tokens(r'\@a')

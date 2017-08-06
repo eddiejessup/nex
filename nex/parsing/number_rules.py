@@ -13,7 +13,7 @@ def process_integer_digits(p, base):
     new_digit = p[0]
     collection.digits = [new_digit] + collection.digits
     return BuiltToken(type_='integer_constant', value=collection,
-                      position_like=p)
+                      parents=p)
 
 
 def add_number_rules(pg):
@@ -21,7 +21,7 @@ def add_number_rules(pg):
     def number(p):
         return BuiltToken(type_='number',
                           value={'signs': p[0], 'size': p[1]},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('unsigned_number : normal_integer')
     @pg.production('unsigned_number : coerced_integer')
@@ -42,17 +42,17 @@ def add_number_rules(pg):
 
     @pg.production('normal_integer : integer_constant one_optional_space')
     def normal_integer_integer(p):
-        return BuiltToken(type_='size', value=p[0], position_like=p)
+        return BuiltToken(type_='size', value=p[0], parents=p)
 
     @pg.production('normal_integer : SINGLE_QUOTE octal_constant one_optional_space')
     @pg.production('normal_integer : DOUBLE_QUOTE hexadecimal_constant one_optional_space')
     def normal_integer_weird_base(p):
-        return BuiltToken(type_='size', value=p[1], position_like=p)
+        return BuiltToken(type_='size', value=p[1], parents=p)
 
     @pg.production('normal_integer : BACKTICK character_token one_optional_space')
     def normal_integer_character(p):
-        bt = BuiltToken(type_='backtick', value=p[1], position_like=p)
-        return BuiltToken(type_='size', value=bt, position_like=p)
+        bt = BuiltToken(type_='backtick', value=p[1], parents=p)
+        return BuiltToken(type_='size', value=bt, parents=p)
 
     @pg.production('internal_integer : INTEGER_PARAMETER')
     @pg.production('internal_integer : count_register')
@@ -63,7 +63,7 @@ def add_number_rules(pg):
     def internal_integer(p):
         return BuiltToken(type_='size',
                           value=p[0],
-                          position_like=p)
+                          parents=p)
 
     @pg.production('character_token : UNEXPANDED_CONTROL_SYMBOL')
     @pg.production('character_token : character')
@@ -116,7 +116,7 @@ def add_number_rules(pg):
     @pg.production('optional_signs : optional_spaces')
     def optional_signs_omitted(p):
         return BuiltToken(type_='signs', value=[],
-                          position_like=p)
+                          parents=p)
 
     @pg.production('optional_signs : optional_signs plus_or_minus optional_spaces')
     def optional_signs(p):
@@ -133,4 +133,4 @@ def add_number_rules(pg):
     @pg.production('equals : optional_spaces EQUALS')
     def equals(p):
         return BuiltToken(type_='optional_equals', value=None,
-                          position_like=p)
+                          parents=p)

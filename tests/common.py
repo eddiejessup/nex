@@ -4,6 +4,7 @@ from enum import Enum
 from nex.tokens import InstructionToken
 from nex.parsing import utils as pu
 from nex.fonts import GlobalFontState
+from nex.router import make_char_cat_pair_instruction_token_direct
 
 test_dir_path = os.path.dirname(os.path.realpath(__file__))
 test_file_dir_path = os.path.join(test_dir_path, 'test_files')
@@ -13,6 +14,14 @@ test_runnable_file_name = os.path.join(test_file_dir_path, 'test_runnable.tex')
 
 test_chars = list('abc\n')
 test_2_chars = list('def\n')
+
+
+def char_instr_tok(char, cat):
+    return make_char_cat_pair_instruction_token_direct(char, cat, parents=None)
+
+
+def ITok(*args, **kwargs):
+    return InstructionToken(*args, **kwargs, parents=None, value=None)
 
 
 class DummyInstructions(Enum):
@@ -25,9 +34,6 @@ class DummyCommands(Enum):
 
 class DummyParameters(Enum):
     ptest = 'TEST_PARAM'
-
-
-ITok = InstructionToken
 
 
 # Parsing.

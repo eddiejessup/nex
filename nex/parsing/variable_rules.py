@@ -26,7 +26,7 @@ def add_variable_rules(pg):
     @pg.production('dimen_register : DIMEN number')
     @pg.production('count_register : COUNT number')
     def quantity_register_explicit(p):
-        return BuiltToken(type_=p[0].type, value=p[1], position_like=p)
+        return BuiltToken(type_=p[0].type, value=p[1], parents=p)
 
     @pg.production('token_register : TOKS_DEF_TOKEN')
     @pg.production('mu_skip_register : MU_SKIP_DEF_TOKEN')
@@ -36,6 +36,9 @@ def add_variable_rules(pg):
     def register_token(p):
         reg_type = short_hand_reg_def_token_type_to_reg_type[p[0].type]
         internal_nr_tok = BuiltToken(type_='internal_number',
-                                     value=p[0].value)
-        nr_tok = BuiltToken(type_='number', value=internal_nr_tok)
-        return BuiltToken(type_=reg_type, value=nr_tok, position_like=p)
+                                     value=p[0].value,
+                                     parents=p)
+        nr_tok = BuiltToken(type_='number',
+                            value=internal_nr_tok,
+                            parents=[internal_nr_tok])
+        return BuiltToken(type_=reg_type, value=nr_tok, parents=p)

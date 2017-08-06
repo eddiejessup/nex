@@ -9,7 +9,7 @@ from typing import Dict, Tuple, Iterable
 from enum import Enum
 
 from .instructions import Instructions
-from ..tokens import instructions_to_types
+from ..utils import enums_to_values
 
 
 class Parameters(Enum):
@@ -237,11 +237,15 @@ param_instrs: Tuple[Instructions, ...] = (
     Instructions.token_parameter,
 )
 
-parameter_instr_types: Tuple[str, ...] = instructions_to_types(param_instrs)
+parameter_instr_types: Tuple[str, ...] = enums_to_values(param_instrs)
 
 
 def param_instr_subset(instr: Instructions) -> Iterable[Parameters]:
     return (p for p in Parameters if param_to_instr[p] == instr)
+
+
+def is_parameter_instr(instr: Instructions) -> bool:
+    return instr in param_instrs
 
 
 def is_parameter_type(type_: str) -> bool:

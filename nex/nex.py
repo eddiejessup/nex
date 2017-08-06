@@ -12,6 +12,7 @@ from .parsing.utils import (logger as chunk_logger,
                             chunk_iter, ParsingSyntaxError)
 from .parsing.parsing import command_parser
 from .state import logger as state_logger, GlobalState, TidyEnd
+from .tokens import BuiltToken
 from .box_writer import write_to_dvi_file
 
 dir_path = opath.dirname(opath.realpath(__file__))
@@ -49,9 +50,10 @@ def run_state(state, input_paths):
         except ParsingSyntaxError as exc:
             print('While reading:')
             print(reader.get_position_str())
-            print('While processing token:')
-            print(exc.bad_token.get_position_str(reader))
-
+            print('While processing tokens:')
+            fail_token = BuiltToken(type_='failed chunk',
+                                    value=None, parents=exc.bad_chunk)
+            fail_token.print_expanded_top(state)
             raise
 
     while True:
@@ -67,7 +69,7 @@ def run_files(font_search_paths, input_paths):
         run_state(state, input_paths)
     except TidyEnd:
         return state
-    raise Exception('Left run_state without TidyEnd occurring.')
+    raise Exception('Left run_state without a tidy end occurring.')
 
 
 def run_and_write(font_search_paths, input_paths, dvi_path, write_pdf):

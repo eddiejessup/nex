@@ -3,7 +3,7 @@ import logging
 
 from .constants.codes import CatCode
 from .reader import Reader
-from .tokens import LexToken
+from .tokens import AncestryToken
 from .feedback import strep
 
 logger = logging.getLogger(__name__)
@@ -35,14 +35,37 @@ class ReadingState(Enum):
     skipping_blanks = 'S'
 
 
-def make_char_cat_lex_token(char, cat, *pos_args, **pos_kwargs):
-    return LexToken(type_=char_cat_lex_type, value={'char': char, 'cat': cat},
-                    *pos_args, **pos_kwargs)
+class LexToken(AncestryToken):
 
+    def __init__(self,
+                 line_nr, col_nr, char_nr, char_len,
+                 *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.line_nr = line_nr
+        self.col_nr = col_nr
+        self.char_nr = char_nr
+        self.char_len = char_len
 
-def make_control_sequence_lex_token(name, *pos_args, **pos_kwargs):
-    return LexToken(type_=control_sequence_lex_type, value=name,
-                    *pos_args, **pos_kwargs)
+    @classmethod
+    def from_char_cat(cls, char, cat, *args, **kwargs):
+        return cls(type_=char_cat_lex_type, value={'char': char, 'cat': cat},
+                   *args, **kwargs)
+
+    @classmethod
+    def from_control_sequence(cls, name, *args, **kwargs):
+        return cls(type_=control_sequence_lex_type, value=name,
+                   *args, **kwargs)
+
+    def __str__(self):
+        if self.type == control_sequence_lex_type:
+            s = f"Lexed \\{self.value}"
+        elif self.type == char_cat_lex_type:
+            s = f"Lexed {self.value['char']} (Cat {self.value['cat'].name})"
+        else:
+            raise ValueError("Unknown lex type: '{self.type}'")
+        if self.line_nr is not None:
+            s = f'{self.line_nr}:{self.col_nr} {s}'
+        return s
 
 
 def is_char_cat(token):
@@ -153,14 +176,15 @@ class Lexer:
 
     def _process_next_character(self):
         pos_info = {
-            'file_hash': self.reader.current_hash,
+            'parents': [self.reader.current_buffer_token],
             'line_nr': self.reader.line_nr,
             'col_nr': self.reader.col_nr,
-            # char_nr is the start, which is always now plus 1, regardless of
+            # char_nr is the start, which is always 'now plus 1', regardless of
             # trios.
             'char_nr': self.reader.char_nr + 1,
         }
         char, cat, total_char_len = self._chomp_next_char_trio()
+        # Now we know the length, considering trios and such.
         pos_info['char_len'] = total_char_len
 
         if cat == CatCode.comment:
@@ -199,12 +223,12 @@ class Lexer:
                 self.reading_state = ReadingState.skipping_blanks
             control_sequence_name = ''.join(control_sequence_chars)
             logger.debug(f'Lexed control sequence "{control_sequence_name}"')
-            return make_control_sequence_lex_token(control_sequence_name,
-                                                   **pos_info)
+            return LexToken.from_control_sequence(control_sequence_name,
+                                                  **pos_info)
         elif cat in tokenise_cats:
             logger.debug(f'Tokenizing "{strep(char)}" of category {cat.name}')
             self.reading_state = ReadingState.line_middle
-            return make_char_cat_lex_token(char, cat, **pos_info)
+            return LexToken.from_char_cat(char, cat, **pos_info)
         # If TeX sees a character of category [space], the action
         # depends on the current state.
         elif cat == CatCode.space:
@@ -222,20 +246,20 @@ class Lexer:
                 # The character code in a space token is always 32.
                 logger.debug('Tokenizing space-category character')
                 self.reading_state = ReadingState.skipping_blanks
-                return make_char_cat_lex_token(' ', cat, **pos_info)
+                return LexToken.from_char_cat(' ', cat, **pos_info)
         elif cat == CatCode.end_of_line:
             # [...] if TeX is in state [new line],
             if self.reading_state == ReadingState.line_begin:
                 # the end-of-line character is converted to the control
                 # sequence token 'par' (end of paragraph).
                 logger.debug('Lexing end-of-line character to \par')
-                token = make_control_sequence_lex_token('par', **pos_info)
+                token = LexToken.from_control_sequence('par', **pos_info)
             # if TeX is in state [mid-line],
             elif self.reading_state == ReadingState.line_middle:
                 # the end-of-line character is converted to a token for
                 # character 32 (' ') of category [space].
                 logger.debug('Lexing end-of-line character to space')
-                token = make_char_cat_lex_token(' ', CatCode.space, **pos_info)
+                token = LexToken.from_char_cat(' ', CatCode.space, **pos_info)
             # and if TeX is in state [skipping blanks],
             elif self.reading_state == ReadingState.skipping_blanks:
                 # the end-of-line character is simply dropped.

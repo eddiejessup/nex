@@ -3,8 +3,7 @@ from enum import Enum
 from functools import lru_cache
 
 from .feedback import printable_ascii_codes, drep, truncate_list, dimrep
-from .tokens import BuiltToken
-from .utils import sum_infinities, LogicError
+from .utils import InfiniteDimension, sum_infinities, LogicError
 
 
 class LineState(Enum):
@@ -34,9 +33,11 @@ def extract_dimen(d):
     if isinstance(d, int):
         order = 0
         factor = d
+    elif isinstance(d, InfiniteDimension):
+        order = d.nr_fils
+        factor = d.factor
     else:
-        order = d.value['number_of_fils']
-        factor = d.value['factor']
+        raise LogicError(f"Unknown dimen type: '{d}'")
     return order, factor
 
 
@@ -550,8 +551,7 @@ class Glue(ListElement):
 
     @property
     def min_length(self):
-        # Infinite shrink.
-        if isinstance(self.shrink, BuiltToken):
+        if isinstance(self.shrink, InfiniteDimension):
             return 0
         else:
             return self.natural_length - self.shrink

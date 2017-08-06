@@ -8,7 +8,7 @@ from ..constants.instructions import (Instructions,
                                       def_instructions,
                                       if_instructions
                                       )
-from ..tokens import instructions_to_types
+from ..utils import enums_to_values
 
 base_terminal_instructions = (
     Instructions.relax,
@@ -197,4 +197,4 @@ terminal_instructions = (
     + def_instructions
     + if_instructions
 )
-terminal_types = instructions_to_types(terminal_instructions)
+terminal_types = enums_to_values(terminal_instructions)

@@ -31,17 +31,24 @@ def get_default_font_paths():
     ]
 
 
+class InfiniteDimension:
+
+    def __init__(self, factor, nr_fils):
+        self.factor = factor
+        self.nr_fils = nr_fils
+
+
 def sum_infinities(ds):
     order_sums = [0]
     for d in ds:
         if isinstance(d, int):
             order_sums[0] += d
-        else:
-            order = d.value['number_of_fils']
+        elif isinstance(d, InfiniteDimension):
+            order = d.nr_fils
             # Extend order sum list with zeros to accommodate this infinity.
             new_length_needed = order + 1 - len(order_sums)
             order_sums.extend(0 for _ in range(new_length_needed))
-            order_sums[order] += d.value['factor']
+            order_sums[order] += d.factor
     return order_sums
 
 
@@ -87,3 +94,7 @@ class LogicError(Exception):
 class UserError(Exception):
     """The input from the user is incorrect."""
     pass
+
+
+def enums_to_values(enums):
+    return tuple(i.value for i in enums)

@@ -12,11 +12,10 @@ from nex.banisher import (Banisher,
                           get_token_representation_dimension)
 from nex.router import (Instructioner,
                         make_unexpanded_control_sequence_instruction,
-                        make_macro_token,
-                        char_cat_instr_tok)
+                        make_macro_token)
 from nex.utils import ascii_characters, UserError
 
-from common import DummyInstructions, ITok
+from common import DummyInstructions, ITok, char_instr_tok
 
 
 test_char_to_cat = {}
@@ -117,7 +116,8 @@ def test_resolver():
 def test_empty_macro():
     cs_map = {
         'macro': make_macro_token(name='macro',
-                                  replacement_text=[], parameter_text=[]),
+                                  replacement_text=[], parameter_text=[],
+                                  parents=None),
     }
     b = string_to_banisher('$macro', cs_map)
     out = b._iterate()
@@ -213,13 +213,14 @@ def test_toks_assign_variable():
 
 
 def test_expand_after():
-    def_target = make_unexpanded_control_sequence_instruction('defTarget')
+    def_target = make_unexpanded_control_sequence_instruction('defTarget',
+                                                              parents=None)
     cs_map = {
         'expandAfter': ITok(Instructions.expand_after),
         'defCount': ITok(Instructions.count_def),
         'getTarget': make_macro_token(name='getTarget',
                                       replacement_text=[def_target],
-                                      parameter_text=[]),
+                                      parameter_text=[], parents=None),
     }
     # Should expand $getTarget to [$defTarget], then expand $defCount, which
     # should then read $defTarget as its argument.
@@ -297,10 +298,11 @@ def test_string_control_sequence_no_escape():
 
 def test_cs_name():
     char = 'a'
-    a_token = char_cat_instr_tok(char, CatCode.letter)
+    a_token = char_instr_tok(char, CatCode.letter)
     make_A_token = make_macro_token(name='theA',
                                     replacement_text=[a_token],
-                                    parameter_text=[])
+                                    parameter_text=[],
+                                    parents=None)
     cs_map = {
         'getCSName': ITok(Instructions.cs_name),
         'endCSName': ITok(Instructions.end_cs_name),
@@ -322,18 +324,20 @@ def test_cs_name_end_by_expansion():
     # '$theF'.
     # This control sequence is then expanded to the string 'F'.
     char = 'F'
-    F_token = char_cat_instr_tok(char, CatCode.letter)
+    F_token = char_instr_tok(char, CatCode.letter)
     cs_name = 'theF'
     the_F_then_end_token = make_macro_token(
         name='theFThenEnd',
-        replacement_text=([char_cat_instr_tok(c, CatCode.letter)
+        replacement_text=([char_instr_tok(c, CatCode.letter)
                            for c in cs_name] +
                           [ITok(Instructions.end_cs_name)]),
-        parameter_text=[]
+        parameter_text=[],
+        parents=None,
     )
     make_F_token = make_macro_token(name='theF',
                                     replacement_text=[F_token],
-                                    parameter_text=[])
+                                    parameter_text=[],
+                                    parents=None)
     cs_map = {
         'getCSName': ITok(Instructions.cs_name),
         'theFThenEnd': the_F_then_end_token,
@@ -361,12 +365,12 @@ def test_cs_name_containing_non_char():
 
 
 def test_change_case():
-    B_token = char_cat_instr_tok('B', CatCode.letter)
+    B_token = char_instr_tok('B', CatCode.letter)
     make_B_token = make_macro_token(name='makeB', replacement_text=[B_token],
-                                    parameter_text=[])
-    y_token = char_cat_instr_tok('y', CatCode.letter)
+                                    parameter_text=[], parents=None)
+    y_token = char_instr_tok('y', CatCode.letter)
     make_y_token = make_macro_token(name='makey', replacement_text=[y_token],
-                                    parameter_text=[])
+                                    parameter_text=[], parents=None)
 
     cs_map = {
         'upper': ITok(Instructions.upper_case),
@@ -434,7 +438,7 @@ def test_input():
 
 
 def test_integer_tokenize():
-    ts = get_token_representation_integer(-23)
+    ts = get_token_representation_integer(-23, parents=None)
     assert len(ts) == 3
     assert ts[0].value['char'] == '-' and ts[0].value['cat'] == CatCode.other
     assert ts[1].value['char'] == '2' and ts[0].value['cat'] == CatCode.other
@@ -442,7 +446,7 @@ def test_integer_tokenize():
 
 
 def test_dimension_tokenize():
-    ts = get_token_representation_dimension(pt2sp(-12.2))
+    ts = get_token_representation_dimension(pt2sp(-12.2), parents=None)
     assert len(ts) == 7
     assert ''.join(t.value['char'] for t in ts) == '-12.2pt'
     assert all(t.value['cat'] == CatCode.other for t in ts)

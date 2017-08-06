@@ -3,12 +3,12 @@ import pytest
 from nex.constants.codes import CatCode
 from nex.constants.instructions import Instructions
 from nex.router import (CSRouter, NoSuchControlSequence,
-                        make_unexpanded_control_sequence_instruction,
-                        char_cat_instr_tok)
+                        make_unexpanded_control_sequence_instruction)
 
-from common import DummyInstructions, DummyParameters, ITok
+from common import DummyInstructions, DummyParameters, ITok, char_instr_tok
 
-dummy_token = make_unexpanded_control_sequence_instruction('dummy')
+dummy_token = make_unexpanded_control_sequence_instruction('dummy',
+                                                           parents=None)
 
 
 def test_undefined_control_sequence():
@@ -17,7 +17,7 @@ def test_undefined_control_sequence():
                  primitive_control_sequences={},
                  enclosing_scope=None)
     with pytest.raises(NoSuchControlSequence):
-        r.lookup_control_sequence(name='test')
+        r.lookup_control_sequence(name='test', parents=None)
     with pytest.raises(NoSuchControlSequence):
         r.do_let_assignment(target_token=dummy_token, new_name='test_2')
 
@@ -27,7 +27,7 @@ def test_primitive_resolution():
                  special_control_sequences={},
                  primitive_control_sequences={'hi': DummyInstructions.test},
                  enclosing_scope=None)
-    t = r.lookup_control_sequence('hi')
+    t = r.lookup_control_sequence('hi', parents=None)
     assert t.value['name'] == 'hi'
     assert t.instruction == DummyInstructions.test
 
@@ -38,7 +38,7 @@ def test_parameter_resolution():
                  special_control_sequences={},
                  primitive_control_sequences={},
                  enclosing_scope=None)
-    t = r.lookup_control_sequence('ho')
+    t = r.lookup_control_sequence('ho', parents=None)
     assert t.value['name'] == 'ho'
     assert t.value['parameter'] == DummyParameters.ptest
     assert t.instruction == DummyInstructions.test
@@ -51,8 +51,8 @@ def test_macro_definition():
                  enclosing_scope=None)
     repl = [ITok(DummyInstructions.test)]
     r.set_macro(name='hi', replacement_text=repl, parameter_text=[],
-                def_type=None, prefixes=None)
-    t = r.lookup_control_sequence('hi')
+                def_type=None, prefixes=None, parents=None)
+    t = r.lookup_control_sequence('hi', parents=None)
     assert t.value['name'] == 'hi'
     assert t.value['replacement_text'] == repl
     assert len(t.value['prefixes']) == 0
@@ -66,8 +66,9 @@ def test_short_hand_macro_definition():
                  enclosing_scope=None)
     code = 200
     r.do_short_hand_definition('hi', def_type=Instructions.char_def.value,
-                               code=code)
-    t = r.lookup_control_sequence('hi')
+                               code=code,
+                               cmd_parents=None, target_parents=None)
+    t = r.lookup_control_sequence('hi', parents=None)
     assert t.value['name'] == 'hi'
     assert t.value['def_type'] == 'sdef'
     assert len(t.value['replacement_text']) == 1
@@ -83,10 +84,11 @@ def test_let_to_macro():
                  enclosing_scope=None)
     code = 200
     r.do_short_hand_definition('hi', def_type=Instructions.char_def.value,
-                               code=code)
-    t = r.lookup_control_sequence('hi')
+                               code=code,
+                               cmd_parents=None, target_parents=None)
+    t = r.lookup_control_sequence('hi', parents=None)
     r.do_let_assignment('new_way_to_say_hi', t)
-    t_let = r.lookup_control_sequence('new_way_to_say_hi')
+    t_let = r.lookup_control_sequence('new_way_to_say_hi', parents=None)
 
     assert t.value['name'] == 'hi'
     assert t_let.value['name'] == 'new_way_to_say_hi'
@@ -95,7 +97,7 @@ def test_let_to_macro():
 
     # Check letting to a let token.
     r.do_let_assignment('even_newer_way_to_say_hi', t_let)
-    t_even_newer = r.lookup_control_sequence('even_newer_way_to_say_hi')
+    t_even_newer = r.lookup_control_sequence('even_newer_way_to_say_hi', parents=None)
     assert t_even_newer.value['name'] == 'even_newer_way_to_say_hi'
     assert t_even_newer.instruction == t.instruction
     assert t_even_newer.value['replacement_text'] is t.value['replacement_text']
@@ -106,9 +108,9 @@ def test_let_to_primitive():
                  special_control_sequences={},
                  primitive_control_sequences={'hi': DummyInstructions.test},
                  enclosing_scope=None)
-    t = r.lookup_control_sequence('hi')
+    t = r.lookup_control_sequence('hi', parents=None)
     r.do_let_assignment('new_way_to_say_hi', t)
-    t_let = r.lookup_control_sequence('new_way_to_say_hi')
+    t_let = r.lookup_control_sequence('new_way_to_say_hi', parents=None)
     assert t.value['name'] == 'hi'
     assert t_let.value['name'] == 'new_way_to_say_hi'
     assert t_let.instruction == t.instruction
@@ -120,9 +122,9 @@ def test_let_to_parameter():
                  special_control_sequences={},
                  primitive_control_sequences={},
                  enclosing_scope=None)
-    t = r.lookup_control_sequence('ho')
+    t = r.lookup_control_sequence('ho', parents=None)
     r.do_let_assignment('new_way_to_say_ho', t)
-    t_let = r.lookup_control_sequence('new_way_to_say_ho')
+    t_let = r.lookup_control_sequence('new_way_to_say_ho', parents=None)
     assert t.value['name'] == 'ho'
     assert t_let.value['name'] == 'new_way_to_say_ho'
     assert t_let.instruction == t.instruction
@@ -134,6 +136,6 @@ def test_let_to_character():
                  special_control_sequences={},
                  primitive_control_sequences={},
                  enclosing_scope=None)
-    targ = char_cat_instr_tok('c', CatCode.letter)
+    targ = char_instr_tok('c', CatCode.letter)
     r.do_let_assignment('c', targ)
-    t_let = r.lookup_control_sequence('c')
+    t_let = r.lookup_control_sequence('c', parents=None)

@@ -9,15 +9,15 @@ def add_glue_rules(pg):
     @pg.production('mu_glue : internal_mu_glue')
     @pg.production('glue : internal_glue')
     def glue_internal(p):
-        return BuiltToken(type_='glue', value=p[0], position_like=p)
+        return BuiltToken(type_='glue', value=p[0], parents=p)
 
     @pg.production('mu_glue : mu_dimen mu_stretch mu_shrink')
     @pg.production('glue : dimen stretch shrink')
     def glue_explicit(p):
         # Wrap up arguments in a dict.
         dimens = dict(zip(glue_keys, tuple(p)))
-        glue_spec = BuiltToken(type_='explicit', value=dimens, position_like=p)
-        return BuiltToken(type_='glue', value=glue_spec, position_like=p)
+        glue_spec = BuiltToken(type_='explicit', value=dimens, parents=p)
+        return BuiltToken(type_='glue', value=glue_spec, parents=p)
 
     @pg.production('internal_mu_glue : mu_skip_register')
     @pg.production('internal_glue : skip_register')
@@ -46,25 +46,25 @@ def add_glue_rules(pg):
     def stretch_or_shrink_omitted(p):
         dimen_size_token = BuiltToken(type_='internal',
                                       value=0,
-                                      position_like=p)
+                                      parents=p)
         size_token = BuiltToken(type_='size',
                                 value=dimen_size_token,
-                                position_like=p)
-        sign_token = BuiltToken(type_='signs', value=[], position_like=p)
+                                parents=p)
+        sign_token = BuiltToken(type_='signs', value=[], parents=p)
         return BuiltToken(type_='dimen', value={'signs': sign_token,
                                                 'size': size_token},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('fil_dimen : optional_signs factor fil_unit optional_spaces')
     def fil_dimen(p):
         dimen_size_token = BuiltToken(type_='dimen',
                                       value={'factor': p[1], 'unit': p[2].value},
-                                      position_like=p)
+                                      parents=p)
         size_token = BuiltToken(type_='size',
                                 value=dimen_size_token,
-                                position_like=p)
+                                parents=p)
         return BuiltToken(type_='dimen', value={'signs': p[0], 'size': size_token},
-                          position_like=p)
+                          parents=p)
 
     @pg.production('fil_unit : fil_unit NON_ACTIVE_UNCASED_L')
     def fil_unit_append(p):
@@ -78,7 +78,7 @@ def add_glue_rules(pg):
         unit = {'unit': Unit.fil, 'number_of_fils': 1}
         return BuiltToken(type_='fil_unit',
                           value=unit,
-                          position_like=p)
+                          parents=p)
 
     @pg.production(pu.get_literal_production_rule('minus'))
     @pg.production(pu.get_literal_production_rule('plus'))
