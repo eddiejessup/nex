@@ -58,9 +58,9 @@ class LexToken(AncestryToken):
 
     def __str__(self):
         if self.type == control_sequence_lex_type:
-            s = f"Lexed \\{self.value}"
+            s = f"Lexed '\\{self.value}'"
         elif self.type == char_cat_lex_type:
-            s = f"Lexed {self.value['char']} (Cat {self.value['cat'].name})"
+            s = f"Lexed '{self.value['char']}' (Cat '{self.value['cat'].name}')"
         else:
             raise ValueError("Unknown lex type: '{self.type}'")
         if self.line_nr is not None:

@@ -125,7 +125,7 @@ def substitute_params_with_args(replace_text, arguments):
     arguments.
     """
     finished_text = []
-    for i, t in enumerate(replace_text):
+    for t in replace_text:
         if t.instruction == Instructions.param_number:
             param_nr = t.value
             argument_i = param_nr - 1

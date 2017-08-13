@@ -14,6 +14,7 @@ from .parsing.parsing import command_parser
 from .state import logger as state_logger, GlobalState, TidyEnd
 from .tokens import BuiltToken
 from .box_writer import write_to_dvi_file
+from .glog import DAGLog
 
 dir_path = opath.dirname(opath.realpath(__file__))
 
@@ -50,10 +51,12 @@ def run_state(state, input_paths):
         except ParsingSyntaxError as exc:
             print('While reading:')
             print(reader.get_position_str())
+            print()
             print('While processing tokens:')
-            fail_token = BuiltToken(type_='failed chunk',
+            fail_token = BuiltToken(type_='Failed chunk',
                                     value=None, parents=exc.bad_chunk)
-            fail_token.print_expanded_top(state)
+            fail_token.print_debug_info(state)
+            print()
             raise
 
     while True:
@@ -88,7 +91,7 @@ def log_level(v):
     v = v.upper()
     if v in short_map:
         v = short_map[v]
-    if v not in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
+    if v not in ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'):
         raise argparse.ArgumentTypeError('Invalid log level')
     return v
 

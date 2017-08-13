@@ -15,7 +15,7 @@ from .constants.instructions import (Instructions,
                                      hyphenation_instructions,
                                      mark_instructions)
 from .constants.parameters import Parameters
-from .tokens import InstructionToken
+from .tokens import InstructionToken, BuiltToken
 from .lexer import (is_control_sequence_call, is_char_cat,
                     char_cat_lex_type, control_sequence_lex_type)
 from .router import (short_hand_def_type_to_token_instr,
@@ -271,10 +271,6 @@ class Banisher:
 
     def _handle_macro(self, first_token):
         params = first_token.value['parameter_text']
-        # Make a copy so that setting the parents doesn't affect the canonical
-        # replacement text, whose parents should be from its definition.
-        replace_text = [t.copy(parents=[first_token])
-                        for t in first_token.value['replacement_text']]
 
         def tokens_equal(t, u):
             if t.value['lex_type'] != u.value['lex_type']:
@@ -286,6 +282,14 @@ class Banisher:
             else:
                 raise ValueError(f'Value does not look like a token: {t}')
             return all(t.value[k] == u.value[k] for k in attr_keys)
+
+        replace_parents = [first_token]
+
+        def get_next_token():
+            t = self.instructions.next_unexpanded()
+            replace_parents.append(t)
+            return t
+
         arguments = []
         i_param = 0
         for i_param in range(len(params)):
@@ -299,14 +303,14 @@ class Banisher:
                 # details.
                 # We just swallow up these tokens.
                 assert not arguments
-                next_token = self.instructions.next_unexpanded()
+                next_token = get_next_token()
                 if not tokens_equal(p_t, next_token):
                     raise Exception
                 continue
             delim_toks = p_t.value['delim_tokens']
             if p_t.instruction == Instructions.undelimited_param:
                 assert not delim_toks
-                next_token = self.instructions.next_unexpanded()
+                next_token = get_next_token()
                 if next_token.instruction == Instructions.left_brace:
                     b_tok = self._get_balanced_text_token()
                     arg_toks.extend(b_tok.value)
@@ -316,7 +320,7 @@ class Banisher:
                 # To be finished, we must be balanced brace-wise.
                 brace_level = 0
                 while True:
-                    next_token = self.instructions.next_unexpanded()
+                    next_token = get_next_token()
                     brace_level += get_brace_sign(next_token)
                     arg_toks.append(next_token)
                     # If we are balanced, and we could possibly
@@ -336,13 +340,20 @@ class Banisher:
                     arg_toks = arg_toks[1:-1]
             arguments.append(arg_toks)
 
-        if len(replace_text) > 1:
-            logger.info(f"Expanding macro \"{first_token.value['name']}\" to \"{stringify_instr_list(replace_text)}\"")
+        # Make a copy so that setting the parents doesn't affect the canonical
+        # replacement text, whose parents should be from its definition.
+        replace_text_raw = first_token.value['replacement_text']
+        if len(replace_text_raw) > 1:
+            logger.info(f"Expanding macro \"{first_token.value['name']}\" to \"{stringify_instr_list(replace_text_raw)}\"")
             for i, arg in enumerate(arguments):
                 logger.info(f"Macro argument {i + 1}: \"{stringify_instr_list(arg)}\"")
-        tokens = substitute_params_with_args(replace_text, arguments)
-        # Note that these tokens might themselves need more expansion.
-        return tokens, []
+        replace_text_subbed = substitute_params_with_args(replace_text_raw,
+                                                          arguments)
+        macro_call_tok = BuiltToken(type_='macro_call', value=replace_parents,
+                                    parents=replace_parents)
+        replace_text = [t.copy(parents=[macro_call_tok])
+                        for t in replace_text_subbed]
+        return replace_text, []
 
     def _handle_if(self, first_token):
         logger.debug(f'Handling condition "{first_token.instruction.name} …"')
@@ -526,8 +537,9 @@ class Banisher:
         material_token = InstructionToken(
             mode_material_instruction_map[mode],
             value=layout_list,
-            # TODO: This is weird, a layout list has weird contents.
-            parents=layout_list,
+            # TODO: This is not really the ideal parent. But what's the
+            # alternative?
+            parents=[first_token],
         )
         # Put the LEFT_BRACE on the output queue, and the box material.
         return [], [first_token, material_token]
