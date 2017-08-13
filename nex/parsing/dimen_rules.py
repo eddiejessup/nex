@@ -114,16 +114,20 @@ def add_dimen_rules(pg):
     # @pg.production('internal_unit : internal_glue')
     def internal_unit(p):
         return BuiltToken(type_='unit_of_measure',
-                          value={'unit': p[0]},
+                          value={'unit': p[0].value},
                           parents=p)
 
     @pg.production(pu.get_literal_production_rule('em'))
     def em(p):
-        return InternalUnit.em
+        return BuiltToken(type_='internal_unit',
+                          value=InternalUnit.em,
+                          parents=p)
 
     @pg.production(pu.get_literal_production_rule('ex'))
     def ex(p):
-        return InternalUnit.ex
+        return BuiltToken(type_='internal_unit',
+                          value=InternalUnit.ex,
+                          parents=p)
 
     @pg.production('unit_of_measure : optional_true physical_unit one_optional_space')
     def unit_of_measure(p):

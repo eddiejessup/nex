@@ -1,7 +1,7 @@
 import os
 from enum import Enum
 
-from nex.tokens import InstructionToken
+from nex.tokens import InstructionToken, BaseToken
 from nex.parsing import utils as pu
 from nex.fonts import GlobalFontState
 from nex.router import make_char_cat_pair_instruction_token_direct
@@ -38,18 +38,9 @@ class DummyParameters(Enum):
 
 # Parsing.
 
-class PTok:
-    def __init__(self, type_, v=None):
-        self.type = type_
-        self.value = v
-
-    def __repr__(self):
-        v = self.value if self.value is not None else ''
-        return f'T<{self.type}>({v})'
-
 
 def str_to_toks(s):
-    return [PTok(part) for part in s.split()]
+    return [BaseToken(part) for part in s.split()]
 
 
 def str_to_lit_strs(s):

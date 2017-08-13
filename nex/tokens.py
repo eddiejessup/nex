@@ -59,6 +59,9 @@ class BaseToken:
     def type(self):
         return self._type
 
+    def matches(self, other):
+        return self.type == other.type and self.value == other.value
+
     @property
     def value_str(self):
         if self.value is None:
